@@ -26,7 +26,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [ ] `git show origin/main:docs/implementation-plan/phase-15-supabase-api.md`
   - [ ] `git show origin/main:.claude/skills/verify-justgo/SKILL.md`
   - [ ] `git show origin/main:docs/operations/SERVER_RELEASES.md`
-  - [ ] The installed pstack plugin's `skills/poteto-mode/playbooks/autopilot-full.md`, `skills/poteto-mode/playbooks/opening-a-pr.md`, `skills/swarm/SKILL.md` and `skills/interrogate/SKILL.md`. pstack is a plugin, so these files are not in this repository.
+  - [ ] The installed pstack plugin's `skills/poteto-mode/playbooks/autopilot-full.md` and `skills/poteto-mode/playbooks/opening-a-pr.md`. pstack is a plugin, so these files are not in this repository.
 - [x] Get Anthony's decisions before dependent work starts. He made all five in the planning session on November 6, 2026.
   - [x] Production arrangement. Phase 15 releases staging only. Production uses the same release lane in a later approved step.
   - [x] Legal page hosting. The legal pages stay on Vercel, because they carry no account data. Edge Functions rewrite HTML to plain text without a custom domain.
@@ -67,12 +67,12 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] Run the checks that the [check matrix](../../AGENTS.md#choosing-checks) names for the touched paths once before the PR-facing push. Run one heavy check at a time on the 8 GB Mac. Push with hooks on.
 - [ ] Run `/deslop` before each commit when `cursor-team-kit` is installed, and run `/no-comments` before review.
 - [ ] Triage every bot and security-review comment per pstack's `references/bugbot-triage.md`.
-- [ ] Run `/pstack:interrogate` before calling P15-3, P15-4, P15-5, P15-6, P15-7, P15-8 or P15-11 verified. Each touches an Agent-effort path.
+- [ ] P15-3, P15-4, P15-5, P15-6, P15-7, P15-8 and P15-11 each touch an Agent-effort path, so each stops at merge-ready for Anthony.
 - [ ] Rebase onto current trunk before the code-ready report and babysit. Keep that merge base in fix rounds. Rebase again only at merge prep, on a `git merge-tree` conflict with trunk, on a CI failure that comes from a change on trunk, or when a known concurrent change to the same files lands.
 
 ### Verdict and merge, for every PR
 
-- [ ] A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head, and a wording-only change gets none. Run each full swarm per pstack's `skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
+- [ ] One verifier runs at the code-ready head, per [Git and autonomy](../../AGENTS.md#git-and-autonomy). It re-runs the gates, runs the live lanes from the PR's **Verify, live** block and the perf lane from its **Verify, perf** block, then reads the diff and the receipts and distrusts the PR body. Each fix round gets a fresh verifier at the new head. A rebase or merge-conflict resolution gets one unless its verdict carries under the rule below, and a wording-only change gets none. A full swarm, per pstack's `skills/swarm/SKILL.md`, runs only when Anthony asks for one. The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the execution playbook's blocking rule. The verdict is clean when none blocks. A failure on trunk behavior in a lane marked `Regression lane against trunk.` is recorded against trunk and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in pstack's `playbooks/shipping.md`.
 - [ ] Post each verdict as a PR comment whose verdict line has the form that [AGENTS.md](../../AGENTS.md#git-and-autonomy) gives, with each SHA in backticks. The `sections` check parses only that form. The verifier is a separate Claude agent that did not write the PR, and the comment says so.
 - [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent squash-merges its own PR when the PR touches no Agent-effort path. Anthony merges the rest.
@@ -252,7 +252,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the PR touches `apps/api/src/identity/`.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `apps/api/src/identity/`.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -307,7 +307,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the PR touches `scripts/backups/`.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/backups/`.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -368,7 +368,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the PR touches `scripts/release/` and identity docs.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/release/` and identity docs.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -431,7 +431,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the entry changes how sign-in and owner context run.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the entry changes how sign-in and owner context run.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -486,7 +486,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the fixture prefix touches `apps/api/scripts/`.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the fixture prefix touches `apps/api/scripts/`.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -548,7 +548,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the PR touches `scripts/release/` and a staging workflow.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/release/` and a staging workflow.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -718,7 +718,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the PR touches release scripts and workflows.
+- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches release scripts and workflows.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
 - [ ] Anthony merges. The owner stops at merge-ready.
@@ -797,6 +797,6 @@ Reading settled the rest. The [analysis on #171](https://github.com/anthonyyoo24
 - Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) and [APP_SHELL.md](../architecture/APP_SHELL.md). They own the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
 - History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
-- Run pstack's `how` skill before P15-6 and P15-8, and `interrogate` on every PR that touches an Agent-effort path.
+- Run pstack's `how` skill before P15-6 and P15-8.
 - Keep a decision trail per PR at `.local/decision-trails/phase-15-<pr-id>.tsv`, per pstack's `show-me-your-work` skill and the Stop hook in `.claude/hooks/require-trail-review.mjs`.
 - Recheck these Supabase references before P15-1. Agents read them on November 6, 2026. [Functions](https://supabase.com/docs/guides/functions), [routing](https://supabase.com/docs/guides/functions/routing), [gateway authentication](https://supabase.com/docs/guides/functions/auth-headers), [Postgres from functions](https://supabase.com/docs/guides/functions/connect-to-postgres), [secrets](https://supabase.com/docs/guides/functions/secrets), [limits](https://supabase.com/docs/guides/functions/limits), [deploy](https://supabase.com/docs/guides/functions/deploy), [regional invocation](https://supabase.com/docs/guides/functions/regional-invocation), [logging](https://supabase.com/docs/guides/functions/logging), [function pricing](https://supabase.com/docs/guides/functions/pricing), [project pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) and [data residency](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq).

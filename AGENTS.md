@@ -84,21 +84,6 @@ these rules:
   explain the difference. Do not keep the passing run. When a change makes the
   code under test match `main`, a pass proves nothing unless the run shows which
   code it served, or it first failed at the same level.
-- Swarm-verify a PR that changes behavior in a sensitive area, once, when it is
-  first code-ready. A sensitive area is a path in
-  [`sensitive-paths`](scripts/quality/sensitive-paths.mjs), or a change to
-  sign-in, account data, migrations or release from outside those paths. Read
-  the installed pstack plugin's `skills/swarm/SKILL.md` first, because an agent
-  cannot load that skill on its own. Then follow step 4 of pstack's
-  `autopilot-full` playbook, with these lanes run in parallel:
-  - a verifier that proves the behavior on the running app;
-  - one or two audits, each on a single question, such as safety invariants or
-    the diff against the plan. Describe each as "Audit: …" with `Sensitive: yes`
-    in its brief, so the model hook keeps it on Opus.
-
-  Every other PR, and every fix round, gets a single verifier. Run the swarm
-  again only for new behavior, a redesign or a large new diff.
-
 - Keep the Playwright journeys, the web adapters and the fixture safeguards until a
   native drive proves the same app, API and database cases and passes hosted CI.
 - When behavior depends on storage, transport, time or randomness, control it
@@ -294,6 +279,12 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   (pstack's Shipping playbook). Pin every merge to the head that a verdict
   covers, fresh or carried, with `gh pr merge --match-head-commit <head-sha>`,
   both direct and `--auto`, so GitHub refuses a head no verdict covers.
+- **One verifier per PR, sensitive or not.** This replaces the full swarm in
+  step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one Opus
+  verifier that did not write the PR proves the behavior and posts the verdict.
+  Each fix round gets a fresh verifier, as [Agent effort](#agent-effort) says.
+  A PR in the sensitive areas then stops at merge-ready for Anthony. Run a swarm
+  or `/pstack:interrogate` only when Anthony asks for one on that PR.
 - **Arm auto-merge when you open a PR.** Outside the sensitive areas below, run
   `gh pr merge <n> --auto --squash --match-head-commit <head-sha>` right after
   opening the PR, and again after each push, pinned to the new head. The
@@ -367,9 +358,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Start routine helpers on Sonnet at `high` (`model: "sonnet"`) when pstack's
   per-role settings do not already cover them. Routine helpers are inventories
   and research, docs-only writing passes, and mechanical fix rounds (lint,
-  formatting and small review notes). Owners that change behavior and
-  interrogate reviewers stay on Opus. The verifier hook above decides each
-  verifier's model, so this bullet never overrides it.
+  formatting and small review notes). Owners that change behavior stay on
+  Opus. The verifier hook above decides each verifier's model, so this bullet
+  never overrides it.
 - The same hook sets the model for decision-trail reviews and audits, so
   describe them that way. A description that starts with "Review" and then
   names the trail, such as "Review the P15-3 decision trail", or that starts
@@ -393,11 +384,6 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
   lists their paths, and the verifier hook reads that list.
-- Run `/pstack:interrogate` on every PR that touches those areas before calling
-  it verified. An interrogate run covers a patch, like a verdict. After a new
-  head, run `verdict-patch.mjs check` against the base and head the panel saw. A
-  `re-verify` result means interrogate runs again, not only a verifier. A
-  Verification line about an earlier head names that head.
 - Only Claude models are available here. Where pstack asks for a reviewer, judge
   or verifier from a different model family, use a separate Claude agent and say
   so in its verdict.
