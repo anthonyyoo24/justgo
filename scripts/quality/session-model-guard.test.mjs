@@ -7,6 +7,7 @@ import {
   decide,
   output,
   sessionTool,
+  setModelTool,
 } from '../../.claude/hooks/session-model-guard.mjs';
 
 const hook = fileURLToPath(
@@ -45,6 +46,16 @@ test('starting a proposal card by proposal_id alone is allowed', () => {
   );
 });
 
+test('every set_session_model call is denied', () => {
+  for (const model of ['claude-sonnet-5-5', 'claude-opus-5-5'])
+    assert.equal(
+      decide(setModelTool, { session_id: 'local_1', model })
+        ?.permissionDecision,
+      'deny',
+      model,
+    );
+});
+
 test('other tools are ignored, even with model set', () => {
   for (const tool of ['Agent', 'mcp__ccd_session__dismiss_task', 'Bash'])
     assert.equal(decide(tool, { ...card, model: 'sonnet' }), undefined, tool);
@@ -62,12 +73,12 @@ test('the deny is a PreToolUse permission decision', () => {
   assert.equal(output(undefined), undefined);
 });
 
-test('settings run the guard on start_session and block when it fails', () => {
+test('settings run the guard on both tools and block when it fails', () => {
   const settings = JSON.parse(
     readFileSync(new URL('../../.claude/settings.json', import.meta.url)),
   );
   const entry = settings.hooks.PreToolUse.find(
-    ({ matcher }) => matcher === sessionTool,
+    ({ matcher }) => matcher === `${sessionTool}|${setModelTool}`,
   );
   assert.ok(entry, `no PreToolUse entry matches ${sessionTool}`);
   assert.equal(entry.hooks[0].onFailure, 'block');
