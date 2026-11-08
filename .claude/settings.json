@@ -23,6 +23,17 @@
             "onFailure": "block"
           }
         ]
+      },
+      {
+        "matcher": "mcp__ccd_session__start_session",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-model-guard.mjs\"",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
       }
     ]
   }
