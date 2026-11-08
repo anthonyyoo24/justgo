@@ -342,9 +342,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Subagents and helpers run at `medium` or `high` effort. Never use `low`, and
-  never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
-  usage. `high` is the default, including for the sensitive areas below.
+- Subagents and helpers run at `medium` or `high` effort. Never use `low` or
+  `max`. Anthony capped effort at `high` on 2026-11-07 to cut usage. `high` is
+  the default, including for the sensitive areas below.
+- Use `xhigh` only when Anthony asks for it on that task. When a task seems to
+  need `xhigh`, say why in the conversation and wait for his choice. Never raise
+  effort to `xhigh` on your own, including through pstack's step up for the
+  hardest work.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. It re-reads the
   whole PR, not only the change since the last verdict.
