@@ -19,6 +19,8 @@ jest.mock('../src/data/journal/factory', () => ({
   createLocalJournal: (accountId: string) => mockCreateLocalJournal(accountId),
 }));
 
+export const globalJournalBackend = () => mockBackend;
+
 beforeEach(() => {
   mockBackend = new MemoryJournalBackend();
   mockJournals = new Map();

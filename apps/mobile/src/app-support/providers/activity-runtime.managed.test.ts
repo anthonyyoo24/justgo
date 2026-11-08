@@ -22,6 +22,7 @@ import {
 } from '../../platform/icloud/model';
 import { clearExportFiles } from '../../platform/export/export-file';
 import { clearBackupFiles } from '../../platform/backup/backup-file';
+import { epochData } from '../../data/cloud/icloud-records';
 import type { RestorableData } from '../../data/backup/data-backup';
 import {
   MemoryStorage,
@@ -34,6 +35,7 @@ import {
   zone,
   deferred,
 } from '../../../test-support/journal';
+import { globalJournalBackend } from '../../../test-support/setup-global-local-journal';
 
 jest.mock('expo-crypto', () => {
   const crypto = require('node:crypto') as typeof import('node:crypto');
@@ -551,6 +553,247 @@ it('finishes an already accepted target clear before copying guest writing into 
     'Guest writing retained after a pending account clear',
   );
   expect(destination.attempts.has(uuid(1))).toBe(true);
+});
+
+it('copies guest writing accepted before sign-in only after it finishes saving', async () => {
+  const { runtime, activate, storage } = setup();
+  await cloud.transport.setEnabled(false);
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(), card);
+  const destination = server();
+  servers.set(owner, destination);
+
+  const journalBackend = globalJournalBackend();
+  const reflectionCommitting = deferred<void>();
+  const releaseReflection = deferred<void>();
+  journalBackend.beforeCommit = async () => {
+    journalBackend.beforeCommit = null;
+    reflectionCommitting.resolve();
+    await releaseReflection.promise;
+  };
+  const reflecting = guest.submitReflection(uuid(1), uuid(2), {
+    text: 'Reflection accepted just before sign-in',
+  });
+  await reflectionCommitting.promise;
+
+  const completionSaving = deferred<void>();
+  const releaseCompletion = deferred<void>();
+  const write = storage.setItem.bind(storage);
+  let holdNextSave = true;
+  jest.spyOn(storage, 'setItem').mockImplementation(async (key, value) => {
+    if (holdNextSave && key === `justgo:v1:${otherOwner}:journal`) {
+      holdNextSave = false;
+      completionSaving.resolve();
+      await releaseCompletion.promise;
+    }
+    await write(key, value);
+  });
+  const completing = guest.complete(input(3), card);
+  await completionSaving.promise;
+
+  const adoption = runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  let uploadsWhileCompletionSaving: number;
+  try {
+    await jest.advanceTimersByTimeAsync(0);
+    releaseReflection.resolve();
+    await jest.advanceTimersByTimeAsync(0);
+    uploadsWhileCompletionSaving = jest.mocked(
+      destination.transport.putCompletions,
+    ).mock.calls.length;
+  } finally {
+    releaseReflection.resolve();
+    releaseCompletion.resolve();
+  }
+  expect(uploadsWhileCompletionSaving).toBe(0);
+  await expect(reflecting).resolves.toMatchObject({
+    reflection: { text: 'Reflection accepted just before sign-in' },
+  });
+  await expect(completing).resolves.toMatchObject({ id: uuid(3) });
+  await adoption;
+
+  const target = await activate(owner, 'cloud', 'account');
+  await runtime.retireGuestData(otherOwner);
+  expect(
+    (await target.snapshotData()).attempts.map(({ id }) => id).sort(),
+  ).toEqual([uuid(1), uuid(3)]);
+  expect((await target.snapshotJournal()).entries[0]?.reflection.text).toBe(
+    'Reflection accepted just before sign-in',
+  );
+  expect([...destination.attempts.keys()].sort()).toEqual([uuid(1), uuid(3)]);
+});
+
+it('keeps the guest source and its retry when a reflection accepted before sign-in fails to save', async () => {
+  const { runtime, activate } = setup();
+  await cloud.transport.setEnabled(false);
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(), card);
+  const destination = server();
+  servers.set(owner, destination);
+
+  const journalBackend = globalJournalBackend();
+  const reflectionCommitting = deferred<void>();
+  const failReflection = deferred<void>();
+  journalBackend.beforeCommit = async () => {
+    journalBackend.beforeCommit = null;
+    reflectionCommitting.resolve();
+    await failReflection.promise;
+    throw new Error('Synthetic reflection commit failure');
+  };
+  const reflecting = guest.submitReflection(uuid(1), uuid(2), {
+    text: 'Reflection that failed just before sign-in',
+  });
+  const reflectionResult = expect(reflecting).rejects.toMatchObject({
+    code: 'STORAGE',
+  });
+  await reflectionCommitting.promise;
+  const adoption = runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  const adoptionResult = expect(adoption).rejects.toMatchObject({
+    code: 'STORAGE',
+  });
+  await jest.advanceTimersByTimeAsync(0);
+  failReflection.resolve();
+  await reflectionResult;
+  await adoptionResult;
+  expect(destination.transport.putCompletions).not.toHaveBeenCalled();
+
+  await guest.submitReflection(uuid(1), uuid(2), {
+    text: 'Reflection that failed just before sign-in',
+  });
+  await runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  const target = await activate(owner, 'cloud', 'account');
+  await runtime.retireGuestData(otherOwner);
+  expect((await target.snapshotJournal()).entries[0]?.reflection.text).toBe(
+    'Reflection that failed just before sign-in',
+  );
+  expect([...destination.attempts.keys()]).toEqual([uuid(1)]);
+});
+
+function holdLocalClear(accountId: string) {
+  const backend = globalJournalBackend();
+  const clearing = deferred<void>();
+  const release = deferred<void>();
+  const deleteOwned = backend.deleteOwned.bind(backend);
+  jest.spyOn(backend, 'deleteOwned').mockImplementation(async (id) => {
+    if (id === accountId) {
+      clearing.resolve();
+      await release.promise;
+    }
+    await deleteOwned(id);
+  });
+  return { clearing: clearing.promise, release: () => release.resolve() };
+}
+
+it('copies the guest source only after its accepted iCloud clear finishes', async () => {
+  const { runtime, activate } = setup();
+  const guest = await activate(otherOwner, 'local', 'guest');
+  runtime.setEnvironment({ active: true, online: true });
+  await guest.complete(input(), card);
+  await guest.synchronize();
+  await jest.advanceTimersByTimeAsync(0);
+  const destination = server();
+  servers.set(owner, destination);
+  await cloud.transport.reset({
+    collection: 'guest',
+    generation: cloud.zone('guest').generation,
+  });
+
+  const hold = holdLocalClear(otherOwner);
+  const acceptedClear = runtime
+    .getICloudCoordinator()!
+    .synchronize()
+    .catch((error: unknown) => error);
+  await hold.clearing;
+  let copied = false;
+  const adoption = runtime
+    .mergeGuestData(otherOwner, owner, {
+      userId: owner,
+      token: 'fixture-session',
+    })
+    .then(() => {
+      copied = true;
+    });
+  let copiedWhileClearing: boolean;
+  let uploadsWhileClearing: number;
+  try {
+    await jest.advanceTimersByTimeAsync(0);
+    copiedWhileClearing = copied;
+    uploadsWhileClearing = jest.mocked(destination.transport.putCompletions)
+      .mock.calls.length;
+  } finally {
+    hold.release();
+  }
+  expect(await acceptedClear).toMatchObject({ code: 'DISABLED' });
+  await adoption;
+  expect(copiedWhileClearing).toBe(false);
+  expect(uploadsWhileClearing).toBe(0);
+  const target = await activate(owner, 'cloud', 'account');
+  await runtime.retireGuestData(otherOwner);
+  expect((await target.snapshotData()).attempts).toEqual([]);
+  expect(destination.attempts.size).toBe(0);
+});
+
+it("finishes the target account's accepted iCloud clear before copying guest writing into it", async () => {
+  const { runtime, activate } = setup();
+  await cloud.transport.setEnabled(false);
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(), card);
+  const destination = server();
+  servers.set(owner, destination);
+  await destination.transport.deleteData(0, new AbortController().signal);
+  const collection = `account:${owner}` as const;
+  cloud.zone(collection).records.set(uuid(900), {
+    id: uuid(900),
+    value: JSON.stringify(epochData(collection, 1)),
+  });
+  const target = await activate(owner, 'local', 'account');
+  await cloud.transport.setEnabled(true, async () => {});
+
+  const hold = holdLocalClear(owner);
+  runtime.setEnvironment({ active: true, online: true });
+  const acceptedClear = runtime
+    .getICloudCoordinator()!
+    .synchronize()
+    .catch((error: unknown) => error);
+  await hold.clearing;
+  await cloud.transport.setEnabled(false);
+  let copied = false;
+  const adoption = runtime
+    .mergeGuestData(otherOwner, owner, {
+      userId: owner,
+      token: 'fixture-session',
+    })
+    .then(() => {
+      copied = true;
+    });
+  let copiedWhileClearing: boolean;
+  let uploadsWhileClearing: number;
+  try {
+    await jest.advanceTimersByTimeAsync(0);
+    copiedWhileClearing = copied;
+    uploadsWhileClearing = jest.mocked(destination.transport.putCompletions)
+      .mock.calls.length;
+  } finally {
+    hold.release();
+  }
+  expect(await acceptedClear).toMatchObject({ code: 'DISABLED' });
+  await adoption;
+  expect(copiedWhileClearing).toBe(false);
+  expect(uploadsWhileClearing).toBe(0);
+  await activate(owner, 'cloud', 'account');
+  await runtime.retireGuestData(otherOwner);
+  expect((await target.snapshotData()).attempts.map(({ id }) => id)).toEqual([
+    uuid(1),
+  ]);
+  expect([...destination.attempts.keys()]).toEqual([uuid(1)]);
 });
 
 it('adopts parked guest writing into another account without moving the previously selected account data', async () => {
