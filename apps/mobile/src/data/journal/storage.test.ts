@@ -112,6 +112,15 @@ it('uses real SQLite SQL to preserve entries and alternatives across connection 
   expect((await reopened.get(id))?.reflection.text).toBe('New text');
 });
 
+it('stores the journal file in WAL mode', async () => {
+  await new LocalJournalRepository(owner, backendWithDriver()).save(entry);
+  const file = new DatabaseSync(filename(owner));
+  expect(file.prepare('PRAGMA journal_mode').get()).toEqual({
+    journal_mode: 'wal',
+  });
+  file.close();
+});
+
 it('binds private writing as data and rolls back a failed multi-entry commit', async () => {
   const journal = new LocalJournalRepository(owner, backendWithDriver());
   const sqlText = "Synthetic '); DROP TABLE journal_entries; --";

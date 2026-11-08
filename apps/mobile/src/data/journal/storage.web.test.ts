@@ -1,4 +1,4 @@
-import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { IDBDatabase, IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import type { LocalJournalEntry } from './model';
 import { LocalJournalRepository } from './repository';
 import { IndexedDBJournalBackend } from './storage.web';
@@ -52,6 +52,18 @@ it('preserves current and alternative entries across connections and atomically 
     reflection: { ...entry.reflection, text: 'Changed text', revision: 2 },
   });
   expect((await journal.get(id))?.reflection.text).toBe('Changed text');
+});
+
+it('writes entries and alternatives in one strict-durability transaction', async () => {
+  await journal.list();
+  const transaction = jest.spyOn(IDBDatabase.prototype, 'transaction');
+  await journal.mergeLegacy([
+    entry,
+    { ...entry, reflection: { ...entry.reflection, text: 'Legacy copy' } },
+  ]);
+  expect(transaction.mock.calls).toEqual([
+    [['entries', 'alternatives'], 'readwrite', { durability: 'strict' }],
+  ]);
 });
 
 it('rolls back every imported write when a later request fails and permits retry', async () => {
