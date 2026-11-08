@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   decide,
   isVerifier,
+  kindOf,
   output,
   prOf,
 } from '../../.claude/hooks/verifier-model.mjs';
@@ -37,7 +38,7 @@ test('a docs- or tests-only, non-sensitive re-check runs on Sonnet', () => {
   assert.deepEqual(output(recheck, decision).hookSpecificOutput, {
     hookEventName: 'PreToolUse',
     permissionDecision: 'allow',
-    permissionDecisionReason: `verifier-model: sonnet (${decision.reason})`,
+    permissionDecisionReason: `agent-model: sonnet (${decision.reason})`,
     updatedInput: { ...recheck, model: 'sonnet' },
   });
 });
@@ -137,4 +138,80 @@ test('the hook runs through a symlink and forces Opus when it cannot read the PR
   );
   assert.equal(other.stdout, '');
   assert.notEqual(run('not json').status, 0);
+});
+
+test('decision-trail reviews run on Sonnet, even when Opus is asked for', () => {
+  for (const description of [
+    'Review the decision trail',
+    'Review the P15-3 decision trail',
+    "Review the trail's final rows",
+    'Review pstack-followups trail',
+    'Trail review for the encode run',
+    'Final review of the decision trail',
+    'Close out the trail review',
+    'Review final trail rows',
+  ]) {
+    const input = { description, prompt: 'Read the trail.', model: 'opus' };
+    assert.equal(kindOf(input), 'trail', description);
+    const decision = decide(input, undefined, rules);
+    assert.equal(decision.model, 'sonnet', description);
+    assert.equal(
+      output(input, decision).hookSpecificOutput.updatedInput.model,
+      'sonnet',
+    );
+  }
+});
+
+test('an audit runs on Sonnet unless it is sensitive', () => {
+  const audit = {
+    description: 'P15-4 audit: diff vs plan and docs',
+    prompt: 'Audit PR #203.',
+  };
+  assert.equal(kindOf(audit), 'audit');
+  assert.equal(decide(audit, ['docs/a.md'], rules).model, 'sonnet');
+  assert.equal(decide(audit, undefined, rules).model, 'sonnet');
+  assert.equal(
+    decide(audit, ['apps/api/src/identity/a.ts'], rules).model,
+    'opus',
+  );
+  const flagged = { ...audit, prompt: `Sensitive: yes\n${audit.prompt}` };
+  assert.equal(decide(flagged, ['docs/a.md'], rules).model, 'opus');
+});
+
+test('fix rounds and builders that mention a trail or an audit are left alone', () => {
+  for (const description of [
+    'Fix audit findings on PR 203',
+    'Build the trail review hook',
+    'Final verdict and trail review',
+    'Harden require-trail-review hook',
+    'Interrogate review: trail hook PR #167',
+    'Owner: review trail hook fixes',
+    'Review the require-trail-review hook PR',
+    'Inventory IDENTITY.md rules',
+    'Owner: IDENTITY R46 backup ledger',
+  ]) {
+    const input = { description, prompt: 'Do it.' };
+    assert.equal(kindOf(input), undefined, description);
+    assert.equal(decide(input, undefined, rules), undefined, description);
+  }
+  assert.equal(
+    kindOf({ description: 'Verify decision record and review trail' }),
+    'verifier',
+  );
+});
+
+test('the hook routes a trail review without reading GitHub', () => {
+  const run = spawnSync(process.execPath, [hook], {
+    input: JSON.stringify({
+      tool_name: 'Agent',
+      tool_input: { description: 'Review the decision trail', prompt: 'x' },
+    }),
+    encoding: 'utf8',
+    env: { ...process.env, PATH: '/nonexistent' },
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(
+    JSON.parse(run.stdout).hookSpecificOutput.updatedInput.model,
+    'sonnet',
+  );
 });
