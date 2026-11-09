@@ -1,4 +1,4 @@
-import { getRandomValues, randomUUID } from 'expo-crypto';
+import { randomUUID } from 'expo-crypto';
 import {
   credentialsResponseSchema,
   accountDeletionResponseSchema,
@@ -28,6 +28,7 @@ import { ApiError, type HttpMethod } from '../../lib/network/http';
 import { Deadline } from '../../lib/network/deadline';
 import { removeDeletedCredentials } from './deletion/cleanup';
 import { resumeAccountDeletion } from './deletion/workflow';
+import { randomSecretHex } from './random-secret';
 
 type Snapshot = {
   busy: boolean;
@@ -48,13 +49,7 @@ type Snapshot = {
 };
 type Random = { id: () => string; secret: () => string };
 type OperationOptions = { background?: boolean; resumeDeletion?: boolean };
-const secureRandom: Random = {
-  id: randomUUID,
-  secret: () =>
-    Array.from(getRandomValues(new Uint8Array(32)), (v) =>
-      v.toString(16).padStart(2, '0'),
-    ).join(''),
-};
+const secureRandom: Random = { id: randomUUID, secret: randomSecretHex };
 const messages: Record<string, string> = {
   NETWORK:
     'Couldn’t connect. Retry when you’re online; your pending action is saved.',
