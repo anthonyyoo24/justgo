@@ -28,7 +28,7 @@ export function openPulls(cwd) {
     execFileSync(
       'gh',
       ['pr', 'list', '--state', 'open', '--limit', '200', '--json', listFields],
-      { cwd, encoding: 'utf8', timeout: 30000 },
+      { cwd, encoding: 'utf8', timeout: 15000 },
     ),
   );
 }
@@ -39,7 +39,7 @@ export function fetchHeads(heads, cwd) {
   execFileSync('git', ['fetch', '-q', 'origin', 'main', ...heads], {
     cwd,
     stdio: ['ignore', 'ignore', 'pipe'],
-    timeout: 60000,
+    timeout: 30000,
   });
   return execFileSync('git', ['rev-parse', 'origin/main'], {
     cwd,

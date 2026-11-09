@@ -16,7 +16,8 @@ import { fileURLToPath } from 'node:url';
 // verifier-model.mjs and session-model-guard.mjs fail closed. The merge needs
 // gh and the network too, so failing closed costs a retry. settings.json sets
 // onFailure "block", so a hook that cannot start, crashes or times out also
-// stops the call.
+// stops the call. The gh and git calls time out before the hook's own limit,
+// so a slow network ends in a denial that says why.
 
 const valueFlags = new Set([
   '-R',
@@ -32,7 +33,8 @@ const valueFlags = new Set([
   '--author-email',
 ]);
 
-// Splits a shell command into words per simple command, honoring quotes.
+// Splits a shell command into words per simple command, honoring quotes,
+// `#` comments and heredoc bodies, which hold text, not commands.
 // Good enough to find `gh pr merge` and its arguments, not a shell parser.
 export function commands(line) {
   const result = [];
@@ -40,6 +42,7 @@ export function commands(line) {
   let word = '';
   let quote;
   let started = false;
+  const heredocs = [];
   const endWord = () => {
     if (started) words.push(word);
     word = '';
@@ -59,13 +62,37 @@ export function commands(line) {
       else word += ch;
       continue;
     }
-    if (ch === "'" || ch === '"') {
+    const heredoc =
+      ch === '<' &&
+      line[i + 1] === '<' &&
+      line[i + 2] !== '<' &&
+      /^<<(-?)[ \t]*(['"]?)([^\s'"<>;&|()]+)\2/.exec(line.slice(i));
+    if (heredoc) {
+      endWord();
+      heredocs.push({ strip: heredoc[1] === '-', end: heredoc[3] });
+      i += heredoc[0].length - 1;
+    } else if (ch === '\n') {
+      endCommand();
+      // Skip each pending heredoc body, up to its closing line.
+      for (const { strip, end } of heredocs.splice(0)) {
+        while (i < line.length) {
+          const next = line.indexOf('\n', i + 1);
+          const stop = next < 0 ? line.length : next;
+          const body = line.slice(i + 1, stop);
+          i = stop;
+          if ((strip ? body.replace(/^\t+/, '') : body) === end) break;
+        }
+      }
+    } else if (ch === '#' && !started) {
+      const next = line.indexOf('\n', i);
+      i = (next < 0 ? line.length : next) - 1;
+    } else if (ch === "'" || ch === '"') {
       quote = ch;
       started = true;
     } else if (ch === '\\' && i + 1 < line.length) {
       word += line[++i];
       started = true;
-    } else if (/[;&|\n()]/.test(ch)) endCommand();
+    } else if (/[;&|()]/.test(ch)) endCommand();
     else if (/\s/.test(ch)) endWord();
     else {
       word += ch;
@@ -76,18 +103,21 @@ export function commands(line) {
   return result;
 }
 
-// Each `gh pr merge` in the command, with its PR selector (number, URL or
-// branch; undefined means the current branch's PR). --disable-auto merges
-// nothing, so it is skipped.
+// Each `gh pr merge` that starts a command (after any VAR=value words), with
+// its PR selector (number, URL or branch; undefined means the current
+// branch's PR). --disable-auto merges nothing, so it is skipped.
 export function mergeTargets(line) {
   if (!/\bgh\b/.test(line) || !/\bmerge\b/.test(line)) return [];
   const targets = [];
   for (const words of commands(line)) {
-    const at = words.findIndex(
-      (word, i) =>
-        word === 'gh' && words[i + 1] === 'pr' && words[i + 2] === 'merge',
-    );
-    if (at < 0) continue;
+    let at = 0;
+    while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[at] ?? '')) at++;
+    if (
+      words[at] !== 'gh' ||
+      words[at + 1] !== 'pr' ||
+      words[at + 2] !== 'merge'
+    )
+      continue;
     const args = words.slice(at + 3);
     if (args.includes('--disable-auto')) continue;
     let selector;
@@ -157,6 +187,7 @@ export function decide(target, breaks, byPriority) {
       `merge-order-guard: merging #${target.number} now would make open PRs conflict that merge cleanly today. ` +
       `${lines.join(' ')} ` +
       'Merge those first, or disarm their auto-merge if they are stuck, then retry. ' +
+      'A denied --auto arm waits the same way: arm it after those merge. ' +
       'Run `node scripts/quality/merge-order.mjs` for the whole order.',
   };
 }
@@ -181,13 +212,14 @@ async function check(selector, cwd) {
       execFileSync(
         'gh',
         ['pr', 'view', ...(selector ? [selector] : []), '--json', 'number'],
-        { cwd, encoding: 'utf8', timeout: 15000 },
+        { cwd, encoding: 'utf8', timeout: 10000 },
       ),
     ).number;
   if (!number) throw new Error(`cannot resolve the PR for ${selector}`);
   const pulls = order.openPulls(cwd);
   const pull = pulls.find((candidate) => candidate.number === number);
-  if (!pull) throw new Error(`#${number} is not an open PR`);
+  // gh refuses a PR that is not open, so there is nothing to order.
+  if (!pull) return undefined;
   if (pull.baseRefName !== 'main') return undefined;
   const onMain = pulls.filter((other) => other.baseRefName === 'main');
   const main = order.fetchHeads(

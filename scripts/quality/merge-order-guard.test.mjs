@@ -63,6 +63,45 @@ test('gh pr merge calls are found with their PR selector', () => {
   assert.deepEqual(mergeTargets('ls'), []);
 });
 
+test('heredoc bodies, comments and mentions are not merges', () => {
+  const body = [
+    "gh pr comment 5 --body-file - <<'EOF'",
+    'Arm it with gh pr merge <n> --auto --squash',
+    'After gh pr merge 214 --squash landed.',
+    'EOF',
+  ].join('\n');
+  assert.deepEqual(mergeTargets(body), []);
+  assert.deepEqual(mergeTargets('cat <<EOF\ngh pr merge 3\nEOF'), []);
+  assert.deepEqual(mergeTargets('cat <<-"END"\ngh pr merge 3\n\tEND'), []);
+  assert.deepEqual(mergeTargets('# gh pr merge 5'), []);
+  assert.deepEqual(mergeTargets('ls # then gh pr merge 5'), []);
+  assert.deepEqual(mergeTargets('echo gh pr merge 5'), []);
+  assert.deepEqual(
+    mergeTargets('git commit -m "$(cat <<EOF\ngh pr merge 5\nEOF\n)"'),
+    [],
+  );
+});
+
+test('a real merge after a heredoc or comment with an apostrophe is found', () => {
+  assert.deepEqual(
+    mergeTargets(
+      "cat > notes <<'EOF'\nDon't forget\nEOF\ngh pr merge 207 --squash",
+    ),
+    [{ selector: '207' }],
+  );
+  assert.deepEqual(
+    mergeTargets("# don't skip this\ngh pr merge 207 --squash"),
+    [{ selector: '207' }],
+  );
+  assert.deepEqual(
+    mergeTargets('cat <<EOF > f\nx\nEOF\nGH_DEBUG=1 gh pr merge 8 --auto'),
+    [{ selector: '8' }],
+  );
+  assert.deepEqual(mergeTargets('git status; gh pr merge 9 && echo done'), [
+    { selector: '9' },
+  ]);
+});
+
 test('PR numbers come from numbers and URLs only', () => {
   assert.equal(numberOf('214'), 214);
   assert.equal(numberOf('#7'), 7);
@@ -240,6 +279,11 @@ test('the hook resolves a branch selector and denies when it breaks an earlier P
   ]);
   assert.equal(decision?.permissionDecision, 'deny');
   assert.match(decision.permissionDecisionReason, /#1 \(PR first\)/);
+});
+
+test('the hook allows a merge of a PR that is not open', (t) => {
+  const { pull, run } = fixture(t);
+  assert.equal(run('gh pr merge 99 --squash', [pull(1, 'first')]), undefined);
 });
 
 test('the hook leaves merges into other branches to GitHub', (t) => {
