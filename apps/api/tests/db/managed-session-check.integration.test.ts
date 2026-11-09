@@ -11,7 +11,10 @@ import {
   it,
 } from 'vitest';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
-import { checkManagedSessionHelper } from '../../src/db/managed-session-check.js';
+import {
+  checkManagedSessionHelper,
+  managedSessionCheckBody,
+} from '../../src/db/managed-session-check.js';
 
 const url = localTestDatabaseUrl(process.env.JUSTGO_TEST_ADMIN_DATABASE_URL);
 if (url.username !== 'postgres' || process.env.DATABASE_SSL !== 'disable')
@@ -32,6 +35,49 @@ const readiness = () =>
   checkManagedSessionHelper({
     query: (text: string) => client!.query(text),
   } as unknown as Pool);
+const privateExposures = async () =>
+  (
+    await client!.query<{ exposure: string }>(`with private_object as (
+      select 'schema '||n.nspname as object,n.nspowner as owner,
+        coalesce(n.nspacl,acldefault('n',n.nspowner)) as acl
+      from pg_namespace n where n.nspname='justgo'
+      union all
+      select c.oid::regclass::text,c.relowner,coalesce(c.relacl,
+        acldefault((case c.relkind when 'S' then 's' else 'r' end)::"char",c.relowner))
+      from pg_class c where c.relnamespace='justgo'::regnamespace
+        and c.relkind in ('r','p','v','m','S','f')
+      union all
+      select format('%s.%I',c.oid::regclass,a.attname),c.relowner,a.attacl
+      from pg_attribute a join pg_class c on c.oid=a.attrelid
+      where c.relnamespace='justgo'::regnamespace and a.attacl is not null
+      union all
+      select p.oid::regprocedure::text,p.proowner,
+        coalesce(p.proacl,acldefault('f',p.proowner))
+      from pg_proc p where p.pronamespace='justgo'::regnamespace
+    )
+    select format('%s grants %s to %s',o.object,g.privilege_type,
+      case g.grantee when 0 then 'PUBLIC' else pg_get_userbyid(g.grantee) end) as exposure
+    from private_object o,aclexplode(o.acl) g
+    where g.grantee not in (o.owner,'justgo_runtime'::regrole::oid)
+    union all
+    select format('%s lacks forced row level security',c.oid::regclass)
+    from pg_class c where c.relnamespace='justgo'::regnamespace
+      and c.relkind in ('r','p') and not (c.relrowsecurity and c.relforcerowsecurity)
+    union all
+    select format('%s runs with definer rights',p.oid::regprocedure)
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where p.prosecdef and n.nspname!~'^pg_' and n.nspname<>'information_schema'
+      and p.oid is distinct from to_regprocedure('${helper}(uuid,uuid)')::oid
+    union all
+    select format('%s runs with definer rights',c.oid::regclass)
+    from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname!~'^pg_' and n.nspname<>'information_schema'
+      and (c.relkind='m' or (c.relkind='v' and not coalesce((
+        select o.option_value::boolean from pg_options_to_table(c.reloptions) o
+        where o.option_name='security_invoker'),false)))`)
+  ).rows
+    .map((row) => row.exposure)
+    .sort();
 
 beforeAll(async () => {
   client = await pool.connect();
@@ -163,11 +209,18 @@ describe('real PostgreSQL private Auth-session capability', () => {
     expect(publicGrant.rows[0]?.exposed).toBe(false);
   });
 
-  it('fails runtime readiness for altered body, search path, owner, permissions or missing helper', async () => {
+  it('fails runtime readiness for altered body, volatility, row result, search path, owner, permissions or missing helper', async () => {
     for (const change of [
       `create or replace function ${helper}(session_id uuid,auth_user_id uuid)
         returns boolean language sql stable strict security definer
         set search_path='' as 'select true;'`,
+      `alter function ${helper}(uuid,uuid) volatile`,
+      `drop function ${helper}(uuid,uuid);
+      create function ${helper}(session_id uuid,auth_user_id uuid)
+        returns setof boolean language sql stable strict security definer
+        set search_path='' as $body$${managedSessionCheckBody}$body$;
+      revoke all on function ${helper}(uuid,uuid) from public;
+      grant execute on function ${helper}(uuid,uuid) to justgo_runtime`,
       `alter function ${helper}(uuid,uuid) set search_path=public`,
       `alter function ${helper}(uuid,uuid) security invoker`,
       `alter function ${helper}(uuid,uuid) owner to justgo_migrator`,
@@ -187,6 +240,59 @@ describe('real PostgreSQL private Auth-session capability', () => {
       await client!.query('set local role justgo_runtime');
       await expect(readiness()).rejects.toThrow('readiness check failed');
       await client!.query('rollback to savepoint altered_helper');
+    }
+  });
+});
+
+describe('real PostgreSQL private justgo schema after every migration', () => {
+  it('grants private objects only to their owner and justgo_runtime, forces RLS and keeps the helper as the only definer-rights object', async () => {
+    expect(
+      await privateExposures(),
+      'Revoke the grant, ENABLE and FORCE row level security, or use SECURITY INVOKER',
+    ).toEqual([]);
+  });
+
+  it('reports Supabase client-role grants, unforced RLS and other definer-rights routines or views', async () => {
+    for (const [change, exposure] of [
+      [
+        'grant select on justgo.journal_versions to anon',
+        'justgo.journal_versions grants SELECT to anon',
+      ],
+      [
+        'grant select on justgo.attempts to public',
+        'justgo.attempts grants SELECT to PUBLIC',
+      ],
+      [
+        'grant select (reflection) on justgo.journal_versions to authenticated',
+        'justgo.journal_versions.reflection grants SELECT to authenticated',
+      ],
+      [
+        'grant usage on schema justgo to anon',
+        'schema justgo grants USAGE to anon',
+      ],
+      [
+        'grant execute on function justgo.current_user_id() to public',
+        'justgo.current_user_id() grants EXECUTE to PUBLIC',
+      ],
+      [
+        'alter table justgo.users no force row level security',
+        'justgo.users lacks forced row level security',
+      ],
+      [
+        `create function justgo.read_journal() returns setof justgo.journal_versions
+          language sql stable security definer as 'select * from justgo.journal_versions';
+        revoke all on function justgo.read_journal() from public`,
+        'justgo.read_journal() runs with definer rights',
+      ],
+      [
+        'create view justgo.journal_view as select * from justgo.journal_versions',
+        'justgo.journal_view runs with definer rights',
+      ],
+    ] as const) {
+      await client!.query('savepoint exposed_object');
+      await client!.query(change);
+      expect(await privateExposures()).toEqual([exposure]);
+      await client!.query('rollback to savepoint exposed_object');
     }
   });
 });

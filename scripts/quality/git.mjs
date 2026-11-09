@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
 // Default diff output pairs renames into the new name and quotes non-ASCII
@@ -11,6 +11,40 @@ export function changedPaths(range, cwd) {
   )
     .split('\0')
     .filter(Boolean);
+}
+
+// Merges two commits in memory, touching no worktree or index. Exit 1 means a
+// conflict and lists the conflicted paths. Any other failure throws.
+export function mergeTree(ours, theirs, cwd) {
+  const result = spawnSync(
+    'git',
+    [
+      'merge-tree',
+      '--write-tree',
+      '-z',
+      '--name-only',
+      '--no-messages',
+      ours,
+      theirs,
+    ],
+    { cwd, encoding: 'utf8', timeout: 20000 },
+  );
+  // A missing commit also exits 1, but prints no tree.
+  const [tree, ...conflicts] = (result.stdout ?? '')
+    .split('\0')
+    .filter(Boolean);
+  if (
+    (result.status !== 0 && result.status !== 1) ||
+    !/^[0-9a-f]{40,64}$/.test(tree ?? '')
+  )
+    throw new Error(
+      `git merge-tree ${ours} ${theirs} failed: ${result.stderr || result.error}`,
+    );
+  return {
+    tree,
+    clean: result.status === 0,
+    conflicts: [...new Set(conflicts)],
+  };
 }
 
 export function patchIdOf(diff, cwd) {
