@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import {
@@ -223,9 +223,12 @@ test('browser cache is versioned, installs system dependencies on hits, and expo
   );
 });
 
-test('every external action has an immutable reviewed-release pin and updates are configured', () => {
+test('every external action in every workflow has an immutable reviewed-release pin and updates are configured', () => {
+  const workflows = new URL('../../.github/workflows/', import.meta.url);
   const definitions = [
-    workflow,
+    ...readdirSync(workflows)
+      .filter((name) => name.endsWith('.yml'))
+      .map((name) => readFileSync(new URL(name, workflows), 'utf8')),
     action('setup-node'),
     action('setup-database'),
     action('setup-playwright'),
