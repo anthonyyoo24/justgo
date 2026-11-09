@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // .github/workflows/update-behind-prs.yml runs this on each push to main. It
 // merges main into every open PR on main that has auto-merge armed and is
 // behind, through the same update-branch call as merge-pr.mjs, pinned to the
-// head it read. GitHub then reruns checks and sections and merges the PR once
+// head it read. GitHub then reruns checks, description and verdict and merges the PR once
 // they pass. It skips a PR that conflicts or whose head moved, and says why.
 //
 // The token must not be GITHUB_TOKEN: GitHub holds the CI runs that a
@@ -160,7 +160,7 @@ export async function updateBehindPulls({
     if (status === 202) {
       result.updated.push(number);
       log(
-        `#${number}: merging main into head ${headRefOid.slice(0, 7)}; checks and sections rerun on the new head.`,
+        `#${number}: merging main into head ${headRefOid.slice(0, 7)}; checks, description and verdict rerun on the new head.`,
       );
     } else if (status === 422)
       // A moved head, a conflict, or nothing to merge.

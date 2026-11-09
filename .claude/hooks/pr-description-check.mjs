@@ -8,10 +8,9 @@ import {
 
 // PostToolUse hook on Bash. After a `gh pr create` or `gh pr edit`, it reads
 // the PR body back from GitHub and runs the same descriptionProblems() check
-// as the required `sections` job. A bad description goes back to the agent
-// at once, because `sections` is red on every PR until a verdict covers its
-// head, and a red check that also hides a description problem looks normal
-// (PR #248 sat armed and red with Summary/Why/Checks headings).
+// as the required `description` job, so a bad description goes back to the
+// agent at once instead of after CI (PR #248 sat armed and red with
+// Summary/Why/Checks headings while everyone read it as waiting for review).
 // Reading the body from GitHub works however it was passed: a heredoc,
 // --body-file, --fill or an editor. When gh cannot read the PR, the hook
 // says it could not check and blocks nothing.
@@ -74,7 +73,7 @@ export function check(command, stdout, read) {
     const problems = descriptionProblems(pull.body ?? '');
     if (problems.length)
       bad.push(
-        `PR #${pull.number} (${pull.url}) fails the required \`sections\` check, which stays red after any verdict until the description is fixed:\n- ${problems.join('\n- ')}`,
+        `PR #${pull.number} (${pull.url}) fails the required \`description\` check, which stays red until the description is fixed:\n- ${problems.join('\n- ')}`,
       );
   }
   const note = unread.length
