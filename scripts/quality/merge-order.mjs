@@ -50,13 +50,21 @@ export function fetchHeads(heads, cwd) {
 
 // The newest owner PASS verdict, read from comments in the shape `gh pr list`
 // returns, with the base and head it names and when it was posted.
-export function agreementOf(comments) {
-  const shaped = (comments ?? []).map((comment) => ({
+const shapedComments = (comments) =>
+  (comments ?? []).map((comment) => ({
     author_association: comment.authorAssociation,
     body: comment.body,
     html_url: comment.url,
     created_at: comment.createdAt,
   }));
+
+// The newest owner verdict of any kind, read from `gh pr list` comments.
+export function newestVerdictOf(comments) {
+  return newestVerdict(shapedComments(comments));
+}
+
+export function agreementOf(comments) {
+  const shaped = shapedComments(comments);
   const found = newestVerdict(shaped);
   if (!found || found.unreadable || found.verdict === 'FAIL') return undefined;
   const at = shaped.find(
