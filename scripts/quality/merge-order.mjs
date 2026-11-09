@@ -48,7 +48,8 @@ export function fetchHeads(heads, cwd) {
   }).trim();
 }
 
-// The newest owner verdict, in the REST comment shape newestVerdict reads.
+// The newest owner PASS verdict, read from comments in the shape `gh pr list`
+// returns, with the base and head it names and when it was posted.
 export function agreementOf(comments) {
   const shaped = (comments ?? []).map((comment) => ({
     author_association: comment.authorAssociation,
@@ -61,7 +62,7 @@ export function agreementOf(comments) {
   const at = shaped.find(
     (comment) => comment.html_url === found.url,
   )?.created_at;
-  return { at, head: found.head };
+  return { at, base: found.base, head: found.head };
 }
 
 export function describe(pull, files) {

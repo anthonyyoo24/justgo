@@ -85,7 +85,7 @@ const verdictComment = (verdict, head, createdAt, association = 'OWNER') => ({
 test('agreement is the newest owner PASS and its time', () => {
   assert.deepEqual(
     agreementOf([verdictComment('PASS', 'def5678', '2026-11-08T01:00:00Z')]),
-    { at: '2026-11-08T01:00:00Z', head: 'def5678' },
+    { at: '2026-11-08T01:00:00Z', base: 'abc1234', head: 'def5678' },
   );
   assert.equal(
     agreementOf([

@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { parseArgs, refusal } from './merge-pr.mjs';
+import { checkState, parseArgs, refusal } from './merge-pr.mjs';
 
 const script = fileURLToPath(new URL('./merge-pr.mjs', import.meta.url));
 const sha = 'a'.repeat(40);
@@ -68,8 +68,72 @@ test('breaking only PRs behind in the order is allowed', () => {
   assert.equal(refusal(pr(3), []), undefined);
 });
 
-// A temporary origin with PR branches, a clone the script runs in, and a fake
-// gh on PATH that answers `pr list` from a JSON file and records `pr merge`.
+// The fake gh answers `pr list` from pulls.json and records `pr merge` and
+// update-branch calls in calls.txt. update-branch merges main into the PR
+// branch on the origin, as GitHub does, unless FAKE_FOREIGN_PUSH asks for a
+// plain commit instead. Check runs come back pending FAKE_PENDING times, then
+// with the conclusion FAKE_CHECKS (default success) for every required check.
+const fakeGhSource = String.raw`
+const { execFileSync } = require('node:child_process');
+const { appendFileSync, existsSync, readFileSync, writeFileSync } = require('node:fs');
+const { join } = require('node:path');
+const dir = process.env.FAKE_GH_DIR;
+const pullsFile = join(dir, 'pulls.json');
+const calls = join(dir, 'calls.txt');
+const origin = join(dir, 'origin.git');
+const pulls = () => JSON.parse(readFileSync(pullsFile, 'utf8'));
+const args = process.argv.slice(2);
+const fail = (text, code = 1) => { process.stderr.write(text); process.exit(code); };
+if (process.env.FAKE_GH_FAIL) fail('gh: network down');
+const git = (cwd, ...rest) =>
+  execFileSync('git', rest, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const path = args.find((arg) => arg.startsWith('repos/'));
+let match;
+if (args[0] === 'pr' && args[1] === 'list')
+  process.stdout.write(readFileSync(pullsFile, 'utf8'));
+else if (args[0] === 'pr' && args[1] === 'merge')
+  appendFileSync(calls, args.join(' ') + '\n');
+else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/pulls\/(\d+)\/update-branch$/.exec(path))) {
+  appendFileSync(calls, args.join(' ') + '\n');
+  const list = pulls();
+  const pull = list.find((one) => one.number === Number(match[1]));
+  const expected = args.find((arg) => arg.startsWith('expected_head_sha=')).split('=')[1];
+  if (pull.headRefOid !== expected) fail('gh: 422 expected_head_sha is not the head');
+  const work = join(dir, 'gh-work');
+  if (!existsSync(work)) execFileSync('git', ['clone', '-q', origin, work]);
+  git(work, 'fetch', '-q', 'origin');
+  git(work, 'checkout', '-q', '--detach', pull.headRefOid);
+  if (process.env.FAKE_FOREIGN_PUSH) {
+    writeFileSync(join(work, 'foreign.txt'), 'pushed\n');
+    git(work, 'add', 'foreign.txt');
+    git(work, 'commit', '-qm', 'someone else');
+  } else git(work, 'merge', '-q', '--no-ff', '-m', 'Merge main', 'origin/main');
+  git(work, 'push', '-q', 'origin', 'HEAD:refs/heads/' + pull.headRefName);
+  pull.headRefOid = git(work, 'rev-parse', 'HEAD');
+  writeFileSync(pullsFile, JSON.stringify(list));
+  process.stdout.write('{"message":"Updating pull request branch."}');
+} else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/pulls\/(\d+)$/.exec(path)))
+  process.stdout.write(pulls().find((one) => one.number === Number(match[1])).headRefOid + '\n');
+else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([0-9a-f]+)\/check-runs/.exec(path))) {
+  const counter = join(dir, 'pending.txt');
+  const seen = existsSync(counter) ? Number(readFileSync(counter, 'utf8')) : 0;
+  writeFileSync(counter, String(seen + 1));
+  const pending = seen < Number(process.env.FAKE_PENDING ?? 0);
+  const runs = ['checks', 'sections', 'unit'].map((name, id) => ({
+    id: id + 1,
+    name,
+    status: pending ? 'in_progress' : 'completed',
+    conclusion: pending ? null : name === 'unit' ? 'failure' : (process.env.FAKE_CHECKS ?? 'success'),
+    html_url: 'https://example.test/' + name + '/' + match[1],
+  }));
+  process.stdout.write(JSON.stringify(runs));
+} else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([0-9a-f]+)$/.exec(path)))
+  process.stdout.write(git(origin, 'rev-parse', match[1] + '^{commit}') + '\n');
+else fail('unexpected ' + args.join(' '), 2);
+`;
+
+// A temporary origin with PR branches, a clone the script runs in, and the
+// fake gh above on PATH.
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'merge-pr-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -105,6 +169,22 @@ function fixture(t) {
     second: branch('second', 'shared.txt', 'uno\ntwo\nthree\n'),
     free: branch('free', 'free.txt', 'changed\n'),
   };
+  // Moves main on the origin from a scratch clone, so the script's clone sees
+  // the new main only when it fetches.
+  const moveMain = (file, text) => {
+    const other = join(dir, `main-${file}`);
+    execFileSync('git', ['clone', '-q', origin, other], {
+      env,
+      stdio: 'ignore',
+    });
+    writeFileSync(join(other, file), text);
+    const run = (...args) =>
+      execFileSync('git', args, { cwd: other, encoding: 'utf8', env }).trim();
+    run('add', file);
+    run('commit', '-qm', `main changes ${file}`);
+    run('push', '-q', 'origin', 'HEAD:main');
+    return run('rev-parse', 'HEAD');
+  };
   git('checkout', '-q', '--detach', base);
   // The clone forgets the PR heads, so the script must fetch them by commit.
   for (const name of Object.keys(heads)) {
@@ -117,18 +197,11 @@ function fixture(t) {
   mkdirSync(bin);
   const pulls = join(dir, 'pulls.json');
   const calls = join(dir, 'calls.txt');
+  const fakeGh = join(dir, 'fake-gh.cjs');
+  writeFileSync(fakeGh, fakeGhSource);
   writeFileSync(
     join(bin, 'gh'),
-    `#!/usr/bin/env node
-const { appendFileSync, readFileSync } = require('node:fs');
-const args = process.argv.slice(2);
-if (process.env.FAKE_GH_FAIL) { process.stderr.write('gh: network down'); process.exit(1); }
-if (args[0] === 'pr' && args[1] === 'list')
-  process.stdout.write(readFileSync(${JSON.stringify(pulls)}, 'utf8'));
-else if (args[0] === 'pr' && args[1] === 'merge')
-  appendFileSync(${JSON.stringify(calls)}, args.join(' ') + '\\n');
-else { process.stderr.write('unexpected ' + args.join(' ')); process.exit(2); }
-`,
+    `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(fakeGh)} "$@"\n`,
   );
   chmodSync(join(bin, 'gh'), 0o755);
   const pull = (number, name, extra = {}) => ({
@@ -145,18 +218,37 @@ else { process.stderr.write('unexpected ' + args.join(' ')); process.exit(2); }
   const run = (args, list, extraEnv = {}) => {
     writeFileSync(pulls, JSON.stringify(list));
     rmSync(calls, { force: true });
+    rmSync(join(dir, 'pending.txt'), { force: true });
     const result = spawnSync(process.execPath, [script, ...args], {
       cwd: work,
       encoding: 'utf8',
-      env: { ...env, ...extraEnv, PATH: `${bin}:${process.env.PATH}` },
+      env: {
+        ...env,
+        FAKE_GH_DIR: dir,
+        MERGE_PR_POLL_MS: '1',
+        ...extraEnv,
+        PATH: `${bin}:${process.env.PATH}`,
+      },
     });
+    const lines = existsSync(calls)
+      ? readFileSync(calls, 'utf8').trim().split('\n')
+      : [];
     return {
       status: result.status,
       stderr: result.stderr,
-      merged: existsSync(calls) ? readFileSync(calls, 'utf8').trim() : '',
+      merged: lines.filter((line) => line.startsWith('pr merge')).join('\n'),
+      updates: lines.filter((line) => line.includes('update-branch')),
+      head: (number) =>
+        JSON.parse(readFileSync(pulls, 'utf8')).find(
+          (one) => one.number === number,
+        ).headRefOid,
     };
   };
-  return { heads, pull, run };
+  const parents = (commit) => {
+    execFileSync('git', ['fetch', '-q', origin, commit], { cwd: work, env });
+    return git('rev-list', '--parents', '-n', '1', commit).split(' ').slice(1);
+  };
+  return { base, heads, pull, run, moveMain, parents };
 }
 
 test('a merge that breaks an in-flight PR is refused and nothing merges', (t) => {
@@ -236,6 +328,143 @@ test('a PR that is not open, a bad head or a gh failure merges nothing', (t) => 
   assert.equal(down.status, 2);
   assert.match(down.stderr, /nothing merged.*network down/);
   for (const result of [closed, unknown, down]) assert.equal(result.merged, '');
+});
+
+const verdict = (base, head, word = 'PASS') => ({
+  authorAssociation: 'OWNER',
+  body: `Verifier verdict: ${word} on base \`${base.slice(0, 7)}\`, head \`${head.slice(0, 7)}\`\nSensitive: no`,
+  url: 'https://example.test/verdict',
+  createdAt: '2026-11-08T00:00:00Z',
+});
+
+test('a PR behind main is updated, waits for its checks and merges on the new head', (t) => {
+  const { base, heads, pull, run, moveMain, parents } = fixture(t);
+  const main = moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_PENDING: '2' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.updates, [
+    `api -X PUT repos/{owner}/{repo}/pulls/1/update-branch -f expected_head_sha=${heads.first}`,
+  ]);
+  const next = result.head(1);
+  assert.deepEqual(parents(next), [heads.first, main]);
+  assert.match(result.stderr, /verdict on head .* carries/);
+  assert.match(result.stderr, /Waiting for checks and sections/);
+  assert.equal(
+    result.merged,
+    `pr merge 1 --squash --match-head-commit ${next}`,
+  );
+});
+
+test('a verdict that does not cover the updated head stops for a fresh verifier', (t) => {
+  const { base, heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.free)] })],
+  );
+  assert.equal(result.status, 1);
+  assert.equal(result.updates.length, 1);
+  assert.match(
+    result.stderr,
+    new RegExp(
+      `does not cover the updated head ${result.head(1)}.*shared\\.txt.*fresh verifier`,
+    ),
+  );
+  assert.equal(result.merged, '');
+});
+
+test('failing checks on the updated head merge nothing', (t) => {
+  const { base, heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_CHECKS: 'failure' },
+  );
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /failed against the latest main.*checks failure.*sections failure/,
+  );
+  assert.doesNotMatch(result.stderr, /unit/);
+  assert.equal(result.merged, '');
+});
+
+test('--auto on a PR behind main updates it and arms on the new head without waiting', (t) => {
+  const { heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  // Checks never finish, so a wait would time out.
+  const result = run(
+    ['1', '--head', heads.first, '--auto'],
+    [pull(1, 'first')],
+    {
+      FAKE_PENDING: '1000',
+      MERGE_PR_CHECKS_MS: '50',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.updates.length, 1);
+  assert.equal(
+    result.merged,
+    `pr merge 1 --squash --auto --match-head-commit ${result.head(1)}`,
+  );
+});
+
+test('a PR behind main with no verdict, or one that conflicts with main, is not updated', (t) => {
+  const { base, heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  const unverified = run(['1', '--head', heads.first], [pull(1, 'first')]);
+  assert.equal(unverified.status, 1);
+  assert.match(unverified.stderr, /no PASS verdict.*Nothing was updated/);
+  const failed = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first, 'FAIL')] })],
+  );
+  assert.match(failed.stderr, /no PASS verdict/);
+  moveMain('shared.txt', 'eins\ntwo\nthree\n');
+  const conflicted = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+  );
+  assert.equal(conflicted.status, 1);
+  assert.match(conflicted.stderr, /behind main and conflicts with it/);
+  for (const result of [unverified, failed, conflicted]) {
+    assert.deepEqual(result.updates, []);
+    assert.equal(result.merged, '');
+  }
+});
+
+test("a head that is not GitHub's merge of main is refused", (t) => {
+  const { base, heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_FOREIGN_PUSH: '1' },
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /is not GitHub's merge of main/);
+  assert.equal(result.merged, '');
+});
+
+test('check state reads the newest run of each required check', () => {
+  const runs = (conclusion, status = 'completed') => [
+    { id: 1, name: 'checks', status: 'completed', conclusion: 'failure' },
+    { id: 2, name: 'checks', status, conclusion, html_url: 'u' },
+    { id: 3, name: 'sections', status: 'completed', conclusion: 'success' },
+    { id: 4, name: 'unit', status: 'completed', conclusion: 'failure' },
+  ];
+  assert.equal(checkState(runs('success')), 'pass');
+  assert.equal(checkState(runs('skipped')), 'pass');
+  assert.equal(checkState(runs(null, 'in_progress')), 'pending');
+  assert.equal(checkState(runs('success').slice(1, 2)), 'pending');
+  assert.deepEqual(checkState(runs('cancelled')), {
+    failed: ['checks cancelled (u)'],
+  });
 });
 
 test('the root package runs the script as merge:pr', () => {
