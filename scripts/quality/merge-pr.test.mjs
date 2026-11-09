@@ -13,7 +13,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { checkState, parseArgs, refusal } from './merge-pr.mjs';
+import {
+  checkState,
+  maxRounds,
+  parseArgs,
+  refusal,
+  timingFromEnv,
+} from './merge-pr.mjs';
 
 const script = fileURLToPath(new URL('./merge-pr.mjs', import.meta.url));
 const sha = 'a'.repeat(40);
@@ -73,6 +79,8 @@ test('breaking only PRs behind in the order is allowed', () => {
 // branch on the origin, as GitHub does, unless FAKE_FOREIGN_PUSH asks for a
 // plain commit instead. Check runs come back pending FAKE_PENDING times, then
 // with the conclusion FAKE_CHECKS (default success) for every required check.
+// The first FAKE_MAIN_MOVES check-run reads each push a new commit to main, as
+// another merge landing during the wait would.
 const fakeGhSource = String.raw`
 const { execFileSync } = require('node:child_process');
 const { appendFileSync, existsSync, readFileSync, writeFileSync } = require('node:fs');
@@ -115,6 +123,19 @@ else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/pulls\/(\d+
 } else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/pulls\/(\d+)$/.exec(path)))
   process.stdout.write(pulls().find((one) => one.number === Number(match[1])).headRefOid + '\n');
 else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([0-9a-f]+)\/check-runs/.exec(path))) {
+  const movesFile = join(dir, 'main-moves.txt');
+  const moves = existsSync(movesFile) ? Number(readFileSync(movesFile, 'utf8')) : 0;
+  if (moves < Number(process.env.FAKE_MAIN_MOVES ?? 0)) {
+    const mover = join(dir, 'gh-mover');
+    if (!existsSync(mover)) execFileSync('git', ['clone', '-q', origin, mover]);
+    git(mover, 'fetch', '-q', 'origin');
+    git(mover, 'checkout', '-q', '--detach', 'origin/main');
+    writeFileSync(join(mover, 'moved-' + moves + '.txt'), 'moved\n');
+    git(mover, 'add', '.');
+    git(mover, 'commit', '-qm', 'main moves ' + moves);
+    git(mover, 'push', '-q', 'origin', 'HEAD:main');
+    writeFileSync(movesFile, String(moves + 1));
+  }
   const counter = join(dir, 'pending.txt');
   const seen = existsSync(counter) ? Number(readFileSync(counter, 'utf8')) : 0;
   writeFileSync(counter, String(seen + 1));
@@ -219,6 +240,7 @@ function fixture(t) {
     writeFileSync(pulls, JSON.stringify(list));
     rmSync(calls, { force: true });
     rmSync(join(dir, 'pending.txt'), { force: true });
+    rmSync(join(dir, 'main-moves.txt'), { force: true });
     const result = spawnSync(process.execPath, [script, ...args], {
       cwd: work,
       encoding: 'utf8',
@@ -248,7 +270,8 @@ function fixture(t) {
     execFileSync('git', ['fetch', '-q', origin, commit], { cwd: work, env });
     return git('rev-list', '--parents', '-n', '1', commit).split(' ').slice(1);
   };
-  return { base, heads, pull, run, moveMain, parents };
+  const mainTip = () => git('ls-remote', origin, 'main').split('\t')[0];
+  return { base, heads, pull, run, moveMain, parents, mainTip };
 }
 
 test('a merge that breaks an in-flight PR is refused and nothing merges', (t) => {
@@ -420,11 +443,19 @@ test('a PR behind main with no verdict, or one that conflicts with main, is not 
   const unverified = run(['1', '--head', heads.first], [pull(1, 'first')]);
   assert.equal(unverified.status, 1);
   assert.match(unverified.stderr, /no PASS verdict.*Nothing was updated/);
-  const failed = run(
-    ['1', '--head', heads.first],
-    [pull(1, 'first', { comments: [verdict(base, heads.first, 'FAIL')] })],
+  const failing = [
+    pull(1, 'first', { comments: [verdict(base, heads.first, 'FAIL')] }),
+  ];
+  const failed = run(['1', '--head', heads.first], failing);
+  assert.equal(failed.status, 1);
+  assert.match(failed.stderr, /newest verdict is FAIL.*Nothing was updated/);
+  // --auto skips the verdict check on update, but not a FAIL.
+  const failedAuto = run(['1', '--head', heads.first, '--auto'], failing);
+  assert.equal(failedAuto.status, 1);
+  assert.match(
+    failedAuto.stderr,
+    /newest verdict is FAIL.*Nothing was updated/,
   );
-  assert.match(failed.stderr, /no PASS verdict/);
   moveMain('shared.txt', 'eins\ntwo\nthree\n');
   const conflicted = run(
     ['1', '--head', heads.first],
@@ -432,7 +463,7 @@ test('a PR behind main with no verdict, or one that conflicts with main, is not 
   );
   assert.equal(conflicted.status, 1);
   assert.match(conflicted.stderr, /behind main and conflicts with it/);
-  for (const result of [unverified, failed, conflicted]) {
+  for (const result of [unverified, failed, failedAuto, conflicted]) {
     assert.deepEqual(result.updates, []);
     assert.equal(result.merged, '');
   }
@@ -448,6 +479,75 @@ test("a head that is not GitHub's merge of main is refused", (t) => {
   );
   assert.equal(result.status, 1);
   assert.match(result.stderr, /is not GitHub's merge of main/);
+  assert.equal(result.merged, '');
+});
+
+test('main moving during the checks wait updates again and merges on the newest head', (t) => {
+  const { base, heads, pull, run, moveMain, parents, mainTip } = fixture(t);
+  const main = moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_MAIN_MOVES: '1' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.updates.length, 2);
+  // The second update starts from the first update's head, and the final head
+  // merges the main that moved during the first wait.
+  const next = result.head(1);
+  const [firstUpdate, movedMain] = parents(next);
+  assert.deepEqual(parents(firstUpdate), [heads.first, main]);
+  assert.equal(movedMain, mainTip());
+  assert.notEqual(movedMain, main);
+  assert.match(
+    result.updates[1],
+    new RegExp(`expected_head_sha=${firstUpdate}$`),
+  );
+  assert.equal(
+    result.merged,
+    `pr merge 1 --squash --match-head-commit ${next}`,
+  );
+});
+
+test(`main moving during every wait stops after ${maxRounds} updates`, (t) => {
+  const { base, heads, pull, run, moveMain } = fixture(t);
+  moveMain('later.txt', 'main moved\n');
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_MAIN_MOVES: '1000' },
+  );
+  assert.equal(result.status, 1);
+  assert.equal(result.updates.length, maxRounds);
+  assert.match(
+    result.stderr,
+    new RegExp(`main moved during each of ${maxRounds} updates of #1`),
+  );
+  assert.equal(result.merged, '');
+});
+
+test('a wait setting that is not a positive number fails before any call', (t) => {
+  assert.deepEqual(timingFromEnv({}), {
+    pollMs: 15000,
+    updateMs: 120000,
+    checksMs: 2700000,
+  });
+  assert.equal(timingFromEnv({ MERGE_PR_POLL_MS: '5' }).pollMs, 5);
+  for (const value of ['abc', '', '0', '-1', 'Infinity'])
+    assert.throws(
+      () => timingFromEnv({ MERGE_PR_CHECKS_MS: value }),
+      /MERGE_PR_CHECKS_MS must be a positive number/,
+    );
+  const { heads, pull, run } = fixture(t);
+  const result = run(['1', '--head', heads.first], [pull(1, 'first')], {
+    MERGE_PR_UPDATE_MS: 'abc',
+  });
+  assert.equal(result.status, 2);
+  assert.match(
+    result.stderr,
+    /nothing merged.*MERGE_PR_UPDATE_MS must be a positive number.*"abc"/,
+  );
+  assert.deepEqual(result.updates, []);
   assert.equal(result.merged, '');
 });
 

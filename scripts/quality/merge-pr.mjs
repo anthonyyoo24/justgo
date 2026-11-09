@@ -7,6 +7,7 @@ import {
   byPriority,
   describe,
   fetchHeads,
+  newestVerdictOf,
   openPulls,
 } from './merge-order.mjs';
 import { runVerdictPatch } from './verdict-status.mjs';
@@ -166,6 +167,14 @@ export function plan(options, cwd) {
       refuse:
         `merge-pr: #${options.number} is behind main and conflicts with it. ` +
         'Rebase it onto origin/main, get a verdict that covers the new head, then retry.',
+    };
+  // A FAIL stops both kinds: --auto would otherwise update and arm a PR that
+  // a verifier rejected.
+  if (newestVerdictOf(pull.comments)?.verdict === 'FAIL')
+    return {
+      refuse:
+        `merge-pr: #${options.number} is behind main and its newest verdict is FAIL. ` +
+        'Nothing was updated. Fix the findings, get a fresh verdict, then retry.',
     };
   const verdict = agreementOf(pull.comments);
   if (!verdict && !options.auto)
@@ -347,8 +356,16 @@ export function run(options, cwd, timing) {
 }
 
 const minute = 60000;
+// A value that is not a positive number would make a wait never end.
 export function timingFromEnv(env) {
-  const number = (name, fallback) => Number(env[name] ?? fallback);
+  const number = (name, fallback) => {
+    const value = Number(env[name] ?? fallback);
+    if (!Number.isFinite(value) || value <= 0)
+      throw new Error(
+        `${name} must be a positive number of milliseconds, not ${JSON.stringify(env[name])}`,
+      );
+    return value;
+  };
   return {
     pollMs: number('MERGE_PR_POLL_MS', 15000),
     updateMs: number('MERGE_PR_UPDATE_MS', 2 * minute),
