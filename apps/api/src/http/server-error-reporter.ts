@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { outboundFetch } from './outbound-fetch.js';
 import type { ServerDiagnosticConfiguration } from './sentry-configuration.js';
 
 const diagnosticSchema = z.object({
@@ -93,7 +94,7 @@ export function createServerErrorReporter(
   options: { send?: typeof fetch; now?: () => number } = {},
 ): ServerErrorReporter {
   if (!config) return async () => {};
-  const send = options.send ?? fetch;
+  const send = outboundFetch(options.send);
   const now = options.now ?? Date.now;
   let pending = 0;
   let pausedUntil = 0;
@@ -143,9 +144,6 @@ export function createServerErrorReporter(
             headers: { 'Content-Type': 'application/x-sentry-envelope' },
             credentials: 'omit',
             referrerPolicy: 'no-referrer',
-            // Workers supports manual, not error. Non-2xx responses below
-            // pause delivery without following Location or retrying.
-            redirect: 'manual',
             body,
             signal: controller.signal,
           });

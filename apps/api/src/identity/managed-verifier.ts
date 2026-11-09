@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ApiError } from '../http/api-error.js';
+import { outboundFetch } from '../http/outbound-fetch.js';
 
 export type VerifiedManagedIdentity = {
   authUserId: string;
@@ -27,7 +28,7 @@ const authUserSchema = z.object({
 export function createManagedAuthVerifier(
   url: string,
   publishableKey: string,
-  request: typeof fetch = fetch,
+  transport?: typeof fetch,
 ): ManagedAuthVerifier {
   const origin = new URL(url);
   if (
@@ -39,15 +40,13 @@ export function createManagedAuthVerifier(
     origin.pathname !== '/'
   )
     throw new Error('Invalid Supabase Auth URL');
+  const request = outboundFetch(transport);
   return async (token) => {
     let response: Response;
     try {
       response = await request(new URL('/auth/v1/user', origin), {
         headers: { apikey: publishableKey, authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(5000),
-        // Workers rejects redirect: error before sending. Manual keeps the
-        // bearer at this exact Auth endpoint; redirects fail closed below.
-        redirect: 'manual',
       });
     } catch {
       throw new ApiError('UNAVAILABLE', 503);
