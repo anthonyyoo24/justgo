@@ -274,15 +274,40 @@ test(
   },
 );
 
-test('the sections job checks the verdict and a verdict comment reruns it', () => {
-  const sections = readFileSync(
+// One job per workflow job name, from its `name:` line to the next job.
+function workflowJobs(text) {
+  const jobs = {};
+  for (const [, name, body] of text.matchAll(
+    /^ {2}([\w-]+):\n((?: {4}.*\n|\n)*)/gm,
+  ))
+    jobs[name] = body;
+  return jobs;
+}
+
+test('description and verdict are separate jobs, and a verdict comment reruns them', () => {
+  const workflow = readFileSync(
     new URL('pr-description.yml', workflows),
     'utf8',
   );
-  assert.match(sections, /^ {2}pull-requests: read$/m);
-  assert.match(sections, /scripts\/quality\/verdict-status\.mjs$/m);
-  assert.match(sections, /run: node scripts\/quality\/verdict-status\.mjs/);
-  assert.doesNotMatch(sections, /pull_request_target|issue_comment/);
+  assert.match(workflow, /^ {2}pull-requests: read$/m);
+  assert.doesNotMatch(workflow, /pull_request_target|issue_comment/);
+  const jobs = workflowJobs(workflow.slice(workflow.indexOf('\njobs:\n')));
+  assert.deepEqual(Object.keys(jobs), ['description', 'verdict', 'sections']);
+  assert.match(
+    jobs.description,
+    /run: node scripts\/quality\/pr-description\.mjs/,
+  );
+  assert.doesNotMatch(jobs.description, /verdict-status/);
+  assert.match(jobs.verdict, /run: node scripts\/quality\/verdict-status\.mjs/);
+  assert.doesNotMatch(jobs.verdict, /pr-description\.mjs/);
+  // A skipped required job counts as passing, so the transition aggregate
+  // must run after a failed need and pass only when both succeeded.
+  assert.match(jobs.sections, /needs: \[description, verdict\]/);
+  assert.match(jobs.sections, /if: always\(\)/);
+  assert.match(
+    jobs.sections,
+    /test "\$DESCRIPTION" = success && test "\$VERDICT" = success/,
+  );
   const recheck = readFileSync(
     new URL('verdict-recheck.yml', workflows),
     'utf8',
@@ -294,28 +319,40 @@ test('the sections job checks the verdict and a verdict comment reruns it', () =
     /^permissions:\n {2}actions: write\n {2}pull-requests: read$/m,
   );
   assert.doesNotMatch(recheck, /checkout|pull_request_target/);
-  assert.match(recheck, /gh run rerun/);
+  assert.match(recheck, /gh run list --workflow pr-description\.yml/);
+  assert.match(recheck, /select\(\.name == "verdict"\)/);
+  assert.match(recheck, /gh run rerun --job "\$job"/);
 });
 
-test('the sections sparse checkout includes every local import of its scripts', () => {
-  const sections = readFileSync(
+test('each job sparse checkout includes every local import of its scripts', () => {
+  const workflow = readFileSync(
     new URL('pr-description.yml', workflows),
     'utf8',
   );
-  const listed = new Set(
-    sections
-      .match(/^ {12}scripts\/quality\/[\w.-]+\.mjs$/gm)
-      .map((line) => line.trim()),
-  );
-  for (const script of listed) {
-    const source = readFileSync(
-      new URL(`../../${script}`, import.meta.url),
-      'utf8',
+  const jobs = workflowJobs(workflow.slice(workflow.indexOf('\njobs:\n')));
+  for (const [job, body] of Object.entries(jobs)) {
+    const listed = new Set(
+      (body.match(/^ {12}scripts\/quality\/[\w.-]+\.mjs$/gm) ?? []).map(
+        (line) => line.trim(),
+      ),
     );
-    for (const [, local] of source.matchAll(/from '\.\/([\w.-]+\.mjs)'/g))
+    for (const [, script] of body.matchAll(
+      /run: node (scripts\/quality\/[\w.-]+\.mjs)/g,
+    ))
       assert.ok(
-        listed.has(`scripts/quality/${local}`),
-        `${script} imports ${local}, which the sections sparse checkout leaves out`,
+        listed.has(script),
+        `${job} runs ${script} without checking it out`,
       );
+    for (const script of listed) {
+      const source = readFileSync(
+        new URL(`../../${script}`, import.meta.url),
+        'utf8',
+      );
+      for (const [, local] of source.matchAll(/from '\.\/([\w.-]+\.mjs)'/g))
+        assert.ok(
+          listed.has(`scripts/quality/${local}`),
+          `${script} imports ${local}, which the ${job} sparse checkout leaves out`,
+        );
+    }
   }
 });

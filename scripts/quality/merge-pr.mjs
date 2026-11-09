@@ -188,7 +188,8 @@ export function plan(options, cwd) {
 
 // The update and the waits below talk to GitHub through `gh api`, which fills
 // in {owner}/{repo} from the checkout.
-export const requiredChecks = ['checks', 'sections'];
+export const requiredChecks = ['checks', 'description', 'verdict'];
+const checkList = `${requiredChecks.slice(0, -1).join(', ')} and ${requiredChecks.at(-1)}`;
 export const maxRounds = 3;
 const passing = new Set(['success', 'neutral', 'skipped']);
 
@@ -318,9 +319,9 @@ export function updateBranch(options, { main, verdict }, cwd, timing) {
     log(carriedVerdict(verdict.head, next, result, changed));
   }
   if (options.auto) return { head: next };
-  log(`Waiting for ${requiredChecks.join(' and ')} on ${next}.`);
+  log(`Waiting for ${checkList} on ${next}.`);
   const state = until(
-    `${requiredChecks.join(' and ')} on ${next}`,
+    `${checkList} on ${next}`,
     timing.checksMs,
     timing.pollMs,
     () => {
@@ -379,7 +380,7 @@ export function outcome(options, view) {
       ? `Auto-merge is still armed on #${number} at head ${head}.`
       : `Auto-merge is off on #${number}.`;
   if (view.autoMergeRequest)
-    return `Auto-merge is armed on #${number} at head ${head}. GitHub merges it once ${requiredChecks.join(' and ')} pass.`;
+    return `Auto-merge is armed on #${number} at head ${head}. GitHub merges it once ${checkList} pass.`;
   return `#${number} is ${view.state} at head ${head}, and GitHub reports neither a merge nor an armed auto-merge.`;
 }
 

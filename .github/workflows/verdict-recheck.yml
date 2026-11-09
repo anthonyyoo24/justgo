@@ -1,7 +1,8 @@
 name: Verdict recheck
 
 # A pull_request run cannot see a verdict posted after it, and an issue_comment
-# run attaches no status to the PR head, so rerun the head's sections job.
+# run attaches no status to the PR head, so rerun the head's verdict job. GitHub
+# reruns the jobs that need it too, and leaves the description job alone.
 on:
   issue_comment:
     types: [created, edited]
@@ -11,7 +12,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  rerun-sections:
+  rerun-verdict:
     if: >-
       github.event.issue.pull_request &&
       github.event.comment.author_association == 'OWNER' &&
@@ -19,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
-      - name: Rerun the PR description run for the PR head
+      - name: Rerun the verdict job for the PR head
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -27,4 +28,6 @@ jobs:
         run: |
           head=$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)
           run=$(gh run list --workflow pr-description.yml --event pull_request --commit "$head" --limit 1 --json databaseId --jq '.[0].databaseId')
-          gh run rerun "$run"
+          job=$(gh run view "$run" --json jobs --jq '.jobs[] | select(.name == "verdict") | .databaseId')
+          # A run from before the split has one sections job and no verdict job.
+          if [ -n "$job" ]; then gh run rerun --job "$job"; else gh run rerun "$run"; fi

@@ -2,7 +2,8 @@ name: Update behind PRs
 
 # Branch protection requires up-to-date branches, and GitHub never updates a
 # PR with auto-merge armed when main moves. This merges main into each armed
-# PR that is behind, so checks and sections rerun and GitHub merges it.
+# PR that is behind, so checks, description and verdict rerun and GitHub
+# merges it.
 #
 # PR_UPDATE_TOKEN is a fine-grained personal access token for this repository
 # only, with Contents, Pull requests and Workflows set to read and write. It
