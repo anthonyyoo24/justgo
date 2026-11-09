@@ -23,6 +23,7 @@ import type {
   ManagedIdentityStorage,
 } from './managed-state';
 import { legacyLinkProof } from './legacy-link-proof';
+import { providerSwitchProof } from './provider-switch';
 import {
   connectionReference,
   type ConnectionPhase,
@@ -90,6 +91,7 @@ export class ManagedIdentityController {
   private disposed = false;
   private active = true;
   private networkBlocked = false;
+  private switchingFromToken: string | null = null;
   private verifiedOwner = false;
   private providerDetached = false;
   private providerGeneration = 0;
@@ -135,10 +137,34 @@ export class ManagedIdentityController {
     this.vault = options.legacyVault;
     this.unsubscribeAuth = options.auth.subscribe((session) => {
       const hadLocalAdmission = this.offlineAccountOwner() !== null;
-      this.providerSession = session;
+      const previous = this.providerSession;
+      // SDK notifications never carry the display provider. Keep the inferred
+      // one across a same-subject refresh so it cannot fall back to a guess.
+      this.providerSession =
+        session &&
+        !session.provider &&
+        previous?.provider &&
+        previous.authUserId === session.authUserId
+          ? { ...session, provider: previous.provider }
+          : session;
       const expectedAuthOwner =
         this.snapshot.account?.authUserId ??
         (this.data?.mode === 'account' ? this.data.account?.authUserId : null);
+      if (
+        this.switchingFromToken &&
+        session?.accessToken !== this.switchingFromToken
+      ) {
+        // The SDK notifies before its signIn promise resolves. Even a same-subject
+        // replacement must not supply an unregistered token to account sync.
+        this.networkBlocked = true;
+        this.verifiedOwner = false;
+        this.publish({
+          account: null,
+          mode: 'signed-out',
+          provider: null,
+          linkedProviders: [],
+        });
+      }
       if (expectedAuthOwner && expectedAuthOwner !== session?.authUserId) {
         this.providerDetached = true;
         this.providerGeneration++;
@@ -254,6 +280,12 @@ export class ManagedIdentityController {
       pendingGuestId:
         state.guestAdoption?.status === 'pending' ? state.guestId : null,
       account,
+      provider: account
+        ? (state.provider ??
+          this.providerSession?.provider ??
+          this.providerSession?.linkedProviders?.[0] ??
+          null)
+        : null,
       linkedProviders: account
         ? (this.providerSession?.linkedProviders ?? [])
         : [],
@@ -415,7 +447,7 @@ export class ManagedIdentityController {
         if (this.state().pendingSignIn) connection.phase = 'provider-auth';
         this.providerSession = await this.options.auth.initialize();
         if (this.state().pendingSignIn && this.providerSession)
-          return this.adopt(this.providerSession, connection);
+          return this.resumeSignIn(this.providerSession, connection);
         if (this.state().pendingLink && this.providerSession)
           return this.finishLink();
         if (
@@ -461,35 +493,252 @@ export class ManagedIdentityController {
         await this.finishGuestRetirement();
         if (this.state().logoutPending) await this.finishLogout();
         const state = this.state();
+        const source = this.currentSession();
+        const proof = providerSwitchProof(this.options.secureStorage);
+        if (source && this.providerSession)
+          await proof.write({
+            token: source.token,
+            authUserId: this.providerSession.authUserId,
+          });
+        const sourceProof = await proof.read();
+        const switching = !!source || !!sourceProof;
         await this.save({
           ...state,
           pendingSignIn: {
             provider,
-            // Retain the v1 persisted field for interrupted old sign-ins. New
-            // sign-ins always adopt phone writing after the cloud disclosure.
+            // Retain the v1 field for interrupted old sign-ins.
             mergeGuest: true,
             guestId:
               state.guestAdoption?.status === 'consumed' ? null : state.guestId,
             mappedOwnerId: null,
             expectedOwnerId: options.expectedOwnerId ?? null,
+            ...(switching ? { switching: true, authenticated: false } : {}),
           },
         });
         connection.phase = 'provider-auth';
-        const session = await this.options.auth.signIn(provider);
+        let session: ProviderSession | 'redirecting' | null;
+        this.switchingFromToken = switching
+          ? (sourceProof?.token ?? null)
+          : null;
+        try {
+          session = await this.options.auth.signIn(provider);
+        } catch (error) {
+          this.switchingFromToken = null;
+          // A source-token refresh can notify while the native sheet is open.
+          // Recover only the same trusted app session, never a newly signed-in SDK session.
+          if (switching && state.account) {
+            await this.restoreSwitchSource(
+              this.providerSession,
+              state.account,
+              source?.token,
+            );
+          } else if (switching) {
+            await this.save({
+              ...this.state(),
+              pendingSignIn: state.pendingSignIn,
+            });
+          }
+          throw error;
+        }
+        this.switchingFromToken = null;
         if (this.disposed) throw new ApiError('CANCELLED');
         if (session === 'redirecting') return;
         if (!session) {
-          await this.save({ ...this.state(), pendingSignIn: null });
+          if (switching && state.account) {
+            const restored = await this.restoreSwitchSource(
+              this.providerSession,
+              state.account,
+              source?.token,
+            );
+            // Explain only a login this attempt lost. A cancelled sign-in that
+            // began signed out stays silent, as an ordinary cancel does.
+            if (!restored && source)
+              this.reconcile(
+                'Please sign in again. Your saved data was kept.',
+                {
+                  ...emptyConnectionFeedback,
+                  directSignInFailure: true,
+                },
+              );
+            return;
+          }
+          await this.save({
+            ...this.state(),
+            pendingSignIn: switching ? state.pendingSignIn : null,
+          });
           this.reconcile();
           return;
         }
+        if (switching && session.accessToken === sourceProof?.token) {
+          await this.save({ ...this.state(), pendingSignIn: null });
+          await proof.clear();
+          throw new ProviderAuthError('AUTH');
+        }
         this.providerSession = session;
+        if (switching) {
+          // From this point the SDK has changed. Keep all account requests fenced
+          // until source revocation and durable destination ownership succeed.
+          this.networkBlocked = true;
+          this.verifiedOwner = false;
+          this.reconcile();
+          const intent = this.state().pendingSignIn;
+          if (!intent) throw new ProviderAuthError('AUTH');
+          await this.save({
+            ...this.state(),
+            pendingSignIn: { ...intent, authenticated: true },
+          });
+          await proof.revoke(this.options.api, this.lifetime.signal);
+        }
         await this.adopt(session, connection);
       },
       false,
       connection,
     );
   };
+  /** Restore a cancelled/interrupted switch only to its original live app session. */
+  private async restoreSwitchSource(
+    candidate: ProviderSession | null,
+    original: ManagedSessionResponse,
+    unchangedToken?: string,
+  ) {
+    // A plain cancel leaves the SDK on the verified source, so its login stays
+    // published: unpublishing it would read as an owner change downstream.
+    // Fence only a changed source, or one the server rejected during the sheet,
+    // while it is checked, and fence any source this restore gives up on.
+    // Only a login this process already verified can skip the check.
+    const unchanged =
+      this.verifiedOwner &&
+      !this.networkBlocked &&
+      !!candidate &&
+      candidate.accessToken === unchangedToken;
+    let fenced = false;
+    const fence = () => {
+      if (fenced) return;
+      fenced = true;
+      this.networkBlocked = true;
+      this.verifiedOwner = false;
+      this.reconcile();
+    };
+    const fail = () => {
+      fence();
+      return false;
+    };
+    if (!unchanged) fence();
+    const intent = this.state().pendingSignIn;
+    if (
+      !candidate ||
+      !intent?.switching ||
+      intent.authenticated ||
+      candidate.authUserId !== original.authUserId
+    )
+      return fail();
+    const generation = this.providerGeneration;
+    // A same-session SDK refresh may replace the token at any await, so
+    // ownership never depends on the token. The token is checked separately.
+    const owned = () =>
+      !this.disposed &&
+      generation === this.providerGeneration &&
+      this.providerSession?.authUserId === original.authUserId &&
+      this.state().account?.userId === original.userId &&
+      this.state().account?.authUserId === original.authUserId &&
+      this.state().account?.sessionId === original.sessionId &&
+      !this.state().deletion;
+    const verifies = async (token: string) => {
+      try {
+        const verified = await this.options.api.request(
+          'GET',
+          '/auth/session',
+          managedSessionResponseSchema,
+          undefined,
+          token,
+          this.lifetime.signal,
+        );
+        return (
+          verified.userId === original.userId &&
+          verified.authUserId === original.authUserId &&
+          verified.sessionId === original.sessionId
+        );
+      } catch {
+        return false;
+      }
+    };
+    const proof = providerSwitchProof(this.options.secureStorage);
+    const source = await proof.read();
+    if (!source || !owned()) return fail();
+    this.switchingFromToken = source.token;
+    try {
+      // Failed verification leaves the source proof and destination intent retryable.
+      if (!unchanged && !(await verifies(candidate.accessToken))) return fail();
+      if (!owned()) return fail();
+      const trusted = candidate.accessToken;
+      await this.save({ ...this.state(), pendingSignIn: null });
+      const rollBack = async (restoreProof: boolean) => {
+        if (restoreProof) await proof.write(source);
+        await this.save({ ...this.state(), pendingSignIn: intent });
+        return fail();
+      };
+      if (!owned()) return rollBack(false);
+      await proof.clear();
+      if (!owned()) return rollBack(true);
+      // A rejection or refresh may have landed while the source stayed
+      // published. Re-verify whatever token the SDK holds now before reuse.
+      const token = this.providerSession?.accessToken;
+      if (token !== trusted || (this.networkBlocked && !fenced)) {
+        fence();
+        if (!token || !(await verifies(token))) return rollBack(true);
+        if (!owned() || this.providerSession?.accessToken !== token)
+          return rollBack(true);
+      }
+      this.networkBlocked = false;
+      this.verifiedOwner = true;
+      this.providerDetached = false;
+      this.reconcile();
+      return true;
+    } finally {
+      this.switchingFromToken = null;
+    }
+  }
+  private async resumeSignIn(
+    session: ProviderSession,
+    connection: ConnectionTrace,
+  ) {
+    const intent = this.state().pendingSignIn;
+    if (!intent) return;
+    if (intent.switching) {
+      const proof = providerSwitchProof(this.options.secureStorage);
+      const source = await proof.read();
+      if (!intent.authenticated) {
+        if (
+          session.freshSignIn &&
+          source &&
+          session.accessToken !== source.token
+        ) {
+          await this.save({
+            ...this.state(),
+            pendingSignIn: { ...intent, authenticated: true },
+          });
+        } else {
+          const original = this.state().account;
+          if (
+            original &&
+            (await this.restoreSwitchSource(session, original, source?.token))
+          )
+            return;
+          // An interrupted SDK exchange cannot prove which provider completed.
+          // Retain the old journal and revocation proof for an explicit sign-in.
+          this.networkBlocked = true;
+          this.verifiedOwner = false;
+          this.reconcile('Please sign in again. Your saved data was kept.');
+          return;
+        }
+      }
+      this.networkBlocked = true;
+      this.verifiedOwner = false;
+      this.reconcile();
+      await proof.revoke(this.options.api, this.lifetime.signal);
+    }
+    await this.adopt(session, connection);
+  }
   private async adopt(session: ProviderSession, connection: ConnectionTrace) {
     const providerGeneration = this.providerGeneration;
     const intent = this.state().pendingSignIn;
@@ -596,6 +845,10 @@ export class ManagedIdentityController {
         ? { ownerId: account.userId, status: 'copied' }
         : this.state().guestAdoption,
       pendingSignIn: null,
+      // A verified sign-in supersedes a link an older build left unfinished;
+      // Account no longer offers linking, so nothing else would clear it.
+      pendingLink: null,
+      provider: intent.provider,
       deleted: false,
     });
     // Select the verified durable destination before erasing the old source.
@@ -604,7 +857,8 @@ export class ManagedIdentityController {
     await this.finishGuestRetirement();
     if (
       providerGeneration !== this.providerGeneration ||
-      this.providerSession?.authUserId !== session.authUserId
+      this.providerSession?.authUserId !== session.authUserId ||
+      this.providerSession.accessToken !== session.accessToken
     )
       throw new ApiError('ACCOUNT_CHANGED');
     this.networkBlocked = false;
@@ -714,7 +968,7 @@ export class ManagedIdentityController {
         if (this.state().pendingSignIn) connection.phase = 'provider-auth';
         this.providerSession = await this.options.auth.initialize();
         if (this.state().pendingSignIn && this.providerSession)
-          return this.adopt(this.providerSession, connection);
+          return this.resumeSignIn(this.providerSession, connection);
         if (this.state().pendingLink && this.providerSession)
           return this.finishLink();
         if (this.state().mode === 'account') await this.verify();
@@ -763,6 +1017,10 @@ export class ManagedIdentityController {
     this.publish({ account: null, mode: 'signed-out', linkedProviders: [] });
     if (!this.providerSession)
       this.providerSession = await this.options.auth.initialize();
+    await providerSwitchProof(this.options.secureStorage).revoke(
+      this.options.api,
+      this.lifetime.signal,
+    );
     if (this.providerSession) {
       try {
         await this.options.api.request(
@@ -856,6 +1114,7 @@ export class ManagedIdentityController {
     }
     await this.removeData(pending.userId);
     await removeDeletedCredentials(this.vault, receipt.credentialDigests);
+    await providerSwitchProof(this.options.secureStorage).clear();
     await this.options.auth.signOut();
     await this.options.secureStorage.removeItem(deletionProofKey);
     this.providerSession = null;

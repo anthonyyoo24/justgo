@@ -22,7 +22,14 @@ const serverSession = {
   access_token: 'synthetic-managed-access-token',
   expires_at: 1893456000,
 };
-let verifiedUser = serverSession.user;
+let verifiedUser: {
+  id: string;
+  identities: {
+    provider: string;
+    identity_id: string;
+    last_sign_in_at?: string;
+  }[];
+} = serverSession.user;
 let mockNotification: (
   event: string,
   session: typeof serverSession | null,
@@ -201,7 +208,7 @@ it('redirects browser sign-in with PKCE and exchanges only the callback code, re
     error: null,
   });
   const auth = createManagedAuth();
-  await auth.initialize();
+  expect(await auth.initialize()).toMatchObject({ freshSignIn: true });
   expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
   expect(mockAuth.exchangeCodeForSession).toHaveBeenCalledWith(
     'synthetic-code',
@@ -615,4 +622,35 @@ it('fences a delayed unlink response after disposal', async () => {
   auth.dispose();
   pending.resolve({ data: {}, error: null });
   await expect(unlinking).rejects.toMatchObject({ code: 'CANCELLED' });
+});
+
+it('uses the latest supported verified identity only as a legacy provider display hint', async () => {
+  verifiedUser = {
+    ...serverSession.user,
+    identities: [
+      {
+        provider: 'apple',
+        identity_id: 'apple',
+        last_sign_in_at: '2026-11-01T12:00:00Z',
+      },
+      {
+        provider: 'google',
+        identity_id: 'google',
+        last_sign_in_at: '2026-11-02T12:00:00Z',
+      },
+      {
+        provider: 'email',
+        identity_id: 'email',
+        last_sign_in_at: '2026-11-03T12:00:00Z',
+      },
+    ],
+  };
+  const auth = createManagedAuth();
+  expect(await auth.initialize()).toMatchObject({
+    provider: 'google',
+    linkedProviders: ['apple', 'google'],
+  });
+  verifiedUser.identities[1]!.last_sign_in_at = 'invalid';
+  expect(await auth.refresh()).toMatchObject({ provider: 'apple' });
+  auth.dispose();
 });

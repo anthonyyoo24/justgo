@@ -24,7 +24,11 @@ import type {
   ManagedIdentityState,
   ManagedIdentityStorage,
 } from '../identity/auth/managed-state';
-import type { ManagedAuth, ProviderSession } from '../identity/auth/types';
+import {
+  ProviderAuthError,
+  type ManagedAuth,
+  type ProviderSession,
+} from '../identity/auth/types';
 import {
   AppProvider,
   createAppRuntime,
@@ -750,5 +754,45 @@ it.each(['api', 'provider'] as const)(
     await act(async () => controller.signOut());
     expect(restarted.getByText('access closed')).toBeTruthy();
     expect(runtime.access.getSnapshot().approval).toBeNull();
+  },
+);
+
+// A switch that never changed the SDK session keeps the old login, so its
+// cached beta admission must survive too.
+it.each(['cancel', 'failure'] as const)(
+  'keeps an offline account beta approval after a switch %s that never changed the SDK session',
+  async (outcome) => {
+    access = { ...access, source: 'free_beta' };
+    const screen = await mount();
+    await waitFor(() =>
+      expect(screen.getByText('access verified')).toBeTruthy(),
+    );
+    await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
+    // Offline, the cached beta approval keeps access open.
+    fetcher.mockRejectedValue(new Error('offline'));
+    await act(async () => jest.advanceTimersByTimeAsync(61_000));
+    expect(screen.getByText('access verified')).toBeTruthy();
+    const before = runtime.access.getSnapshot().approval;
+    expect(before).not.toBeNull();
+    // Account's off switch opens the provider page. The provider sheet is
+    // cancelled, or fails, before the SDK session changes.
+    if (outcome === 'cancel')
+      jest.mocked(auth.signIn).mockResolvedValueOnce(null);
+    else
+      jest
+        .mocked(auth.signIn)
+        .mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+    await act(async () => controller.signIn('google'));
+    await act(async () => jest.advanceTimersByTimeAsync(0));
+    // The old login is kept ...
+    expect(screen.getByText(userId)).toBeTruthy();
+    expect(controller.currentSession()?.token).toBe(token);
+    // ... and so is its local beta admission.
+    expect({
+      access: screen.queryByText('access verified')
+        ? 'access verified'
+        : 'access closed',
+      approval: runtime.access.getSnapshot().approval,
+    }).toEqual({ access: 'access verified', approval: before });
   },
 );
