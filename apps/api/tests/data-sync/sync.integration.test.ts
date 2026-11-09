@@ -9,7 +9,8 @@ import type {
   ManagedSessionResponse,
   JournalSyncVersion,
 } from '@justgo/contracts';
-import { createDatabase, poolOptions, withOwner } from '../../src/db/client.js';
+import { createDatabase, poolOptions } from '../../src/db/client.js';
+import { withOwner } from '../db/fixtures/owner.js';
 import { readConfig } from '../../src/config.js';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
 import {

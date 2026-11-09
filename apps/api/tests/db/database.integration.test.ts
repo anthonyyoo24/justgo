@@ -6,8 +6,9 @@ import {
   checkDatabase,
   createDatabase,
   poolOptions,
-  withOwner,
 } from '../../src/db/client.js';
+import { setTransactionContext } from '../../src/db/transaction-context.js';
+import { withOwner } from './fixtures/owner.js';
 import { readConfig } from '../../src/config.js';
 
 const config = readConfig();
@@ -113,6 +114,23 @@ describe('actual restricted runtime role', () => {
       (await runtime.pool.query('select justgo.current_user_id() as owner'))
         .rows[0]?.owner,
     ).toBeNull();
+  });
+  it('ends owner context with its transaction on the same connection', async () => {
+    const single = createDatabase({ ...config, DATABASE_POOL_MAX: 1 });
+    const probe = sql`select pg_backend_pid() as pid, justgo.current_user_id() as owner`;
+    try {
+      const inside = await single.db.transaction(async (tx) => {
+        await setTransactionContext(tx, 'app.user_id', alice);
+        return (await tx.execute(probe)).rows[0];
+      });
+      const after = await single.db.transaction(
+        async (tx) => (await tx.execute(probe)).rows[0],
+      );
+      expect(inside?.owner).toBe(alice);
+      expect(after).toEqual({ pid: inside?.pid, owner: null });
+    } finally {
+      await single.pool.end();
+    }
   });
   it('does not mix simultaneous owner contexts through the small pool', async () => {
     const results = await Promise.all(

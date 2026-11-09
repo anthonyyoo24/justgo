@@ -1,4 +1,5 @@
 import { ApiError } from '../http/api-error.js';
+import { setTransactionContext } from '../db/transaction-context.js';
 import {
   createHash,
   createHmac,
@@ -62,8 +63,6 @@ export const digest = (secret: string) =>
   createHash('sha256').update(secret).digest('hex');
 const one = async <T extends Row>(tx: Tx, query: SQL) =>
   (await tx.execute<T>(query)).rows[0];
-const context = (tx: Tx, key: string, value: string) =>
-  tx.execute(sql`select set_config(${key}, ${value}, true)`);
 const fail = (code: IdentityErrorCode, status = 401): never => {
   throw new ApiError(code, status);
 };
@@ -146,7 +145,7 @@ export class IdentityService {
     const key = createHmac('sha256', this.options.rateKey)
       .update(`${lane}:${subject}`)
       .digest('hex');
-    await context(tx, 'app.rate_key', key);
+    await setTransactionContext(tx, 'app.rate_key', key);
     const row = await one<RateBucket>(
       tx,
       sql`
@@ -162,7 +161,7 @@ export class IdentityService {
   }
   private async owner(tx: Tx, userId: string) {
     // Only called with a server-generated new account or a verified digest-bound identity.
-    await context(tx, 'app.user_id', userId);
+    await setTransactionContext(tx, 'app.user_id', userId);
     const row = await one<{ deleted_at: Date | null }>(
       tx,
       sql`select deleted_at from justgo.users where id=${userId} for update`,
@@ -171,7 +170,7 @@ export class IdentityService {
   }
   private async findSession(tx: Tx, token: string) {
     const hash = digest(token);
-    await context(tx, 'app.session_digest', hash);
+    await setTransactionContext(tx, 'app.session_digest', hash);
     const row = await one<SessionRow>(
       tx,
       sql`select * from justgo.device_sessions where digest=${hash}`,
@@ -219,13 +218,13 @@ export class IdentityService {
     if (token.includes('.')) {
       const receipt = () =>
         this.db.transaction(async (tx) => {
-          await context(tx, 'app.session_digest', digest(token));
+          await setTransactionContext(tx, 'app.session_digest', digest(token));
           const row = await one<{ id: string; deleted_at: Date }>(
             tx,
             sql`select id,deleted_at from justgo.users where deletion_session_digest=${digest(token)} and deleted_at is not null`,
           );
           if (!row) return undefined;
-          await context(tx, 'app.user_id', row.id);
+          await setTransactionContext(tx, 'app.user_id', row.id);
           return { value: await work(tx, row.id, row.deleted_at) };
         });
       const previous = await receipt();
@@ -243,13 +242,13 @@ export class IdentityService {
     }
     return this.db.transaction(async (tx) => {
       const hash = digest(token);
-      await context(tx, 'app.session_digest', hash);
+      await setTransactionContext(tx, 'app.session_digest', hash);
       const receipt = await one<{ id: string; deleted_at: Date }>(
         tx,
         sql`select id, deleted_at from justgo.users where deletion_session_digest=${hash} and deleted_at is not null`,
       );
       if (receipt) {
-        await context(tx, 'app.user_id', receipt.id);
+        await setTransactionContext(tx, 'app.user_id', receipt.id);
         return work(tx, receipt.id, receipt.deleted_at);
       }
       try {
@@ -268,7 +267,7 @@ export class IdentityService {
           sql`select id, deleted_at from justgo.users where deletion_session_digest=${hash} and deleted_at is not null`,
         );
         if (!committed) throw error;
-        await context(tx, 'app.user_id', committed.id);
+        await setTransactionContext(tx, 'app.user_id', committed.id);
         return work(tx, committed.id, committed.deleted_at);
       }
     });
@@ -321,7 +320,7 @@ export class IdentityService {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtextextended(${hash},0))`,
         );
-      await context(tx, 'app.credential_digest', hash);
+      await setTransactionContext(tx, 'app.credential_digest', hash);
       let credential = await one<CredentialRow>(
         tx,
         sql`select * from justgo.recovery_credentials where digest=${hash}`,
@@ -329,7 +328,7 @@ export class IdentityService {
       if (!credential) {
         if (!create) return fail('CREDENTIAL_REJECTED');
         const userId = this.options.newUserId?.() ?? randomUUID();
-        await context(tx, 'app.user_id', userId);
+        await setTransactionContext(tx, 'app.user_id', userId);
         await tx.execute(sql`insert into justgo.users (id) values (${userId})`);
         credential = (await one<CredentialRow>(
           tx,
@@ -497,7 +496,7 @@ export class IdentityService {
   }
   private async transfer(tx: Tx, code: string) {
     const hash = digest(code);
-    await context(tx, 'app.transfer_digest', hash);
+    await setTransactionContext(tx, 'app.transfer_digest', hash);
     const row = await one<TransferRow>(
       tx,
       sql`select * from justgo.device_transfers where code_digest=${hash}`,
@@ -544,7 +543,7 @@ export class IdentityService {
     return this.db.transaction(async (tx) => {
       const codeHash = digest(input.code),
         claimHash = digest(input.claimSecret);
-      await context(tx, 'app.transfer_digest', codeHash);
+      await setTransactionContext(tx, 'app.transfer_digest', codeHash);
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${codeHash},1))`,
       );
@@ -621,7 +620,7 @@ export class IdentityService {
   cancelReceivingTransfer(input: TransferStart) {
     return this.db.transaction(async (tx) => {
       const codeHash = digest(input.code);
-      await context(tx, 'app.transfer_digest', codeHash);
+      await setTransactionContext(tx, 'app.transfer_digest', codeHash);
       // Serialize with creation too: cancellation may arrive before a delayed POST.
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${codeHash},1))`,
