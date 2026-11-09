@@ -10,18 +10,9 @@ import { bearer } from '../http/bearer.js';
 import { parse } from '../http/parse.js';
 import { ApiError } from '../http/api-error.js';
 import type { IdentityService } from './service.js';
-import { rateAddress } from './address.js';
-export function managedIdentityRoutes(
-  app: ApiApp,
-  identity: IdentityService,
-  onVercel = false,
-) {
+export function managedIdentityRoutes(app: ApiApp, identity: IdentityService) {
   const general = async (request: ApiContext, next: () => Promise<void>) => {
-    await identity.rateLimit(
-      rateAddress(request.get('clientAddress'), request.req.header(), onVercel),
-      'managed-auth',
-      120,
-    );
+    await identity.rateLimit(request.get('clientAddress'), 'managed-auth', 120);
     await next();
   };
   app.post('/session', general, parseRequestBody(), async (request) =>

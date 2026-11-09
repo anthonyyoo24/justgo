@@ -198,12 +198,15 @@ Automatic invocation logs, Logpush and tail consumers stay disabled on this Work
 because the app's filtered diagnostics are the reporting boundary. The lane reads
 these settings and stops if they are enabled. It never changes them.
 
-The Vercel API project is `justgo` (root directory `apps/api`, region `yul1`),
-served at `https://justgo-two.vercel.app`. The legal pages are a separate Vercel
-Hobby project at `justgo-legal.vercel.app`. Keep the Vercel addresses,
-configuration and credentials until the approved retirement plan runs. A redirect
-or two working APIs does not prove that private request bodies stopped reaching
-Vercel. The [cutover procedure](CLOUDFLARE_CUTOVER.md) owns the order of Vercel
+The hosted Vercel API project `justgo` (region `yul1`) still serves Fastify
+`311f073` at `https://justgo-two.vercel.app` to TestFlight build 5. P15-3 removed
+`apps/api/vercel.json` and `.vercelignore`, so this repository no longer carries
+that project's build configuration. Keep its address, project settings and
+credentials until P15-11 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) turns it off.
+The legal pages stay on a separate Vercel Hobby project at
+`justgo-legal.vercel.app`. A redirect or two working APIs does not prove that
+private request bodies stopped reaching Vercel. The [cutover procedure](CLOUDFLARE_CUTOVER.md) owns the order of Vercel
 retirement, Cloudflare legal publication and the ASC and EAS URL update. Ship a
 TestFlight build only as part of that authorized cutover.
 

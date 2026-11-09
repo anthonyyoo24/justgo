@@ -67,7 +67,7 @@ async function startNodeRuntime(environment) {
   const config = readConfig(environment);
   const database = createDatabase(config);
   return {
-    app: buildRuntimeApp(config, database, { onVercel: false }),
+    app: buildRuntimeApp(config, database),
     pool: database.pool,
   };
 }
