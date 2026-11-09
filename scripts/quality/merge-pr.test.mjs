@@ -14,8 +14,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
+  carriedVerdict,
   checkState,
   maxRounds,
+  outcome,
   parseArgs,
   refusal,
   timingFromEnv,
@@ -74,8 +76,9 @@ test('breaking only PRs behind in the order is allowed', () => {
   assert.equal(refusal(pr(3), []), undefined);
 });
 
-// The fake gh answers `pr list` from pulls.json and records `pr merge` and
-// update-branch calls in calls.txt. update-branch merges main into the PR
+// The fake gh answers `pr list` and `pr view` from pulls.json and records
+// `pr merge` and update-branch calls in calls.txt. `pr merge` marks the PR
+// merged as commit ccc…, or sets or clears its auto-merge. update-branch merges main into the PR
 // branch on the origin, as GitHub does, unless FAKE_FOREIGN_PUSH asks for a
 // plain commit instead. Check runs come back pending FAKE_PENDING times, then
 // with the conclusion FAKE_CHECKS (default success) for every required check.
@@ -99,8 +102,26 @@ const path = args.find((arg) => arg.startsWith('repos/'));
 let match;
 if (args[0] === 'pr' && args[1] === 'list')
   process.stdout.write(readFileSync(pullsFile, 'utf8'));
-else if (args[0] === 'pr' && args[1] === 'merge')
+else if (args[0] === 'pr' && args[1] === 'merge') {
   appendFileSync(calls, args.join(' ') + '\n');
+  const list = pulls();
+  const pull = list.find((one) => one.number === Number(args[2]));
+  if (pull) {
+    if (args.includes('--disable-auto')) pull.autoMergeRequest = null;
+    else if (args.includes('--auto')) pull.autoMergeRequest = { mergeMethod: 'SQUASH' };
+    else Object.assign(pull, { state: 'MERGED', mergeCommit: { oid: 'c'.repeat(40) } });
+    writeFileSync(pullsFile, JSON.stringify(list));
+  }
+} else if (args[0] === 'pr' && args[1] === 'view') {
+  if (process.env.FAKE_VIEW_FAIL) fail('gh: view failed');
+  const pull = pulls().find((one) => one.number === Number(args[2])) ?? {};
+  process.stdout.write(JSON.stringify({
+    state: pull.state ?? 'OPEN',
+    headRefOid: pull.headRefOid,
+    mergeCommit: pull.mergeCommit ?? null,
+    autoMergeRequest: pull.autoMergeRequest ?? null,
+  }));
+}
 else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/pulls\/(\d+)\/update-branch$/.exec(path))) {
   appendFileSync(calls, args.join(' ') + '\n');
   const list = pulls();
@@ -302,11 +323,94 @@ test('the PR first in the order merges, pinned to its head', (t) => {
     direct.merged,
     `pr merge 1 --squash --match-head-commit ${heads.first}`,
   );
+  assert.match(
+    direct.stderr,
+    new RegExp(`Merged #1 at head ${heads.first} as ${'c'.repeat(40)}\\.\n$`),
+  );
   const auto = run(['3', '--head', heads.free, '--auto'], list);
   assert.equal(auto.status, 0, auto.stderr);
   assert.equal(
     auto.merged,
     `pr merge 3 --squash --auto --match-head-commit ${heads.free}`,
+  );
+  assert.match(
+    auto.stderr,
+    new RegExp(`Auto-merge is armed on #3 at head ${heads.free}\\.`),
+  );
+  assert.doesNotMatch(auto.stderr, /Merged/);
+});
+
+test('a failed read-back after a merge still exits 0 and says so', (t) => {
+  const { heads, pull, run } = fixture(t);
+  const result = run(['1', '--head', heads.first], [pull(1, 'first')], {
+    FAKE_VIEW_FAIL: '1',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.merged,
+    `pr merge 1 --squash --match-head-commit ${heads.first}`,
+  );
+  assert.match(
+    result.stderr,
+    /gh pr merge succeeded, but reading #1 back failed: gh: view failed/,
+  );
+});
+
+test('the last line names what GitHub reports after gh pr merge', () => {
+  const head = 'b'.repeat(40);
+  const merge = 'c'.repeat(40);
+  assert.equal(
+    outcome(
+      { number: 208, head, auto: false },
+      { state: 'MERGED', headRefOid: head, mergeCommit: { oid: merge } },
+    ),
+    `Merged #208 at head ${head} as ${merge}.`,
+  );
+  // An --auto arm on a PR that is already mergeable can merge at once.
+  assert.equal(
+    outcome(
+      { number: 208, head, auto: true },
+      { state: 'MERGED', headRefOid: head, mergeCommit: { oid: merge } },
+    ),
+    `Merged #208 at head ${head} as ${merge}.`,
+  );
+  assert.equal(
+    outcome(
+      { number: 208, head, auto: true },
+      { state: 'OPEN', headRefOid: head, autoMergeRequest: {} },
+    ),
+    `Auto-merge is armed on #208 at head ${head}. GitHub merges it once checks and sections pass.`,
+  );
+  assert.equal(
+    outcome(
+      { number: 208, disable: true },
+      { state: 'OPEN', headRefOid: head, autoMergeRequest: null },
+    ),
+    'Auto-merge is off on #208.',
+  );
+  assert.match(
+    outcome(
+      { number: 208, head, auto: true },
+      { state: 'OPEN', headRefOid: head, autoMergeRequest: null },
+    ),
+    /#208 is OPEN at head b+, and GitHub reports neither a merge nor an armed auto-merge\./,
+  );
+});
+
+test('the carried verdict reads as a sentence for each outcome', () => {
+  const verdictHead = 'd'.repeat(40);
+  const next = 'e'.repeat(40);
+  assert.equal(
+    carriedVerdict(verdictHead, next, 'carries', []),
+    `The verdict on head ${verdictHead} carries to ${next}: the PR's own change is the same.`,
+  );
+  assert.equal(
+    carriedVerdict(verdictHead, next, 'docs-tests-only', [
+      '  AGENTS.md',
+      '  a.test.ts',
+    ]),
+    `The verdict on head ${verdictHead} still covers ${next}: only docs and tests changed (AGENTS.md, a.test.ts). ` +
+      'Those files still need a review.',
   );
 });
 
@@ -335,6 +439,7 @@ test('a merge into another branch and disarming skip the check', (t) => {
   const disarm = run(['2', '--disable-auto'], []);
   assert.equal(disarm.status, 0, disarm.stderr);
   assert.equal(disarm.merged, 'pr merge 2 --disable-auto');
+  assert.match(disarm.stderr, /Auto-merge is off on #2\./);
 });
 
 test('a PR that is not open, a bad head or a gh failure merges nothing', (t) => {
@@ -374,11 +479,20 @@ test('a PR behind main is updated, waits for its checks and merges on the new he
   ]);
   const next = result.head(1);
   assert.deepEqual(parents(next), [heads.first, main]);
-  assert.match(result.stderr, /verdict on head .* carries/);
+  assert.match(
+    result.stderr,
+    new RegExp(
+      `verdict on head ${heads.first.slice(0, 7)} carries to ${next}: the PR's own change is the same\\.`,
+    ),
+  );
   assert.match(result.stderr, /Waiting for checks and sections/);
   assert.equal(
     result.merged,
     `pr merge 1 --squash --match-head-commit ${next}`,
+  );
+  assert.match(
+    result.stderr,
+    new RegExp(`Merged #1 at head ${next} as ${'c'.repeat(40)}\\.\n$`),
   );
 });
 

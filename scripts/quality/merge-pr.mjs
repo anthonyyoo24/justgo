@@ -242,6 +242,18 @@ export function checkState(runs) {
   return pending ? 'pending' : 'pass';
 }
 
+// Says why the verdict still covers the updated head. verdict-patch answers
+// `carries` or `docs-tests-only`; anything else never reaches here.
+export function carriedVerdict(verdictHead, next, result, changed) {
+  if (result === 'carries')
+    return `The verdict on head ${verdictHead} carries to ${next}: the PR's own change is the same.`;
+  const files = changed.map((line) => line.trim()).join(', ');
+  return (
+    `The verdict on head ${verdictHead} still covers ${next}: only docs and tests changed (${files}). ` +
+    'Those files still need a review.'
+  );
+}
+
 // Merges main into the PR branch on GitHub and returns the new head, or a
 // refusal. It never merges the PR itself.
 export function updateBranch(options, { main, verdict }, cwd, timing) {
@@ -303,7 +315,7 @@ export function updateBranch(options, { main, verdict }, cwd, timing) {
       throw new Error(
         `verdict-patch check failed: ${(check.stdout + check.stderr).trim()}`,
       );
-    log(`The verdict on head ${verdict.head} ${result} to ${next}.`);
+    log(carriedVerdict(verdict.head, next, result, changed));
   }
   if (options.auto) return { head: next };
   log(`Waiting for ${requiredChecks.join(' and ')} on ${next}.`);
@@ -355,6 +367,45 @@ export function run(options, cwd, timing) {
   };
 }
 
+// The last line, from the PR as GitHub reports it after `gh pr merge`
+// succeeded: merged, auto-merge armed, or auto-merge off.
+export function outcome(options, view) {
+  const { number } = options;
+  const head = view.headRefOid;
+  if (view.state === 'MERGED')
+    return `Merged #${number} at head ${head} as ${view.mergeCommit?.oid}.`;
+  if (options.disable)
+    return view.autoMergeRequest
+      ? `Auto-merge is still armed on #${number} at head ${head}.`
+      : `Auto-merge is off on #${number}.`;
+  if (view.autoMergeRequest)
+    return `Auto-merge is armed on #${number} at head ${head}. GitHub merges it once ${requiredChecks.join(' and ')} pass.`;
+  return `#${number} is ${view.state} at head ${head}, and GitHub reports neither a merge nor an armed auto-merge.`;
+}
+
+function readBack(options) {
+  try {
+    const view = JSON.parse(
+      ghText(
+        [
+          'pr',
+          'view',
+          String(options.number),
+          '--json',
+          'state,headRefOid,mergeCommit,autoMergeRequest',
+        ],
+        process.cwd(),
+      ),
+    );
+    return `merge-pr: ${outcome(options, view)}`;
+  } catch (error) {
+    return (
+      `merge-pr: gh pr merge succeeded, but reading #${options.number} back failed: ` +
+      String(error?.stderr || error?.message || error).trim()
+    );
+  }
+}
+
 const minute = 60000;
 // A value that is not a positive number would make a wait never end.
 export function timingFromEnv(env) {
@@ -374,13 +425,11 @@ export function timingFromEnv(env) {
 }
 
 function main() {
+  let options;
   let result;
   try {
-    result = run(
-      parseArgs(process.argv.slice(2)),
-      process.cwd(),
-      timingFromEnv(process.env),
-    );
+    options = parseArgs(process.argv.slice(2));
+    result = run(options, process.cwd(), timingFromEnv(process.env));
   } catch (error) {
     process.stderr.write(
       `merge-pr: nothing merged. ${String(error?.stderr || error?.message || error).trim()}\n`,
@@ -392,6 +441,8 @@ function main() {
     process.exit(1);
   }
   const gh = spawnSync('gh', result.gh, { stdio: 'inherit' });
+  // The read-back only reports. A merge that succeeded still exits 0.
+  if (gh.status === 0) process.stderr.write(`${readBack(options)}\n`);
   process.exit(gh.status ?? 1);
 }
 
