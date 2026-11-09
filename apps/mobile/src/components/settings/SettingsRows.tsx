@@ -51,6 +51,7 @@ export function SettingsRowContent({
   icon,
   label,
   status,
+  subtitle,
   chevron = false,
   accessory,
   destructive = false,
@@ -58,12 +59,14 @@ export function SettingsRowContent({
   icon: SettingsIconName;
   label: string;
   status?: string | undefined;
+  subtitle?: string | undefined;
   chevron?: boolean;
   accessory?: ReactNode;
   destructive?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
   const expanded = fontScale > 1.3;
+  const compactSubtitle = !!subtitle && !expanded;
   const firstLineHeight = typography.body.lineHeight * Math.min(fontScale, 2);
   return (
     <View style={[styles.row, expanded && styles.expandedRow]}>
@@ -73,13 +76,33 @@ export function SettingsRowContent({
           color={destructive ? styles.destructive.color : colors.ink}
         />
       </View>
-      <View style={styles.copy}>
+      <View
+        style={[
+          styles.copy,
+          compactSubtitle && [styles.compactCopy, { height: firstLineHeight }],
+        ]}
+      >
         <Text
           maxFontSizeMultiplier={2}
           style={[styles.label, destructive && styles.destructive]}
         >
           {label}
         </Text>
+        {subtitle && (
+          <Text
+            maxFontSizeMultiplier={2}
+            numberOfLines={compactSubtitle ? 1 : undefined}
+            style={[
+              styles.subtitle,
+              compactSubtitle && [
+                styles.compactSubtitle,
+                { top: firstLineHeight },
+              ],
+            ]}
+          >
+            {subtitle}
+          </Text>
+        )}
         {status && expanded && (
           <Text maxFontSizeMultiplier={2} style={styles.expandedStatus}>
             {status}
@@ -215,6 +238,17 @@ const styles = StyleSheet.create({
   icon: { width: 24, height: 24, flexShrink: 0, justifyContent: 'center' },
   copy: { flex: 1, gap: spacing.xs },
   label: { ...typography.body, color: colors.ink },
+  subtitle: { ...typography.caption, color: colors.ink },
+  // Keep the ordinary row's original intrinsic height, icon and control bounds.
+  // Larger text uses normal flow so its full description can wrap accessibly.
+  compactCopy: { transform: [{ translateY: -6 }] },
+  compactSubtitle: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    fontSize: 10,
+    lineHeight: 14,
+  },
   destructive: { color: '#B3261E' },
   status: {
     ...typography.caption,

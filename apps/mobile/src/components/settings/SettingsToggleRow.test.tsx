@@ -177,3 +177,24 @@ it('handles Space once on web without scrolling, and ignores disabled or unrelat
   expect(props.onValueChange).toHaveBeenCalledTimes(1);
   expect(preventDefault).toHaveBeenCalledTimes(2);
 });
+
+it('places optional signed-in subtext below the label while preserving the switch name', async () => {
+  const screen = await render(
+    <SettingsToggleRow
+      {...props}
+      icon="apple"
+      label="Apple"
+      subtitle="You’re signed in with Apple."
+      value
+    />,
+  );
+  expect(screen.getByRole('switch', { name: 'Apple' })).toBeTruthy();
+  expect(screen.getByText('You’re signed in with Apple.')).toBeTruthy();
+  expect(screen.getByText('Apple').parent).toBe(
+    screen.getByText('You’re signed in with Apple.').parent,
+  );
+  await screen.rerender(
+    <SettingsToggleRow {...props} icon="apple" label="Apple" />,
+  );
+  expect(screen.queryByText('You’re signed in with Apple.')).toBeNull();
+});

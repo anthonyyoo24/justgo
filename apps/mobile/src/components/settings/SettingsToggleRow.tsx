@@ -17,6 +17,7 @@ export function SettingsToggleRow({
   icon,
   label,
   hint,
+  subtitle,
   value,
   disabled,
   busy,
@@ -26,6 +27,7 @@ export function SettingsToggleRow({
   icon: SettingsIconName;
   label: string;
   hint: string;
+  subtitle?: string | undefined;
   value: boolean;
   disabled: boolean;
   busy: boolean;
@@ -83,6 +85,7 @@ export function SettingsToggleRow({
       <SettingsRowContent
         icon={icon}
         label={label}
+        subtitle={subtitle}
         accessory={
           <View
             pointerEvents="none"
