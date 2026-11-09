@@ -70,17 +70,73 @@ describe('server-only Auth profile erasure', () => {
       },
       global: { fetch: expect.any(Function) },
     });
-    const [url, options] = request.mock.calls[0]!;
-    expect(String(url)).toBe(`${origin}/auth/v1/admin/users/${id}`);
-    expect(options?.method).toBe('DELETE');
-    expect(JSON.parse(String(options?.body))).toEqual({
+    // supabase-js 2.119 looks the user up before it deletes them, so the
+    // Auth server sees a GET and then the hard DELETE for the same subject.
+    expect(request).toHaveBeenCalledTimes(2);
+    const [lookup, remove] = request.mock.calls.map(([url, options]) => ({
+      url: String(url),
+      options,
+    }));
+    for (const call of [lookup!, remove!]) {
+      expect(call.url).toBe(`${origin}/auth/v1/admin/users/${id}`);
+      expect(new Headers(call.options?.headers).get('authorization')).toBe(
+        `Bearer ${key}`,
+      );
+    }
+    expect(lookup!.options?.method).toBe('GET');
+    expect(remove!.options?.method).toBe('DELETE');
+    expect(JSON.parse(String(remove!.options?.body))).toEqual({
       should_soft_delete: false,
     });
-    expect(new Headers(options?.headers).get('authorization')).toBe(
-      `Bearer ${key}`,
-    );
-    expect(timeout).toHaveBeenCalledExactlyOnceWith(5000);
-    expect(options?.signal).toBe(timeout.mock.results[0]!.value);
+    expect(timeout).toHaveBeenCalledTimes(2);
+    expect(timeout.mock.calls).toEqual([[5000], [5000]]);
+    expect(lookup!.options?.signal).toBe(timeout.mock.results[0]!.value);
+    expect(remove!.options?.signal).toBe(timeout.mock.results[1]!.value);
+  });
+
+  it('stays retryable when the delete fails after the lookup found the user', async () => {
+    const id = randomUUID();
+    for (const failure of [
+      () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ message: 'private upstream details' }),
+            {
+              status: 500,
+            },
+          ),
+        ),
+      () => Promise.reject(new Error('private secret')),
+    ]) {
+      const request = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ id })))
+        .mockImplementationOnce(failure);
+      await expect(
+        createManagedAuthDeletion(origin, key, request)(id),
+      ).rejects.toMatchObject({ code: 'UNAVAILABLE', message: 'UNAVAILABLE' });
+      expect(request.mock.calls.map(([, options]) => options?.method)).toEqual([
+        'GET',
+        'DELETE',
+      ]);
+    }
+  });
+
+  it('accepts a user deleted elsewhere between the lookup and the delete', async () => {
+    const id = randomUUID();
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id })))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ code: 'user_not_found', msg: 'User not found' }),
+          { status: 404, headers: { 'X-Supabase-Api-Version': '2024-01-01' } },
+        ),
+      );
+    await expect(
+      createManagedAuthDeletion(origin, key, request)(id),
+    ).resolves.toBeUndefined();
+    expect(request).toHaveBeenCalledTimes(2);
   });
 
   it('keeps deferred client initialization failures retryable and private', async () => {
