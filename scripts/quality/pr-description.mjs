@@ -9,7 +9,7 @@ const order = [
   'Blast Radius',
   'Verification',
 ];
-const guide =
+export const guide =
   'pstack PR sections, in order: ## Why, ## What changed (optional), ## Scope, ## Tradeoffs (optional), ## Blast Radius (optional), ## Verification.';
 
 function sections(body) {
