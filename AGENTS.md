@@ -311,11 +311,12 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   so GitHub merges on its own once the verdict and CI are green. The agent does
   not wait for CI to merge. If the branch is behind `main`, `--auto` merges
   `main` in and checks the verdict as above, then arms on the new head without
-  waiting for CI. Until branch protection requires branches to be up to date,
-  a `main` that moves after the arm is not tested with the PR. Once it does,
-  GitHub holds a PR that falls behind, and rerunning the script updates and
-  re-arms it. After a `PASS`, push nothing more to the PR. The script's own
-  update is the one exception. Put
+  waiting for CI. Branch protection requires up-to-date branches, so on each
+  push to `main` the `Update behind PRs` workflow
+  (`.github/workflows/update-behind-prs.yml`) merges `main` into every armed PR
+  that is behind, and rerunning the script does the same by hand. After a
+  `PASS`, push nothing more to the PR. Those `main` merges are the one
+  exception. Put
   optional notes and later additions in a follow-up PR or issue. If a push after
   a `PASS` cannot be avoided, run `npm run merge:pr -- <n> --disable-auto` first, and
   re-arm only after a fresh verdict covers the new head. A docs- or tests-only

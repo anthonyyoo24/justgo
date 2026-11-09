@@ -1,0 +1,39 @@
+name: Update behind PRs
+
+# Branch protection requires up-to-date branches, and GitHub never updates a
+# PR with auto-merge armed when main moves. This merges main into each armed
+# PR that is behind, so checks and sections rerun and GitHub merges it.
+#
+# PR_UPDATE_TOKEN is a fine-grained personal access token for this repository
+# only, with Contents, Pull requests and Workflows set to read and write. It
+# cannot be GITHUB_TOKEN: GitHub holds the PR runs that a GITHUB_TOKEN push
+# starts until someone approves them. The job checks out only the script, from
+# main, and never runs PR code.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-behind-prs
+  cancel-in-progress: true
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/quality/update-behind-prs.mjs
+          sparse-checkout-cone-mode: false
+      - name: Merge main into armed PRs that are behind
+        env:
+          PR_UPDATE_TOKEN: ${{ secrets.PR_UPDATE_TOKEN }}
+        run: node scripts/quality/update-behind-prs.mjs
