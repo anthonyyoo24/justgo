@@ -255,6 +255,7 @@ function fixture(t) {
     isDraft: false,
     autoMergeRequest: null,
     comments: [],
+    body: '## Why\nA reason.\n## Scope\nIn scope.\n## Verification\nA run.',
     ...extra,
   });
   const run = (args, list, extraEnv = {}) => {
@@ -456,6 +457,36 @@ test('a PR that is not open, a bad head or a gh failure merges nothing', (t) => 
   assert.equal(down.status, 2);
   assert.match(down.stderr, /nothing merged.*network down/);
   for (const result of [closed, unknown, down]) assert.equal(result.merged, '');
+});
+
+test('a description that fails sections is named apart from a missing verdict', (t) => {
+  const { heads, pull, run } = fixture(t);
+  // PR #248's original headings.
+  const body = '## Summary\nx\n## Why\ny\n## Checks\nz';
+  for (const args of [
+    ['3', '--head', heads.free, '--auto'],
+    ['3', '--head', heads.free],
+  ]) {
+    const result = run(args, [pull(3, 'free', { body })]);
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stderr,
+      /the description of #3 fails the required sections check.*Nothing merged or armed\./,
+    );
+    assert.match(result.stderr, /- Add a "## Scope" section\./);
+    assert.match(result.stderr, /- Add a "## Verification" section\./);
+    assert.match(result.stderr, /in order: ## Why, ## What changed/);
+    assert.match(result.stderr, /gh pr edit 3 --body-file <file>/);
+    assert.doesNotMatch(result.stderr, /no PASS verdict|No verdict/);
+    assert.equal(result.merged, '');
+  }
+  const missing = run(
+    ['3', '--head', heads.free, '--auto'],
+    [pull(3, 'free', { body: undefined })],
+  );
+  assert.match(missing.stderr, /Add a "## Why" section\./);
+  const disarm = run(['3', '--disable-auto'], [pull(3, 'free', { body })]);
+  assert.equal(disarm.status, 0, disarm.stderr);
 });
 
 const verdict = (base, head, word = 'PASS') => ({

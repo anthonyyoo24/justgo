@@ -10,6 +10,7 @@ import {
   newestVerdictOf,
   openPulls,
 } from './merge-order.mjs';
+import { descriptionProblems, guide } from './pr-description.mjs';
 import { runVerdictPatch } from './verdict-status.mjs';
 
 // The one way agents merge a PR. Before it calls `gh pr merge`, it squashes
@@ -137,6 +138,18 @@ export function plan(options, cwd) {
   const pulls = openPulls(cwd);
   const pull = pulls.find((candidate) => candidate.number === options.number);
   if (!pull) return { refuse: `merge-pr: #${options.number} is not open.` };
+  // The required `sections` check fails on a bad description as well as on a
+  // missing verdict. Name the description apart, because a red `sections`
+  // with no verdict yet is normal and hides it.
+  const problems = descriptionProblems(pull.body ?? '');
+  if (problems.length)
+    return {
+      refuse:
+        `merge-pr: the description of #${options.number} fails the required sections check, ` +
+        'which stays red until it is fixed, whatever the verdict says. Nothing merged or armed.\n' +
+        `- ${problems.join('\n- ')}\n${guide}\n` +
+        `Fix it with \`gh pr edit ${options.number} --body-file <file>\`, then retry.`,
+    };
   const gh = [
     'pr',
     'merge',
