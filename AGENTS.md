@@ -410,15 +410,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   single PR named, or when GitHub cannot be read, only `Sensitive: yes` keeps
   an audit on Opus, so write that line for any audit of sensitive work. Pass
   the effort yourself.
-- A session that starts or tracks other sessions hands off to a fresh session
-  when its context reaches about 200k tokens (`get_usage` reports it). Use the
-  session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
-  Every turn rereads the whole context, so a long-lived coordinator costs more
-  per turn as it grows.
-  As a backstop, `.claude/settings.json` sets `autoCompactWindow` to `280000`.
-  Claude Code keeps about 33k of that window for output and a buffer, so it
-  compacts a JustGO session at about 250k. A model with a smaller window keeps
-  its own limit. `claude -p /autocompact` shows the window in force.
+- Every turn rereads the whole context, so a long-lived session costs more per
+  turn as it grows. `.claude/settings.json` sets `autoCompactWindow` to
+  `233000`. Claude Code keeps about 33k of that window for output and a
+  buffer, so it compacts a JustGO session at about 200k. Agents do not need to
+  track their own context. A model with a smaller window keeps its own limit.
+  `claude -p /autocompact` shows the window in force, and `get_usage` reports
+  where auto-compact starts.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
