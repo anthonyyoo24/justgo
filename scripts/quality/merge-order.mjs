@@ -7,8 +7,9 @@ import { newestVerdict } from './verdict-status.mjs';
 // Plans the order for a batch of merges. PRs that change the same file merge
 // one at a time, in flight (auto-merge armed) first, then the earliest PASS
 // verdict, then the lowest number. PRs that share no file with another merge
-// in any order. A stacked PR waits for the PR it targets. The merge-time hook
-// .claude/hooks/merge-order-guard.mjs checks real conflicts, not shared files.
+// in any order. A stacked PR waits for the PR it targets. Shared files are a
+// plan. scripts/quality/merge-pr.mjs, the only way agents merge, checks real
+// conflicts with git merge-tree before each merge.
 //
 // Usage: node scripts/quality/merge-order.mjs [--json]
 

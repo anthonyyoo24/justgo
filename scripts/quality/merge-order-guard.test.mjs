@@ -1,412 +1,94 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import {
-  decide,
-  mergeTargets,
-  numberOf,
-  visibleText,
-} from '../../.claude/hooks/merge-order-guard.mjs';
-import { byPriority } from './merge-order.mjs';
+import { decide, output } from '../../.claude/hooks/merge-order-guard.mjs';
 
 const hook = fileURLToPath(
   new URL('../../.claude/hooks/merge-order-guard.mjs', import.meta.url),
 );
 
-const selectors = (command) =>
-  mergeTargets(command).map(({ selector, computed }) =>
-    computed ? `computed:${selector}` : selector,
-  );
-
-test('gh pr merge calls are found with their PR selector', () => {
-  assert.deepEqual(selectors('gh pr merge 214 --squash'), ['214']);
-  assert.deepEqual(
-    selectors(
-      'gh pr merge --auto --squash --match-head-commit abc123 -t "x y" 12',
-    ),
-    ['12'],
-  );
-  assert.deepEqual(
-    selectors('git fetch && gh pr merge https://github.com/o/r/pull/9 -s'),
-    ['https://github.com/o/r/pull/9'],
-  );
-  assert.deepEqual(selectors('gh pr merge --squash'), [undefined]);
-  assert.deepEqual(selectors('gh pr merge --squash; ls'), [undefined]);
-  assert.deepEqual(selectors('gh pr merge 3 --disable-auto'), []);
-  assert.deepEqual(selectors('gh pr view 3 && git merge main'), []);
-  assert.deepEqual(selectors('ls'), []);
-});
-
-test('merges inside loops, substitutions, prefixes and other shells are found', () => {
-  for (const [command, expected] of [
-    ['for n in 207; do gh pr merge $n; done', ['computed:$n']],
-    ['for n in 1 2; do gh pr merge "${n}" --squash; done', ['computed:${n}']],
-    ['if true; then gh pr merge 207; fi', ['207']],
-    ['{ gh pr merge 207; }', ['207']],
-    ['env X=y gh pr merge 207', ['207']],
-    ['GH_DEBUG=1 gh pr merge 8 --auto', ['8']],
-    ['command gh pr merge 207', ['207']],
-    ['timeout 60 gh pr merge 207', ['207']],
-    ['/opt/homebrew/bin/gh pr merge 207', ['207']],
-    ["bash -c 'gh pr merge 207 --squash'", ['207']],
-    ['x="$(gh pr merge 207)"', ['207']],
-    ['x=`gh pr merge 207`', ['207']],
-    ['gh pr merge $(gh pr list -q .[0].number)', ['computed:$(gh']],
-    ['git status; gh pr merge 9 && echo done', ['9']],
-    ['gh pr \\\nmerge 207', ['207']],
-    ['gh pr merge \\\n  236 --squash', ['236']],
-    ['gh pr merge 1 && gh pr merge 2', ['1', '2']],
-    ['bash -c "gh pr merge 207 --squash"', ['207']],
-    ['echo 210 | xargs gh pr merge --squash', ['computed:<from input>']],
-    ['xargs -n1 gh pr merge < prs.txt', ['computed:<from input>']],
-    ['cat <<EOF | bash\ngh pr merge 207\nEOF', ['207']],
-    ['eval "$(cat <<\'EOF\'\ngh pr merge 207\nEOF\n)"', ['207']],
-  ])
-    assert.deepEqual(selectors(command), expected, command);
-});
-
-test('gh -R and URLs name the repository', () => {
-  assert.deepEqual(mergeTargets('gh -R a/b pr merge 207'), [
-    { selector: '207', repo: 'a/b', computed: false },
-  ]);
-  assert.equal(mergeTargets('gh pr merge 5 --repo=c/d')[0].repo, 'c/d');
-  assert.equal(
-    mergeTargets('gh pr merge https://github.com/o/r/pull/9')[0].repo,
-    'o/r',
-  );
-});
-
-test('heredoc bodies, full-line comments and placeholders are not merges', () => {
-  const body = [
-    "gh pr comment 5 --body-file - <<'EOF'",
-    'Arm it with gh pr merge 12 --auto --squash',
-    'After gh pr merge 214 --squash landed.',
-    'EOF',
-  ].join('\n');
-  assert.deepEqual(selectors(body), []);
+test('raw merges are denied in every shape and point at the script', () => {
   for (const command of [
-    'cat <<EOF\ngh pr merge 3\nEOF',
-    'cat <<\\EOF\ngh pr merge 3\nEOF',
-    'cat <<-"END"\ngh pr merge 3\n\tEND',
-    'cat <<A <<B\ngh pr merge 1\nA\ngh pr merge 2\nB',
-    'git commit -m "$(cat <<\'EOF\'\nsay "gh pr merge 5\nEOF\n)"',
-    '# gh pr merge 5',
-    '  # gh pr merge 5',
-    'echo "Arm it with gh pr merge <n> --auto"',
+    'gh pr merge 214 --squash',
+    'gh pr merge 236 --auto --squash --match-head-commit abc',
+    'gh pr merge 3 --disable-auto',
+    'gh -R a/b pr merge 207',
+    '/opt/homebrew/bin/gh pr merge 207',
+    'for n in 1 2; do gh pr merge $n; done',
+    'echo 210 | xargs gh pr merge --squash',
+    "bash -c 'gh pr merge 207'",
+    'x="$(gh pr merge 207)"',
+    'gh pr \\\nmerge 207',
+    'cat <<EOF | bash\ngh pr merge 207\nEOF',
+    'gh api -X PUT repos/o/r/pulls/207/merge',
+    'curl -X PUT https://api.github.com/repos/o/r/pulls/207/merge',
+    // Harmless mentions are denied too; the message says how to avoid them.
     "grep -n 'gh pr merge' AGENTS.md",
-    'grep -rn "gh pr merge" .claude scripts',
-    'git log --grep="gh pr merge"',
-    "bash -c 'gh pr merge'",
-  ])
-    assert.deepEqual(selectors(command), [], command);
+    'git commit -m "docs: say gh pr merge goes through merge:pr"',
+  ]) {
+    const decision = decide(command);
+    assert.equal(decision?.permissionDecision, 'deny', command);
+    assert.match(decision.reason, /npm run merge:pr -- <n> --head <sha>/);
+    assert.match(decision.reason, /harmless mentions/);
+  }
 });
 
-test('a merge after a heredoc, here-string, arithmetic or open heredoc is found', () => {
+test('the merge script and other commands pass', () => {
   for (const command of [
-    "cat > notes <<'EOF'\nDon't forget\nEOF\ngh pr merge 207 --squash",
-    "# don't skip this\ngh pr merge 207 --squash",
-    'grep x <<< $foo\ngh pr merge 207',
-    'grep x <<<word; gh pr merge 207',
-    'echo $((1<<2)); gh pr merge 207',
-    'echo $((1 << x))\ngh pr merge 207',
-    'cat <<EOF\nno closing line\ngh pr merge 207',
-    'bash <<EOF\ngh pr merge 207\nEOF',
+    `npm run merge:pr -- 236 --head ${'a'.repeat(40)} --auto --squash`,
+    'npm run merge:pr -- 236 --disable-auto',
+    'node scripts/quality/merge-pr.mjs 5 --head abc',
+    'node scripts/quality/merge-order.mjs',
+    "grep -n 'pr merge' AGENTS.md",
+    'gh pr view 3 && git merge main',
+    'gh pr list --json number',
+    'git merge-tree --write-tree origin/main HEAD',
+    'gh pr view 3\ngit log --grep="pr merge"',
   ])
-    assert.deepEqual(selectors(command), ['207'], command);
+    assert.equal(decide(command), undefined, command);
 });
 
-test('visible text joins continuations and drops only what cannot run', () => {
-  assert.equal(visibleText('a \\\nb'), 'a  b');
-  assert.equal(visibleText('# c\nx\ncat <<E\nbody\nE\ny'), 'x\ncat <<E\ny');
-});
-
-test('PR numbers come from numbers and URLs only', () => {
-  assert.equal(numberOf('214'), 214);
-  assert.equal(numberOf('#7'), 7);
-  assert.equal(numberOf('https://github.com/o/r/pull/9'), 9);
-  assert.equal(numberOf('feature/branch'), undefined);
-  assert.equal(numberOf(undefined), undefined);
-});
-
-const pr = (number, extra = {}) => ({
-  number,
-  title: `PR ${number}`,
-  inFlight: false,
-  agreedAt: undefined,
-  ...extra,
-});
-
-test('breaking a PR ahead in the order is denied with its files', () => {
-  const decision = decide(
-    pr(5, { agreedAt: '2026-11-08T00:00:00Z' }),
-    [
-      { pr: pr(9, { inFlight: true }), files: ['AGENTS.md', 'a.ts'] },
-      { pr: pr(2), files: ['b.ts'] },
-    ],
-    byPriority,
-  );
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(
-    decision.reason,
-    /#9 \(PR 9\) would conflict in AGENTS\.md, a\.ts/,
-  );
-  assert.match(decision.reason, /auto-merge is armed/);
-  assert.doesNotMatch(decision.reason, /#2/);
-});
-
-test('breaking only PRs behind in the order is allowed', () => {
-  assert.equal(
-    decide(
-      pr(2, { inFlight: true }),
-      [{ pr: pr(1), files: ['a'] }],
-      byPriority,
-    ),
-    undefined,
-  );
-  assert.equal(
-    decide(pr(3), [{ pr: pr(4), files: ['a'] }], byPriority),
-    undefined,
-  );
-  assert.equal(decide(pr(3), [], byPriority), undefined);
-});
-
-// A temporary origin with PR heads, a clone the hook runs in, and a fake gh
-// on PATH that answers from a JSON file.
-function fixture(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'merge-order-guard-'));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const env = {
-    ...process.env,
-    GIT_AUTHOR_NAME: 't',
-    GIT_AUTHOR_EMAIL: 't@t',
-    GIT_COMMITTER_NAME: 't',
-    GIT_COMMITTER_EMAIL: 't@t',
-  };
-  const origin = join(dir, 'origin.git');
-  const work = join(dir, 'work');
-  const git = (...args) =>
-    execFileSync('git', args, { cwd: work, encoding: 'utf8', env }).trim();
-  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
-  execFileSync('git', ['clone', '-q', origin, work], { env, stdio: 'ignore' });
-  const write = (file, text) => writeFileSync(join(work, file), text);
-  write('shared.txt', 'one\ntwo\nthree\n');
-  write('free.txt', 'free\n');
-  git('add', '.');
-  git('commit', '-qm', 'base');
-  git('push', '-q', 'origin', 'HEAD:main');
-  const base = git('rev-parse', 'HEAD');
-  const branch = (name, file, text) => {
-    git('checkout', '-q', '-B', name, base);
-    write(file, text);
-    git('commit', '-qam', name);
-    git('push', '-q', 'origin', `HEAD:${name}`);
-    return git('rev-parse', 'HEAD');
-  };
-  const heads = {
-    first: branch('first', 'shared.txt', 'ONE\ntwo\nthree\n'),
-    second: branch('second', 'shared.txt', 'uno\ntwo\nthree\n'),
-    free: branch('free', 'free.txt', 'changed\n'),
-  };
-  git('checkout', '-q', '--detach', base);
-  // The clone forgets the branch heads, so the hook must fetch them by commit.
-  for (const name of Object.keys(heads)) git('branch', '-qD', name);
-  git('update-ref', '-d', 'refs/remotes/origin/first');
-  git('update-ref', '-d', 'refs/remotes/origin/second');
-  git('update-ref', '-d', 'refs/remotes/origin/free');
-  git('gc', '-q', '--prune=now');
-
-  const bin = join(dir, 'bin');
-  mkdirSync(bin);
-  const pulls = join(dir, 'pulls.json');
-  writeFileSync(
-    join(bin, 'gh'),
-    `#!/usr/bin/env node
-const { readFileSync } = require('node:fs');
-const args = process.argv.slice(2);
-if (process.env.FAKE_GH_FAIL) { process.stderr.write('gh: network down'); process.exit(1); }
-const pulls = JSON.parse(readFileSync(${JSON.stringify(pulls)}, 'utf8'));
-if (args[0] === 'pr' && args[1] === 'list') process.stdout.write(JSON.stringify(pulls));
-else if (args[0] === 'pr' && args[1] === 'view') {
-  const named = args[2] && !args[2].startsWith('-') ? args[2] : 'first';
-  const pull = pulls.find((p) => p.headRefName === named || String(p.number) === named);
-  if (!pull) { process.stderr.write('no pull requests found for branch "' + named + '"'); process.exit(1); }
-  process.stdout.write(JSON.stringify({ number: pull.number }));
-} else { process.stderr.write('unexpected ' + args.join(' ')); process.exit(2); }
-`,
-  );
-  chmodSync(join(bin, 'gh'), 0o755);
-  const pull = (number, name, extra = {}) => ({
-    number,
-    title: `PR ${name}`,
-    baseRefName: 'main',
-    headRefName: name,
-    headRefOid: heads[name],
-    isDraft: false,
-    autoMergeRequest: null,
-    comments: [],
-    ...extra,
+test('output wraps a denial for Claude Code', () => {
+  assert.deepEqual(output(decide('gh pr merge 1')), {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: decide('gh pr merge 1').reason,
+    },
   });
-  const run = (command, list, extraEnv = {}) => {
-    writeFileSync(pulls, JSON.stringify(list));
-    const result = spawnSync(process.execPath, [hook], {
-      input: JSON.stringify({
-        tool_name: 'Bash',
-        tool_input: { command },
-        cwd: work,
-      }),
+  assert.equal(output(undefined), undefined);
+});
+
+test('the hook process denies Bash merges and ignores other tools', () => {
+  const run = (event) =>
+    spawnSync(process.execPath, [hook], {
+      input: JSON.stringify(event),
       encoding: 'utf8',
-      env: { ...env, ...extraEnv, PATH: `${bin}:${process.env.PATH}` },
     });
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout
-      ? JSON.parse(result.stdout).hookSpecificOutput
-      : undefined;
-  };
-  return { pull, run };
-}
-
-test('the hook denies a merge that breaks an in-flight PR', (t) => {
-  const { pull, run } = fixture(t);
-  const decision = run('gh pr merge 1 --squash', [
-    pull(1, 'first'),
-    pull(2, 'second', { autoMergeRequest: { mergeMethod: 'SQUASH' } }),
-    pull(3, 'free'),
-  ]);
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(
-    decision.permissionDecisionReason,
-    /merging #1 now.*#2 \(PR second\) would conflict in shared\.txt/,
-  );
-  assert.doesNotMatch(decision.permissionDecisionReason, /#3/);
-});
-
-test('the hook allows the PR that is first in the order', (t) => {
-  const { pull, run } = fixture(t);
-  const list = [pull(1, 'first'), pull(2, 'second'), pull(3, 'free')];
-  assert.equal(run('gh pr merge 1 --squash', list), undefined);
-  assert.equal(run('gh pr merge --auto --squash 3', list), undefined);
-  // No selector means the current branch's PR, resolved through gh pr view.
-  assert.equal(run('gh pr merge --squash', list), undefined);
-});
-
-test('the hook resolves a branch selector and denies when it breaks an earlier PR', (t) => {
-  const { pull, run } = fixture(t);
-  const decision = run('gh pr merge second --squash', [
-    pull(1, 'first'),
-    pull(2, 'second'),
-  ]);
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(decision.permissionDecisionReason, /#1 \(PR first\)/);
-});
-
-test('the hook allows a merge of a PR that is not open', (t) => {
-  const { pull, run } = fixture(t);
-  assert.equal(run('gh pr merge 99 --squash', [pull(1, 'first')]), undefined);
-});
-
-test('the hook denies a computed selector before calling gh', (t) => {
-  const { run } = fixture(t);
-  const decision = run('for n in 1 2; do gh pr merge $n --squash; done', [], {
-    FAKE_GH_FAIL: '1',
+  const denied = run({
+    tool_name: 'Bash',
+    tool_input: { command: 'gh pr merge 1 --squash' },
   });
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(decision.permissionDecisionReason, /variable or substitution/);
-});
-
-test('the hook leaves another repository to GitHub', (t) => {
-  const { run } = fixture(t);
+  assert.equal(denied.status, 0);
   assert.equal(
-    run('gh -R someone/else pr merge 1', [], { FAKE_GH_FAIL: '1' }),
-    undefined,
-  );
-});
-
-test('the hook checks every merge in one command', (t) => {
-  const { pull, run } = fixture(t);
-  const decision = run('gh pr merge 3 && gh pr merge 1 --squash', [
-    pull(1, 'first'),
-    pull(2, 'second', { autoMergeRequest: { mergeMethod: 'SQUASH' } }),
-    pull(3, 'free'),
-  ]);
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(decision.permissionDecisionReason, /merging #1 now/);
-});
-
-test('the hook allows read-only mentions of gh pr merge', (t) => {
-  const { pull, run } = fixture(t);
-  for (const command of [
-    "grep -n 'gh pr merge' AGENTS.md",
-    'git log --grep="gh pr merge"',
-  ])
-    assert.equal(run(command, [], { FAKE_GH_FAIL: '1' }), undefined, command);
-  // The word after a prose mention is a branch with no PR, so nothing merges.
-  assert.equal(
-    run('git commit -m "fix(hooks): find gh pr merge anywhere"', [
-      pull(1, 'first'),
-    ]),
-    undefined,
+    JSON.parse(denied.stdout).hookSpecificOutput.permissionDecision,
+    'deny',
   );
   assert.equal(
-    run('git commit -m "skip gh pr merge a..b"', [], { FAKE_GH_FAIL: '1' }),
-    undefined,
+    run({ tool_name: 'Bash', tool_input: { command: 'ls' } }).stdout,
+    '',
   );
-});
-
-test('the hook denies a merge fed through xargs', (t) => {
-  const { run } = fixture(t);
-  const decision = run('echo 1 | xargs gh pr merge --squash', [], {
-    FAKE_GH_FAIL: '1',
-  });
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(decision.permissionDecisionReason, /variable or substitution/);
-});
-
-test('the hook leaves merges into other branches to GitHub', (t) => {
-  const { pull, run } = fixture(t);
   assert.equal(
-    run('gh pr merge 2 --squash', [
-      pull(1, 'first', { autoMergeRequest: {} }),
-      pull(2, 'second', { baseRefName: 'first' }),
-    ]),
-    undefined,
+    run({ tool_name: 'Agent', tool_input: { prompt: 'gh pr merge 1' } }).stdout,
+    '',
   );
-});
-
-test('the hook fails closed when gh fails', (t) => {
-  const { pull, run } = fixture(t);
-  const decision = run('gh pr merge 1 --squash', [pull(1, 'first')], {
-    FAKE_GH_FAIL: '1',
-  });
-  assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(
-    decision.permissionDecisionReason,
-    /could not check.*network down/,
-  );
-});
-
-test('the hook ignores other commands and tools without calling gh', (t) => {
-  const { run } = fixture(t);
-  assert.equal(run('git status', [], { FAKE_GH_FAIL: '1' }), undefined);
-  assert.equal(
-    run('gh pr merge 1 --disable-auto', [], { FAKE_GH_FAIL: '1' }),
-    undefined,
-  );
-  const other = spawnSync(process.execPath, [hook], {
-    input: JSON.stringify({ tool_name: 'Agent', tool_input: {} }),
+  const broken = spawnSync(process.execPath, [hook], {
+    input: 'not json',
     encoding: 'utf8',
   });
-  assert.equal(other.stdout, '');
+  assert.notEqual(broken.status, 0);
 });
 
 test('settings run the guard on Bash and block when it fails', () => {
