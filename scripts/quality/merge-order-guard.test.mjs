@@ -67,6 +67,11 @@ test('merges inside loops, substitutions, prefixes and other shells are found', 
     ['gh pr \\\nmerge 207', ['207']],
     ['gh pr merge \\\n  236 --squash', ['236']],
     ['gh pr merge 1 && gh pr merge 2', ['1', '2']],
+    ['bash -c "gh pr merge 207 --squash"', ['207']],
+    ['echo 210 | xargs gh pr merge --squash', ['computed:<from input>']],
+    ['xargs -n1 gh pr merge < prs.txt', ['computed:<from input>']],
+    ['cat <<EOF | bash\ngh pr merge 207\nEOF', ['207']],
+    ['eval "$(cat <<\'EOF\'\ngh pr merge 207\nEOF\n)"', ['207']],
   ])
     assert.deepEqual(selectors(command), expected, command);
 });
@@ -99,6 +104,10 @@ test('heredoc bodies, full-line comments and placeholders are not merges', () =>
     '# gh pr merge 5',
     '  # gh pr merge 5',
     'echo "Arm it with gh pr merge <n> --auto"',
+    "grep -n 'gh pr merge' AGENTS.md",
+    'grep -rn "gh pr merge" .claude scripts',
+    'git log --grep="gh pr merge"',
+    "bash -c 'gh pr merge'",
   ])
     assert.deepEqual(selectors(command), [], command);
 });
@@ -231,7 +240,7 @@ if (args[0] === 'pr' && args[1] === 'list') process.stdout.write(JSON.stringify(
 else if (args[0] === 'pr' && args[1] === 'view') {
   const named = args[2] && !args[2].startsWith('-') ? args[2] : 'first';
   const pull = pulls.find((p) => p.headRefName === named || String(p.number) === named);
-  if (!pull) { process.stderr.write('no pull'); process.exit(1); }
+  if (!pull) { process.stderr.write('no pull requests found for branch "' + named + '"'); process.exit(1); }
   process.stdout.write(JSON.stringify({ number: pull.number }));
 } else { process.stderr.write('unexpected ' + args.join(' ')); process.exit(2); }
 `,
@@ -332,6 +341,35 @@ test('the hook checks every merge in one command', (t) => {
   ]);
   assert.equal(decision?.permissionDecision, 'deny');
   assert.match(decision.permissionDecisionReason, /merging #1 now/);
+});
+
+test('the hook allows read-only mentions of gh pr merge', (t) => {
+  const { pull, run } = fixture(t);
+  for (const command of [
+    "grep -n 'gh pr merge' AGENTS.md",
+    'git log --grep="gh pr merge"',
+  ])
+    assert.equal(run(command, [], { FAKE_GH_FAIL: '1' }), undefined, command);
+  // The word after a prose mention is a branch with no PR, so nothing merges.
+  assert.equal(
+    run('git commit -m "fix(hooks): find gh pr merge anywhere"', [
+      pull(1, 'first'),
+    ]),
+    undefined,
+  );
+  assert.equal(
+    run('git commit -m "skip gh pr merge a..b"', [], { FAKE_GH_FAIL: '1' }),
+    undefined,
+  );
+});
+
+test('the hook denies a merge fed through xargs', (t) => {
+  const { run } = fixture(t);
+  const decision = run('echo 1 | xargs gh pr merge --squash', [], {
+    FAKE_GH_FAIL: '1',
+  });
+  assert.equal(decision?.permissionDecision, 'deny');
+  assert.match(decision.permissionDecisionReason, /variable or substitution/);
 });
 
 test('the hook leaves merges into other branches to GitHub', (t) => {

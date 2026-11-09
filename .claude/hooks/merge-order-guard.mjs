@@ -16,10 +16,13 @@ import { fileURLToPath } from 'node:url';
 // It does not parse shell. It looks for `gh … pr merge` anywhere in the
 // command, so loops, `$(…)`, `bash -c`, prefixes such as `env` and absolute
 // paths count. Only full-line comments and the bodies of heredocs that do not
-// feed a shell are skipped, since those hold prose such as PR bodies. A
-// selector it cannot read, such as `$n`, is denied with a request for a
-// literal number, which also keeps batch merges to one per command. A `<n>`
-// placeholder is not a merge.
+// feed a shell, eval or source are skipped, since those hold prose such as PR
+// bodies. Inside a quoted string the command ends with the string, so a quoted
+// mention with no PR (`grep 'gh pr merge'`) is not a merge. A word that gh
+// finds no PR for, such as the next word of a commit subject, merges nothing.
+// A selector it cannot read (`$n`, `$(…)`, xargs input) is denied with a
+// request for a literal number, which also keeps batch merges to one per
+// command. A `<n>` placeholder is not a merge.
 //
 // When gh, git or the network fails, the hook denies with the error, as
 // verifier-model.mjs and session-model-guard.mjs fail closed. The merge needs
@@ -43,7 +46,9 @@ const valueFlags = new Set([
   '--author-email',
 ]);
 
-const shellWord = /(?:^|[\s;&|(/])(?:ba|z|da|k)?sh(?:\s+-\S+)*\s*$/;
+// A heredoc on a line that also runs a shell, eval or source may hold commands.
+const shellWord =
+  /(?:^|[\s;&|(/])(?:(?:ba|z|da|k)?sh|eval|source)(?=$|[\s;&|)])/;
 const heredocStart =
   /(?<![<\w$)])<<(?!<)(-?)[ \t]*\\?(['"]?)([A-Za-z_][\w.-]*)\2/g;
 
@@ -66,8 +71,7 @@ export function visibleText(command) {
       )
         close++;
       if (close >= lines.length) break;
-      if (shellWord.test(line.slice(0, match.index)))
-        kept.push(...lines.slice(i + 1, close));
+      if (shellWord.test(line)) kept.push(...lines.slice(i + 1, close));
       i = close;
     }
   }
@@ -90,6 +94,14 @@ export function argsOf(text) {
       continue;
     }
     if (/[;&|\n)`]/.test(ch)) break;
+    // A redirection ends the arguments. A `<n>` placeholder is kept as a word.
+    if (!started && (ch === '<' || ch === '>')) {
+      const placeholder = /^<[\w-]*>/.exec(text.slice(i))?.[0];
+      if (!placeholder) break;
+      words.push(placeholder);
+      i += placeholder.length - 1;
+      continue;
+    }
     if (ch === "'" || ch === '"') {
       quote = ch;
       started = true;
@@ -120,7 +132,17 @@ export function mergeTargets(command) {
   const text = visibleText(command);
   const targets = [];
   for (const match of text.matchAll(ghMerge)) {
-    const args = argsOf(text.slice(match.index + match[0].length));
+    let rest = text.slice(match.index + match[0].length);
+    // Inside a quoted string, as in `bash -c '…'` or `grep "gh pr merge"`,
+    // the command ends where the string ends.
+    const quote = /^['"]/.exec(match[0])?.[0];
+    if (quote)
+      rest = rest.slice(0, rest.search(quote === "'" ? /'/ : /(?<!\\)"/) >>> 0);
+    const args = argsOf(rest);
+    const before = text
+      .slice(0, match.index + 1)
+      .split(/[;&|\n(]/)
+      .at(-1);
     if (args.includes('--disable-auto')) continue;
     let selector;
     let repo = match[1];
@@ -136,7 +158,12 @@ export function mergeTargets(command) {
       }
     }
     if (selector?.startsWith('<')) continue;
-    const computed = /[$`]/.test(selector ?? '');
+    // A quoted mention with no PR, such as `grep 'gh pr merge'`, runs nothing.
+    if (quote && selector === undefined) continue;
+    // xargs or parallel supply the PR from input the guard cannot see.
+    if (/\b(?:xargs|parallel)\b/.test(before)) selector ??= '<from input>';
+    const computed =
+      /[$`]/.test(selector ?? '') || /\b(?:xargs|parallel)\b/.test(before);
     repo ??= /github\.com\/([^/\s]+\/[^/\s]+)\/pull\//.exec(
       selector ?? '',
     )?.[1];
@@ -162,6 +189,7 @@ export function findBreaks({ main, target, others, cwd, git }) {
     {
       cwd,
       encoding: 'utf8',
+      timeout: 10000,
       env: {
         ...process.env,
         GIT_AUTHOR_NAME: 'merge-order-guard',
@@ -233,6 +261,35 @@ function sameRepo(repo, cwd) {
   return name(origin) === name(repo);
 }
 
+// The PR a selector names. A name gh finds no PR for, such as a word after a
+// mention in prose, merges nothing, so it is undefined. Any other gh failure
+// throws, and the hook fails closed.
+function numberFor(selector, cwd) {
+  const number = numberOf(selector);
+  if (number) return number;
+  // Git refuses these characters in a branch name.
+  if (selector !== undefined && /[\s~^:?*[\\]|\.\.|^-/.test(selector))
+    return undefined;
+  try {
+    return JSON.parse(
+      execFileSync(
+        'gh',
+        ['pr', 'view', ...(selector ? [selector] : []), '--json', 'number'],
+        {
+          cwd,
+          encoding: 'utf8',
+          timeout: 10000,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      ),
+    ).number;
+  } catch (error) {
+    if (/no pull requests found/i.test(String(error?.stderr ?? '')))
+      return undefined;
+    throw error;
+  }
+}
+
 export async function check(targets, cwd) {
   const computed = targets.find((target) => target.computed);
   if (computed)
@@ -246,17 +303,10 @@ export async function check(targets, cwd) {
   if (!here.length) return undefined;
   const order = await import('../../scripts/quality/merge-order.mjs');
   const git = await import('../../scripts/quality/git.mjs');
-  const numbers = here.map(
-    ({ selector }) =>
-      numberOf(selector) ??
-      JSON.parse(
-        execFileSync(
-          'gh',
-          ['pr', 'view', ...(selector ? [selector] : []), '--json', 'number'],
-          { cwd, encoding: 'utf8', timeout: 10000 },
-        ),
-      ).number,
-  );
+  const numbers = here
+    .map(({ selector }) => numberFor(selector, cwd))
+    .filter(Boolean);
+  if (!numbers.length) return undefined;
   const pulls = order.openPulls(cwd);
   const onMain = pulls.filter((pull) => pull.baseRefName === 'main');
   // gh refuses a PR that is not open, and a merge into another branch does

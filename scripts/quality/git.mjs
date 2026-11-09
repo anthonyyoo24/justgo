@@ -27,7 +27,7 @@ export function mergeTree(ours, theirs, cwd) {
       ours,
       theirs,
     ],
-    { cwd, encoding: 'utf8' },
+    { cwd, encoding: 'utf8', timeout: 20000 },
   );
   // A missing commit also exits 1, but prints no tree.
   const [tree, ...conflicts] = (result.stdout ?? '')
