@@ -339,6 +339,18 @@ const cases = [
     source: "import './../../lib/network/account-client';",
     restricted: false,
   },
+  {
+    name: 'only the managed-session adapter may load SecureStore',
+    file: 'apps/mobile/src/app-support/identity/auth/BoundaryFixture.ts',
+    source: "import * as SecureStore from 'expo-secure-store';",
+    restricted: true,
+  },
+  {
+    name: 'the managed-session adapter loads SecureStore',
+    file: 'apps/mobile/src/platform/auth/auth-storage.ts',
+    source: "import * as SecureStore from 'expo-secure-store';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {
