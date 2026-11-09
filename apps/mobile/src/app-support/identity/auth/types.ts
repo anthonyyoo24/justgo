@@ -4,6 +4,10 @@ export type ProviderSession = {
   accessToken: string;
   expiresAt: string;
   linkedProviders?: readonly SignInProvider[];
+  /** Legacy presentation fallback only; explicit completed sign-in wins. */
+  provider?: SignInProvider;
+  /** Set only after exchanging a fresh browser OAuth callback. */
+  freshSignIn?: boolean;
 };
 export const providerAuthErrorCodes = [
   'CANCELLED',

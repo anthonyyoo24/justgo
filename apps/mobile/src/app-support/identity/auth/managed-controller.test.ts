@@ -91,10 +91,26 @@ function setup(connectionDiagnostics = false) {
   }[] = [];
   let failure: Error | null = null;
   let returnedAccount = { ...account };
+  const verifiedAccounts = new Map<
+    string,
+    typeof account | Error | (() => Promise<typeof account>)
+  >();
   const api: IdentityApi = {
     request: async (method, path, schema, body, token) => {
       calls.push({ method, path, body, token });
       if (failure) throw failure;
+      if (
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token &&
+        verifiedAccounts.has(token)
+      ) {
+        const value = verifiedAccounts.get(token);
+        if (value instanceof Error) throw value;
+        return schema.parse(
+          typeof value === 'function' ? await value() : value,
+        );
+      }
       return schema.parse(
         path === '/auth/logout'
           ? { ok: true }
@@ -137,6 +153,7 @@ function setup(connectionDiagnostics = false) {
   return {
     controller,
     create,
+    api,
     storage,
     auth,
     calls,
@@ -147,6 +164,10 @@ function setup(connectionDiagnostics = false) {
     setFailure: (error: Error | null) => {
       failure = error;
     },
+    setVerifiedAccount: (
+      token: string,
+      value: typeof account | Error | (() => Promise<typeof account>),
+    ) => verifiedAccounts.set(token, value),
     setAccount: (value: typeof account) => {
       returnedAccount = value;
     },
@@ -1191,4 +1212,889 @@ it('reflects verified provider links, protects the last method and clears switch
   expect(ctx.controller.getSnapshot().message).toContain('Use Log out');
   await ctx.controller.signOut();
   expect(ctx.controller.getSnapshot().linkedProviders).toEqual([]);
+});
+
+it('switches the active provider for one linked subject only after fresh auth and revokes the old app session', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const merge = jest.fn(async () => {});
+  ctx.controller.setGuestDataMerger(merge);
+  const next = {
+    ...session,
+    accessToken: 'synthetic-google-token',
+    linkedProviders: ['apple', 'google'] as const,
+  };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(next);
+    ctx.auth.subscribe.mock.calls[0]![0](next);
+    return next;
+  });
+  const offset = ctx.calls.length;
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+  });
+  expect(
+    ctx.calls.slice(offset).map(({ path, token }) => [path, token]),
+  ).toEqual([
+    ['/auth/logout', session.accessToken],
+    ['/auth/session', next.accessToken],
+  ]);
+  expect(merge).not.toHaveBeenCalled();
+  expect(ctx.saved()?.provider).toBe('google');
+  expect(JSON.stringify(ctx.saved())).not.toContain(session.accessToken);
+  expect(JSON.stringify(ctx.saved())).not.toContain(next.accessToken);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot().provider).toBe('google');
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it.each(['cancel', 'failure'] as const)(
+  'retains the original account and provider on switch %s, including restart',
+  async (outcome) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const before = ctx.controller.getSnapshot().collectionId;
+    if (outcome === 'cancel') ctx.auth.signIn.mockResolvedValueOnce(null);
+    else ctx.auth.signIn.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+    const offset = ctx.calls.length;
+    await ctx.controller.signIn('google');
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      provider: 'apple',
+      account: { userId: account.userId },
+      collectionId: before,
+    });
+    expect(ctx.calls.slice(offset)).toEqual([]);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot().provider).toBe('apple');
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('does not adopt or relabel an unchanged SDK session after interrupted browser switching', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account: { userId: account.userId },
+  });
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.calls.filter(({ path }) => path === '/auth/logout')).toEqual([]);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('resumes confirmed callback switching with the old bearer only in secure storage', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  const next = {
+    ...session,
+    accessToken: 'synthetic-browser-new-token',
+    freshSignIn: true,
+  };
+  ctx.setProvider(next);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot().provider).toBe('google');
+  expect(ctx.calls.find(({ path }) => path === '/auth/logout')?.token).toBe(
+    session.accessToken,
+  );
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('fences the replaced SDK session until old-session revocation succeeds after restart', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const next = { ...session, accessToken: 'synthetic-new-token' };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(next);
+    return next;
+  });
+  ctx.setFailure(new ApiError('UNAVAILABLE'));
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    provider: null,
+    collectionId: account.userId,
+    hasPending: true,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    switching: true,
+    authenticated: true,
+  });
+  expect(
+    [...ctx.stored.values()].some((value) =>
+      value.includes(session.accessToken),
+    ),
+  ).toBe(true);
+  ctx.setFailure(null);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('keeps previous-owner data out of a different signed-in account and does not re-adopt consumed guest data', async () => {
+  const ctx = setup();
+  const merge = jest.fn(async (guest: string, owner: string) => {
+    expect(guest).toBe(uuid(1));
+    expect(owner).toBe(account.userId);
+  });
+  ctx.controller.setGuestDataMerger(merge);
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const next = {
+    ...session,
+    authUserId: uuid(41),
+    accessToken: 'synthetic-other-owner-token',
+    linkedProviders: ['google'] as const,
+  };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(next);
+    return next;
+  });
+  ctx.setAccount({
+    ...account,
+    userId: uuid(51),
+    authUserId: next.authUserId,
+    sessionId: uuid(61),
+  });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    collectionId: uuid(51),
+    account: { userId: uuid(51) },
+  });
+  expect(merge).toHaveBeenCalledTimes(1);
+  expect(merge.mock.calls[0]?.[1]).toBe(account.userId);
+  expect(ctx.calls.find(({ path }) => path === '/auth/logout')?.token).toBe(
+    session.accessToken,
+  );
+  ctx.controller.dispose();
+});
+
+it('retains a retryable destination intent when app adoption fails after source revocation', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const next = { ...session, accessToken: 'synthetic-new-provider-token' };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(next);
+    return next;
+  });
+  const original = ctx.api.request;
+  jest.spyOn(ctx.api, 'request').mockImplementation(async (...args) => {
+    if (args[0] === 'POST' && args[1] === '/auth/session')
+      throw new ApiError('UNAVAILABLE');
+    return original(...args);
+  });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot().collectionId).toBe(account.userId);
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    provider: 'google',
+    authenticated: true,
+  });
+  expect(ctx.stored.size).toBe(0);
+  jest.restoreAllMocks();
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('keeps SDK replacement fenced when saving its authenticated intent fails', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const next = { ...session, accessToken: 'synthetic-new-google-token' };
+  ctx.setVerifiedAccount(next.accessToken, new ApiError('UNAUTHORIZED'));
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(next);
+    return next;
+  });
+  const write = ctx.storage.write.getMockImplementation()!;
+  ctx.storage.write.mockImplementation(async (state) => {
+    if (state.pendingSignIn?.authenticated)
+      throw new ProviderAuthError('STORAGE');
+    return write(state);
+  });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    provider: null,
+    collectionId: account.userId,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    switching: true,
+    authenticated: false,
+  });
+  ctx.storage.write.mockImplementation(write);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.currentSession()).toBeNull();
+  expect(restarted.getSnapshot().provider).toBeNull();
+  expect(restarted.getSnapshot().message).toContain('Please sign in again');
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('restores a legacy provider hint while preserving exact completed provider metadata on newer accounts', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  await ctx.storage.write({ ...ctx.saved()!, provider: undefined });
+  ctx.setProvider({
+    ...session,
+    provider: 'google',
+    linkedProviders: ['apple', 'google'],
+  });
+  const legacy = ctx.create();
+  await legacy.initialize();
+  expect(legacy.getSnapshot().provider).toBe('google');
+  await ctx.storage.write({ ...ctx.saved()!, provider: 'apple' });
+  const current = ctx.create();
+  await current.initialize();
+  expect(current.getSnapshot().provider).toBe('apple');
+  legacy.dispose();
+  current.dispose();
+  ctx.controller.dispose();
+});
+
+it('fences a same-subject SDK replacement notification before provider authorization resolves', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const next = {
+    ...session,
+    accessToken: 'synthetic-new-same-subject-token',
+    linkedProviders: ['apple', 'google'] as const,
+  };
+  const authorization = deferred<ProviderSession>();
+  const notified = deferred<void>();
+  ctx.auth.signIn.mockImplementationOnce(() => {
+    ctx.setProvider(next);
+    ctx.auth.subscribe.mock.calls[0]![0](next);
+    notified.resolve();
+    return authorization.promise;
+  });
+  const offset = ctx.calls.length;
+  const switching = ctx.controller.signIn('google');
+  await notified.promise;
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    provider: null,
+    busy: true,
+    collectionId: account.userId,
+  });
+  expect(ctx.calls.slice(offset)).toEqual([]);
+  authorization.resolve(next);
+  await switching;
+  expect(
+    ctx.calls.slice(offset).map(({ path, token }) => [path, token]),
+  ).toEqual([
+    ['/auth/logout', session.accessToken],
+    ['/auth/session', next.accessToken],
+  ]);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  expect(ctx.controller.currentSession()?.token).toBe(next.accessToken);
+  ctx.controller.dispose();
+});
+
+it.each(['cancel', 'reject'] as const)(
+  'keeps SDK sign-out divergence fenced after provider %s',
+  async (outcome) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.auth.signIn.mockImplementationOnce(async () => {
+      ctx.setProvider(null);
+      ctx.auth.subscribe.mock.calls[0]![0](null);
+      if (outcome === 'reject') throw new ProviderAuthError('AUTH');
+      return null;
+    });
+    await ctx.controller.signIn('google');
+    expect(ctx.controller.currentSession()).toBeNull();
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      account: null,
+      provider: null,
+      collectionId: account.userId,
+    });
+    expect(ctx.saved()?.pendingSignIn).toMatchObject({
+      switching: true,
+      authenticated: false,
+    });
+    expect(
+      [...ctx.stored.values()].some((value) =>
+        value.includes(session.accessToken),
+      ),
+    ).toBe(true);
+    ctx.controller.dispose();
+  },
+);
+
+it('continues normal same-subject token refresh when no switch is pending', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.subscribe.mock.calls[0]![0]({
+    ...session,
+    accessToken: 'synthetic-ordinary-refresh-token',
+  });
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account: { userId: account.userId },
+  });
+  expect(ctx.controller.currentSession()?.token).toBe(
+    'synthetic-ordinary-refresh-token',
+  );
+  ctx.controller.dispose();
+});
+
+it.each(['cancel', 'reject'] as const)(
+  'restores the original app session after its bearer refreshes during switch %s',
+  async (outcome) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const refreshed = {
+      ...session,
+      accessToken: 'synthetic-source-refreshed-token',
+    };
+    ctx.setVerifiedAccount(refreshed.accessToken, account);
+    const authorization = deferred<ProviderSession | null>();
+    const notified = deferred<void>();
+    ctx.auth.signIn.mockImplementationOnce(() => {
+      ctx.setProvider(refreshed);
+      ctx.auth.subscribe.mock.calls[0]![0](refreshed);
+      notified.resolve();
+      return authorization.promise;
+    });
+    const offset = ctx.calls.length;
+    const switching = ctx.controller.signIn('google');
+    await notified.promise;
+    expect(ctx.controller.currentSession()).toBeNull();
+    if (outcome === 'cancel') authorization.resolve(null);
+    else authorization.reject(new ProviderAuthError('AUTH'));
+    await switching;
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      provider: 'apple',
+      account,
+      collectionId: account.userId,
+    });
+    expect(ctx.controller.currentSession()?.token).toBe(refreshed.accessToken);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    expect(
+      ctx.calls
+        .slice(offset)
+        .map(({ method, path, token }) => [method, path, token]),
+    ).toEqual([['GET', '/auth/session', refreshed.accessToken]]);
+    ctx.controller.dispose();
+  },
+);
+
+it('restores an interrupted source-token refresh on restart without adopting the requested provider', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  const refreshed = {
+    ...session,
+    accessToken: 'synthetic-restarted-source-token',
+  };
+  ctx.setProvider(refreshed);
+  ctx.setVerifiedAccount(refreshed.accessToken, account);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account,
+    hasPending: false,
+  });
+  expect(restarted.currentSession()?.token).toBe(refreshed.accessToken);
+  expect(ctx.auth.signIn).toHaveBeenCalledTimes(2);
+  expect(ctx.calls.filter(({ path }) => path === '/auth/logout')).toEqual([]);
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it.each(['cancel', 'restart'] as const)(
+  'does not restore a replaced same-subject app session after switch %s',
+  async (stage) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const replacement = {
+      ...session,
+      accessToken: 'synthetic-registered-other-session',
+    };
+    ctx.setVerifiedAccount(replacement.accessToken, {
+      ...account,
+      sessionId: uuid(61),
+    });
+    ctx.auth.signIn.mockImplementationOnce(async () => {
+      if (stage === 'restart') return 'redirecting';
+      ctx.setProvider(replacement);
+      ctx.auth.subscribe.mock.calls[0]![0](replacement);
+      return null;
+    });
+    await ctx.controller.signIn('google');
+    const checked = stage === 'restart' ? ctx.create() : ctx.controller;
+    if (stage === 'restart') {
+      ctx.setProvider(replacement);
+      await checked.initialize();
+    }
+    expect(checked.currentSession()).toBeNull();
+    expect(checked.getSnapshot()).toMatchObject({
+      account: null,
+      provider: null,
+      collectionId: account.userId,
+    });
+    expect(ctx.saved()?.pendingSignIn).toMatchObject({
+      switching: true,
+      authenticated: false,
+    });
+    expect(
+      [...ctx.stored.values()].some((value) =>
+        value.includes(session.accessToken),
+      ),
+    ).toBe(true);
+    checked.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps a late token replacement fenced while verifying a refreshed source session', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const refreshed = {
+    ...session,
+    accessToken: 'synthetic-source-verification-token',
+  };
+  const verification = deferred<typeof account>();
+  const requested = deferred<void>();
+  ctx.setVerifiedAccount(refreshed.accessToken, () => {
+    requested.resolve();
+    return verification.promise;
+  });
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(refreshed);
+    ctx.auth.subscribe.mock.calls[0]![0](refreshed);
+    return null;
+  });
+  const switching = ctx.controller.signIn('google');
+  await requested.promise;
+  expect(ctx.controller.currentSession()).toBeNull();
+  const replacement = {
+    ...session,
+    accessToken: 'synthetic-late-replacement-token',
+  };
+  // A same-subject replacement during a switch is a different Supabase
+  // session, so the server reports another app session for it.
+  ctx.setVerifiedAccount(replacement.accessToken, {
+    ...account,
+    sessionId: uuid(61),
+  });
+  ctx.setProvider(replacement);
+  ctx.auth.subscribe.mock.calls[0]![0](replacement);
+  verification.resolve(account);
+  await switching;
+  expect(
+    ctx.calls.some(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === replacement.accessToken,
+    ),
+  ).toBe(true);
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    provider: null,
+    collectionId: account.userId,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    switching: true,
+    authenticated: false,
+  });
+  expect(
+    [...ctx.stored.values()].some((value) =>
+      value.includes(session.accessToken),
+    ),
+  ).toBe(true);
+  ctx.controller.dispose();
+});
+
+it.each([false, true])(
+  'clears an orphan switch proof during accepted deletion with retryable storage cleanup=%s',
+  async (failOnce) => {
+    const ctx = setup();
+    ctx.controller.setAccountDataRemover(jest.fn(async () => {}));
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const key = 'justgo.auth.provider-switch-proof.v1';
+    ctx.stored.set(
+      key,
+      JSON.stringify({
+        token: 'synthetic-orphan-source-token',
+        authUserId: session.authUserId,
+      }),
+    );
+    const remove = ctx.secureStorage.removeItem.getMockImplementation()!;
+    let failed = false;
+    ctx.secureStorage.removeItem.mockImplementation(async (item) => {
+      if (failOnce && item === key && !failed) {
+        failed = true;
+        throw new ProviderAuthError('STORAGE');
+      }
+      await remove(item);
+    });
+    await ctx.controller.deleteAccount();
+    if (failOnce) {
+      expect(ctx.controller.getSnapshot().deletionStatus).toBe('cleanup');
+      expect(ctx.saved()?.deletion?.receipt?.userId).toBe(account.userId);
+      expect(ctx.stored.has(key)).toBe(true);
+      await ctx.controller.retry();
+    }
+    expect(ctx.controller.getSnapshot().deletionStatus).toBe('deleted');
+    expect(ctx.stored.has(key)).toBe(false);
+    expect(ctx.stored.size).toBe(0);
+    expect(
+      ctx.calls.filter(
+        ({ method, path }) => method === 'DELETE' && path === '/account',
+      ),
+    ).toHaveLength(1);
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps an older install’s inferred provider across an SDK refresh, so a cancelled switch never reads as completed', async () => {
+  const ctx = setup();
+  const first = ctx.create();
+  await first.initialize();
+  await first.signIn('apple');
+  first.dispose();
+  // Installs from before the active provider was saved have none stored.
+  await ctx.storage.write({ ...ctx.saved()!, provider: undefined });
+  ctx.setProvider({
+    ...session,
+    provider: 'google',
+    linkedProviders: ['apple', 'google'],
+  });
+  const controller = ctx.create();
+  const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+  await controller.initialize();
+  expect(controller.getSnapshot().provider).toBe('google');
+  // Ordinary SDK refresh: its projection carries no display provider.
+  notifyProvider({
+    ...session,
+    accessToken: 'refreshed-provider-token',
+    linkedProviders: ['apple', 'google'],
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  await controller.signIn('apple');
+  expect(controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    hasPending: false,
+  });
+  expect(controller.getSnapshot().account).not.toBeNull();
+  controller.dispose();
+});
+
+it('re-verifies a source the server rejected while the switch sheet was open before restoring it', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const verifications = () =>
+    ctx.calls.filter(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === session.accessToken,
+    ).length;
+  const before = verifications();
+  ctx.setVerifiedAccount(session.accessToken, new ApiError('SESSION_REVOKED'));
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.controller.rejectSession(session.accessToken, 'SESSION_REVOKED');
+    return null;
+  });
+  await ctx.controller.signIn('google');
+  expect(verifications()).toBe(before + 1);
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot().account).toBeNull();
+  ctx.controller.dispose();
+});
+
+it('keeps a cancelled sign-in silent when it began signed out after an interrupted switch', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // The app stops while the switch's provider sheet is open.
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  ctx.controller.dispose();
+  // On restart the SDK has no session, so the account shows signed out.
+  ctx.setProvider(null);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account: null,
+    mode: 'signed-out',
+    message: '',
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  await restarted.signIn('apple');
+  expect(restarted.getSnapshot()).toMatchObject({
+    message: '',
+    directSignInFailure: false,
+  });
+  restarted.dispose();
+});
+
+it('explains a cancelled switch that lost the active login while its sheet was open', async () => {
+  const ctx = setup();
+  const notifyProvider = ctx.auth.subscribe.mock.calls[0]![0];
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(null);
+    notifyProvider(null);
+    return null;
+  });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    message: 'Please sign in again. Your saved data was kept.',
+    directSignInFailure: true,
+  });
+  ctx.controller.dispose();
+});
+
+it.each(['returns no session', 'throws CANCELLED'] as const)(
+  'keeps the source login published when the switch sheet %s',
+  async (outcome) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const published: (string | null)[] = [];
+    const unsubscribe = ctx.controller.subscribe(() => {
+      published.push(ctx.controller.getSnapshot().account?.userId ?? null);
+    });
+    if (outcome === 'returns no session')
+      ctx.auth.signIn.mockResolvedValueOnce(null);
+    else
+      ctx.auth.signIn.mockRejectedValueOnce(new ProviderAuthError('CANCELLED'));
+    await ctx.controller.signIn('google');
+    unsubscribe();
+    // Unpublishing the account would read as an owner change downstream.
+    expect(published).not.toContain(null);
+    expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.has('justgo.auth.provider-switch-proof.v1')).toBe(false);
+    ctx.controller.dispose();
+  },
+);
+
+it('clears a link an older build left unfinished once a sign-in is verified', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.controller.dispose();
+  await ctx.storage.write({
+    ...ctx.saved()!,
+    pendingLink: {
+      provider: 'google',
+      ownerId: account.userId,
+      authUserId: account.authUserId,
+    },
+  });
+  const restarted = ctx.create();
+  await restarted.initialize();
+  await restarted.signIn('google');
+  expect(ctx.saved()?.pendingLink).toBeNull();
+  expect(restarted.getSnapshot()).toMatchObject({
+    hasPending: false,
+    provider: 'google',
+  });
+  expect(restarted.getSnapshot().account).not.toBeNull();
+  restarted.dispose();
+});
+
+const proofKey = 'justgo.auth.provider-switch-proof.v1';
+const flush = async () => {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+};
+
+it('re-verifies a source the server rejects while a cancelled switch restores it', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const verifications = () =>
+    ctx.calls.filter(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === session.accessToken,
+    ).length;
+  const before = verifications();
+  // The server now rejects the source bearer.
+  ctx.setVerifiedAccount(session.accessToken, new ApiError('SESSION_REVOKED'));
+  // Hold the restore's proof clear, so an in-flight sync request can finish.
+  const gate = deferred<void>();
+  let clearing = false;
+  ctx.secureStorage.removeItem.mockImplementation(async (key: string) => {
+    if (key === proofKey) {
+      clearing = true;
+      await gate.promise;
+    }
+    ctx.stored.delete(key);
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  const switching = ctx.controller.signIn('google');
+  for (let i = 0; i < 50 && !clearing; i++) await flush();
+  expect(clearing).toBe(true);
+  // The account stayed published, so a sync request still used the source
+  // token, and AccountClient reports the server's rejection.
+  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+  ctx.controller.rejectSession(session.accessToken, 'SESSION_REVOKED');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    message: 'Please sign in again. Saved data remains on this phone.',
+  });
+  gate.resolve();
+  await switching;
+  const after = {
+    verificationsSinceRejection: verifications() - before,
+    currentSessionToken: ctx.controller.currentSession()?.token ?? null,
+    publishedAccount: ctx.controller.getSnapshot().account?.userId ?? null,
+    message: ctx.controller.getSnapshot().message,
+  };
+  // Intent: a server-rejected source bearer is restored only after
+  // GET /auth/session verifies it. The server rejects it, so it stays fenced.
+  expect(after).toEqual({
+    verificationsSinceRejection: 1,
+    currentSessionToken: null,
+    publishedAccount: null,
+    message: expect.stringMatching(/sign in again/),
+  });
+  ctx.controller.dispose();
+});
+
+it.each(['sheet (control)', 'reading', 'clearing'] as const)(
+  'keeps the login when an SDK refresh of the same session lands during a cancelled switch (%s)',
+  async (phase) => {
+    const ctx = setup();
+    const notifyProvider = ctx.auth.subscribe.mock.calls[0]![0];
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    // Same Supabase session, new access token: the server verifies it as the
+    // same owner, Auth subject and app session.
+    const refreshed = { ...session, accessToken: 'refreshed-provider-token' };
+    ctx.setVerifiedAccount(refreshed.accessToken, account);
+    const refresh = () => {
+      ctx.setProvider(refreshed);
+      notifyProvider(refreshed);
+    };
+    if (phase === 'sheet (control)')
+      ctx.auth.signIn.mockImplementationOnce(async () => {
+        refresh();
+        return null;
+      });
+    else ctx.auth.signIn.mockResolvedValueOnce(null);
+    if (phase === 'reading') {
+      let reads = 0;
+      ctx.secureStorage.getItem.mockImplementation(async (key: string) => {
+        // signIn reads the proof once before the sheet; the restore reads it next.
+        if (key === proofKey && ++reads === 2) refresh();
+        return ctx.stored.get(key) ?? null;
+      });
+    } else if (phase === 'clearing')
+      ctx.secureStorage.removeItem.mockImplementation(async (key: string) => {
+        if (key === proofKey) refresh();
+        ctx.stored.delete(key);
+      });
+    await ctx.controller.signIn('google');
+    const result = {
+      account: ctx.controller.getSnapshot().account?.userId ?? null,
+      currentSessionToken: ctx.controller.currentSession()?.token ?? null,
+      offlineAccountOwner: ctx.controller.offlineAccountOwner(),
+      message: ctx.controller.getSnapshot().message,
+      directSignInFailure: ctx.controller.getSnapshot().directSignInFailure,
+      hasPending: ctx.controller.getSnapshot().hasPending,
+    };
+    // Intent: a cancel before the SDK replaces its session keeps the old login;
+    // a changed source is restored after /auth/session verifies it. The
+    // control (refresh while the sheet is open) shows that outcome.
+    expect(result).toEqual({
+      account: account.userId,
+      currentSessionToken: refreshed.accessToken,
+      offlineAccountOwner: account.userId,
+      message: '',
+      directSignInFailure: false,
+      hasPending: false,
+    });
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps the source published when a web switch redirect is abandoned with Back', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  expect(ctx.saved()?.pendingSignIn?.switching).toBe(true);
+  const published: (string | null)[] = [];
+  const unsubscribe = ctx.controller.subscribe(() => {
+    published.push(ctx.controller.getSnapshot().account?.userId ?? null);
+  });
+  // The page comes back without a callback, and the SDK still holds the source.
+  await ctx.controller.retry({ background: true });
+  unsubscribe();
+  expect(published).not.toContain(null);
+  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  ctx.controller.dispose();
 });
