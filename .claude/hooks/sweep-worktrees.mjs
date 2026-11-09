@@ -37,6 +37,9 @@ import { fileURLToPath } from 'node:url';
 
 export const idleMs = 24 * 60 * 60 * 1000;
 const gitTimeout = 10_000;
+// Deleting a worktree with its node_modules can take minutes. A kill midway
+// leaves it half-deleted, so the removal gets far more time than a lookup.
+export const removeTimeout = 10 * 60_000;
 
 const env = {
   ...process.env,
@@ -45,19 +48,19 @@ const env = {
   GIT_OPTIONAL_LOCKS: '0',
 };
 
-function git(cwd, args) {
+function git(cwd, args, timeout = gitTimeout) {
   return execFileSync('git', args, {
     cwd,
     env,
-    timeout: gitTimeout,
+    timeout,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
 }
 
-function succeeds(cwd, args) {
+function succeeds(cwd, args, timeout) {
   try {
-    git(cwd, args);
+    git(cwd, args, timeout);
     return true;
   } catch {
     return false;
@@ -255,7 +258,7 @@ export function sweep(dir, deps) {
     }
     if (verdict === 'remove' && !deps.dryRun) {
       // No --force: git refuses if the worktree changed since the check.
-      if (succeeds(main, ['worktree', 'remove', entry.path]))
+      if (succeeds(main, ['worktree', 'remove', entry.path], removeTimeout))
         deps.log(
           `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head}`,
         );
