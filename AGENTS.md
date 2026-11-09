@@ -230,10 +230,11 @@ highest level that works and updates this table.
 | Verifiers run on Opus. Only a re-check of one named, docs- or tests-only, non-sensitive PR runs on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call. | The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`                                                                                                                                                                                                                                                                  | hook, test                    |
 | Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself.                                                                                                                                                                                                                                                                                                                               | The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes) and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`                                                                                                                                  | hook, test                    |
 | A session started in the main checkout runs the current hooks and settings. On `main` with no tracked changes, the checkout fast-forwards to `origin/main` at session start, and asks for a restart when the update changed `.claude/` or the root agent instructions. Otherwise it says how far behind it is and why it was not updated. It never resets, stashes or touches untracked files, never blocks a session, and leaves linked worktrees alone.         | The `SessionStart` hook `.claude/hooks/sync-main.mjs`, which stays silent when offline or up to date, with cases against temporary repositories in `scripts/quality/sync-main-hook.test.mjs`                                                                                                                                                                                                                                       | hook, test                    |
-| Changes reach `main` only through a PR that passes `checks` and `sections`.                                                                                                                                                                                                                                                                                                                                                                                       | Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion                                                                                                                                                                                                                                                                                                                                   | GitHub                        |
+| Changes reach `main` only through a PR that passes `checks`, `description` and `verdict`.                                                                                                                                                                                                                                                                                                                                                                         | Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion. The old `sections` job in `pr-description.yml` passes only when `description` and `verdict` pass, and stays until no open PR needs it                                                                                                                                                                                            | GitHub                        |
 | Agents merge only through `npm run merge:pr -- <n> --head <sha> [--auto]`. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.   | The `PreToolUse` Bash hook `.claude/hooks/merge-order-guard.mjs` denies any command whose text contains `gh pr merge` or a `pulls/<n>/merge` API path, harmless mentions included. `scripts/quality/merge-pr.mjs` checks with `git merge-tree` and `verdict-patch.mjs`, fails closed when `gh`, git or the network fails, and pins each step to its head. Cases beside it in `merge-pr.test.mjs` and `merge-order-guard.test.mjs`  | hook, test                    |
 | Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                                                                                                                                                                                                   | Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.                                                                                                                                                                                                                                                                                         | written                       |
-| The newest verdict covers the PR head. A commit pushed after it needs a fresh verdict, unless every file it changes is review-only in `verdict-patch.mjs` (Markdown, tests, `eslint.config.mjs` and Prettier config). Review-only files still get a review.                                                                                                                                                                                                       | The required `sections` job in `.github/workflows/pr-description.yml` runs `scripts/quality/verdict-status.mjs`, and `.github/workflows/verdict-recheck.yml` reruns that job when Anthony's account posts or edits a verdict. Cases in `scripts/quality/verdict-status.test.mjs`. A missing or unreadable verdict fails. The format is in [Git and autonomy](#git-and-autonomy).                                                   | CI, test                      |
+| The newest verdict covers the PR head. A commit pushed after it needs a fresh verdict, unless every file it changes is review-only in `verdict-patch.mjs` (Markdown, tests, `eslint.config.mjs` and Prettier config). Review-only files still get a review.                                                                                                                                                                                                       | The required `verdict` job in `.github/workflows/pr-description.yml` runs `scripts/quality/verdict-status.mjs`, and `.github/workflows/verdict-recheck.yml` reruns that job when Anthony's account posts or edits a verdict. Cases in `scripts/quality/verdict-status.test.mjs`. A missing or unreadable verdict fails. The format is in [Git and autonomy](#git-and-autonomy).                                                    | CI, test                      |
+| A PR description has the pstack sections in order: `## Why`, `## What changed` (optional), `## Scope`, `## Tradeoffs` (optional), `## Blast Radius` (optional), `## Verification`. A bad description fails only `description`, and the hook catches it before CI does.                                                                                                                                                                                            | `descriptionProblems()` in `scripts/quality/pr-description.mjs`, run by the required `description` job. The `PostToolUse` Bash hook `.claude/hooks/pr-description-check.mjs` reads the body back with `gh pr view` after each `gh pr create` or `gh pr edit` and tells the agent to fix it, with cases in `scripts/quality/pr-description-hook.test.mjs`. A PR created outside Bash is caught only by `description`.               | hook, CI, test                |
 
 ## Security and privacy
 
@@ -258,6 +259,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   from `main`. Stack one on another only when it needs that PR's change, and then
   it targets that PR's branch. A phase is several small PRs, not one consolidated PR.
   Parallel agents each get their own worktree and branch, with one owner per branch.
+- **PR descriptions use pstack sections**: Why, What changed, Scope,
+  Tradeoffs, Blast Radius and Verification, in that order. The
+  `pr-description-check` hook and the required `description` check enforce them.
 - **Act without asking** on reversible work: commit, push your own branches, open
   ready (not draft) PRs, update them, reply to review threads, create or update
   GitHub issues, and rebase or `--force-with-lease` push your own unshared PR branches.
@@ -284,8 +288,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   first.
 - **Merge only what is verified.** An agent may merge a PR directly once CI is
   green and an independent verdict from an agent that did not write it covers the
-  current head. Auto-merge follows the next bullet instead. The required `checks`
-  and `sections` hold an auto-merge until a verdict covers the head. Green CI
+  current head. Auto-merge follows the next bullet instead. The required `checks`,
+  `description` and `verdict` hold an auto-merge until a verdict covers the head. Green CI
   alone is not a verdict. Land
   stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
   (pstack's Shipping playbook). Pin every merge to the head that a verdict
@@ -295,8 +299,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   is behind `main`, the script first asks GitHub to merge `main` into its branch.
   It merges rather than rebases, because the squash-merge drops the merge commit
   and nobody has to force-push. It keeps the verdict only when
-  `verdict-patch.mjs` says `carries` or `docs-tests-only`, waits for `checks`
-  and `sections` on the new head, and merges pinned to that head. On `re-verify`
+  `verdict-patch.mjs` says `carries` or `docs-tests-only`, waits for `checks`,
+  `description` and `verdict` on the new head, and merges pinned to that head. On `re-verify`
   it stops, and a fresh verifier reviews the new head.
 - **One verifier per PR, sensitive or not.** This replaces the full swarm in
   step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one Opus
@@ -307,19 +311,20 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - **Arm auto-merge when you open a PR.** Outside the sensitive areas below, run
   `npm run merge:pr -- <n> --head <head-sha> --auto` right after
   opening the PR, and again after each push, pinned to the new head. The
-  required `sections` check stays red until a readable `PASS` covers that head,
+  required `verdict` check stays red until a readable `PASS` covers that head,
   so GitHub merges on its own once the verdict and CI are green. The agent does
   not wait for CI to merge. If the branch is behind `main`, `--auto` merges
   `main` in and checks the verdict as above, then arms on the new head without
-  waiting for CI. Until branch protection requires branches to be up to date,
-  a `main` that moves after the arm is not tested with the PR. Once it does,
-  GitHub holds a PR that falls behind, and rerunning the script updates and
-  re-arms it. After a `PASS`, push nothing more to the PR. The script's own
-  update is the one exception. Put
+  waiting for CI. Branch protection requires up-to-date branches, so on each
+  push to `main` the `Update behind PRs` workflow
+  (`.github/workflows/update-behind-prs.yml`) merges `main` into every armed PR
+  that is behind, and rerunning the script does the same by hand. After a
+  `PASS`, push nothing more to the PR. Those `main` merges are the one
+  exception. Put
   optional notes and later additions in a follow-up PR or issue. If a push after
   a `PASS` cannot be avoided, run `npm run merge:pr -- <n> --disable-auto` first, and
   re-arm only after a fresh verdict covers the new head. A docs- or tests-only
-  push keeps `sections` green without a review. Also disarm with
+  push keeps `verdict` green without a review. Also disarm with
   `--disable-auto` when a PR comes to touch a sensitive area, and on Anthony's
   hold.
 - **Anthony merges the sensitive areas.** PRs that touch the paths in
@@ -339,12 +344,12 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   Write `Sensitive: yes` when the change touches a path in
   [`sensitive-paths`](#agent-effort), or affects sign-in, account data,
   migrations or release from outside those paths. Otherwise write
-  `Sensitive: no`. This is the one place that defines the format. The required `sections` job
+  `Sensitive: no`. This is the one place that defines the format. The required `verdict` job
   reads the newest comment from Anthony's account that mentions a verdict. It
   fails when there is none, when that comment lacks either line (a heading
   such as `## Verdict: PASS`, prose, or a verdict with no `Sensitive` line is
   unreadable), on `FAIL`, or when
-  that verdict no longer covers the PR head. So every PR shows `sections` red
+  that verdict no longer covers the PR head. So every PR shows `verdict` red
   until a readable `PASS` or `PASS+NOTES` covers its head. Posting
   a fresh verdict reruns it. If that rerun does not start, run
   `gh run rerun <run-id> --failed`. After a rebase or retarget, run
@@ -409,15 +414,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   single PR named, or when GitHub cannot be read, only `Sensitive: yes` keeps
   an audit on Opus, so write that line for any audit of sensitive work. Pass
   the effort yourself.
-- A session that starts or tracks other sessions hands off to a fresh session
-  when its context reaches about 200k tokens (`get_usage` reports it). Use the
-  session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
-  Every turn rereads the whole context, so a long-lived coordinator costs more
-  per turn as it grows.
-  As a backstop, `.claude/settings.json` sets `autoCompactWindow` to `280000`.
-  Claude Code keeps about 33k of that window for output and a buffer, so it
-  compacts a JustGO session at about 250k. A model with a smaller window keeps
-  its own limit. `claude -p /autocompact` shows the window in force.
+- Every turn rereads the whole context, so a long-lived session costs more per
+  turn as it grows. `.claude/settings.json` sets `autoCompactWindow` to
+  `233000`. Claude Code keeps about 33k of that window for output and a
+  buffer, so it compacts a JustGO session at about 200k. Agents do not need to
+  track their own context. A model with a smaller window keeps its own limit.
+  `claude -p /autocompact` shows the window in force, and `get_usage` reports
+  where auto-compact starts.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)

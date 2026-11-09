@@ -12,8 +12,27 @@ concurrency:
   group: pr-description-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Two required checks with one job each, so a red check says what it waits
+# for: `description` fails only on the pstack headings, and `verdict` stays red
+# until a readable PASS covers the head.
 jobs:
-  sections:
+  description:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/quality/pr-description.mjs
+          sparse-checkout-cone-mode: false
+      - name: Check the pstack headings
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/quality/pr-description.mjs
+
+  verdict:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -25,14 +44,9 @@ jobs:
           # only the commits it diffs and the blobs those diffs touch.
           sparse-checkout: |
             scripts/quality/git.mjs
-            scripts/quality/pr-description.mjs
             scripts/quality/verdict-patch.mjs
             scripts/quality/verdict-status.mjs
           sparse-checkout-cone-mode: false
-      - name: Check the pstack sections
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: node scripts/quality/pr-description.mjs
       - name: Check that the newest verdict covers the head
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,3 +54,21 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/quality/verdict-status.mjs
+
+  # Transition only: branch protection still names `sections` until it moves
+  # to `description` and `verdict`. A skipped job would count as passing, so
+  # this one always runs and passes only when both passed. Remove it once no
+  # open PR needs it.
+  sections:
+    needs: [description, verdict]
+    if: always() && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require description and verdict
+        env:
+          DESCRIPTION: ${{ needs.description.result }}
+          VERDICT: ${{ needs.verdict.result }}
+        run: |
+          echo "description: $DESCRIPTION, verdict: $VERDICT"
+          test "$DESCRIPTION" = success && test "$VERDICT" = success

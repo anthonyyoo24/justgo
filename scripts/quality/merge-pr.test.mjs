@@ -161,7 +161,7 @@ else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([
   const seen = existsSync(counter) ? Number(readFileSync(counter, 'utf8')) : 0;
   writeFileSync(counter, String(seen + 1));
   const pending = seen < Number(process.env.FAKE_PENDING ?? 0);
-  const runs = ['checks', 'sections', 'unit'].map((name, id) => ({
+  const runs = ['checks', 'description', 'verdict', 'unit'].map((name, id) => ({
     id: id + 1,
     name,
     status: pending ? 'in_progress' : 'completed',
@@ -379,7 +379,7 @@ test('the last line names what GitHub reports after gh pr merge', () => {
       { number: 208, head, auto: true },
       { state: 'OPEN', headRefOid: head, autoMergeRequest: {} },
     ),
-    `Auto-merge is armed on #208 at head ${head}. GitHub merges it once checks and sections pass.`,
+    `Auto-merge is armed on #208 at head ${head}. GitHub merges it once checks, description and verdict pass.`,
   );
   assert.equal(
     outcome(
@@ -485,7 +485,7 @@ test('a PR behind main is updated, waits for its checks and merges on the new he
       `verdict on head ${heads.first.slice(0, 7)} carries to ${next}: the PR's own change is the same\\.`,
     ),
   );
-  assert.match(result.stderr, /Waiting for checks and sections/);
+  assert.match(result.stderr, /Waiting for checks, description and verdict/);
   assert.equal(
     result.merged,
     `pr merge 1 --squash --match-head-commit ${next}`,
@@ -525,7 +525,7 @@ test('failing checks on the updated head merge nothing', (t) => {
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /failed against the latest main.*checks failure.*sections failure/,
+    /failed against the latest main.*checks failure.*description failure.*verdict failure/,
   );
   assert.doesNotMatch(result.stderr, /unit/);
   assert.equal(result.merged, '');
@@ -669,13 +669,19 @@ test('check state reads the newest run of each required check', () => {
   const runs = (conclusion, status = 'completed') => [
     { id: 1, name: 'checks', status: 'completed', conclusion: 'failure' },
     { id: 2, name: 'checks', status, conclusion, html_url: 'u' },
-    { id: 3, name: 'sections', status: 'completed', conclusion: 'success' },
-    { id: 4, name: 'unit', status: 'completed', conclusion: 'failure' },
+    { id: 3, name: 'description', status: 'completed', conclusion: 'success' },
+    { id: 4, name: 'verdict', status: 'completed', conclusion: 'success' },
+    { id: 5, name: 'unit', status: 'completed', conclusion: 'failure' },
+    { id: 6, name: 'sections', status: 'completed', conclusion: 'failure' },
   ];
   assert.equal(checkState(runs('success')), 'pass');
   assert.equal(checkState(runs('skipped')), 'pass');
   assert.equal(checkState(runs(null, 'in_progress')), 'pending');
   assert.equal(checkState(runs('success').slice(1, 2)), 'pending');
+  assert.equal(
+    checkState(runs('success').filter((run) => run.name !== 'verdict')),
+    'pending',
+  );
   assert.deepEqual(checkState(runs('cancelled')), {
     failed: ['checks cancelled (u)'],
   });
