@@ -68,7 +68,36 @@ async function decryptLedger(path, keyPath, ageBin) {
     await result.catch(() => {});
   }
 }
-export async function restoreLocal(env = process.env) {
+const optionTypes = {
+  preserveOwnership: 'boolean',
+  beforeReconcile: 'function',
+  afterReconcile: 'function',
+};
+function closedTargetOptions(options) {
+  const invalid = new Error('Invalid closed-target recovery options');
+  if (
+    options === null ||
+    typeof options !== 'object' ||
+    ![Object.prototype, null].includes(Object.getPrototypeOf(options))
+  )
+    throw invalid;
+  const parsed = {};
+  for (const key of Reflect.ownKeys(options)) {
+    const value = options[key];
+    if (!Object.hasOwn(optionTypes, key) || typeof value !== optionTypes[key])
+      throw invalid;
+    parsed[key] = value;
+  }
+  return parsed;
+}
+/**
+ * Trusted local acceptance hooks run while the disposable target stays closed.
+ * They receive no recovery-key material or authoritative ledger object. The caller
+ * owns any local services it starts and must close them on success or failure.
+ */
+export async function restoreLocal(env = process.env, options = {}) {
+  const { preserveOwnership, beforeReconcile, afterReconcile } =
+    closedTargetOptions(options);
   const connection = localRestoreConnection(env.JUSTGO_RESTORE_DATABASE_URL);
   const evidence = JSON.parse(
     await readFile(env.RECOVERY_EVIDENCE_FILE, 'utf8'),
@@ -104,7 +133,8 @@ export async function restoreLocal(env = process.env) {
     restore = spawn(
       env.JUSTGO_PG_BIN ? join(env.JUSTGO_PG_BIN, 'pg_restore') : 'pg_restore',
       [
-        '--no-owner',
+        // Custom archives retain owners even when pg_dump used --no-owner.
+        ...(preserveOwnership ? [] : ['--no-owner']),
         '--exit-on-error',
         '--single-transaction',
         '--dbname',
@@ -140,9 +170,14 @@ export async function restoreLocal(env = process.env) {
     );
     if (digest !== ledger.migrationDigest)
       throw new Error('Forward migrations need a reviewed restore procedure');
+    await beforeReconcile?.({ client });
     await client.query('begin');
     const result = await reconcileLedger(client, ledger);
     await client.query('commit');
+    await afterReconcile?.({
+      client,
+      result: Object.freeze({ ...result }),
+    });
     console.log(
       JSON.stringify({ event: 'local_recovery_reconciled', ...result }),
     );

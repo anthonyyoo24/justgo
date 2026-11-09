@@ -5,6 +5,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { inspect } from 'node:util';
 import { Client, Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { localTestDatabaseUrl } from '../../apps/api/scripts/local-test-database.ts';
@@ -20,6 +21,10 @@ import { readPolicy } from './configuration.mjs';
 import { rehearseRecoveryFence } from './recovery-fence-fixture.mjs';
 
 const migrations = new URL('../../apps/api/drizzle/', import.meta.url).pathname;
+const reviewedAccessSql = new URL(
+  './recovery-target-access.sql',
+  import.meta.url,
+);
 const secret = () => randomBytes(32).toString('hex');
 const proposal = () => ({
   credential: secret(),
@@ -27,6 +32,41 @@ const proposal = () => ({
   sessionId: randomUUID(),
   sessionToken: secret(),
 });
+
+async function reviewedAccess(client, change) {
+  const sql = await readFile(reviewedAccessSql, 'utf8');
+  await client.query("begin; set local search_path to ''");
+  try {
+    if (change) await client.query(change);
+    const { rows } = await client.query(sql);
+    return rows[0].reviewed_access.metadata;
+  } finally {
+    await client.query('rollback');
+  }
+}
+
+async function capturedOutput(run) {
+  const output = [];
+  const streams = [process.stdout, process.stderr].map((stream) => {
+    const write = stream.write;
+    stream.write = (chunk, ...rest) => {
+      output.push(String(chunk));
+      return write.call(stream, chunk, ...rest);
+    };
+    return () => (stream.write = write);
+  });
+  try {
+    return {
+      error: await run().then(
+        () => undefined,
+        (error) => error,
+      ),
+      output,
+    };
+  } finally {
+    for (const restore of streams) restore();
+  }
+}
 
 /**
  * Exercise encrypted backup, privilege-drift rejection and deletion replay using
@@ -359,8 +399,110 @@ export async function rehearse(env = process.env) {
       JUSTGO_PG_BIN: pgBin,
       AGE_BIN: ageBin,
     };
-    const result = await restoreLocal(restoreEnv);
+    let beforeHookAwaited = false,
+      afterHookAwaited = false;
+    const result = await restoreLocal(restoreEnv, {
+      preserveOwnership: true,
+      beforeReconcile: async ({ client }) => {
+        const ownership = await client.query(`select
+          (select pg_get_userbyid(nspowner) from pg_namespace where nspname='justgo') as schema_owner,
+          (select pg_get_userbyid(relowner) from pg_class where oid='justgo.users'::regclass) as table_owner,
+          has_table_privilege('justgo_runtime','justgo.users','SELECT') as runtime_read,
+          has_schema_privilege('justgo_runtime','justgo','CREATE') as runtime_create`);
+        assert.deepEqual(ownership.rows[0], {
+          schema_owner: 'justgo_migrator',
+          table_owner: 'justgo_migrator',
+          runtime_read: true,
+          runtime_create: false,
+        });
+        const reviewed = await reviewedAccess(source);
+        assert.deepEqual(await reviewedAccess(client), reviewed);
+        for (const drift of [
+          'alter policy owner_read on justgo.users using (true)',
+          'alter policy owner_read on justgo.users to public',
+          'grant delete on justgo.users to justgo_runtime',
+        ])
+          assert.notDeepEqual(await reviewedAccess(client, drift), reviewed);
+        console.log(
+          JSON.stringify({
+            event: 'local_recovery_access_matches',
+            objects: reviewed.objects.length,
+            policies: reviewed.objects.filter(({ kind }) => kind === 'policy')
+              .length,
+          }),
+        );
+        const { rows } = await client.query(
+          `select (select count(*)::int from auth.sessions) as sessions,
+          (select data_epoch from justgo.users where id=$1) as epoch,
+          (select count(*)::int from justgo.attempts) as attempts,
+          (select count(*)::int from justgo.journal_versions where reflection->>'text'='synthetic recovery fixture') as reflections`,
+          [erasedOwner.userId],
+        );
+        assert.deepEqual(rows[0], {
+          sessions: 1,
+          epoch: 0,
+          attempts: 2,
+          reflections: 2,
+        });
+        console.log(
+          JSON.stringify({
+            event: 'local_recovery_writing_present',
+            attempts: rows[0].attempts,
+            reflections: rows[0].reflections,
+          }),
+        );
+        await client.query('select pg_sleep(0.01)');
+        beforeHookAwaited = true;
+      },
+      afterReconcile: async ({ client, result: closedResult }) => {
+        assert.equal(beforeHookAwaited, true);
+        assert.equal(closedResult.writersMayOpen, false);
+        assert.equal(Object.isFrozen(closedResult), true);
+        const { rows } = await client.query(
+          'select (select count(*)::int from auth.sessions) as sessions, (select data_epoch from justgo.users where id=$1) as epoch',
+          [erasedOwner.userId],
+        );
+        assert.deepEqual(rows[0], { sessions: 0, epoch: 1 });
+        await client.query('select pg_sleep(0.01)');
+        afterHookAwaited = true;
+      },
+    });
+    assert.equal(beforeHookAwaited && afterHookAwaited, true);
     assert.equal(result.writersMayOpen, false);
+    step = 'closed-target acceptance failure';
+    const rejectedName = `justgo_restore_${randomBytes(6).toString('hex')}`;
+    await admin.query(`create database ${rejectedName} template template0`);
+    ownedDatabases.push(rejectedName);
+    const rejectedUrl = new URL(targetUrl);
+    rejectedUrl.pathname = `/${rejectedName}`;
+    let rejectionHookEntered = false,
+      rejectedAfterEntered = false;
+    const privateDiagnostic = 'synthetic private diagnostic must not escape';
+    const rejected = await capturedOutput(() =>
+      restoreLocal(
+        { ...restoreEnv, JUSTGO_RESTORE_DATABASE_URL: rejectedUrl.href },
+        {
+          beforeReconcile: async () => {
+            rejectionHookEntered = true;
+            throw new Error(privateDiagnostic);
+          },
+          afterReconcile: async () => {
+            rejectedAfterEntered = true;
+          },
+        },
+      ),
+    );
+    assert.equal(
+      rejected.error?.message,
+      'Local restore failed; target remains isolated and writers closed',
+    );
+    assert.equal(
+      inspect(rejected.error, { depth: Infinity }).includes(privateDiagnostic),
+      false,
+    );
+    assert.equal(rejected.output.join('').includes(privateDiagnostic), false);
+    assert.equal(rejectionHookEntered, true);
+    assert.equal(rejectedAfterEntered, false);
     step = 'revoked proof assertions';
     const target = new Client({ ...sourceConfig, database: targetName });
     clients.push(target);
@@ -446,7 +588,7 @@ export async function rehearse(env = process.env) {
     );
   }
   console.log(
-    'Encrypted local app/Auth restore, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
+    'Encrypted local app/Auth restore with preserved owners, restored writing before replay, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
   );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)

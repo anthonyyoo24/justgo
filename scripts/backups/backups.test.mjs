@@ -19,7 +19,7 @@ import {
   uploadArtifact,
   inspectRetention,
 } from './storage.mjs';
-import { localRestoreConnection } from './restore-local.mjs';
+import { localRestoreConnection, restoreLocal } from './restore-local.mjs';
 import { checkIn } from './monitor.mjs';
 import {
   captureLedger,
@@ -67,6 +67,38 @@ const lifecycle = {
     deleteObjectsTransition: { condition: { type: 'Age', maxAge: 604800 } },
   })),
 };
+
+test('restore rejects invalid acceptance options before reading artifacts or using a key', async () => {
+  for (const hooks of [
+    null,
+    [],
+    { beforeReconcile: true },
+    { preserveOwnership: 'true' },
+    { unknown: () => {} },
+    Object.create({ preserveOwnership: 'false' }),
+    Object.create({ preserveOwnership: true }),
+    Object.defineProperty({}, 'preserveOwnership', { value: 'false' }),
+    { [Symbol('preserveOwnership')]: true },
+  ])
+    await assert.rejects(restoreLocal({}, hooks), {
+      message: 'Invalid closed-target recovery options',
+    });
+  for (const hooks of [
+    {},
+    Object.assign(Object.create(null), { preserveOwnership: true }),
+    { preserveOwnership: false, beforeReconcile() {}, afterReconcile() {} },
+  ])
+    await assert.rejects(
+      restoreLocal(
+        {
+          JUSTGO_RESTORE_DATABASE_URL:
+            'postgres://postgres@db.example.com/justgo_restore_abcdef012345',
+        },
+        hooks,
+      ),
+      { message: 'Restore requires a dedicated disposable loopback database' },
+    );
+});
 
 test('policy requires exact separately approved bytes and compatible ledger/expiry periods', () => {
   const raw = JSON.stringify(policy);

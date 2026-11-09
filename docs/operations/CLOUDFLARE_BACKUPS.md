@@ -4,6 +4,17 @@ Moving the API to Supabase Edge Functions does not change these backups. Keep R2
 the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`
 when the API Worker retires.
 
+Backups are paused. On November 6, 2026, Anthony set the repository variable
+`JUSTGO_BACKUPS_ENABLED` to `paused`, because staging holds only test data. The
+`backup` job in `database-backups.yml` now skips on every schedule and every
+clock dispatch. The last copy, ledger run
+[42287912720](https://github.com/anthonyyoo24/justgo/actions/runs/42287912720),
+passed at 20:23 UTC that day. Before outside testers store real journals, renew
+the R2 credentials and the clock token, and set the variable back to `approved`.
+Then confirm that one nightly and one hourly run succeed, and record the new
+expiry dates in [Credential dates](#credential-dates) and on
+[#77](https://github.com/anthonyyoo24/justgo/issues/77).
+
 Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony
 approved creating the empty private `justgo-staging-backups` bucket. Its creation
 and disabled public access are verified. The dedicated reader is now
@@ -40,8 +51,8 @@ The first healthy Sentry check-in and a controlled failure and resolution were
 observed. The short controlled incident's email was not received. A later real
 missed-run incident stayed open beyond batching, and Anthony confirmed that its
 backup email arrived. A verified real manual ledger catch-up cleared the monitor
-and resolved the issue. Scheduled execution, timeout-specific behavior, complete
-recovery and actual expiry remain open.
+and resolved the issue. [Backup clock](#backup-clock) records the scheduled runs.
+Timeout-specific behavior, complete recovery and actual expiry remain open.
 
 On November 1, Anthony accepted the current-account, DPA and
 private-consumer-journal assessment with its residual interpretation. It adds no
@@ -77,9 +88,11 @@ the TLS CA, the approved backup-role permissions and the complete registered
 migration hashes. It opens a read-only repeatable-read transaction. A nightly
 `pg_dump` uses that exported snapshot and includes `justgo`, `auth` and the
 `drizzle` migration journal. Its custom-format output goes directly through
-`age`, so only ciphertext is written to the private temporary directory. The dump
-omits ownership for the isolated local restore and keeps ACLs and RLS policies.
-CI holds no private key.
+`age`, so only ciphertext is written to the private temporary directory. The
+custom-format archive keeps object owners, ACLs and RLS policies, although
+`pg_dump` runs with `--no-owner`. `restore-local.mjs` drops the owners by default.
+Its `preserveOwnership` option keeps them once the operator provisions the
+reviewed roles. CI holds no private key.
 
 The runner captures the hourly JSON ledger from one database snapshot and
 encrypts it through the same pipe. The ledger contains:
@@ -112,6 +125,50 @@ this runner deliberately rejects it. The parent credential must remain outside
 CI. Bucket administration and lifecycle changes require a separate owner
 credential. The uploader must not be able to edit locks or public access.
 
+## Backup clock
+
+GitHub started the native schedules hours late. A separate Cloudflare Cron Worker,
+`justgo-staging-backup-clock` in `scripts/backups/clock/`, therefore dispatches
+`database-backups.yml` at the same two times. Its only secret is a GitHub token
+with repository Actions write access. It holds no database, R2 or recovery-key
+credentials. The tracked `wrangler.json` keeps the clock disabled. The deployed
+configuration holds the activation and the token expiry.
+
+The clock's first dispatch started ledger run
+[41536825031](https://github.com/anthonyyoo24/justgo/actions/runs/41536825031)
+at 22:23 UTC on November 2, 2026, from deployed version
+`8dcf5dc4-5fc2-413c-aaa6-9b16f4a04b6a`. Its first nightly dispatch started
+database run
+[41579744704](https://github.com/anthonyyoo24/justgo/actions/runs/41579744704)
+at 04:43 UTC on November 3, and that run passed. Every dispatched run passed until
+the November 6 pause. The ledger slot at 23:23 UTC on November 5 has no run,
+and its cause is unknown. Since the pause, the clock still dispatches, and the
+`backup` job skips. The [Phase 15 rollout review](../checks/phase-15-rollout-review.md)
+records the activation evidence.
+
+## Credential dates
+
+The November 3, 2026 renewal replaced the R2 upload and inspector secrets in the
+`database-backups` environment at 00:09 UTC, as
+[#77](https://github.com/anthonyyoo24/justgo/issues/77) records. Copies kept
+passing after the old uploader, parent and inspector expiry times on November 5,
+so the runner used renewed credentials. No record holds the new expiry dates, and
+the run logs do not print them.
+
+| Credential                       | Recorded expiry or cutoff                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Derived uploader, `R2_UPLOAD_*`  | Unknown. Issue #77 reports November 9, 2026, from another tool, and nobody has checked it in Cloudflare. |
+| Inspector, `R2_INSPECT_TOKEN`    | Unknown.                                                                                                 |
+| R2 parent, kept local outside CI | Unknown.                                                                                                 |
+| Clock GitHub token               | It stops passing the clock's expiry check at 23:40 UTC on November 29, 2026, per the rollout review.     |
+
+The runner rejects an uploader credential with less than 20 minutes left, and the
+clock applies the same margin to its token. The rollout review's renewal proposal
+named November 9 expiries for the parent, the uploader and the inspector. No
+record shows that the renewal used those dates. While backups are paused, none of
+these credentials needs renewal. Renew all four before you set
+`JUSTGO_BACKUPS_ENABLED` back to `approved`.
+
 ## Recovery decision and remaining proposals
 
 Anthony approved these recovery decisions:
@@ -133,7 +190,7 @@ in this table are not approvals or published promises.
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                                   | API readback confirms both expiry rules. Retention wording is approved. Actual asynchronous deletion, operational evidence, the effective date, a matching version and publication authorization remain pending.                                                                                        |
 | Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                                | API readback and rejection of parent-credential overwrite and DELETE passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and that time is not a strict maximum. Actual expiry has not yet been observed.                                                         |
-| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                                   | Hourly identity ledgers do not back up new journals. Actual scheduled copies remain unverified. Real missed-copy detection and email, and manual recovery, passed November 2. Approval does not establish achieved recovery evidence.                                                                   |
+| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                                   | Hourly identity ledgers do not back up new journals. Scheduled copies passed until the November 6 pause. Real missed-copy detection and email, and manual recovery, passed November 2. Approval does not establish achieved recovery evidence.                                                          |
 | Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                            | Not measured for the actual hosted Auth schema or a provider incident. The synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                             |
 | Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance, Auth and provider mutations. The accepted beta fallback keeps unverified old restored state closed | Independent deletion and revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. A clean restart needs a separate procedure. Automatic old-phone recovery is unsupported.                                                            |
 | Restored sessions             | Invalidate every restored legacy, app and Auth session and every Auth refresh token. Cancel pending transfers                                                | Reauthentication was approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations. Do not recreate deleted owners or use an old transfer to recover access. Actual app and Auth recovery still requires evidence.                                               |
@@ -251,8 +308,9 @@ lane.
    ledger canary. They contain no user data and remain under lock until expiry.
    Actual asynchronous deletion is still unobserved. Anthony approved the
    inspector's account-wide R2 read and list authority, including other buckets.
-   That Admin Read Only key is active, expires `2026-11-05T23:06:08Z`, and is
-   stored as `R2_INSPECT_TOKEN` in the protected environment.
+   That Admin Read Only key had the expiry `2026-11-05T23:06:08Z` and was
+   stored as `R2_INSPECT_TOKEN` in the protected environment. The November 3
+   renewal replaced it. See [Credential dates](#credential-dates).
 
 3. Save the exact approved JSON in `BACKUP_POLICY_JSON` and its SHA-256 in
    `BACKUP_POLICY_SHA256`. Both are now stored in the protected environment with
@@ -312,14 +370,14 @@ lane.
    On October 31, an agent tool-output mistake exposed the original parent API
    token. Anthony approved replacing and revoking it. The old parent is revoked,
    and its derived uploader now returns HEAD 401. The replacement,
-   `justgo-staging-backup-parent-rotation-2026-10-31`, keeps the same bucket-only
-   Object Read & Write parent scope and remains local outside CI. It expires
-   `2026-11-05T17:00:00Z`. Its derived uploader permits only PutObject and
-   HeadObject on the two approved staging prefixes and expires
-   `2026-11-05T15:59:59Z`. It stops passing the runner's 20-minute minimum at
-   `2026-11-05T15:39:59Z`. The protected `R2_UPLOAD_*` secrets hold the
-   replacement uploader. The unchanged inspector expires `2026-11-05T23:06:08Z`.
-   The recovery key was not read or exposed and is unchanged.
+   `justgo-staging-backup-parent-rotation-2026-10-31`, kept the same bucket-only
+   Object Read & Write parent scope and stayed local outside CI. It had the expiry
+   `2026-11-05T17:00:00Z`. Its derived uploader permitted only PutObject and
+   HeadObject on the two approved staging prefixes, with the expiry
+   `2026-11-05T15:59:59Z` and the runner cutoff `2026-11-05T15:39:59Z`. The
+   November 3 renewal replaced that uploader and the inspector, whose expiry was
+   `2026-11-05T23:06:08Z`. The recovery key was not read or exposed and is
+   unchanged.
 
    Scope verification passed with synthetic encrypted canaries only. The
    [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#approval-and-acceptance-register)
@@ -327,14 +385,15 @@ lane.
    eligible for expiry November 7, and asynchronous deletion remains unobserved.
    These synthetic scope checks do not establish operational database or ledger
    copies. The handoff separately records the first supervised local copies and
-   the November 2 actual main-workflow manual copies. Schedules are enabled, but
-   their successful execution has not yet been observed. Actual hosted-copy
+   the November 2 actual main-workflow manual copies. [Backup clock](#backup-clock)
+   records the scheduled copies that followed. Actual hosted-copy
    decryption passed November 1, while complete writer-fenced hosted recovery and
    email receipt remain open. The November 1 accepted provider assessment settles
    the earlier contractual-coverage gate. Anthony owns manual renewal. Parent
    revocation invalidates its derived uploader. When the parent expires, renewing
-   the uploader alone is not enough. Renew the inspector before its expiry to
-   observe the November 6 retention canaries.
+   the uploader alone is not enough. The November 3 renewal replaced the
+   uploader and the inspector. [Credential dates](#credential-dates) records
+   what is known about their expiry.
 
 6. Create and verify one Sentry Cron monitor, `justgo-staging-backup-health`, with
    schedule `23 * * * *` in UTC, a check-in margin of 20 minutes, a maximum runtime
@@ -350,8 +409,9 @@ lane.
    This recovery check-in was not another backup. Anthony received the separate
    built-in test-notification email, which proves the basic route. The actual Cron
    short-lived error email was not received. A later real missed run produced the
-   owner-confirmed backup email, and a verified manual copy resolved it. Actual
-   scheduled execution and timeout-specific behavior remain unverified. The
+   owner-confirmed backup email, and a verified manual copy resolved it.
+   Timeout-specific behavior remains unverified. [Backup clock](#backup-clock)
+   records the scheduled runs. The
    existing `JustGO API errors and recovery (email)` alert covers all issues in
    this project and notifies Anthony on new, resolved and regressed issues. No
    duplicate alert was created. An unused initial setup draft with slug
@@ -371,7 +431,8 @@ lane.
    check-ins and actual notification delivery. Configuration alone proves neither.
 
 7. Anthony requested activation, and its configuration prerequisites passed on
-   November 2. `JUSTGO_BACKUPS_ENABLED=approved` is now set. The manual database
+   November 2. `JUSTGO_BACKUPS_ENABLED=approved` stayed set until the November 6
+   pause. The manual database
    run [41500830932](https://github.com/anthonyyoo24/justgo/actions/runs/41500830932)
    passed before ledger run
    [41501504987](https://github.com/anthonyyoo24/justgo/actions/runs/41501504987).
@@ -379,8 +440,9 @@ lane.
    independently HEAD-verified encrypted R2 objects. The ledger run also verified
    recent success of the database-copy job and step, and it reported healthy Cron
    check-ins. Manual dispatch proves that the existing lane works. It does not
-   prove that either scheduled event ran. Observe the hourly and nightly
-   schedules, email receipt, missed-run behavior and actual asynchronous expiry.
+   prove that either scheduled event ran. The clock-dispatched runs that
+   [Backup clock](#backup-clock) records show both running on time. Observe email
+   receipt, missed-run behavior and actual asynchronous expiry.
    Keep their gates open until you have evidence. Do not shorten retention or
    monitoring grace to force a pass.
 
@@ -439,6 +501,18 @@ A rejection caused only by different signing keys or a different issuer does not
 prove revocation. Complete the actual archive and the API and provider acceptance
 with positive controls before reopening. The earlier exact-object decryption
 approval authorizes no later key use, restore or opening of writers.
+
+`scripts/backups/recovery-auth-acceptance.mjs` supplies the closed-target hooks
+for that acceptance. It needs a pinned local Auth v2.197.0 service over HTTPS,
+and it saves and then deletes one local completion and reflection through the
+Node API. Install the session helper described below inside your own
+`beforeReconcile`, after the restore, and then await the acceptance's
+`beforeReconcile`. The helper needs the restored `auth.sessions`.
+`scripts/backups/recovery-target-access.sql` reads object owners, ACLs, RLS flags
+and RLS policies, so you can compare the source and the target. Run both captures
+with an empty `search_path`, because the policy text depends on it. The
+[rollout review](../checks/phase-15-rollout-review.md#coordinated-real-recovery-procedure)
+holds the reviewed procedure. The complete coordinated run is still unverified.
 
 With a separate authorized read-only recovery credential, download the selected
 encrypted snapshot and the newest complete ledger. The upload token cannot GET or
@@ -594,7 +668,7 @@ rules and Supabase's own provider copies each carry separate deletion obligation
 Run the focused tooling regressions:
 
 ```sh
-node --test scripts/backups/backups.test.mjs
+node --test scripts/backups/backups.test.mjs scripts/backups/recovery-auth-acceptance.test.mjs
 ```
 
 To run the complete synthetic encrypted recovery rehearsal, first prepare the
@@ -612,7 +686,14 @@ backup reader. It refuses an existing `justgo_backup` role. It applies the curre
 migration registry, seeds synthetic app and Auth state, and verifies rejection of
 an extra MAINTAIN grant and inherited ownership. It then takes a real encrypted
 `pg_dump`, makes later account and data deletions and revocations, captures the
-encrypted ledger and restores into the second database. Actual `IdentityService`
+encrypted ledger and restores into the second database with the archive's object
+owners. Before the ledger replay, it checks those owners and the runtime grants,
+and it confirms that the restored database holds the synthetic writing that the
+replay must delete. It also requires the same `recovery-target-access.sql`
+output from the source and the target, and checks that a weakened policy, a
+policy granted to PUBLIC and an extra grant each change that output. A failing
+hook must not leak its message to the console or the rejected error. Actual
+`IdentityService`
 calls reject old recovery and session proofs. SQL assertions check missing private
 history and Auth subjects, epochs and tombstones, and repeat replay. Cleanup
 removes its databases, role, temporary key and ciphertext without touching
