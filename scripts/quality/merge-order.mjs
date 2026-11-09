@@ -22,7 +22,6 @@ const listFields = [
   'isDraft',
   'autoMergeRequest',
   'comments',
-  'body',
 ].join(',');
 
 export function openPulls(cwd) {
