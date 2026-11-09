@@ -13,10 +13,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  commands,
   decide,
   mergeTargets,
   numberOf,
+  visibleText,
 } from '../../.claude/hooks/merge-order-guard.mjs';
 import { byPriority } from './merge-order.mjs';
 
@@ -24,82 +24,102 @@ const hook = fileURLToPath(
   new URL('../../.claude/hooks/merge-order-guard.mjs', import.meta.url),
 );
 
-test('the command splitter keeps quoted words and splits commands', () => {
-  assert.deepEqual(
-    commands(
-      `cd x && gh pr merge 5 --subject "a; b" | cat; echo 'gh pr merge 6'`,
-    ),
-    [
-      ['cd', 'x'],
-      ['gh', 'pr', 'merge', '5', '--subject', 'a; b'],
-      ['cat'],
-      ['echo', 'gh pr merge 6'],
-    ],
+const selectors = (command) =>
+  mergeTargets(command).map(({ selector, computed }) =>
+    computed ? `computed:${selector}` : selector,
   );
-});
 
 test('gh pr merge calls are found with their PR selector', () => {
-  assert.deepEqual(mergeTargets('gh pr merge 214 --squash'), [
-    { selector: '214' },
-  ]);
+  assert.deepEqual(selectors('gh pr merge 214 --squash'), ['214']);
   assert.deepEqual(
-    mergeTargets(
+    selectors(
       'gh pr merge --auto --squash --match-head-commit abc123 -t "x y" 12',
     ),
-    [{ selector: '12' }],
+    ['12'],
   );
   assert.deepEqual(
-    mergeTargets(
-      'git fetch && gh pr merge https://github.com/o/r/pull/9 --squash',
-    ),
-    [{ selector: 'https://github.com/o/r/pull/9' }],
+    selectors('git fetch && gh pr merge https://github.com/o/r/pull/9 -s'),
+    ['https://github.com/o/r/pull/9'],
   );
-  assert.deepEqual(mergeTargets('gh pr merge --squash'), [
-    { selector: undefined },
-  ]);
-  assert.deepEqual(mergeTargets('gh pr merge 3 --disable-auto'), []);
-  assert.deepEqual(mergeTargets('gh pr view 3 && git merge main'), []);
-  assert.deepEqual(mergeTargets('git commit -m "run gh pr merge 3 later"'), []);
-  assert.deepEqual(mergeTargets('ls'), []);
+  assert.deepEqual(selectors('gh pr merge --squash'), [undefined]);
+  assert.deepEqual(selectors('gh pr merge --squash; ls'), [undefined]);
+  assert.deepEqual(selectors('gh pr merge 3 --disable-auto'), []);
+  assert.deepEqual(selectors('gh pr view 3 && git merge main'), []);
+  assert.deepEqual(selectors('ls'), []);
 });
 
-test('heredoc bodies, comments and mentions are not merges', () => {
+test('merges inside loops, substitutions, prefixes and other shells are found', () => {
+  for (const [command, expected] of [
+    ['for n in 207; do gh pr merge $n; done', ['computed:$n']],
+    ['for n in 1 2; do gh pr merge "${n}" --squash; done', ['computed:${n}']],
+    ['if true; then gh pr merge 207; fi', ['207']],
+    ['{ gh pr merge 207; }', ['207']],
+    ['env X=y gh pr merge 207', ['207']],
+    ['GH_DEBUG=1 gh pr merge 8 --auto', ['8']],
+    ['command gh pr merge 207', ['207']],
+    ['timeout 60 gh pr merge 207', ['207']],
+    ['/opt/homebrew/bin/gh pr merge 207', ['207']],
+    ["bash -c 'gh pr merge 207 --squash'", ['207']],
+    ['x="$(gh pr merge 207)"', ['207']],
+    ['x=`gh pr merge 207`', ['207']],
+    ['gh pr merge $(gh pr list -q .[0].number)', ['computed:$(gh']],
+    ['git status; gh pr merge 9 && echo done', ['9']],
+    ['gh pr \\\nmerge 207', ['207']],
+    ['gh pr merge \\\n  236 --squash', ['236']],
+    ['gh pr merge 1 && gh pr merge 2', ['1', '2']],
+  ])
+    assert.deepEqual(selectors(command), expected, command);
+});
+
+test('gh -R and URLs name the repository', () => {
+  assert.deepEqual(mergeTargets('gh -R a/b pr merge 207'), [
+    { selector: '207', repo: 'a/b', computed: false },
+  ]);
+  assert.equal(mergeTargets('gh pr merge 5 --repo=c/d')[0].repo, 'c/d');
+  assert.equal(
+    mergeTargets('gh pr merge https://github.com/o/r/pull/9')[0].repo,
+    'o/r',
+  );
+});
+
+test('heredoc bodies, full-line comments and placeholders are not merges', () => {
   const body = [
     "gh pr comment 5 --body-file - <<'EOF'",
-    'Arm it with gh pr merge <n> --auto --squash',
+    'Arm it with gh pr merge 12 --auto --squash',
     'After gh pr merge 214 --squash landed.',
     'EOF',
   ].join('\n');
-  assert.deepEqual(mergeTargets(body), []);
-  assert.deepEqual(mergeTargets('cat <<EOF\ngh pr merge 3\nEOF'), []);
-  assert.deepEqual(mergeTargets('cat <<-"END"\ngh pr merge 3\n\tEND'), []);
-  assert.deepEqual(mergeTargets('# gh pr merge 5'), []);
-  assert.deepEqual(mergeTargets('ls # then gh pr merge 5'), []);
-  assert.deepEqual(mergeTargets('echo gh pr merge 5'), []);
-  assert.deepEqual(
-    mergeTargets('git commit -m "$(cat <<EOF\ngh pr merge 5\nEOF\n)"'),
-    [],
-  );
+  assert.deepEqual(selectors(body), []);
+  for (const command of [
+    'cat <<EOF\ngh pr merge 3\nEOF',
+    'cat <<\\EOF\ngh pr merge 3\nEOF',
+    'cat <<-"END"\ngh pr merge 3\n\tEND',
+    'cat <<A <<B\ngh pr merge 1\nA\ngh pr merge 2\nB',
+    'git commit -m "$(cat <<\'EOF\'\nsay "gh pr merge 5\nEOF\n)"',
+    '# gh pr merge 5',
+    '  # gh pr merge 5',
+    'echo "Arm it with gh pr merge <n> --auto"',
+  ])
+    assert.deepEqual(selectors(command), [], command);
 });
 
-test('a real merge after a heredoc or comment with an apostrophe is found', () => {
-  assert.deepEqual(
-    mergeTargets(
-      "cat > notes <<'EOF'\nDon't forget\nEOF\ngh pr merge 207 --squash",
-    ),
-    [{ selector: '207' }],
-  );
-  assert.deepEqual(
-    mergeTargets("# don't skip this\ngh pr merge 207 --squash"),
-    [{ selector: '207' }],
-  );
-  assert.deepEqual(
-    mergeTargets('cat <<EOF > f\nx\nEOF\nGH_DEBUG=1 gh pr merge 8 --auto'),
-    [{ selector: '8' }],
-  );
-  assert.deepEqual(mergeTargets('git status; gh pr merge 9 && echo done'), [
-    { selector: '9' },
-  ]);
+test('a merge after a heredoc, here-string, arithmetic or open heredoc is found', () => {
+  for (const command of [
+    "cat > notes <<'EOF'\nDon't forget\nEOF\ngh pr merge 207 --squash",
+    "# don't skip this\ngh pr merge 207 --squash",
+    'grep x <<< $foo\ngh pr merge 207',
+    'grep x <<<word; gh pr merge 207',
+    'echo $((1<<2)); gh pr merge 207',
+    'echo $((1 << x))\ngh pr merge 207',
+    'cat <<EOF\nno closing line\ngh pr merge 207',
+    'bash <<EOF\ngh pr merge 207\nEOF',
+  ])
+    assert.deepEqual(selectors(command), ['207'], command);
+});
+
+test('visible text joins continuations and drops only what cannot run', () => {
+  assert.equal(visibleText('a \\\nb'), 'a  b');
+  assert.equal(visibleText('# c\nx\ncat <<E\nbody\nE\ny'), 'x\ncat <<E\ny');
 });
 
 test('PR numbers come from numbers and URLs only', () => {
@@ -284,6 +304,34 @@ test('the hook resolves a branch selector and denies when it breaks an earlier P
 test('the hook allows a merge of a PR that is not open', (t) => {
   const { pull, run } = fixture(t);
   assert.equal(run('gh pr merge 99 --squash', [pull(1, 'first')]), undefined);
+});
+
+test('the hook denies a computed selector before calling gh', (t) => {
+  const { run } = fixture(t);
+  const decision = run('for n in 1 2; do gh pr merge $n --squash; done', [], {
+    FAKE_GH_FAIL: '1',
+  });
+  assert.equal(decision?.permissionDecision, 'deny');
+  assert.match(decision.permissionDecisionReason, /variable or substitution/);
+});
+
+test('the hook leaves another repository to GitHub', (t) => {
+  const { run } = fixture(t);
+  assert.equal(
+    run('gh -R someone/else pr merge 1', [], { FAKE_GH_FAIL: '1' }),
+    undefined,
+  );
+});
+
+test('the hook checks every merge in one command', (t) => {
+  const { pull, run } = fixture(t);
+  const decision = run('gh pr merge 3 && gh pr merge 1 --squash', [
+    pull(1, 'first'),
+    pull(2, 'second', { autoMergeRequest: { mergeMethod: 'SQUASH' } }),
+    pull(3, 'free'),
+  ]);
+  assert.equal(decision?.permissionDecision, 'deny');
+  assert.match(decision.permissionDecisionReason, /merging #1 now/);
 });
 
 test('the hook leaves merges into other branches to GitHub', (t) => {

@@ -10,14 +10,24 @@ import { fileURLToPath } from 'node:url';
 // number, as scripts/quality/merge-order.mjs plans), the hook denies the merge
 // and names the PR and files. Breaking a PR that is behind in the order is
 // allowed: that PR rebases after this one, which is the planned order.
-// A merge into a branch other than main, or one that conflicts with main
-// itself, is left to GitHub.
+// A merge into a branch other than main, of a PR that is not open, of another
+// repository, or one that conflicts with main itself, is left to GitHub.
+//
+// It does not parse shell. It looks for `gh … pr merge` anywhere in the
+// command, so loops, `$(…)`, `bash -c`, prefixes such as `env` and absolute
+// paths count. Only full-line comments and the bodies of heredocs that do not
+// feed a shell are skipped, since those hold prose such as PR bodies. A
+// selector it cannot read, such as `$n`, is denied with a request for a
+// literal number, which also keeps batch merges to one per command. A `<n>`
+// placeholder is not a merge.
+//
 // When gh, git or the network fails, the hook denies with the error, as
 // verifier-model.mjs and session-model-guard.mjs fail closed. The merge needs
 // gh and the network too, so failing closed costs a retry. settings.json sets
 // onFailure "block", so a hook that cannot start, crashes or times out also
-// stops the call. The gh and git calls time out before the hook's own limit,
-// so a slow network ends in a denial that says why.
+// stops the call. The gh and git calls run once per command and time out
+// before the hook's own limit, so a slow network ends in a denial that says
+// why.
 
 const valueFlags = new Set([
   '-R',
@@ -33,94 +43,91 @@ const valueFlags = new Set([
   '--author-email',
 ]);
 
-// Splits a shell command into words per simple command, honoring quotes,
-// `#` comments and heredoc bodies, which hold text, not commands.
-// Good enough to find `gh pr merge` and its arguments, not a shell parser.
-export function commands(line) {
-  const result = [];
-  let words = [];
+const shellWord = /(?:^|[\s;&|(/])(?:ba|z|da|k)?sh(?:\s+-\S+)*\s*$/;
+const heredocStart =
+  /(?<![<\w$)])<<(?!<)(-?)[ \t]*\\?(['"]?)([A-Za-z_][\w.-]*)\2/g;
+
+// The command text with line continuations joined, full-line comments
+// dropped, and the bodies of heredocs that do not feed a shell dropped. A
+// heredoc with no closing line is kept, so nothing after it is lost.
+export function visibleText(command) {
+  const lines = command.replace(/\\\r?\n/g, ' ').split('\n');
+  const kept = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*#/.test(line)) continue;
+    kept.push(line);
+    for (const match of line.matchAll(heredocStart)) {
+      const [, strip, , end] = match;
+      let close = i + 1;
+      while (
+        close < lines.length &&
+        (strip ? lines[close].replace(/^\t+/, '') : lines[close]) !== end
+      )
+        close++;
+      if (close >= lines.length) break;
+      if (shellWord.test(line.slice(0, match.index)))
+        kept.push(...lines.slice(i + 1, close));
+      i = close;
+    }
+  }
+  return kept.join('\n');
+}
+
+// The words of one command, up to the first unquoted separator.
+export function argsOf(text) {
+  const words = [];
   let word = '';
-  let quote;
   let started = false;
-  const heredocs = [];
-  const endWord = () => {
-    if (started) words.push(word);
-    word = '';
-    started = false;
-  };
-  const endCommand = () => {
-    endWord();
-    if (words.length) result.push(words);
-    words = [];
-  };
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+  let quote;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
     if (quote) {
       if (ch === quote) quote = undefined;
-      else if (ch === '\\' && quote === '"' && i + 1 < line.length)
-        word += line[++i];
+      else if (ch === '\\' && quote === '"' && i + 1 < text.length)
+        word += text[++i];
       else word += ch;
       continue;
     }
-    const heredoc =
-      ch === '<' &&
-      line[i + 1] === '<' &&
-      line[i + 2] !== '<' &&
-      /^<<(-?)[ \t]*(['"]?)([^\s'"<>;&|()]+)\2/.exec(line.slice(i));
-    if (heredoc) {
-      endWord();
-      heredocs.push({ strip: heredoc[1] === '-', end: heredoc[3] });
-      i += heredoc[0].length - 1;
-    } else if (ch === '\n') {
-      endCommand();
-      // Skip each pending heredoc body, up to its closing line.
-      for (const { strip, end } of heredocs.splice(0)) {
-        while (i < line.length) {
-          const next = line.indexOf('\n', i + 1);
-          const stop = next < 0 ? line.length : next;
-          const body = line.slice(i + 1, stop);
-          i = stop;
-          if ((strip ? body.replace(/^\t+/, '') : body) === end) break;
-        }
-      }
-    } else if (ch === '#' && !started) {
-      const next = line.indexOf('\n', i);
-      i = (next < 0 ? line.length : next) - 1;
-    } else if (ch === "'" || ch === '"') {
+    if (/[;&|\n)`]/.test(ch)) break;
+    if (ch === "'" || ch === '"') {
       quote = ch;
       started = true;
-    } else if (ch === '\\' && i + 1 < line.length) {
-      word += line[++i];
-      started = true;
-    } else if (/[;&|()]/.test(ch)) endCommand();
-    else if (/\s/.test(ch)) endWord();
-    else {
-      word += ch;
+    } else if (/\s/.test(ch)) {
+      if (started) words.push(word);
+      word = '';
+      started = false;
+    } else {
+      if (ch === '\\' && i + 1 < text.length) word += text[++i];
+      else word += ch;
       started = true;
     }
   }
-  endCommand();
-  return result;
+  if (started) words.push(word);
+  return words;
 }
 
-// Each `gh pr merge` that starts a command (after any VAR=value words), with
-// its PR selector (number, URL or branch; undefined means the current
-// branch's PR). --disable-auto merges nothing, so it is skipped.
-export function mergeTargets(line) {
-  if (!/\bgh\b/.test(line) || !/\bmerge\b/.test(line)) return [];
+const ghMerge =
+  /(?:^|[\s;&|(){}`'"=/])gh(?:\s+(?:-R|--repo)(?:\s+|=)(\S+))?\s+pr\s+merge(?=$|[\s;&|)`'"])/g;
+
+// Each `gh pr merge` in the command: its selector (number, URL or branch;
+// undefined means the current branch's PR), any repository it names, and
+// whether the selector is computed (`$n`, `$(…)`) and so cannot be checked.
+// --disable-auto merges nothing, so it is skipped, and so is a `<n>`
+// placeholder.
+export function mergeTargets(command) {
+  if (!/\bgh\b/.test(command) || !/\bmerge\b/.test(command)) return [];
+  const text = visibleText(command);
   const targets = [];
-  for (const words of commands(line)) {
-    let at = 0;
-    while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[at] ?? '')) at++;
-    if (
-      words[at] !== 'gh' ||
-      words[at + 1] !== 'pr' ||
-      words[at + 2] !== 'merge'
-    )
-      continue;
-    const args = words.slice(at + 3);
+  for (const match of text.matchAll(ghMerge)) {
+    const args = argsOf(text.slice(match.index + match[0].length));
     if (args.includes('--disable-auto')) continue;
     let selector;
+    let repo = match[1];
+    args.forEach((arg, i) => {
+      if (arg === '-R' || arg === '--repo') repo = args[i + 1];
+      else if (arg.startsWith('--repo=')) repo = arg.slice(7);
+    });
     for (let i = 0; i < args.length; i++) {
       if (valueFlags.has(args[i])) i++;
       else if (!args[i].startsWith('-')) {
@@ -128,7 +135,12 @@ export function mergeTargets(line) {
         break;
       }
     }
-    targets.push({ selector });
+    if (selector?.startsWith('<')) continue;
+    const computed = /[$`]/.test(selector ?? '');
+    repo ??= /github\.com\/([^/\s]+\/[^/\s]+)\/pull\//.exec(
+      selector ?? '',
+    )?.[1];
+    targets.push({ selector, repo, computed });
   }
   return targets;
 }
@@ -203,34 +215,72 @@ export function output(decision) {
   };
 }
 
-async function check(selector, cwd) {
+function deny(reason) {
+  return { permissionDecision: 'deny', reason };
+}
+
+function sameRepo(repo, cwd) {
+  const origin = execFileSync('git', ['remote', 'get-url', 'origin'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  const name = (value) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/\.git$/, '')
+      .replace(/^.*github\.com[:/]/, '');
+  return name(origin) === name(repo);
+}
+
+export async function check(targets, cwd) {
+  const computed = targets.find((target) => target.computed);
+  if (computed)
+    return deny(
+      `merge-order-guard: \`gh pr merge ${computed.selector}\` names its PR through a variable or substitution, which the guard cannot check. ` +
+        'Merge one PR per command with its number written out, in the order `node scripts/quality/merge-order.mjs` gives.',
+    );
+  const here = targets.filter(
+    (target) => !target.repo || sameRepo(target.repo, cwd),
+  );
+  if (!here.length) return undefined;
   const order = await import('../../scripts/quality/merge-order.mjs');
   const git = await import('../../scripts/quality/git.mjs');
-  const number =
-    numberOf(selector) ??
-    JSON.parse(
-      execFileSync(
-        'gh',
-        ['pr', 'view', ...(selector ? [selector] : []), '--json', 'number'],
-        { cwd, encoding: 'utf8', timeout: 10000 },
-      ),
-    ).number;
-  if (!number) throw new Error(`cannot resolve the PR for ${selector}`);
+  const numbers = here.map(
+    ({ selector }) =>
+      numberOf(selector) ??
+      JSON.parse(
+        execFileSync(
+          'gh',
+          ['pr', 'view', ...(selector ? [selector] : []), '--json', 'number'],
+          { cwd, encoding: 'utf8', timeout: 10000 },
+        ),
+      ).number,
+  );
   const pulls = order.openPulls(cwd);
-  const pull = pulls.find((candidate) => candidate.number === number);
-  // gh refuses a PR that is not open, so there is nothing to order.
-  if (!pull) return undefined;
-  if (pull.baseRefName !== 'main') return undefined;
-  const onMain = pulls.filter((other) => other.baseRefName === 'main');
+  const onMain = pulls.filter((pull) => pull.baseRefName === 'main');
+  // gh refuses a PR that is not open, and a merge into another branch does
+  // not change main, so neither has an order to keep.
+  const merging = numbers.filter((number) =>
+    onMain.some((pull) => pull.number === number),
+  );
+  if (!merging.length) return undefined;
   const main = order.fetchHeads(
-    onMain.map((other) => other.headRefOid),
+    onMain.map((pull) => pull.headRefOid),
     cwd,
   );
-  const prs = onMain.map((other) => order.describe(other, []));
-  const target = prs.find((pr) => pr.number === number);
-  const others = prs.filter((pr) => pr.number !== number);
-  const breaks = findBreaks({ main, target, others, cwd, git });
-  return decide(target, breaks, order.byPriority);
+  const prs = onMain.map((pull) => order.describe(pull, []));
+  for (const number of merging) {
+    const target = prs.find((pr) => pr.number === number);
+    const others = prs.filter((pr) => pr.number !== number);
+    const decision = decide(
+      target,
+      findBreaks({ main, target, others, cwd, git }),
+      order.byPriority,
+    );
+    if (decision) return decision;
+  }
+  return undefined;
 }
 
 async function main() {
@@ -238,21 +288,15 @@ async function main() {
   if (event.tool_name !== 'Bash') return;
   const targets = mergeTargets(event.tool_input?.command ?? '');
   if (!targets.length) return;
-  const cwd = event.cwd ?? process.cwd();
   let decision;
-  for (const { selector } of targets) {
-    try {
-      decision = await check(selector, cwd);
-    } catch (error) {
-      const message = String(error?.stderr || error?.message || error).trim();
-      decision = {
-        permissionDecision: 'deny',
-        reason:
-          `merge-order-guard could not check the merge order (${message}). ` +
-          'Retry once gh and the network work. Anthony can merge in GitHub himself.',
-      };
-    }
-    if (decision) break;
+  try {
+    decision = await check(targets, event.cwd ?? process.cwd());
+  } catch (error) {
+    const message = String(error?.stderr || error?.message || error).trim();
+    decision = deny(
+      `merge-order-guard could not check the merge order (${message}). ` +
+        'Retry once gh and the network work. Anthony can merge in GitHub himself.',
+    );
   }
   const result = output(decision);
   if (result) process.stdout.write(JSON.stringify(result));
