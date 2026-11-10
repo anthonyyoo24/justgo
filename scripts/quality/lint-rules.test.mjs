@@ -216,15 +216,23 @@ const cases = [
 
 // The typed rules' project service lints only files on disk, and no source
 // file uses .mts or .cts yet. Empty placeholders let lintText supply the code.
+// A placeholder that already exists stops the run, and the ones made before it
+// are removed here, because after() never runs when this file throws on load.
 const placeholders = [];
-after(() => {
-  for (const file of placeholders) rmSync(file);
-});
-for (const filePath of new Set(cases.map(([, , filePath]) => filePath))) {
-  if (!/\.[mc]ts$/.test(filePath ?? '')) continue;
-  const file = path.join(root, filePath);
-  writeFileSync(file, '', { flag: 'wx' });
-  placeholders.push(file);
+const removePlaceholders = () => {
+  for (const file of placeholders.splice(0)) rmSync(file, { force: true });
+};
+after(removePlaceholders);
+try {
+  for (const filePath of new Set(cases.map(([, , filePath]) => filePath))) {
+    if (!/\.[mc]ts$/.test(filePath ?? '')) continue;
+    const file = path.join(root, filePath);
+    writeFileSync(file, '', { flag: 'wx' });
+    placeholders.push(file);
+  }
+} catch (error) {
+  removePlaceholders();
+  throw error;
 }
 
 for (const [rule, source, filePath = production, severity = 2] of cases) {
