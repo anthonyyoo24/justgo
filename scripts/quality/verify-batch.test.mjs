@@ -56,6 +56,29 @@ test('a PR needs a verdict until a PASS covers its head', () => {
     ),
     false,
   );
+  // While the check runs after a merge from main, the PR waits for it.
+  const older = { comments: [verdict('PASS', 'c'.repeat(40))] };
+  assert.equal(
+    needsVerdict(
+      pull(1, [['a.ts', 1]], {
+        ...older,
+        statusCheckRollup: [{ name: 'verdict', status: 'IN_PROGRESS' }],
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    needsVerdict(
+      pull(1, [['a.ts', 1]], {
+        ...older,
+        statusCheckRollup: [
+          { name: 'verdict', status: 'COMPLETED', conclusion: 'FAILURE' },
+        ],
+      }),
+    ),
+    true,
+  );
+  assert.equal(needsVerdict(pull(1, [['a.ts', 1]], older)), true);
 });
 
 test('drafts, sensitive paths, boundary files and large PRs keep their own verifier', () => {
@@ -72,8 +95,15 @@ test('drafts, sensitive paths, boundary files and large PRs keep their own verif
     'package-lock.json',
     '.claude/hooks/x.mjs',
     '.claude/settings.json',
+    '.claude/skills/verify-justgo/SKILL.md',
+    'eslint.config.mjs',
+    'scripts/quality/verdict-patch.mjs',
   ])
     assert.match(exclusion(pull(1, [[path, 1]])), /^boundary file/, path);
+  assert.equal(
+    exclusion(pull(1, [['scripts/quality/verdict-patch.test.mjs', 1]])),
+    undefined,
+  );
   assert.match(exclusion(pull(1, [['a.ts', 100, 51]])), /151 changed lines/);
 });
 
