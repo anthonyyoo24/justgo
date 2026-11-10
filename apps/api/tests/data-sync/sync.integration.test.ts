@@ -883,6 +883,33 @@ describe('signed-in immutable journal versions and deletion', () => {
         .dataEpoch,
     ).toBe(2);
   });
+  it('rejects a user id change that would let a childless account return at data epoch 0 (#220), from the API role or a migration', async () => {
+    const old = randomUUID(),
+      next = randomUUID();
+    await withOwner(db.db, old, (tx) =>
+      tx.execute(
+        sql`insert into justgo.users (id,data_epoch) values (${old},3)`,
+      ),
+    );
+    await expect(
+      withOwner(db.db, old, (tx) =>
+        tx.execute(
+          sql`update justgo.users set id=set_config('app.user_id',${next},true)::uuid where id=${old}`,
+        ),
+      ),
+    ).rejects.toMatchObject({ cause: { code: '23514' } });
+    await expect(
+      admin.query('update justgo.users set id=$2 where id=$1', [old, next]),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(
+      (
+        await admin.query(
+          'select id,data_epoch from justgo.users where id = any($1)',
+          [[old, next]],
+        )
+      ).rows,
+    ).toEqual([{ id: old, data_epoch: 3 }]);
+  });
   it('synchronizes journal-only historical writing without fabricating completion counts, including explicit restore after deletion', async () => {
     const a = await signIn(),
       context = await completion(),
