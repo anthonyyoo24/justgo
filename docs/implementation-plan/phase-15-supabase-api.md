@@ -64,7 +64,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 - [ ] Resolve the forge once. Use `gh` unless `command -v origin` succeeds and Origin resolves the repository. Record any fallback to `gh`. Never require `gt`.
 - [ ] Open the PR ready, never draft, per **Opening a PR**. Run `gh pr create --base <base-branch>`. A stack child targets its parent branch.
-- [ ] Run the checks that the [check matrix](../../AGENTS.md#choosing-checks) names for the touched paths once before the PR-facing push. Run one heavy check at a time on the 8 GB Mac. Push with hooks on.
+- [ ] Run the checks that the [check matrix](../../AGENTS.md#choosing-checks) names for the touched paths once before the PR-facing push. Push with hooks on.
 - [ ] Run `/deslop` before each commit when `cursor-team-kit` is installed, and run `/no-comments` before review.
 - [ ] Triage every bot and security-review comment per pstack's `references/bugbot-triage.md`.
 - [ ] P15-3, P15-4, P15-5, P15-6, P15-7, P15-8 and P15-11 each touch an Agent-effort path, so each stops at merge-ready for Anthony.
@@ -79,7 +79,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 ### Boot recipe, for every live lane
 
-Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes run one at a time against one local stack. Edge runtime lanes run in GitHub Actions, as Anthony decided on November 6, 2026.
+Each live lane runs at the PR head in its own worktree. Lanes run one at a time against one local stack. Edge runtime lanes run in GitHub Actions, as Anthony decided on November 6, 2026.
 
 - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
 - [ ] Start the database with `npm run db:local`, then run `npm run db:migrate`.
@@ -860,7 +860,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 | A Git-connected Vercel project deploys on merge                               | P15-3         | Anthony confirms Git deployments are off before merge.                                        |
 | The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                                             |
 | Installed builds keep their embedded API URL                                  | P15-11        | Build 5 keeps Vercel until the new build passes.                                              |
-| Edge runtime lanes cannot run on the 8 GB Mac                                 | P15-1, P15-6  | They run in CI. One heavy local check at a time.                                              |
+| Edge runtime lanes cannot run on the 8 GB Mac                                 | P15-1, P15-6  | They run in CI.                                                                               |
 
 ## Appendix D. Links and reading list
 
