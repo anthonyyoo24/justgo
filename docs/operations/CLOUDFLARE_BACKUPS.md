@@ -509,9 +509,9 @@ Node API. Install the session helper described below inside your own
 `beforeReconcile`, after the restore, and then await the acceptance's
 `beforeReconcile`. The helper needs the restored `auth.sessions`.
 `scripts/backups/recovery-target-access.sql` reads object owners, ACLs, RLS flags,
-RLS policies and `justgo` triggers, so you can compare the source and the target.
-Run both captures with an empty `search_path`, because the policy text depends on
-it. The
+RLS policies and `justgo` trigger definitions and states, so you can compare the
+source and the target. Run both captures with an empty `search_path`, because the
+policy and trigger text depend on it. The
 [rollout review](../checks/phase-15-rollout-review.md#coordinated-real-recovery-procedure)
 holds the reviewed procedure. The complete coordinated run is still unverified.
 
@@ -692,8 +692,9 @@ owners. Before the ledger replay, it checks those owners and the runtime grants,
 and it confirms that the restored database holds the synthetic writing that the
 replay must delete. It also requires the same `recovery-target-access.sql`
 output from the source and the target, and checks that a weakened policy, a
-policy granted to PUBLIC, an extra grant, and a dropped or disabled
-`data_epoch_never_decreases` trigger each change that output. A failing
+policy granted to PUBLIC, an extra grant, and a dropped, disabled or
+`when (false)` replacement of the `data_epoch_never_decreases` trigger each change
+that output. A failing
 hook must not leak its message to the console or the rejected error. Actual
 `IdentityService`
 calls reject old recovery and session proofs. SQL assertions check missing private
