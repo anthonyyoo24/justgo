@@ -82,6 +82,19 @@ const cases = [
     'no-restricted-imports',
     "import { getRandomValues } from 'expo-crypto'; export const secret = getRandomValues(new Uint8Array(16));",
   ],
+  // #241: the global crypto object skips randomSecretHex().
+  [
+    'no-restricted-globals',
+    'export const secret = () => crypto.getRandomValues(new Uint8Array(32));',
+  ],
+  [
+    'no-restricted-globals',
+    'const { getRandomValues } = crypto; export const secret = () => getRandomValues(new Uint8Array(32));',
+  ],
+  ...['globalThis', 'global', 'window', 'self'].map((object) => [
+    'no-restricted-properties',
+    `export const secret = () => ${object}.crypto.getRandomValues(new Uint8Array(32));`,
+  ]),
   [
     'no-restricted-syntax',
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",

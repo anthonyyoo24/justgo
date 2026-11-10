@@ -70,6 +70,13 @@ function boundaryMessage(filename, specifier, kind) {
   )
     return 'Store managed sessions with createAuthStorage() from apps/mobile/src/platform/auth/auth-storage.ts, which keeps them in their own WHEN_UNLOCKED_THIS_DEVICE_ONLY keychain service.';
   if (
+    under(file, 'apps/mobile') &&
+    under(target, 'expo-crypto') &&
+    kind !== 'ImportDeclaration' &&
+    !testSource
+  )
+    return 'Import expo-crypto statically where you use it, so no-restricted-imports can see which functions you read. Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts.';
+  if (
     mobileSource &&
     under(mobileTarget, 'apps/mobile/src/dev') &&
     !under(file, 'apps/mobile/src/dev') &&

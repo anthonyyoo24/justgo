@@ -352,6 +352,27 @@ const cases = [
     source: "import * as SecureStore from 'expo-secure-store';",
     restricted: false,
   },
+  // #241: no-restricted-imports cannot see the names a runtime load reads.
+  {
+    name: 'mobile code loads expo-crypto only with a static import',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: "import { randomUUID } from 'expo-crypto';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'the secret generator loads expo-crypto only with a static import',
+    file: 'apps/mobile/src/app-support/identity/random-secret.ts',
+    source: "import { getRandomValues } from 'expo-crypto';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'mobile tests may load expo-crypto at runtime',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.test.ts',
+    source: "import { randomUUID } from 'expo-crypto';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {
