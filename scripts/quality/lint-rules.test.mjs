@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { ESLint } from 'eslint';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -9,7 +10,7 @@ const eslint = new ESLint({ cwd: root });
 const production = 'apps/mobile/src/components/PrimaryButton.tsx';
 const tests = 'apps/mobile/src/components/PrimaryButton.test.tsx';
 
-for (const [rule, source, filePath = production, severity = 2] of [
+const cases = [
   [
     '@typescript-eslint/switch-exhaustiveness-check',
     "export function choose(value: 'a' | 'b') { switch (value) { case 'a': return 1; } }",
@@ -211,7 +212,22 @@ for (const [rule, source, filePath = production, severity = 2] of [
     source,
     'apps/api/src/data-sync/journal.ts',
   ]),
-]) {
+];
+
+// The typed rules' project service lints only files on disk, and no source
+// file uses .mts or .cts yet. Empty placeholders let lintText supply the code.
+const placeholders = [];
+after(() => {
+  for (const file of placeholders) rmSync(file);
+});
+for (const filePath of new Set(cases.map(([, , filePath]) => filePath))) {
+  if (!/\.[mc]ts$/.test(filePath ?? '')) continue;
+  const file = path.join(root, filePath);
+  writeFileSync(file, '', { flag: 'wx' });
+  placeholders.push(file);
+}
+
+for (const [rule, source, filePath = production, severity = 2] of cases) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
       filePath: path.join(root, filePath),
