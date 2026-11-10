@@ -82,7 +82,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes run one at a time against one local stack. Edge runtime lanes run in GitHub Actions, as Anthony decided on November 6, 2026.
 
 - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
-- [ ] Start the database with `LC_ALL=en_US.UTF-8 npm run db:local`, then run `npm run db:migrate`.
+- [ ] Start the database with `npm run db:local`, then run `npm run db:migrate`.
 - [ ] For an app lane, run `.claude/skills/verify-justgo/bin/verify serve`, then wait for `.claude/skills/verify-justgo/bin/verify doctor` to report `"state": "serving"`. For a function lane, start the bundle on the Edge runtime (the P15-1 trial script, or `npm run test:edge -- --serve` after P15-6) and wait for `/ready` to return 200.
 - [ ] Deliver input only through `curl`, the `verify-justgo` drives or the built-in browser pane. The read-only diagnostics are `verify doctor`, `/health`, `/ready` and SQL readback through `npm run test:db:file -w @justgo/api`.
 - [ ] Run a hosted lane only after Anthony's go for that PR. Never send a fixture proof to a hosted API.

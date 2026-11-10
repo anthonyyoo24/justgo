@@ -8,9 +8,13 @@ import pg from 'pg';
 const folder = resolve('.local');
 const data = resolve(folder, 'postgres');
 const bin = process.env.JUSTGO_PG_BIN ?? '/opt/homebrew/opt/postgresql@17/bin';
+// PostgreSQL 17 on macOS refuses to start from a shell with no locale
+// ("postmaster became multithreaded during startup"), so default one.
+const pgEnv = { ...process.env, LC_ALL: process.env.LC_ALL || 'en_US.UTF-8' };
 const run = (command, args) =>
   execFileSync(resolve(bin, command), args, {
     encoding: 'utf8',
+    env: pgEnv,
     stdio: 'pipe',
   });
 mkdirSync(folder, { recursive: true, mode: 0o700 });
