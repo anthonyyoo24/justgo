@@ -1,5 +1,5 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { openSync, readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
@@ -19,10 +19,19 @@ const sourceSha = (process.env.GITHUB_SHA ?? '').match(/^[a-f0-9]{40}$/)
   ? process.env.GITHUB_SHA!
   : 'f'.repeat(40);
 const runUrl = process.env.GITHUB_RUN_ID
-  ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+  ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}/attempts/${process.env.GITHUB_RUN_ATTEMPT ?? '1'}`
   : 'local';
-const rounds = Number(process.env.EDGE_TRIAL_ROUNDS ?? '20');
-const warmupRounds = 5;
+const rounds = Number(process.env.EDGE_TRIAL_ROUNDS ?? '300');
+if (!Number.isInteger(rounds) || rounds < 100 || rounds % 2)
+  throw new Error('EDGE_TRIAL_ROUNDS must be an even integer of at least 100');
+const warmupRounds = 10;
+const warmupSmallRequests = 300;
+const controlRounds = 100;
+const profiledRounds = 20;
+const profiledWarmupRounds = 5;
+const seed = process.env.EDGE_TRIAL_SEED
+  ? Number(process.env.EDGE_TRIAL_SEED) >>> 0
+  : randomInt(2 ** 32);
 
 function required(name: string) {
   const value = process.env[name];
@@ -1566,21 +1575,8 @@ async function cpuLimitProbe(kind: BundleKind) {
   return results;
 }
 
-type Sample = {
-  pass: 'plain' | 'profiled';
-  entry: 'node' | 'edge';
-  round: number;
-  route: Route;
-  status: number;
-  wallMs: number;
-  processCpuMs?: number;
-  threadCpuMs?: Record<string, number>;
-  isolateCpuMs?: number;
-  profileCpuMs?: number;
-  profileJsMs?: number;
-  profileIdleMs?: number;
-  queries?: number;
-};
+type Runtime = 'node' | 'edge';
+const runtimes: Runtime[] = ['node', 'edge'];
 type Route = 'health' | 'guest catalog' | 'attempt write' | 'worst sync';
 const routes: Route[] = [
   'health',
@@ -1588,27 +1584,125 @@ const routes: Route[] = [
   'attempt write',
   'worst sync',
 ];
+const smallRouteNames: Route[] = ['health', 'guest catalog', 'attempt write'];
+type Pass = 'control' | 'timed' | 'profiled';
+type Sample = {
+  pass: Pass;
+  entry: Runtime;
+  round: number;
+  first: Runtime;
+  position: number;
+  route: Route;
+  previousRoute: Route | 'setup';
+  afterOtherEntry: boolean;
+  gapMs: number;
+  status: number;
+  wallMs: number;
+  queries: number;
+  processCpuMs: number;
+  threadCpuMs: Record<string, number>;
+  gapThreadCpuMs?: Record<string, number>;
+  isolateCpuMs?: number;
+  helperCpuMs?: number;
+  gapIsolateCpuMs?: number;
+  gapHelperCpuMs?: number;
+  profileCpuMs?: number;
+  profileJsMs?: number;
+  profileGcMs?: number;
+  profileIdleMs?: number;
+};
+
+/**
+ * In run 42379458521 Edge health requests split into helper-thread CPU of at
+ * most 0.38 ms (13 of 20), 9.0 ms (one, with no worker-thread cost) and 14.5 to
+ * 20.4 ms (the six slow ones). 2 ms is about five times the quiet ceiling and
+ * seven times below the slow group.
+ */
+const pauseThresholdMs = 2;
+const helperThresholdsMs = [1, 2, 5, 10];
+/** V8's platform worker threads: `V8Worker` on Node, `V8 DefaultWorke` on Edge. */
+const isHelperThread = (comm: string | undefined) =>
+  comm?.startsWith('V8') ?? false;
+
+function mulberry32(start: number) {
+  let state = start >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let mixed = state;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(items: readonly T[], random: () => number) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index--) {
+    const other = Math.floor(random() * (index + 1));
+    [copy[index], copy[other]] = [copy[other]!, copy[index]!];
+  }
+  return copy;
+}
+
+type Round = { round: number; first: Runtime; order: Route[] };
+
+/** Each entry goes first in exactly half the rounds, and both run a round's routes in the same order. */
+function schedule(
+  count: number,
+  among: readonly Route[],
+  random: () => number,
+) {
+  const firsts = shuffled(
+    Array.from({ length: count }, (_, index) => runtimes[index % 2]!),
+    random,
+  );
+  return firsts.map((first, index): Round => ({
+    round: index + 1,
+    first,
+    order: shuffled(among, random),
+  }));
+}
+
+function perfPlans() {
+  const random = mulberry32(seed);
+  return {
+    control: schedule(controlRounds, smallRouteNames, random),
+    warmup: schedule(warmupRounds, routes, random),
+    timed: schedule(rounds, routes, random),
+    profiledWarmup: schedule(profiledWarmupRounds, routes, random),
+    profiled: schedule(profiledRounds, routes, random),
+  };
+}
+type Plans = ReturnType<typeof perfPlans>;
+
 type Threads = Map<string, { comm: string; ns: number }>;
+const cpuReaders: Record<string, 'proc' | 'sudo'> = {};
 
 async function threadCpu(pid: number): Promise<Threads> {
   const threads: Threads = new Map();
   try {
-    for (const tid of await readdir(`/proc/${pid}/task`)) {
-      const stat = await readFile(
-        `/proc/${pid}/task/${tid}/schedstat`,
-        'utf8',
-      ).catch(() => '');
-      const comm = await readFile(
-        `/proc/${pid}/task/${tid}/comm`,
-        'utf8',
-      ).catch(() => '?');
-      if (stat)
+    await Promise.all(
+      (await readdir(`/proc/${pid}/task`)).map(async (tid) => {
+        const stat = await readFile(
+          `/proc/${pid}/task/${tid}/schedstat`,
+          'utf8',
+        ).catch(() => '');
+        if (!stat) return;
+        const comm = await readFile(
+          `/proc/${pid}/task/${tid}/comm`,
+          'utf8',
+        ).catch(() => '?');
         threads.set(tid, { comm: comm.trim(), ns: Number(stat.split(' ')[0]) });
+      }),
+    );
+    if (threads.size) {
+      cpuReaders[pid] = 'proc';
+      return threads;
     }
-    if (threads.size) return threads;
   } catch {
     /* fall back to sudo below */
   }
+  threads.clear();
   const { stdout } = await run('sudo', [
     '-n',
     'sh',
@@ -1619,6 +1713,7 @@ async function threadCpu(pid: number): Promise<Threads> {
     const [tid, comm, ns] = line.split('\t');
     if (tid) threads.set(tid, { comm: comm ?? '?', ns: Number(ns) });
   }
+  cpuReaders[pid] = 'sudo';
   return threads;
 }
 
@@ -1635,7 +1730,7 @@ function edgeSyncCpuByThread(samples: Sample[]) {
   const totals: Record<string, number> = {};
   for (const sample of samples)
     if (sample.entry === 'edge' && sample.route === 'worst sync')
-      for (const [tid, ms] of Object.entries(sample.threadCpuMs ?? {}))
+      for (const [tid, ms] of Object.entries(sample.threadCpuMs))
         totals[tid] = (totals[tid] ?? 0) + ms;
   return totals;
 }
@@ -1722,258 +1817,449 @@ function profileCpu(profile: CpuProfile) {
   let total = 0;
   let idle = 0;
   let program = 0;
+  let gc = 0;
   (profile.samples ?? []).forEach((id, index) => {
     const delta = profile.timeDeltas?.[index] ?? 0;
     total += delta;
     const name = names.get(id);
     if (name === '(idle)') idle += delta;
     else if (name === '(program)') program += delta;
+    else if (name === '(garbage collector)') gc += delta;
   });
   return {
     profileCpuMs: (total - idle) / 1000,
     profileJsMs: (total - idle - program) / 1000,
+    profileGcMs: gc / 1000,
     profileIdleMs: idle / 1000,
   };
 }
 
-async function perfProbe(
-  kind: BundleKind,
-  nodeManaged: Entry,
-  nodeInspectPort: number,
-) {
-  const container = await startEdge(
-    'edge-trial-perf',
-    9200,
-    'per_worker',
-    [
-      {
-        name: 'perf',
-        functionDir: functionDir(kind),
-        importMap: importMap(kind),
-        env: managedEdgeEnv(),
-        ...noLimits,
-      },
-    ],
-    9229,
-  );
-  const edge: Entry = {
-    name: 'edge-perf',
-    origin: container.origin,
-    prefix: '/api',
-    headers: { 'x-edge-trial-variant': 'perf' },
-    pid: container.pid,
+/** Versions per attempt stay at or under 1,300, inside the 2,300 the first trial reached. */
+const syncsPerFixture = 25;
+type SyncFixture = Awaited<ReturnType<typeof seedParents>>;
+type Rig = {
+  entries: Record<Runtime, Entry>;
+  users: Record<Runtime, ManagedUser>;
+  fixtures: Record<Runtime, SyncFixture[]>;
+  syncs: Record<Runtime, number>;
+  last: Record<
+    Runtime,
+    { route: Route | 'setup'; endedAt: number; after?: Threads }
+  >;
+  lastServed?: Runtime;
+  inspectors?: Record<Runtime, Inspector>;
+  threadNames: Record<Runtime, Record<string, string>>;
+  samples: Sample[];
+};
+
+async function makeRig(node: Entry, edge: Entry): Promise<Rig> {
+  const users = {
+    node: await managedUser(node),
+    edge: await managedUser(edge),
   };
+  const started = performance.now();
+  return {
+    entries: { node, edge },
+    users,
+    fixtures: { node: [], edge: [] },
+    syncs: { node: 0, edge: 0 },
+    last: {
+      node: { route: 'setup', endedAt: started },
+      edge: { route: 'setup', endedAt: started },
+    },
+    threadNames: { node: {}, edge: {} },
+    samples: [],
+  };
+}
+
+async function addFixtures(rig: Rig, syncsPerEntry: number) {
+  for (const which of runtimes)
+    for (let index = 0; index < syncsPerEntry; index += syncsPerFixture)
+      rig.fixtures[which].push(
+        await seedParents(rig.entries[which], rig.users[which]),
+      );
+}
+
+/** Builds the request before any clock is read, so the 4 MiB body costs the harness and not the window. */
+function prepare(rig: Rig, which: Runtime, route: Route) {
+  const entry = rig.entries[which];
+  const user = rig.users[which];
+  switch (route) {
+    case 'health':
+      return () => call(entry, 'GET', '/health');
+    case 'guest catalog':
+      return () => call(entry, 'GET', '/v1/guest/challenges');
+    case 'attempt write': {
+      const body = attemptInput(user, new Date(Date.now() - 60_000));
+      return () =>
+        call(entry, 'POST', '/v1/attempts', { token: user.token, body });
+    }
+    case 'worst sync': {
+      const fixture =
+        rig.fixtures[which][Math.floor(rig.syncs[which]++ / syncsPerFixture)];
+      if (!fixture) throw new Error(`no sync fixture left for ${which}`);
+      const { raw } = worstBatch(user, fixture.attemptId, fixture.parents);
+      return () =>
+        call(entry, 'POST', '/v1/journal-sync', {
+          token: user.token,
+          raw,
+          timeoutMs: 120_000,
+        });
+    }
+  }
+}
+
+async function untimed(rig: Rig, which: Runtime, route: Route) {
+  const reply = await prepare(rig, which, route)();
+  if (reply.status !== 200 && reply.status !== 201)
+    throw new Error(
+      `${which} warm-up ${route} returned ${reply.status} ${reply.text.slice(0, 200)}`,
+    );
+  rig.last[which] = { route, endedAt: performance.now() };
+  rig.lastServed = which;
+}
+
+const turnOrder = (first: Runtime) =>
+  first === 'node' ? runtimes : [...runtimes].reverse();
+
+async function warmUp(rig: Rig, plan: Round[]) {
+  for (const slot of plan)
+    for (const which of turnOrder(slot.first))
+      for (const route of slot.order) await untimed(rig, which, route);
+}
+
+async function measure(
+  rig: Rig,
+  pass: Pass,
+  slot: Round,
+  position: number,
+  which: Runtime,
+  route: Route,
+  profileDir?: string,
+) {
+  const pid = rig.entries[which].pid!;
+  const previous = rig.last[which];
+  const afterOtherEntry =
+    rig.lastServed !== undefined && rig.lastServed !== which;
+  const request = prepare(rig, which, route);
+  const inspector = pass === 'profiled' ? rig.inspectors?.[which] : undefined;
+  if (inspector) await inspector.send('Profiler.start');
+  const before = await threadCpu(pid);
+  const startedAt = performance.now();
+  const reply = await request();
+  const after = await threadCpu(pid);
+  const profile = inspector
+    ? ((await inspector.send('Profiler.stop')) as { profile: CpuProfile })
+        .profile
+    : undefined;
+  for (const [tid, item] of after) rig.threadNames[which][tid] = item.comm;
+  const delta = threadDelta(before, after);
+  const sample: Sample = {
+    pass,
+    entry: which,
+    round: slot.round,
+    first: slot.first,
+    position,
+    route,
+    previousRoute: previous.route,
+    afterOtherEntry,
+    gapMs: startedAt - previous.endedAt,
+    status: reply.status,
+    wallMs: reply.wallMs,
+    queries: Number(reply.headers['x-justgo-trial-queries'] ?? 'NaN'),
+    processCpuMs: Object.values(delta).reduce((sum, ms) => sum + ms, 0),
+    threadCpuMs: delta,
+    ...(previous.after
+      ? { gapThreadCpuMs: threadDelta(previous.after, before) }
+      : {}),
+    ...(profile ? profileCpu(profile) : {}),
+  };
+  rig.samples.push(sample);
+  rig.last[which] = { route, endedAt: performance.now(), after };
+  rig.lastServed = which;
+  if (profile && profileDir)
+    await writeFile(
+      resolve(
+        profileDir,
+        `${which}-${route.replaceAll(' ', '-')}-round${String(slot.round).padStart(2, '0')}.cpuprofile`,
+      ),
+      JSON.stringify(profile),
+    );
+}
+
+async function runPass(
+  rig: Rig,
+  pass: Pass,
+  plan: Round[],
+  profileDir?: string,
+) {
+  for (const slot of plan) {
+    for (const which of turnOrder(slot.first)) {
+      let position = 0;
+      for (const route of slot.order)
+        await measure(rig, pass, slot, ++position, which, route, profileDir);
+    }
+    if (slot.round % 20 === 0 || slot.round === plan.length)
+      console.info(`perf ${pass} round ${slot.round} of ${plan.length} done`);
+  }
+}
+
+/** Names each entry's isolate thread, then splits every sample's thread CPU into isolate and helper time. */
+function attribute(rig: Rig) {
+  const edgeSyncCpu = edgeSyncCpuByThread(rig.samples);
+  const isolateThread: Record<Runtime, string> = {
+    node: String(rig.entries.node.pid),
+    edge: busiestThread(edgeSyncCpu),
+  };
+  for (const sample of rig.samples) {
+    const names = rig.threadNames[sample.entry];
+    const thread = isolateThread[sample.entry];
+    const helper = (delta: Record<string, number>) =>
+      Object.entries(delta).reduce(
+        (sum, [tid, ms]) => (isHelperThread(names[tid]) ? sum + ms : sum),
+        0,
+      );
+    if (thread) sample.isolateCpuMs = sample.threadCpuMs[thread] ?? 0;
+    sample.helperCpuMs = helper(sample.threadCpuMs);
+    if (sample.gapThreadCpuMs) {
+      if (thread) sample.gapIsolateCpuMs = sample.gapThreadCpuMs[thread] ?? 0;
+      sample.gapHelperCpuMs = helper(sample.gapThreadCpuMs);
+    }
+  }
+  const problems = isolateThread.edge ? [] : ['no Edge isolate thread found'];
+  const secondaryProblems = runtimes
+    .filter(
+      (which) => !Object.values(rig.threadNames[which]).some(isHelperThread),
+    )
+    .map((which) => `no V8 helper thread found on ${which}`);
+  return {
+    isolateThread,
+    edgeSyncCpuByThread: edgeSyncCpu,
+    threadNames: rig.threadNames,
+    cpuReader: {
+      node: cpuReaders[String(rig.entries.node.pid)],
+      edge: cpuReaders[String(rig.entries.edge.pid)],
+    },
+    problems,
+    secondaryProblems,
+  };
+}
+
+function perfVariant(kind: BundleKind): Variant {
+  return {
+    name: 'perf',
+    functionDir: functionDir(kind),
+    importMap: importMap(kind),
+    env: managedEdgeEnv(),
+    ...noLimits,
+  };
+}
+
+const perfEdgeEntry = (origin: string, pid: number): Entry => ({
+  name: 'edge-perf',
+  origin,
+  prefix: '/api',
+  headers: { 'x-edge-trial-variant': 'perf' },
+  pid,
+});
+
+/** The rule reads this pass. Neither process has an inspector, and both are fresh. */
+async function timedProbe(kind: BundleKind, plans: Plans, samples: Sample[]) {
+  const node = await startNode('node-perf', 3103, managedNodeEnv());
+  const container = await startEdge('edge-trial-perf', 9200, 'per_worker', [
+    perfVariant(kind),
+  ]);
+  const edge = perfEdgeEntry(container.origin, container.pid);
   await waitFor(edge, '/health', 90_000);
   const select1: unknown[] = [];
   for (let index = 0; index < 5; index++)
     select1.push((await call(edge, 'GET', '/__trial/select1')).body);
-  const entries = { node: nodeManaged, edge } as const;
-  const users = {
-    node: await managedUser(nodeManaged),
-    edge: await managedUser(edge),
-  };
-  const seeds = {
-    node: await seedParents(nodeManaged, users.node),
-    edge: await seedParents(edge, users.edge),
-  };
+  const rig = await makeRig(node, edge);
+  const workerBefore = (await call(edge, 'GET', '/__trial/runtime')).body;
+  let attributed: ReturnType<typeof attribute>;
+  try {
+    for (let index = 0; index < warmupSmallRequests; index++)
+      for (const which of runtimes)
+        for (const route of smallRouteNames) await untimed(rig, which, route);
+    console.info('perf small-route warm-up done');
+    await runPass(rig, 'control', plans.control);
+    await addFixtures(rig, warmupRounds + rounds);
+    await warmUp(rig, plans.warmup);
+    await runPass(rig, 'timed', plans.timed);
+  } finally {
+    attributed = attribute(rig);
+    samples.push(...rig.samples);
+  }
+  const workerAfter = (await call(edge, 'GET', '/__trial/runtime')).body;
+  await stopEdge(container.name);
+  const bootedAt = (facts: unknown) =>
+    (facts as { bootedAt?: string } | undefined)?.bootedAt;
+  if (
+    !bootedAt(workerBefore) ||
+    bootedAt(workerBefore) !== bootedAt(workerAfter)
+  )
+    attributed.problems.push(
+      `the Edge worker changed during the timed pass: booted ${bootedAt(workerBefore)} then ${bootedAt(workerAfter)}`,
+    );
+  return { ...attributed, select1, workerBefore, workerAfter };
+}
+
+/** Separate processes with the inspector attached. Nothing here feeds the decision. */
+async function profiledProbe(
+  kind: BundleKind,
+  nodeManaged: Entry,
+  nodeInspectPort: number,
+  plans: Plans,
+  samples: Sample[],
+) {
+  const container = await startEdge(
+    'edge-trial-profile',
+    9210,
+    'per_worker',
+    [perfVariant(kind)],
+    9229,
+  );
+  const edge = perfEdgeEntry(container.origin, container.pid);
+  await waitFor(edge, '/health', 90_000);
+  const rig = await makeRig(nodeManaged, edge);
+  await addFixtures(rig, profiledWarmupRounds + profiledRounds);
   const edgeInspector = await Inspector.connect('http://127.0.0.1:9229');
-  const edgeTargets = edgeInspector.targets;
-  const inspectors = {
+  rig.inspectors = {
     node: (await Inspector.connect(`http://127.0.0.1:${nodeInspectPort}`))
       .inspector,
     edge: edgeInspector.inspector,
   };
-  const samples: Sample[] = [];
   const profileDir = resolve(out, 'profiles');
   await mkdir(profileDir, { recursive: true });
-  const request = async (which: 'node' | 'edge', route: Route) => {
-    const entry = entries[which];
-    const user = users[which];
-    switch (route) {
-      case 'health':
-        return call(entry, 'GET', '/health');
-      case 'guest catalog':
-        return call(entry, 'GET', '/v1/guest/challenges');
-      case 'attempt write':
-        return call(entry, 'POST', '/v1/attempts', {
-          token: user.token,
-          body: attemptInput(user, new Date(Date.now() - 60_000)),
-        });
-      case 'worst sync':
-        return call(entry, 'POST', '/v1/journal-sync', {
-          token: user.token,
-          raw: worstBatch(user, seeds[which].attemptId, seeds[which].parents)
-            .raw,
-          timeoutMs: 120_000,
-        });
-    }
-  };
-  const comms: Record<'node' | 'edge', Record<string, string>> = {
-    node: {},
-    edge: {},
-  };
-  const warmUp = async () => {
-    for (let round = 0; round < warmupRounds; round++)
-      for (const which of ['node', 'edge'] as const)
-        for (const route of routes) await request(which, route);
-  };
-  const plainPass = async () => {
-    for (let round = 1; round <= rounds; round++) {
-      const order =
-        round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
-      for (const which of order) {
-        const pid = entries[which].pid!;
-        for (const route of routes) {
-          const before = await threadCpu(pid);
-          const plain = await request(which, route);
-          const after = await threadCpu(pid);
-          for (const [tid, item] of after) comms[which][tid] = item.comm;
-          const delta = threadDelta(before, after);
-          samples.push({
-            pass: 'plain',
-            entry: which,
-            round,
-            route,
-            status: plain.status,
-            wallMs: plain.wallMs,
-            processCpuMs: Object.values(delta).reduce((sum, ms) => sum + ms, 0),
-            threadCpuMs: delta,
-            queries: Number(plain.headers['x-justgo-trial-queries'] ?? 'NaN'),
-          });
-        }
-      }
-      console.info(`perf plain round ${round} done`);
-    }
-  };
-  await warmUp();
-  await plainPass();
-  const edgeSyncCpu = edgeSyncCpuByThread(samples);
-  const isolateThread = {
-    node: String(entries.node.pid),
-    edge: busiestThread(edgeSyncCpu),
-  };
-  for (const sample of samples)
-    sample.isolateCpuMs =
-      sample.threadCpuMs?.[isolateThread[sample.entry]] ?? 0;
-  const profiledPass = async () => {
-    for (const inspector of Object.values(inspectors)) {
+  let attributed: ReturnType<typeof attribute>;
+  try {
+    for (const inspector of Object.values(rig.inspectors)) {
       await inspector.send('Profiler.enable');
       await inspector.send('Profiler.setSamplingInterval', { interval: 100 });
     }
-    for (let round = 1; round <= rounds; round++) {
-      const order =
-        round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
-      for (const which of order) {
-        for (const route of routes) {
-          const inspector = inspectors[which];
-          await inspector.send('Profiler.start');
-          const profiled = await request(which, route);
-          const { profile } = (await inspector.send('Profiler.stop')) as {
-            profile: CpuProfile;
-          };
-          await writeFile(
-            resolve(
-              profileDir,
-              `${which}-${route.replaceAll(' ', '-')}-round${String(round).padStart(2, '0')}.cpuprofile`,
-            ),
-            JSON.stringify(profile),
-          );
-          samples.push({
-            pass: 'profiled',
-            entry: which,
-            round,
-            route,
-            status: profiled.status,
-            wallMs: profiled.wallMs,
-            ...profileCpu(profile),
-            queries: Number(
-              profiled.headers['x-justgo-trial-queries'] ?? 'NaN',
-            ),
-          });
-        }
-      }
-      console.info(`perf profiled round ${round} done`);
-    }
-  };
-  await profiledPass();
-  for (const inspector of Object.values(inspectors)) inspector.close();
-  const facts = (await call(edge, 'GET', '/__trial/runtime')).body;
+    await warmUp(rig, plans.profiledWarmup);
+    await runPass(rig, 'profiled', plans.profiled, profileDir);
+  } finally {
+    attributed = attribute(rig);
+    samples.push(...rig.samples);
+    for (const inspector of Object.values(rig.inspectors)) inspector.close();
+  }
   await stopEdge(container.name);
-  return {
-    samples,
-    select1,
-    edgeTargets,
-    edgeWorker: facts,
-    isolateThread,
-    threadNames: comms,
-    edgeSyncCpuByThread: edgeSyncCpu,
-  };
+  return { ...attributed, edgeTargets: edgeInspector.targets };
 }
 
 const sortNumbers = (values: number[]) => [...values].sort((a, b) => a - b);
-const median = (values: number[]) => {
-  const sorted = sortNumbers(values);
+/** Nearest rank, the same p95 the first trial used. */
+const quantile = (sorted: number[], q: number) =>
+  sorted[Math.max(0, Math.ceil(q * sorted.length) - 1)] ?? NaN;
+function stats(values: number[]) {
+  const sorted = sortNumbers(values.filter((value) => !Number.isNaN(value)));
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2
-    ? sorted[middle]!
-    : (sorted[middle - 1]! + sorted[middle]!) / 2;
-};
-const p95 = (values: number[]) => {
-  const sorted = sortNumbers(values);
-  return sorted[Math.max(0, Math.ceil(0.95 * sorted.length) - 1)]!;
-};
+  return {
+    n: sorted.length,
+    median:
+      sorted.length % 2
+        ? sorted[middle]!
+        : ((sorted[middle - 1] ?? NaN) + (sorted[middle] ?? NaN)) / 2,
+    p90: quantile(sorted, 0.9),
+    p95: quantile(sorted, 0.95),
+    p99: quantile(sorted, 0.99),
+    max: sorted.at(-1) ?? NaN,
+  };
+}
 const fixed = (value: number | undefined, digits = 1) =>
   value === undefined || Number.isNaN(value) ? 'n/a' : value.toFixed(digits);
+const share = (count: number, total: number) =>
+  total ? `${count}/${total} (${((100 * count) / total).toFixed(1)}%)` : 'n/a';
 
-function summarize(samples: Sample[]) {
-  const pick = (entry: string, route: Route, pass: string, key: keyof Sample) =>
-    samples
-      .filter((s) => s.entry === entry && s.route === route && s.pass === pass)
-      .map((s) => s[key] as number)
-      .filter((value) => typeof value === 'number' && !Number.isNaN(value));
-  return routes.flatMap((route) =>
-    (['node', 'edge'] as const).map((entry) => {
-      const profile = pick(entry, route, 'profiled', 'profileCpuMs');
-      const js = pick(entry, route, 'profiled', 'profileJsMs');
-      const idle = pick(entry, route, 'profiled', 'profileIdleMs');
-      const processCpu = pick(entry, route, 'plain', 'processCpuMs');
-      const isolateCpu = pick(entry, route, 'plain', 'isolateCpuMs');
-      const wall = pick(entry, route, 'plain', 'wallMs');
-      const queries = pick(entry, route, 'plain', 'queries');
-      const statuses = [
-        ...new Set(
-          samples
-            .filter((s) => s.entry === entry && s.route === route)
-            .map((s) => s.status),
-        ),
-      ];
-      return {
-        route,
-        entry,
-        n: wall.length,
-        statuses,
-        profileCpu: {
-          median: median(profile),
-          p95: p95(profile),
-          max: Math.max(...profile),
-        },
-        profileJs: { median: median(js), p95: p95(js) },
-        profileIdleTotal: idle.reduce((sum, value) => sum + value, 0),
-        processCpu: {
-          median: median(processCpu),
-          p95: p95(processCpu),
-          max: Math.max(...processCpu),
-        },
-        isolateCpu: {
-          median: median(isolateCpu),
-          p95: p95(isolateCpu),
-          max: Math.max(...isolateCpu),
-        },
-        wall: { median: median(wall), p95: p95(wall), max: Math.max(...wall) },
-        queries: queries.length ? median(queries) : undefined,
-      };
-    }),
-  );
+const pauseCoincident = (sample: Sample, thresholdMs = pauseThresholdMs) =>
+  (sample.helperCpuMs ?? 0) >= thresholdMs;
+
+function summarize(samples: Sample[], pass: Pass) {
+  const inPass = samples.filter((sample) => sample.pass === pass);
+  const lastRound = Math.max(0, ...inPass.map((sample) => sample.round));
+  const cpu = (list: Sample[]) =>
+    stats(list.map((sample) => sample.isolateCpuMs ?? NaN));
+  const group = (list: Sample[]) => {
+    const all = cpu(list);
+    return {
+      n: list.length,
+      pauses: list.filter((sample) => pauseCoincident(sample)).length,
+      median: all.median,
+      p95: all.p95,
+    };
+  };
+  return routes
+    .filter((route) => inPass.some((sample) => sample.route === route))
+    .flatMap((route) =>
+      runtimes.map((entry) => {
+        const own = inPass.filter(
+          (sample) => sample.route === route && sample.entry === entry,
+        );
+        const afterSync = own.filter(
+          (sample) => sample.previousRoute === 'worst sync',
+        );
+        const profileGc = own.map((sample) => sample.profileGcMs ?? NaN);
+        return {
+          pass,
+          route,
+          entry,
+          n: own.length,
+          statuses: [...new Set(own.map((sample) => sample.status))],
+          queries: stats(own.map((sample) => sample.queries)).median,
+          isolateCpu: cpu(own),
+          wall: stats(own.map((sample) => sample.wallMs)),
+          processCpu: stats(own.map((sample) => sample.processCpuMs)),
+          helperCpu: stats(own.map((sample) => sample.helperCpuMs ?? NaN)),
+          gapIsolateCpu: stats(
+            own.map((sample) => sample.gapIsolateCpuMs ?? NaN),
+          ),
+          gapHelperCpu: stats(
+            own.map((sample) => sample.gapHelperCpuMs ?? NaN),
+          ),
+          pauses: own.filter((sample) => pauseCoincident(sample)).length,
+          pausesAt: Object.fromEntries(
+            helperThresholdsMs.map((threshold) => [
+              threshold,
+              own.filter((sample) => pauseCoincident(sample, threshold)).length,
+            ]),
+          ),
+          isolateCpuQuiet: cpu(
+            own.filter((sample) => !pauseCoincident(sample)),
+          ),
+          isolateCpuPaused: cpu(
+            own.filter((sample) => pauseCoincident(sample)),
+          ),
+          after: {
+            sync: group(afterSync),
+            syncBackToBack: group(
+              afterSync.filter((sample) => !sample.afterOtherEntry),
+            ),
+            syncAcrossTurn: group(
+              afterSync.filter((sample) => sample.afterOtherEntry),
+            ),
+            other: group(
+              own.filter((sample) => sample.previousRoute !== 'worst sync'),
+            ),
+          },
+          halves: [
+            group(own.filter((sample) => sample.round <= lastRound / 2)),
+            group(own.filter((sample) => sample.round > lastRound / 2)),
+          ],
+          profileJs: stats(own.map((sample) => sample.profileJsMs ?? NaN)),
+          profileGc: stats(profileGc),
+          profileGcSeen: profileGc.filter((ms) => ms >= 1).length,
+          profileGcAndPause: own.filter(
+            (sample) =>
+              (sample.profileGcMs ?? 0) >= 1 && pauseCoincident(sample),
+          ).length,
+          profileIdleTotal: own.reduce(
+            (sum, sample) => sum + (sample.profileIdleMs ?? 0),
+            0,
+          ),
+        };
+      }),
+    );
 }
 
 async function main() {
@@ -2066,57 +2352,120 @@ async function main() {
     failure('cpu limit probe', error);
   }
   await writeFile(resolve(out, 'cpu-limit.json'), mask(cpuLimit));
-  let perf: Awaited<ReturnType<typeof perfProbe>> | undefined;
+  const plans = perfPlans();
+  await writeFile(
+    resolve(out, 'perf-schedule.json'),
+    JSON.stringify({
+      seed,
+      rounds,
+      warmupRounds,
+      warmupSmallRequests,
+      controlRounds,
+      profiledRounds,
+      profiledWarmupRounds,
+      plans,
+    }),
+  );
+  const samples: Sample[] = [];
+  let timed: Awaited<ReturnType<typeof timedProbe>> | undefined;
   try {
-    perf = await perfProbe(chosen, nodeManaged, nodeInspectPort);
+    timed = await timedProbe(chosen, plans, samples);
+    for (const problem of timed.problems) failure('perf probe', problem);
   } catch (error) {
     failure('perf probe', error);
     await stopEdge('edge-trial-perf').catch(() => undefined);
   }
-  const samples = perf?.samples ?? [];
-  const table = summarize(samples);
+  const profileErrors: string[] = [];
+  let profiled: Awaited<ReturnType<typeof profiledProbe>> | undefined;
+  try {
+    profiled = await profiledProbe(
+      chosen,
+      nodeManaged,
+      nodeInspectPort,
+      plans,
+      samples,
+    );
+    profileErrors.push(...profiled.problems, ...profiled.secondaryProblems);
+  } catch (error) {
+    profileErrors.push(error instanceof Error ? error.message : String(error));
+    await stopEdge('edge-trial-profile').catch(() => undefined);
+  }
+  const table = summarize(samples, 'timed');
+  const controlTable = summarize(samples, 'control');
+  const profiledTable = summarize(samples, 'profiled');
+  const timedSamples = samples.filter((sample) => sample.pass === 'timed');
+  const gapTable = runtimes.flatMap((entry) =>
+    ([true, false] as const).map((afterSync) => {
+      const own = timedSamples.filter(
+        (sample) =>
+          sample.entry === entry &&
+          (sample.previousRoute === 'worst sync') === afterSync,
+      );
+      return {
+        entry,
+        previous: afterSync ? 'worst sync' : 'any other route',
+        n: own.length,
+        gap: stats(own.map((sample) => sample.gapMs)),
+        isolateCpu: stats(own.map((sample) => sample.gapIsolateCpuMs ?? NaN)),
+        helperCpu: stats(own.map((sample) => sample.gapHelperCpuMs ?? NaN)),
+      };
+    }),
+  );
   await writeFile(resolve(out, 'perf-samples.json'), mask(samples));
   await writeFile(
     resolve(out, 'perf-summary.json'),
     mask({
+      seed,
+      pauseThresholdMs,
       table,
-      select1: perf?.select1,
-      edgeTargets: perf?.edgeTargets,
-      edgeWorker: perf?.edgeWorker,
-      isolateThread: perf?.isolateThread,
-      threadNames: perf?.threadNames,
-      edgeSyncCpuByThread: perf?.edgeSyncCpuByThread,
+      controlTable,
+      profiledTable,
+      gapTable,
+      timed,
+      profiled,
+      profileErrors,
       harnessErrors,
     }),
   );
 
-  const row = (route: Route, entry: 'node' | 'edge') =>
-    table.find(
+  type Row = (typeof table)[number];
+  const rowIn = (rows: Row[], route: Route, entry: Runtime) =>
+    rows.find(
       (item) => item.route === route && item.entry === entry && item.n > 0,
     );
-  const idleSeen = (row('health', 'edge')?.profileIdleTotal ?? 0) > 0;
-  const missing = { median: NaN, p95: NaN, max: NaN };
-  const cpuOf = (route: Route, entry: 'node' | 'edge') =>
+  const row = (route: Route, entry: Runtime) => rowIn(table, route, entry);
+  const missing = stats([]);
+  const cpuOf = (route: Route, entry: Runtime) =>
     row(route, entry)?.isolateCpu ?? missing;
-  const processOf = (route: Route, entry: 'node' | 'edge') =>
+  const processOf = (route: Route, entry: Runtime) =>
     row(route, entry)?.processCpu ?? missing;
   const sync = row('worst sync', 'edge');
   const syncCpu = cpuOf('worst sync', 'edge').p95;
   const syncWall = sync?.wall.p95 ?? NaN;
   const syncFails = !(syncCpu <= 1000) || !(syncWall <= 5000);
-  const smallRoutes = (
-    ['health', 'guest catalog', 'attempt write'] as const
-  ).map((route) => ({
-    route,
-    edgeP95: cpuOf(route, 'edge').p95,
-    nodeP95: cpuOf(route, 'node').p95,
-    fails: !(cpuOf(route, 'edge').p95 <= 2 * cpuOf(route, 'node').p95),
-    processEdgeP95: processOf(route, 'edge').p95,
-    processNodeP95: processOf(route, 'node').p95,
-  }));
+  const smallRoutes = smallRouteNames.map((route) => {
+    const bound = 2 * cpuOf(route, 'node').p95;
+    const over = timedSamples.filter(
+      (sample) =>
+        sample.route === route &&
+        sample.entry === 'edge' &&
+        (sample.isolateCpuMs ?? NaN) > bound,
+    );
+    return {
+      route,
+      edgeP95: cpuOf(route, 'edge').p95,
+      nodeP95: cpuOf(route, 'node').p95,
+      fails: !(cpuOf(route, 'edge').p95 <= 2 * cpuOf(route, 'node').p95),
+      processEdgeP95: processOf(route, 'edge').p95,
+      processNodeP95: processOf(route, 'node').p95,
+      overBound: over.length,
+      overBoundPauseCoincident: over.filter((sample) => pauseCoincident(sample))
+        .length,
+    };
+  });
   const allStatusesOk =
-    samples.length > 0 &&
-    samples.every((s) => s.status === 200 || s.status === 201);
+    timedSamples.length > 0 &&
+    timedSamples.every((s) => s.status === 200 || s.status === 201);
   const lanesChosen = (laneResults[chosen] ?? []).filter(
     (item) => item.lane >= 1,
   );
@@ -2131,9 +2480,9 @@ async function main() {
       ? 'go'
       : 'stop';
 
-  const select1Medians = ((perf?.select1 ?? []) as { medianMs?: number }[]).map(
-    (item) => item.medianMs ?? NaN,
-  );
+  const select1Medians = (
+    (timed?.select1 ?? []) as { medianMs?: number }[]
+  ).map((item) => item.medianMs ?? NaN);
   const shared = process.env.EDGE_TRIAL_SHARED_DIFF ?? 'not checked';
   const lines: string[] = [];
   lines.push('# P15-1 local runtime trial report', '');
@@ -2141,7 +2490,7 @@ async function main() {
   lines.push(`- Workflow run: ${runUrl}`);
   lines.push(`- Edge runtime image: \`${image}\``);
   lines.push(
-    `- Rounds per entry: ${rounds}, after ${warmupRounds} untimed warmup rounds per entry`,
+    `- Timed rounds per entry: ${rounds}, with schedule seed \`${seed}\``,
   );
   lines.push(
     `- Shared code against origin/main (apps/api/src without edge.ts, packages/contracts): ${shared}`,
@@ -2215,27 +2564,182 @@ async function main() {
       );
     lines.push('');
   }
+  const entryName = (entry: Runtime) =>
+    entry === 'node' ? 'trunk Node' : 'head Edge';
+  const digitsFor = (route: Route) => (route === 'worst sync' ? 1 : 2);
+  const bootedAt = (facts: unknown) =>
+    (facts as { bootedAt?: string } | undefined)?.bootedAt ?? 'unknown';
+  const edgeThread = timed?.isolateThread.edge ?? '';
   lines.push('## Perf', '');
   lines.push(
-    `CPU source for the rule: on-CPU time of the isolate thread from /proc/<pid>/task/<tid>/schedstat in the unprofiled pass. That is Node's main thread and the Edge user worker thread (\`${perf?.isolateThread.edge}\` named \`${perf?.threadNames.edge[perf?.isolateThread.edge ?? ''] ?? '?'}\`), the clock the runtime's own CPU limit reads. Process CPU sums every thread, which on Edge includes the trial main service that stands in for the gateway, the inspector server and Tokio threads. The profiles held ${idleSeen ? 'idle samples' : 'no (idle) samples on either runtime, so profile time includes waiting and only JS+GC samples bound CPU from below'}. Wall time comes from the unprofiled pass.`,
+    `- Seed \`${seed}\`. One mulberry32 stream draws every schedule below. Receipt \`perf-schedule.json\`.`,
+    `- Timed pass: ${rounds} rounds per entry on a fresh trunk Node process and a fresh Edge container, both started without an inspector. A round runs the four routes once on each entry, in one shuffled order that both entries share. Each entry goes first in ${rounds / 2} rounds, in shuffled sequence.`,
+    `- Untimed before the timed pass: ${warmupSmallRequests} requests per small route per entry, then ${warmupRounds} full rounds.`,
+    `- Control pass: ${controlRounds} timed rounds of the three small routes alone, on the same two processes, after the small-route warm-up and before either process had served any sync. The rule does not read it.`,
+    `- Profiled pass: ${profiledRounds} rounds, after ${profiledWarmupRounds} untimed ones, on a second Edge container and the lanes' Node process, both with the inspector attached. The rule does not read it.`,
     '',
   );
   lines.push(
-    '| Route | Entry | n | Isolate CPU median / p95 / max ms | Process CPU median / p95 ms | Profile JS+GC median ms | Wall median / p95 / max ms | Queries | Statuses |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    `CPU source for the rule: on-CPU time of the isolate thread from /proc/<pid>/task/<tid>/schedstat, read before and after each request of the timed pass (reader: Node ${timed?.cpuReader.node ?? 'n/a'}, Edge ${timed?.cpuReader.edge ?? 'n/a'}). That is Node's main thread and the Edge user worker thread (\`${edgeThread}\` named \`${timed?.threadNames.edge[edgeThread] ?? '?'}\`), the clock the runtime's own CPU limit reads. The Edge worker booted at ${bootedAt(timed?.workerBefore)} and reported ${bootedAt(timed?.workerAfter)} after the pass. Process CPU sums every thread, which on Edge includes the trial main service that stands in for the gateway and the Tokio threads.`,
+    '',
+    `Pause-coincident: V8's helper threads (\`V8Worker\` on Node, \`V8 DefaultWorke\` on Edge) used at least ${pauseThresholdMs} ms of CPU between the two clock reads around the request. In run 42379458521 the Edge health requests split into at most 0.38 ms of helper CPU (13 of 20), 9.0 ms (one, with no worker-thread cost) and 14.5 to 20.4 ms (the six slow ones). ${pauseThresholdMs} ms is about five times above the quiet group and seven times below the slow one. The class reads the helper threads only and never the request's own CPU. Those threads also run concurrent compile jobs, and on Edge they serve the main-service isolate too, so the label means helper activity overlapped the request. It does not prove a collection. Every worst-case sync meets the test, so the label separates requests only on the small routes.`,
+    '',
+  );
+  lines.push(
+    '### Timed pass: isolate CPU (the rule reads this table)',
+    '',
+    '| Route | Entry | n | Median ms | p90 ms | p95 ms | p99 ms | Max ms | Bound ms | Pause-coincident | p95 ms without pause-coincident requests (secondary) |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  for (const item of table) {
+    const digits = digitsFor(item.route);
+    const bound =
+      item.entry === 'node'
+        ? ''
+        : item.route === 'worst sync'
+          ? '1000'
+          : fixed(2 * cpuOf(item.route, 'node').p95, 2);
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${item.n} | ${fixed(item.isolateCpu.median, digits)} | ${fixed(item.isolateCpu.p90, digits)} | ${fixed(item.isolateCpu.p95, digits)} | ${fixed(item.isolateCpu.p99, digits)} | ${fixed(item.isolateCpu.max, digits)} | ${bound} | ${share(item.pauses, item.n)} | ${fixed(item.isolateCpuQuiet.p95, digits)} (n ${item.isolateCpuQuiet.n}) |`,
+    );
+  }
+  lines.push(
+    '',
+    '### Timed pass: wall, process CPU and helper CPU',
+    '',
+    '| Route | Entry | Wall median / p95 / p99 / max ms | Process CPU median / p95 ms | Helper CPU median / p95 / max ms | Queries | Statuses |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
   );
   for (const item of table)
     lines.push(
-      `| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.isolateCpu.median)} / ${fixed(item.isolateCpu.p95)} / ${fixed(item.isolateCpu.max)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`,
+      `| ${item.route} | ${entryName(item.entry)} | ${fixed(item.wall.median)} / ${fixed(item.wall.p95)} / ${fixed(item.wall.p99)} / ${fixed(item.wall.max)} | ${fixed(item.processCpu.median, 2)} / ${fixed(item.processCpu.p95, 2)} | ${fixed(item.helperCpu.median, 2)} / ${fixed(item.helperCpu.p95, 2)} / ${fixed(item.helperCpu.max, 2)} | ${fixed(item.queries, 0)} | ${item.statuses.join(',')} |`,
+    );
+  const small = (rows: Row[]) =>
+    rows.filter((item) => item.route !== 'worst sync');
+  lines.push(
+    '',
+    '### Timed pass: helper activity against isolate CPU on the small routes',
+    '',
+    `| Route | Entry | Requests with helper CPU of at least ${helperThresholdsMs.join(' / ')} ms | Isolate CPU median / p95 ms when pause-coincident | Isolate CPU median / p95 ms otherwise |`,
+    '| --- | --- | --- | --- | --- |',
+  );
+  for (const item of small(table))
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${helperThresholdsMs.map((threshold) => item.pausesAt[threshold]).join(' / ')} of ${item.n} | ${fixed(item.isolateCpuPaused.median, 2)} / ${fixed(item.isolateCpuPaused.p95, 2)} | ${fixed(item.isolateCpuQuiet.median, 2)} / ${fixed(item.isolateCpuQuiet.p95, 2)} |`,
+    );
+  const groupCell = (group: Row['after']['sync']) =>
+    `${share(group.pauses, group.n)}, p95 ${fixed(group.p95, 2)}`;
+  lines.push(
+    '',
+    '### Timed pass: pause-coincident share by the route that ran just before on the same entry',
+    '',
+    'Each cell gives the pause-coincident requests over the requests in that group, then the group p95 isolate CPU in ms. "Back to back" means the same entry served the sync as its previous request with no turn of the other entry in between.',
+    '',
+    '| Route | Entry | After a worst sync | After a worst sync, back to back | After a worst sync, other entry ran in between | After any other route |',
+    '| --- | --- | --- | --- | --- | --- |',
+  );
+  for (const item of small(table))
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${groupCell(item.after.sync)} | ${groupCell(item.after.syncBackToBack)} | ${groupCell(item.after.syncAcrossTurn)} | ${groupCell(item.after.other)} |`,
     );
   lines.push(
     '',
-    `Worst-case sync query count: ${sync?.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`,
+    '### Timed pass: CPU between requests',
+    '',
+    'On-CPU time from the clock read that closed one request to the clock read that opened the next request on the same entry, grouped by the route that came first.',
+    '',
+    '| Entry | Previous route | n | Gap median / p95 ms | Isolate CPU in the gap median / p95 ms | Helper CPU in the gap median / p95 ms |',
+    '| --- | --- | --- | --- | --- | --- |',
+  );
+  for (const item of gapTable)
+    lines.push(
+      `| ${entryName(item.entry)} | ${item.previous} | ${item.n} | ${fixed(item.gap.median)} / ${fixed(item.gap.p95)} | ${fixed(item.isolateCpu.median, 2)} / ${fixed(item.isolateCpu.p95, 2)} | ${fixed(item.helperCpu.median, 2)} / ${fixed(item.helperCpu.p95, 2)} |`,
+    );
+  const halfCell = (group: Row['halves'][number] | undefined) =>
+    group
+      ? `${fixed(group.median, 2)} / ${fixed(group.p95, 2)}, ${share(group.pauses, group.n)}`
+      : 'n/a';
+  lines.push(
+    '',
+    '### Timed pass: first half against second half',
+    '',
+    `| Route | Entry | Rounds 1 to ${rounds / 2}: median / p95 ms, pause-coincident | Rounds ${rounds / 2 + 1} to ${rounds}: median / p95 ms, pause-coincident |`,
+    '| --- | --- | --- | --- |',
+  );
+  for (const item of table)
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${halfCell(item.halves[0])} | ${halfCell(item.halves[1])} |`,
+    );
+  lines.push(
+    '',
+    '### Control pass (not the rule): small routes before any sync',
+    '',
+    '| Route | Entry | n | Isolate CPU median ms | p95 ms | p99 ms | Max ms | Twice trunk p95 ms | Pause-coincident | Statuses |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  for (const item of controlTable)
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${item.n} | ${fixed(item.isolateCpu.median, 2)} | ${fixed(item.isolateCpu.p95, 2)} | ${fixed(item.isolateCpu.p99, 2)} | ${fixed(item.isolateCpu.max, 2)} | ${item.entry === 'node' ? '' : fixed(2 * (rowIn(controlTable, item.route, 'node')?.isolateCpu.p95 ?? NaN), 2)} | ${share(item.pauses, item.n)} | ${item.statuses.join(',')} |`,
+    );
+  const idleSeen =
+    (rowIn(profiledTable, 'health', 'edge')?.profileIdleTotal ?? 0) > 0;
+  lines.push(
+    '',
+    '### Profiled pass (not the rule): inspector attached',
+    '',
+    `The profiles held ${idleSeen ? 'idle samples' : 'no (idle) samples on Edge, so profile time includes waiting and only JS and GC samples bound CPU from below'}. "Profile GC" is the time the profile gives to \`(garbage collector)\` on the isolate thread.`,
+    '',
+    '| Route | Entry | n | Isolate CPU median / p95 ms | Profile JS+GC median ms | Profile GC median / max ms | Requests with profile GC of at least 1 ms | Pause-coincident | Both |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  for (const item of profiledTable)
+    lines.push(
+      `| ${item.route} | ${entryName(item.entry)} | ${item.n} | ${fixed(item.isolateCpu.median, 2)} / ${fixed(item.isolateCpu.p95, 2)} | ${fixed(item.profileJs.median, 2)} | ${fixed(item.profileGc.median, 2)} / ${fixed(item.profileGc.max, 2)} | ${item.profileGcSeen} | ${item.pauses} | ${item.profileGcAndPause} |`,
+    );
+  for (const error of profileErrors)
+    lines.push('', `Profiled pass error: ${error}`);
+  for (const problem of timed?.secondaryProblems ?? [])
+    lines.push(
+      '',
+      `Secondary instrumentation problem, which leaves the pause counts empty and the rule untouched: ${problem}.`,
+    );
+  lines.push(
+    '',
+    `Worst-case sync query count: ${fixed(sync?.queries, 0)} per request (counted at the pg client, BEGIN and COMMIT included).`,
   );
   lines.push(
     `Loopback select 1 median of ten timed round trips in one transaction after one untimed query: ${select1Medians.map((value) => fixed(value, 3)).join(', ')} ms over five probes; first probe ${fixed(select1Medians[0], 3)} ms.`,
   );
+  lines.push('', '## Secondary numbers (the rule does not read these)', '');
+  for (const item of smallRoutes) {
+    const edge = row(item.route, 'edge');
+    const node = row(item.route, 'node');
+    const quietEdge = edge?.isolateCpuQuiet.p95 ?? NaN;
+    const quietNode = node?.isolateCpuQuiet.p95 ?? NaN;
+    lines.push(
+      `- ${item.route}: ${item.overBound} of ${edge?.n ?? 0} Edge requests were above the rule's bound of ${fixed(2 * item.nodeP95, 2)} ms, and ${item.overBoundPauseCoincident} of those were pause-coincident. Without pause-coincident requests on either entry, Edge p95 is ${fixed(quietEdge, 2)} ms against twice trunk's ${fixed(2 * quietNode, 2)} ms, which ${quietEdge <= 2 * quietNode ? 'is inside' : 'is outside'} that bound. Medians: Edge ${fixed(edge?.isolateCpu.median, 2)} ms, trunk ${fixed(node?.isolateCpu.median, 2)} ms.`,
+    );
+  }
+  for (const entry of runtimes) {
+    const health = row('health', entry);
+    if (health)
+      lines.push(
+        `- health on ${entryName(entry)}: pause-coincident after a worst sync ${share(health.after.sync.pauses, health.after.sync.n)}, after any other route ${share(health.after.other.pauses, health.after.other.n)}.`,
+      );
+  }
+  for (const route of smallRouteNames) {
+    const edge = rowIn(controlTable, route, 'edge');
+    const node = rowIn(controlTable, route, 'node');
+    if (edge && node)
+      lines.push(
+        `- Control pass ${route}: Edge p95 ${fixed(edge.isolateCpu.p95, 2)} ms against twice trunk p95 ${fixed(2 * node.isolateCpu.p95, 2)} ms, which ${edge.isolateCpu.p95 <= 2 * node.isolateCpu.p95 ? 'is inside' : 'is outside'} that bound. Pause-coincident: Edge ${share(edge.pauses, edge.n)}, trunk ${share(node.pauses, node.n)}.`,
+      );
+  }
   lines.push('', '## Rule', '');
+  lines.push(
+    'The rule reads every request of the timed pass, with nothing filtered out.',
+    '',
+  );
   lines.push(
     `- Worst-case sync p95 isolate CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}. Process CPU p95 for comparison: ${fixed(processOf('worst sync', 'edge').p95)} ms.`,
   );
@@ -2243,7 +2747,9 @@ async function main() {
     lines.push(
       `- ${item.route} Edge p95 isolate CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}. Process CPU for comparison: Edge p95 ${fixed(item.processEdgeP95, 2)} ms, trunk p95 ${fixed(item.processNodeP95, 2)} ms.`,
     );
-  lines.push(`- Every perf request returned 200 or 201: ${allStatusesOk}.`);
+  lines.push(
+    `- Every timed perf request returned 200 or 201: ${allStatusesOk} (${timedSamples.length} of ${rounds * runtimes.length * routes.length} requests ran).`,
+  );
   lines.push(`- All ten lanes pass on ${chosen}: ${lanesPass}.`);
   for (const error of harnessErrors) lines.push(`- Harness error: ${error}`);
   if (syncFails && lanesPass && smallRoutes.every((item) => !item.fails))
@@ -2263,9 +2769,17 @@ async function main() {
       laneResults,
       chosen,
       cpuLimit,
+      seed,
+      rounds,
+      pauseThresholdMs,
       table,
-      select1: perf?.select1,
+      controlTable,
+      profiledTable,
+      gapTable,
+      smallRoutes,
+      select1: timed?.select1,
       decision,
+      profileErrors,
       authCalls,
       harnessErrors,
     }),
