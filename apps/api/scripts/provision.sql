@@ -11,8 +11,7 @@ revoke create on schema public from public;
 alter role justgo_runtime set search_path = pg_catalog, justgo;
 alter role justgo_runtime set statement_timeout = '5s';
 alter role justgo_runtime set idle_in_transaction_session_timeout = '10s';
--- No implicit runtime grants on future tables/functions, and no Supabase Data API grants.
-alter default privileges for role justgo_migrator in schema justgo revoke execute on functions from public;
+-- Per-schema default privileges cannot revoke PUBLIC EXECUTE, so each migration revokes it on its own functions.
 
 -- Drizzle creates its journal schema with IF NOT EXISTS, which still requires database CREATE.
 do $$ begin execute format('grant create on database %I to justgo_migrator', current_database()); end $$;
