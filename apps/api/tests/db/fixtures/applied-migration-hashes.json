@@ -97,5 +97,8 @@
       "when": 1792545860672
     }
   },
-  "unapplied": ["0024_data_epoch_never_decreases.sql"]
+  "unapplied": [
+    "0024_data_epoch_never_decreases.sql",
+    "0025_users_id_immutable.sql"
+  ]
 }
