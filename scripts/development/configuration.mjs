@@ -14,20 +14,27 @@ export const developmentIdentity = Object.freeze({
 });
 export const releaseGoogleIosClientId =
   '881166911699-nnplpatgdvqogjlnfed198jlbqslj3cn.apps.googleusercontent.com';
-export const developmentApiOrigins = Object.freeze({
+export const developmentApiUrls = Object.freeze({
   vercel: 'https://justgo-two.vercel.app',
   cloudflare: 'https://justgo-api-staging.anthonyyoo24.workers.dev',
+  supabase: 'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
 });
+const apiTargetFlags = ['--cloudflare', '--supabase'];
 
 export function developmentLaunchOptions(args) {
-  if (args.some((arg) => !['--clear', '--web', '--cloudflare'].includes(arg))) {
+  const selected = new Set(args.filter((arg) => apiTargetFlags.includes(arg)));
+  if (
+    selected.size > 1 ||
+    args.some((arg) => !['--clear', '--web', ...apiTargetFlags].includes(arg))
+  ) {
     throw new Error(
-      'JustGO Dev supports --clear, --web and --cloudflare; its app scheme and LAN port are fixed.',
+      'JustGO Dev supports --clear, --web and one of --cloudflare or --supabase; its app scheme and LAN port are fixed.',
     );
   }
+  const [flag] = selected;
   return {
-    apiTarget: args.includes('--cloudflare') ? 'cloudflare' : 'vercel',
-    expoArgs: args.filter((arg) => arg !== '--cloudflare'),
+    apiTarget: flag ? flag.slice(2) : 'vercel',
+    expoArgs: args.filter((arg) => !selected.has(arg)),
   };
 }
 
@@ -40,10 +47,7 @@ export function validateDevelopmentEnvironment(
     if (!condition)
       throw new Error(`Invalid JustGO Dev configuration: ${name}.`);
   };
-  check(
-    apiTarget === 'vercel' || apiTarget === 'cloudflare',
-    'development API target',
-  );
+  check(Object.hasOwn(developmentApiUrls, apiTarget), 'development API target');
   check(
     environment.IOS_BUNDLE_IDENTIFIER === developmentIdentity.bundle,
     'IOS_BUNDLE_IDENTIFIER',
@@ -55,7 +59,7 @@ export function validateDevelopmentEnvironment(
     'separate Production CloudKit container',
   );
   check(
-    environment.EXPO_PUBLIC_API_URL === developmentApiOrigins[apiTarget],
+    environment.EXPO_PUBLIC_API_URL === developmentApiUrls[apiTarget],
     'EXPO_PUBLIC_API_URL',
   );
   check(
@@ -160,7 +164,7 @@ export async function localDevelopmentEnvironment(
   // explicit local test target, so an override cannot hide stale/unsafe inputs.
   const resolved = await developmentEnvironment({ ...base, ...parseEnv(file) });
   return validateDevelopmentEnvironment(
-    { ...resolved, EXPO_PUBLIC_API_URL: developmentApiOrigins[apiTarget] },
+    { ...resolved, EXPO_PUBLIC_API_URL: developmentApiUrls[apiTarget] },
     { apiTarget },
   );
 }
@@ -184,9 +188,10 @@ export function validateLocalMetroEnvironment(environment) {
     );
   return validateDevelopmentEnvironment(environment, {
     apiTarget:
-      environment.EXPO_PUBLIC_API_URL === developmentApiOrigins.cloudflare
-        ? 'cloudflare'
-        : 'vercel',
+      Object.keys(developmentApiUrls).find(
+        (target) =>
+          developmentApiUrls[target] === environment.EXPO_PUBLIC_API_URL,
+      ) ?? 'vercel',
   });
 }
 

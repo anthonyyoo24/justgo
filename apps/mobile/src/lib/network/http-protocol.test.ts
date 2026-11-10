@@ -1,5 +1,5 @@
 import { okSchema } from '@justgo/contracts';
-import { ApiError, createHttpClient } from './http';
+import { ApiError, apiOrigin, createHttpClient } from './http';
 
 const jsonResponse = (mediaType = 'application/json') =>
   new Response(JSON.stringify({ ok: true }), {
@@ -66,19 +66,46 @@ it.each(['localhost', '127.0.0.1', '[::1]', '10.0.0.101', '192.168.1.2'])(
   },
 );
 
+const prefixed = 'https://api.example.test/functions/v1/api';
+
 it.each([
   {
-    base: 'https://API.EXAMPLE.TEST:443/prefix/',
+    base: 'https://API.EXAMPLE.TEST:443',
     path: '/v1/progress?timeZone=America%2FToronto',
     expected: 'https://api.example.test/v1/progress?timeZone=America%2FToronto',
   },
   {
-    base: 'https://api.example.test/prefix/../gateway/',
+    base: 'https://api.example.test/',
     path: '/v1/challenges/../sessions/current',
     expected: 'https://api.example.test/v1/sessions/current',
   },
+  {
+    base: prefixed,
+    path: '/v1/journal-sync',
+    expected: `${prefixed}/v1/journal-sync`,
+  },
+  {
+    base: `${prefixed}/`,
+    path: '/v1/journal-sync',
+    expected: `${prefixed}/v1/journal-sync`,
+  },
+  {
+    base: 'https://API.EXAMPLE.TEST:443/prefix/../gateway/',
+    path: '/v1/challenges/../sessions/current',
+    expected: 'https://api.example.test/gateway/v1/sessions/current',
+  },
+  {
+    base: prefixed,
+    path: '/v1/progress?timeZone=America%2FToronto&next=/v1/../../outside',
+    expected: `${prefixed}/v1/progress?timeZone=America%2FToronto&next=/v1/../../outside`,
+  },
+  {
+    base: 'http://127.0.0.1:3000/functions/v1/api/',
+    path: '/v1/guest/access',
+    expected: 'http://127.0.0.1:3000/functions/v1/api/v1/guest/access',
+  },
 ])(
-  'fetches the exact admitted canonical URL ($expected)',
+  'fetches $path under base $base as $expected',
   async ({ base, path, expected }) => {
     const fetcher = jest.fn().mockResolvedValue(jsonResponse());
     await expect(
@@ -90,6 +117,15 @@ it.each([
     );
   },
 );
+
+it.each([
+  'https://api.example.test',
+  prefixed,
+  `${prefixed}/`,
+  'https://api.example.test:443/prefix/../gateway/',
+])('keeps the access scope of base %s at its origin', (base) => {
+  expect(apiOrigin(base)).toBe('https://api.example.test');
+});
 
 it.each(['https://[invalid-target', '//[invalid-target'])(
   'normalizes an invalid target URL without fetching or exposing it',
@@ -116,6 +152,21 @@ it.each([
   ['https://api.example.test', 'https://other.example.test/v1/test'],
   ['https://api.example.test', '/v1/../../outside'],
   ['https://api.example.test', '/v1/test#synthetic'],
+  [`${prefixed}?synthetic=value`, '/v1/test'],
+  [`${prefixed}#synthetic`, '/v1/test'],
+  ['https://api.example.test/functions//api', '/v1/test'],
+  [`${prefixed}//`, '/v1/test'],
+  [prefixed, 'https://other.example.test/v1/test'],
+  [prefixed, '//other.example.test/v1/test'],
+  [prefixed, '/v1/../outside'],
+  [prefixed, '/v1/../../outside'],
+  [prefixed, '/v1/%2e%2e/outside'],
+  [prefixed, '/v1/..\\..\\outside'],
+  [prefixed, '/v1/../../../v1/test'],
+  [prefixed, '/v1/test#synthetic'],
+  [prefixed, '/functions/v1/api/v1/test'],
+  [prefixed, '/v2/test?next=/v1/'],
+  [prefixed, '/v1/../test?next=/functions/v1/api/v1/'],
 ] as const)(
   'preserves API admission guards for %s and %s',
   async (base, path) => {
@@ -323,4 +374,25 @@ it('lets cancellation win over a late body failure without replaying', async () 
   rejectBody(new SyntaxError('Synthetic late body failure'));
   await assertion;
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('cancels a request under a base path without replaying it', async () => {
+  const fetcher = jest.fn<Promise<Response>, Parameters<typeof fetch>>(
+    () => new Promise(() => {}),
+  );
+  const controller = new AbortController();
+  const pending = createHttpClient(prefixed, fetcher).request(
+    '/v1/journal-sync',
+    okSchema,
+    { signal: controller.signal, retryRead: true },
+  );
+  const assertion = expect(pending).rejects.toMatchObject({
+    code: 'CANCELLED',
+  });
+  await Promise.resolve();
+  controller.abort();
+  await assertion;
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]![0]).toBe(`${prefixed}/v1/journal-sync`);
+  expect(fetcher.mock.calls[0]![1]!.signal!.aborted).toBe(true);
 });
