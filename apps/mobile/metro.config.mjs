@@ -2,7 +2,7 @@ import path from 'node:path';
 import { validateLocalMetroEnvironment } from '../../scripts/development/configuration.mjs';
 import {
   journeyEnvironment,
-  journeyApiUrl,
+  journeyAppApiUrl,
 } from '../../e2e/support/environment.ts';
 import sentryMetro from '@sentry/react-native/metro.js';
 const { getSentryExpoConfig } = sentryMetro;
@@ -38,7 +38,7 @@ if (process.env.JUSTGO_LOCAL_DEVELOPMENT === '1') {
 // production bundle. Validate its database/environment before enabling it.
 if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
   journeyEnvironment(process.env);
-  if (process.env.EXPO_PUBLIC_API_URL !== journeyApiUrl)
+  if (process.env.EXPO_PUBLIC_API_URL !== journeyAppApiUrl)
     throw new Error('Journey fixtures require the isolated loopback API URL');
   const normalResolve = config.resolver.resolveRequest;
   config.resolver.resolveRequest = (context, moduleName, platform) => {

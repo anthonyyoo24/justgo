@@ -24,6 +24,11 @@ const serviceUrls = journeyServiceUrls(process.env);
 /** The fixture API base: its loopback origin plus `JUSTGO_JOURNEY_API_PREFIX`. */
 export const journeyApiUrl = serviceUrls.api;
 export const journeyAppUrl = serviceUrls.app;
+/** The API URL built into the app. The slash checks that the client drops it. */
+export const journeyAppApiUrl =
+  process.env.JUSTGO_JOURNEY_API_TRAILING_SLASH === '1'
+    ? `${journeyApiUrl}/`
+    : journeyApiUrl;
 
 /** The path of a URL below the fixture API base, or null for any other URL. */
 export function journeyApiPath(url: string, api = journeyApiUrl) {

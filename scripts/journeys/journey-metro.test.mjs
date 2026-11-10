@@ -10,6 +10,7 @@ function load(extra, script) {
   delete environment.JUSTGO_JOURNEY_API_PORT;
   delete environment.JUSTGO_JOURNEY_APP_PORT;
   delete environment.JUSTGO_JOURNEY_API_PREFIX;
+  delete environment.JUSTGO_JOURNEY_API_TRAILING_SLASH;
   delete environment.VERCEL;
   return execFileSync(
     process.execPath,
@@ -48,8 +49,14 @@ for (const ports of [
     JUSTGO_JOURNEY_APP_PORT: '8083',
     JUSTGO_JOURNEY_API_PREFIX: prefix,
   },
+  {
+    JUSTGO_JOURNEY_API_PORT: '3002',
+    JUSTGO_JOURNEY_APP_PORT: '8083',
+    JUSTGO_JOURNEY_API_PREFIX: prefix,
+    JUSTGO_JOURNEY_API_TRAILING_SLASH: '1',
+  },
 ]) {
-  const { api } = journeyServiceUrls(ports);
+  const api = `${journeyServiceUrls(ports).api}${ports.JUSTGO_JOURNEY_API_TRAILING_SLASH ? '/' : ''}`;
   test(`isolated web provider resolves fault adapters at ${api}; native and other callers retain normal storage`, () => {
     const output = load(
       {
@@ -115,7 +122,12 @@ for (const api of ['https://hosted.example', 'http://127.0.0.1:3000']) {
     );
   });
 }
-for (const [configured, api] of [
+for (const [configured, api, slash] of [
+  [prefix, `https://hosted.example${prefix}/`, '1'],
+  [prefix, `http://localhost:3002${prefix}/`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}//`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}/`, 'true'],
   [prefix, `https://hosted.example${prefix}`],
   [prefix, `http://hosted.example:3002${prefix}`],
   [prefix, `http://127.0.0.1:3002@hosted.example${prefix}`],
@@ -126,7 +138,7 @@ for (const [configured, api] of [
   [undefined, `http://127.0.0.1:3002${prefix}`],
   [`@hosted.example${prefix}`, `http://127.0.0.1:3002@hosted.example${prefix}`],
 ]) {
-  test(`journey Metro rejects ${api} when the fixture API prefix is ${configured ?? 'unset'}`, () => {
+  test(`journey Metro rejects ${api} when the fixture API prefix is ${configured ?? 'unset'} and the trailing slash is ${slash ?? 'unset'}`, () => {
     assert.throws(
       () =>
         load(
@@ -141,6 +153,7 @@ for (const [configured, api] of [
             JUSTGO_JOURNEY_API_PORT: '3002',
             JUSTGO_JOURNEY_APP_PORT: '8083',
             ...(configured ? { JUSTGO_JOURNEY_API_PREFIX: configured } : {}),
+            ...(slash ? { JUSTGO_JOURNEY_API_TRAILING_SLASH: slash } : {}),
             EXPO_PUBLIC_API_URL: api,
           },
           '',
