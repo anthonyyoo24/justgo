@@ -171,6 +171,32 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { fetch } from 'undici'; export const send = fetch;",
     'apps/api/src/identity/managed-deletion.ts',
   ],
+  // #219: .mts and .cts files skip the import boundaries and the typed rules.
+  [
+    'justgo/import-boundaries',
+    "import { x } from '../../../mobile/src/lib/x.js'; export const y = x;",
+    'apps/api/src/http/boundary.mts',
+  ],
+  [
+    'justgo/import-boundaries',
+    "import { x } from '../../../mobile/src/lib/x.js'; export const y = x;",
+    'apps/api/src/http/boundary.cts',
+  ],
+  [
+    '@typescript-eslint/no-floating-promises',
+    'export async function f() { Promise.resolve(1); }',
+    'apps/api/src/http/boundary.mts',
+  ],
+  [
+    '@typescript-eslint/no-floating-promises',
+    'export async function f() { Promise.resolve(1); }',
+    'apps/api/src/http/boundary.cts',
+  ],
+  [
+    'justgo/rls-context',
+    "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
+    'apps/api/src/data-sync/journal.mts',
+  ],
   ...[
     "import { sql } from 'drizzle-orm'; export const leak = (tx: { execute(query: unknown): unknown }, id: string) => tx.execute(sql`select set_config('app.user_id', ${id}, false)`);",
     "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
