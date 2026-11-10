@@ -176,6 +176,13 @@
       "when": 1794058808358,
       "tag": "0024_data_epoch_never_decreases",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794337657738,
+      "tag": "0025_users_id_immutable",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@ describe('reviewed migration history', () => {
   it('keeps the current declarative schema equal to its latest Drizzle snapshot', async () => {
     const generated = generateDrizzleJson(schema, undefined, ['justgo']);
     const saved = JSON.parse(
-      await readFile(new URL('meta/0024_snapshot.json', root), 'utf8'),
+      await readFile(new URL('meta/0025_snapshot.json', root), 'utf8'),
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
