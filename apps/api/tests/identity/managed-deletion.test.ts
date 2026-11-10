@@ -215,4 +215,42 @@ describe('server-only Auth profile erasure', () => {
       }
     },
   );
+
+  // supabase-js 2.119 sends the DELETE only after its lookup succeeds, so the
+  // redirect case above stops at the GET. This one reaches the DELETE.
+  it.each([301, 302, 303, 307, 308])(
+    'fails closed when the delete after a found lookup redirects %s',
+    async (status) => {
+      const id = randomUUID();
+      const authRequests: string[] = [];
+      const locationRequests: string[] = [];
+      const location = await loopback((request, response) => {
+        locationRequests.push(`${request.method} ${request.url}`);
+        response.end('{}');
+      });
+      const auth = await loopback((request, response) => {
+        authRequests.push(`${request.method} ${request.url}`);
+        if (request.method === 'GET')
+          response
+            .writeHead(200, { 'content-type': 'application/json' })
+            .end(JSON.stringify({ id }));
+        else
+          response
+            .writeHead(status, { location: `${location.origin}/collect` })
+            .end('{}');
+      });
+      try {
+        await expect(
+          createManagedAuthDeletion(auth.origin, key)(id),
+        ).rejects.toMatchObject({ code: 'UNAVAILABLE', status: 503 });
+        expect(authRequests).toEqual([
+          `GET /auth/v1/admin/users/${id}`,
+          `DELETE /auth/v1/admin/users/${id}`,
+        ]);
+        expect(locationRequests).toEqual([]);
+      } finally {
+        await Promise.all([auth.close(), location.close()]);
+      }
+    },
+  );
 });

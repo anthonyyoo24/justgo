@@ -733,6 +733,86 @@ it('withholds offline scope during a pending provider sign-in and restores it af
   }
 });
 
+// supabase-js 2.119 removes the stored session before it reports a failed
+// local sign-out. The controller must still keep its pending step and finish
+// it on a retry, with no stored session left to revoke.
+it.each(['retry', 'restart'] as const)(
+  'finishes a logout on %s after provider sign-out cleared the session and failed',
+  async (resume) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.auth.signOut.mockImplementationOnce(async () => {
+      ctx.setProvider(null);
+      throw new ProviderAuthError('AUTH');
+    });
+    expect(await ctx.controller.signOut()).toBe(false);
+    expect(ctx.saved()?.logoutPending).toBe(true);
+    expect(ctx.controller.currentSession()).toBeNull();
+    expect(ctx.controller.offlineAccountOwner()).toBeNull();
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'signed-out',
+      account: null,
+      collectionId: account.userId,
+    });
+    const logouts = () =>
+      ctx.calls.filter((call) => call.path === '/auth/logout');
+    expect(logouts()).toHaveLength(1);
+
+    // The first logout revoked the app session, so the server now rejects it.
+    ctx.setFailure(new ApiError('SESSION_REVOKED'));
+    let controller = ctx.controller;
+    if (resume === 'retry') await controller.retry();
+    else {
+      controller = ctx.create();
+      await controller.initialize();
+    }
+    expect(ctx.saved()?.logoutPending).toBe(false);
+    expect(ctx.auth.signOut).toHaveBeenCalledTimes(2);
+    // Only the in-memory retry still holds the old token to revoke again.
+    expect(logouts()).toHaveLength(resume === 'retry' ? 2 : 1);
+    expect(controller.getSnapshot()).toMatchObject({
+      mode: 'signed-out',
+      account: null,
+      collectionId: account.userId,
+      hasPending: false,
+    });
+    expect(controller.currentSession()).toBeNull();
+    expect(controller.offlineAccountOwner()).toBeNull();
+  },
+);
+
+it('finishes a deletion on retry after provider sign-out cleared the session and failed', async () => {
+  const ctx = setup();
+  const remove = jest.fn(async () => {});
+  ctx.controller.setAccountDataRemover(remove);
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signOut.mockImplementationOnce(async () => {
+    ctx.setProvider(null);
+    throw new ProviderAuthError('AUTH');
+  });
+  await ctx.controller.deleteAccount();
+  expect(ctx.auth.signOut).toHaveBeenCalledTimes(1);
+  expect(ctx.controller.getSnapshot().deletionStatus).toBe('cleanup');
+  expect(ctx.saved()?.deletion?.receipt?.userId).toBe(account.userId);
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
+
+  await ctx.controller.retry();
+  expect(ctx.calls.filter((call) => call.path === '/account')).toHaveLength(1);
+  expect(remove).toHaveBeenCalledTimes(2);
+  expect(ctx.auth.signOut).toHaveBeenCalledTimes(2);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    mode: 'welcome',
+    account: null,
+    deletionStatus: 'deleted',
+    hasPending: false,
+  });
+  expect(ctx.saved()?.deletion).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+});
+
 it('freezes deletion proof, commits the receipt before cleanup and resumes after local failure', async () => {
   const ctx = setup();
   const remove = jest
