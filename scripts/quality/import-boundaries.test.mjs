@@ -467,6 +467,96 @@ const cases = [
     source: "import { randomUUID } from 'expo-crypto';",
     restricted: false,
   },
+  ...[
+    ["import { ScrollView } from 'react-native';", 'react-native'],
+    [
+      "import { SafeAreaView } from 'react-native-safe-area-context';",
+      'react-native-safe-area-context',
+    ],
+    ["import { devtools } from 'zustand/middleware';", 'zustand/middleware'],
+  ].map(([source, specifier]) => ({
+    name: `mobile code loads ${specifier} only with a static import`,
+    file: 'apps/mobile/src/features/progress/day-details/BoundaryFixture.tsx',
+    source,
+    restricted: false,
+    loadedRestricted: true,
+  })),
+  {
+    name: 'only the diagnostics modules may load the Sentry SDK',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: "import * as Sentry from '@sentry/react-native';",
+    restricted: true,
+    fix: 'privacy review',
+  },
+  {
+    name: 'only the diagnostics modules may import Sentry types',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
+    source: "import type { ReactNativeOptions } from '@sentry/react-native';",
+    restricted: true,
+  },
+  {
+    name: 'only the diagnostics modules may load Sentry subpaths',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '@sentry/react-native/dist/js/sdk';",
+    restricted: true,
+  },
+  ...['@sentry/core', '@sentry/react'].map((specifier) => ({
+    name: `only the diagnostics modules may load ${specifier}`,
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: `import { setUser } from '${specifier}';`,
+    restricted: true,
+    fix: 'privacy review',
+  })),
+  ...['event', 'reporter', 'start', 'transport'].map((module) => ({
+    name: `the diagnostics ${module} module loads the Sentry SDK`,
+    file: `apps/mobile/src/app-support/diagnostics/${module}.ts`,
+    source: "import * as Sentry from '@sentry/react-native';",
+    restricted: false,
+  })),
+  ...['@sentry/core', '@sentry/react'].map((specifier) => ({
+    name: `the diagnostics modules may load ${specifier}`,
+    file: 'apps/mobile/src/app-support/diagnostics/start.ts',
+    source: `import { setUser } from '${specifier}';`,
+    restricted: false,
+  })),
+  {
+    name: 'mobile code may re-export react-native types',
+    file: 'apps/mobile/src/components/BoundaryFixture.ts',
+    source: "export type { ViewStyle } from 'react-native';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'mobile tests may load the Sentry SDK',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.test.tsx',
+    source: "import * as Sentry from '@sentry/react-native';",
+    restricted: false,
+  },
+  {
+    name: 'only managed auth may load the Supabase SDK',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import { createClient } from '@supabase/supabase-js';",
+    restricted: true,
+    fix: 'never database tables',
+  },
+  {
+    name: 'only managed auth may load other Supabase packages',
+    file: 'apps/mobile/src/data/cloud/BoundaryFixture.ts',
+    source: "import { PostgrestClient } from '@supabase/postgrest-js';",
+    restricted: true,
+  },
+  {
+    name: 'managed auth loads the Supabase SDK',
+    file: 'apps/mobile/src/app-support/identity/auth/managed-auth.ts',
+    source: "import { createClient } from '@supabase/supabase-js';",
+    restricted: false,
+  },
+  {
+    name: 'mobile tests may load the Supabase SDK',
+    file: 'apps/mobile/src/app-support/identity/auth/BoundaryFixture.test.ts',
+    source: "import { createClient } from '@supabase/supabase-js';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {

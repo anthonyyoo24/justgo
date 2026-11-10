@@ -82,6 +82,78 @@ const cases = [
     'no-restricted-imports',
     "import { getRandomValues } from 'expo-crypto'; export const secret = getRandomValues(new Uint8Array(16));",
   ],
+  ...[
+    production,
+    'apps/mobile/src/app-support/identity/random-secret.ts',
+    'apps/mobile/src/app-support/diagnostics/start.ts',
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+  ].flatMap((filePath) => [
+    [
+      'no-restricted-imports',
+      "import { SafeAreaProvider } from 'react-native-safe-area-context'; export const Root = SafeAreaProvider;",
+      filePath,
+    ],
+    [
+      'no-restricted-imports',
+      "import { persist } from 'zustand/middleware'; export const middleware = persist;",
+      filePath,
+    ],
+  ]),
+  [
+    'no-restricted-imports',
+    "import { createJSONStorage } from 'zustand/middleware'; export const storage = createJSONStorage;",
+  ],
+  [
+    'no-restricted-imports',
+    "export { FlatList } from 'react-native';",
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+  ],
+  ...[
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+    'apps/mobile/src/features/progress/day-details/entries/DayEntryList.tsx',
+  ].flatMap((filePath) => [
+    [
+      'no-restricted-imports',
+      "import { FlatList } from 'react-native'; export const List = FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-imports',
+      "import { getRandomBytes } from 'expo-crypto'; export const secret = getRandomBytes(32);",
+      filePath,
+    ],
+    [
+      'no-restricted-imports',
+      "import { FlatList } from 'react-native-gesture-handler'; export const List = FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import Animated from 'react-native-reanimated'; export const List = Animated.FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import { Animated } from 'react-native'; export const List = Animated.FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import Reanimated from 'react-native-reanimated'; export const { FlatList } = Reanimated;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "const { FlatList } = require('react-native-gesture-handler'); export const List = FlatList;",
+      filePath,
+    ],
+    // The FlatList property ban replaces the mobile block's crypto property bans unless it repeats them.
+    [
+      'no-restricted-properties',
+      'export const secret = () => globalThis.crypto.getRandomValues(new Uint8Array(32));',
+      filePath,
+    ],
+  ]),
   // #241: the global crypto object skips randomSecretHex().
   [
     'no-restricted-globals',

@@ -25,6 +25,31 @@ const requestPackages = [
 const requestPatterns = [{ group: ['undici/*'], message: outboundFetchFix }];
 const randomSecretFix =
   'Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts. getRandomBytes falls back to Math.random in development.';
+const randomBytesBan = {
+  name: 'expo-crypto',
+  importNames: ['getRandomValues', 'getRandomBytes', 'getRandomBytesAsync'],
+  message: randomSecretFix,
+};
+const everyMobileFileBans = [
+  {
+    name: 'react-native-safe-area-context',
+    importNames: ['SafeAreaProvider'],
+    message:
+      'Expo Router owns the safe-area provider. Read insets with SafeAreaView or useSafeAreaInsets(). Router 58 reports zero web safe-area metrics, so do not add a web provider to force measurements.',
+  },
+  {
+    name: 'zustand/middleware',
+    importNames: ['persist', 'createJSONStorage'],
+    message:
+      'Keep Zustand stores in memory. Persist state through its owner in apps/mobile/src/data, because persist middleware writes storage outside the saving, sync and deletion rules.',
+  },
+];
+const mobileImportBans = [...everyMobileFileBans, randomBytesBan];
+const cryptoPropertyBans = ['globalThis', 'global', 'window', 'self'].map(
+  (object) => ({ object, property: 'crypto', message: randomSecretFix }),
+);
+const dayEntryListFix =
+  "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.";
 
 export default tseslint.config(
   {
@@ -143,37 +168,45 @@ export default tseslint.config(
       '**/*.test.{ts,tsx}',
     ],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'expo-crypto',
-              importNames: [
-                'getRandomValues',
-                'getRandomBytes',
-                'getRandomBytesAsync',
-              ],
-              message: randomSecretFix,
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: mobileImportBans }],
       'no-restricted-globals': [
         'error',
         { name: 'crypto', message: randomSecretFix },
       ],
+      'no-restricted-properties': ['error', ...cryptoPropertyBans],
+    },
+  },
+  {
+    files: ['apps/mobile/src/app-support/identity/random-secret.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: everyMobileFileBans }],
+    },
+  },
+  {
+    files: ['apps/mobile/src/features/progress/day-details/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...mobileImportBans,
+            ...['react-native', 'react-native-gesture-handler'].map((name) => ({
+              name,
+              importNames: ['FlatList'],
+              message: dayEntryListFix,
+            })),
+          ],
+        },
+      ],
+      // Reanimated and react-native also expose FlatList as Animated.FlatList.
       'no-restricted-properties': [
         'error',
-        ...['globalThis', 'global', 'window', 'self'].map((object) => ({
-          object,
-          property: 'crypto',
-          message: randomSecretFix,
-        })),
+        ...cryptoPropertyBans,
+        { property: 'FlatList', message: dayEntryListFix },
       ],
     },
   },
-
   {
     files: ['apps/mobile/src/**/*.tsx'],
     ignores: ['**/*.test.tsx'],
