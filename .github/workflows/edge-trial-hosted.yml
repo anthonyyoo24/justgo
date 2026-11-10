@@ -1,0 +1,205 @@
+name: Edge trial hosted
+# P15-2. This file lives only on phase15/edge-trial and never merges.
+# A push runs a hosted job only when it adds or changes one request file under
+# supabase/trial/. Each hosted job waits for approval in the edge-trial
+# environment. The repository is public, so logs and receipts hold names,
+# counts and hashes, never a secret value.
+on:
+  push:
+    branches: [phase15/edge-trial]
+    paths: ['supabase/trial/*.request']
+permissions:
+  contents: read
+concurrency:
+  group: edge-trial-hosted
+  cancel-in-progress: false
+env:
+  DO_NOT_TRACK: '1'
+  SUPABASE_TELEMETRY_DISABLED: '1'
+  SUPABASE_CLI_VERSION: 3.1.0
+  TRIAL_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+jobs:
+  changes:
+    name: Find the request this push made
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      operation: ${{ steps.find.outputs.operation }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - id: find
+        name: Name the one request file that changed
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "The push has no known previous commit, so no request is trusted."
+            exit 1
+          fi
+          changed=$(git diff --name-only --diff-filter=AM "$BEFORE" "$GITHUB_SHA" -- supabase/trial/)
+          echo "Changed request files: ${changed:-none}"
+          case "$changed" in
+            '') operation=none ;;
+            supabase/trial/deploy.request) operation=deploy ;;
+            supabase/trial/delete.request) operation=delete ;;
+            supabase/trial/logs.request) operation=logs ;;
+            *)
+              echo "A push may change exactly one known request file."
+              exit 1
+              ;;
+          esac
+          if [ "$operation" != none ]; then
+            node apps/api/scripts/edge-trial/hosted-ci.ts check-request "$operation"
+          fi
+          echo "operation=$operation" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy justgo-trial to hosted staging
+    needs: changes
+    if: needs.changes.outputs.operation == 'deploy' && github.repository == 'anthonyyoo24/justgo' && github.ref == 'refs/heads/phase15/edge-trial'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: edge-trial
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Build the trial bundle
+        run: |
+          node --import tsx apps/api/scripts/edge-trial/build-hosted.ts > "$RUNNER_TEMP/bundle.json"
+          cat "$RUNNER_TEMP/bundle.json"
+      - name: Write the function secrets to a private file
+        env:
+          EDGE_DATABASE_URL: ${{ secrets.EDGE_DATABASE_URL }}
+          EDGE_DATABASE_CA_CERT: ${{ secrets.EDGE_DATABASE_CA_CERT }}
+          JUSTGO_AUTH_PUBLISHABLE_KEY: ${{ secrets.JUSTGO_AUTH_PUBLISHABLE_KEY }}
+          JUSTGO_AUTH_SECRET_KEY: ${{ secrets.JUSTGO_AUTH_SECRET_KEY }}
+        run: node apps/api/scripts/edge-trial/hosted-ci.ts secrets-file supabase/trial/deploy.request "$RUNNER_TEMP/function-secrets.env"
+      - name: Set the function secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase secrets set --env-file "$RUNNER_TEMP/function-secrets.env" --remote="$SUPABASE_PROJECT_REF" --yes
+      - name: Remove the private secrets file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/function-secrets.env"
+      - name: Deploy the function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy justgo-trial --remote="$SUPABASE_PROJECT_REF" --yes
+      - name: Read back the deploy and the secret names
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/receipt"
+          supabase functions list --remote="$SUPABASE_PROJECT_REF" -o json > "$RUNNER_TEMP/functions-after-deploy.json"
+          # A second deploy of the same build uploads nothing only when the project holds this build's hash.
+          supabase functions deploy justgo-trial --remote="$SUPABASE_PROJECT_REF" --yes > "$RUNNER_TEMP/repeat-deploy.log" 2>&1
+          cat "$RUNNER_TEMP/repeat-deploy.log"
+          supabase functions list --remote="$SUPABASE_PROJECT_REF" -o json > "$RUNNER_TEMP/functions-after-repeat.json"
+          # This file holds a digest of each value. It stays on the runner, and the receipt keeps the names only.
+          supabase secrets list --remote="$SUPABASE_PROJECT_REF" -o json > "$RUNNER_TEMP/secrets.json"
+          node apps/api/scripts/edge-trial/hosted-ci.ts deploy-receipt \
+            "$RUNNER_TEMP/bundle.json" \
+            "$RUNNER_TEMP/functions-after-deploy.json" \
+            "$RUNNER_TEMP/functions-after-repeat.json" \
+            "$RUNNER_TEMP/secrets.json" \
+            "$RUNNER_TEMP/repeat-deploy.log" \
+            "$RUNNER_TEMP/receipt/deploy-readback.json"
+      - name: Remove the secret digests
+        if: always()
+        run: rm -f "$RUNNER_TEMP/secrets.json"
+      - name: Summarize the deploy
+        if: always()
+        run: |
+          {
+            echo "### justgo-trial deploy"
+            echo "Function URL: https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/justgo-trial"
+            echo "Source: $GITHUB_SHA"
+            echo "Lane 10 receipt: the edge-trial-deploy artifact, deploy-readback.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the lane 10 receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: edge-trial-deploy
+          path: ${{ runner.temp }}/receipt/
+          if-no-files-found: error
+
+  delete:
+    name: Delete the justgo-trial function
+    needs: changes
+    if: needs.changes.outputs.operation == 'delete' && github.repository == 'anthonyyoo24/justgo' && github.ref == 'refs/heads/phase15/edge-trial'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: edge-trial
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Delete the function and leave its secrets in place
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/receipt"
+          supabase functions delete justgo-trial --remote="$SUPABASE_PROJECT_REF" --yes
+          supabase functions list --remote="$SUPABASE_PROJECT_REF" -o json > "$RUNNER_TEMP/functions-after-delete.json"
+          node apps/api/scripts/edge-trial/hosted-ci.ts delete-receipt \
+            "$RUNNER_TEMP/functions-after-delete.json" \
+            "$RUNNER_TEMP/receipt/delete-readback.json"
+      - name: Upload the delete receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: edge-trial-delete
+          path: ${{ runner.temp }}/receipt/
+          if-no-files-found: error
+
+  logs:
+    name: Read the lane 5 logs
+    needs: changes
+    if: needs.changes.outputs.operation == 'logs' && github.repository == 'anthonyyoo24/justgo' && github.ref == 'refs/heads/phase15/edge-trial'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: edge-trial
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Scan the project logs for the lane 5 canaries
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/receipt"
+          node apps/api/scripts/edge-trial/hosted-ci.ts logs supabase/trial/logs.request "$RUNNER_TEMP/receipt/log-scan.json"
+      - name: Upload the log scan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: edge-trial-log-scan
+          path: ${{ runner.temp }}/receipt/
+          if-no-files-found: error
