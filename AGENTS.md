@@ -58,10 +58,9 @@ pass does not prove a hosted pass, so read each stacked branch's own CI run. Exp
 the local checks for a concrete failure or an explicit owner request, and state
 the trigger.
 
-On the owner's 8 GB Mac, run one heavy check or build at a time and reuse existing
-tools and caches. Do not rerun a passed check that a broader command already ran
-unless its inputs changed or a failure needs investigation. Native signing or build
-upgrades need a separate task.
+Reuse existing tools and caches. Do not rerun a passed check that a broader
+command already ran unless its inputs changed or a failure needs investigation.
+Native signing or build upgrades need a separate task.
 
 Its shell is zsh, and some searches there fail silently. Quote glob arguments such
 as `--include='*.ts'`, or an unquoted one aborts the command. `git grep -E '\bword\b'`
