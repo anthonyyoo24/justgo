@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -299,6 +300,23 @@ test('removes tool output and local settings but keeps agent records and keys', 
   assert.equal(existsSync(scratch), false);
 });
 
+test('keeps a worktree whose .local folder cannot be read', (t) => {
+  const repo = fixture(t);
+  const sealed = repo.add('sealed', '--detach');
+  const local = path.join(sealed, '.local');
+  mkdirSync(local);
+  writeFileSync(path.join(local, 'run.review.md'), 'review\n');
+  chmodSync(local, 0);
+  try {
+    assert.deepEqual(repo.run(), {
+      sealed: 'keep: ignored files that may be unique (.local/)',
+    });
+  } finally {
+    chmodSync(local, 0o755);
+  }
+  assert.equal(existsSync(path.join(local, 'run.review.md')), true);
+});
+
 test('keeps every worktree when the process list cannot be read', (t) => {
   const repo = fixture(t);
   const idle = repo.add('idle', '--detach');
@@ -391,6 +409,7 @@ test('keeps a worktree for every operation in progress and every ref of its own'
     ['REVERT_HEAD', false],
     ['BISECT_LOG', false],
     ['sequencer', true],
+    ['NOTES_MERGE_PARTIAL', false],
   ]) {
     const worktree = repo.add(name.toLowerCase(), '--detach');
     const marker = path.join(
@@ -435,15 +454,28 @@ test('keeps the remaining steps of a cherry-pick after a conflict is committed',
   });
 });
 
+test('keeps a notes merge stopped on a conflict', (t) => {
+  const repo = fixture(t);
+  const merging = repo.add('merging', '--detach');
+  git(merging, 'notes', 'add', '-m', 'mine', 'HEAD');
+  git(merging, 'notes', '--ref=other', 'add', '-m', 'theirs', 'HEAD');
+  assert.throws(() => git(merging, 'notes', 'merge', 'other'));
+  assert.deepEqual(repo.run(), {
+    merging: 'keep: a rebase, merge or bisect is in progress',
+  });
+});
+
 test('looks again for a process or a chat just before each removal', (t) => {
   const repo = fixture(t);
   const first = repo.add('first', '--detach');
   const busy = repo.add('busy', '--detach');
   const chatted = repo.add('chatted', '--detach');
+  const ownChat = repo.add('own-chat', '--detach');
   const slug = transcriptDir(repo.main, repo.home);
   let calls = 0;
   // The first call is the sweep's own look. By the next one, a process has
-  // started in one worktree and a chat has resumed in another.
+  // started in one worktree, a chat started in the main checkout has resumed
+  // in another, and a chat started in a third has resumed there.
   const busyPaths = () => {
     calls += 1;
     if (calls === 1) return [];
@@ -452,16 +484,38 @@ test('looks again for a process or a chat just before each removal', (t) => {
       path.join(slug, 'resumed.jsonl'),
       `${JSON.stringify({ cwd: chatted })}\n`,
     );
+    const own = transcriptDir(ownChat, repo.home);
+    mkdirSync(own, { recursive: true });
+    writeFileSync(path.join(own, 'resumed.jsonl'), '{}\n');
     return [path.join(busy, 'apps')];
   };
   assert.deepEqual(repo.run({ busyPaths }), {
     first: 'remove',
     busy: 'keep: a running process is inside it',
     chatted: 'keep: used in the last day',
+    'own-chat': 'keep: used in the last day',
   });
   assert.equal(existsSync(first), false);
   assert.equal(existsSync(busy), true);
   assert.equal(existsSync(chatted), true);
+  assert.equal(existsSync(ownChat), true);
+});
+
+test('never forces a removal when a worktree changes after its check', (t) => {
+  const repo = fixture(t);
+  const changed = repo.add('changed', '--detach');
+  let calls = 0;
+  // By the look just before removal, someone has saved a new file there.
+  const busyPaths = () => {
+    calls += 1;
+    if (calls > 1) writeFileSync(path.join(changed, 'draft.txt'), 'new\n');
+    return [];
+  };
+  assert.deepEqual(repo.run({ busyPaths }), {
+    changed: 'keep: git refused the removal',
+  });
+  assert.equal(existsSync(path.join(changed, 'draft.txt')), true);
+  assert.deepEqual(repo.logs, []);
 });
 
 test('leaves a worktree inside another worktree to the outer one', (t) => {
@@ -540,6 +594,13 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
   const committed = repo.add('committed', '-b', 'committed');
   commit(committed, 'today.txt', 'new\n');
   const switched = repo.add('switched', '--detach');
+  // A worktree created today on an old commit is new only by its folder.
+  const created = repo.add('created', '--detach');
+  const createdHead = path.join(
+    git(created, 'rev-parse', '--path-format=absolute', '--git-dir'),
+    'HEAD',
+  );
+  utimesSync(createdHead, old, old);
   for (const dir of [
     repo.add('stale', '--detach'),
     chatted,
@@ -598,6 +659,7 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
   assert.equal(results.committed, 'keep: used in the last day');
   assert.equal(results.switched, 'keep: used in the last day');
   assert.equal(results['via-main'], 'keep: used in the last day');
+  assert.equal(results.created, 'keep: used in the last day');
   assert.equal(results['past-chat'], 'remove');
 });
 
@@ -605,9 +667,13 @@ test('leaves worktrees outside .claude/worktrees and does nothing from a linked 
   const repo = fixture(t);
   const outside = path.join(path.dirname(repo.main), 'elsewhere');
   git(repo.main, 'worktree', 'add', '-q', '--detach', outside, 'main');
-  const inside = repo.add('inside', '--detach');
+  repo.add('inside', '--detach');
+  // A linked worktree outside the main checkout can hold idle worktrees in
+  // its own .claude/worktrees, and its chats cannot see them.
+  const nested = path.join(outside, '.claude', 'worktrees', 'nested');
+  git(repo.main, 'worktree', 'add', '-q', '--detach', nested, 'main');
   assert.deepEqual(
-    sweep(inside, {
+    sweep(outside, {
       now: Date.now() + 2 * idleMs,
       home: repo.home,
       busyPaths: () => [],
@@ -616,6 +682,7 @@ test('leaves worktrees outside .claude/worktrees and does nothing from a linked 
     }),
     [],
   );
+  assert.equal(existsSync(nested), true);
   assert.deepEqual(repo.run(), { inside: 'remove' });
   assert.equal(existsSync(outside), true);
   // A worktree moved or deleted by hand outside .claude/worktrees keeps its

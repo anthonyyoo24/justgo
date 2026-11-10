@@ -29,10 +29,10 @@ import { fileURLToPath } from 'node:url';
 //    branch or origin/main that contains it, so removal loses no commits
 //    (branches are never deleted, and other remote branches may be),
 //  - every commit its HEAD reflog records is on a branch, on origin/main or in
-//    a branch's own reflog, no rebase, merge, cherry-pick, revert (including
-//    the remaining steps of a multi-commit one) or bisect is in progress, and
-//    it has no refs of its own, because its HEAD reflog and its own refs go
-//    with it,
+//    a branch's own reflog, no rebase, merge, notes merge, cherry-pick, revert
+//    (including the remaining steps of a multi-commit one) or bisect is in
+//    progress, and it has no refs of its own, because its HEAD reflog and its
+//    own refs go with it,
 //  - it is not inside another worktree,
 //  - its branch has no open PR (when GitHub cannot be read, keep it),
 //  - no running process has its working directory inside it, checked again
@@ -307,6 +307,8 @@ const inProgress = [
   // A multi-commit cherry-pick or revert keeps its remaining steps here after
   // a conflict is committed and CHERRY_PICK_HEAD or REVERT_HEAD is gone.
   'sequencer',
+  // A `git notes merge` stopped on a conflict.
+  'NOTES_MERGE_PARTIAL',
 ];
 
 // Every commit a branch's own reflog records. Branch reflogs live in the

@@ -13,10 +13,16 @@ const justgo = {
 
 const outboundFetchFix =
   'Send requests through outboundFetch() from apps/api/src/http/outbound-fetch.ts. It keeps redirects manual so credentials never follow a Location, and fails a 3xx as UNAVAILABLE unread.';
-const requestPackages = ['undici', 'node-fetch', 'cross-fetch'].map((name) => ({
-  name,
-  message: outboundFetchFix,
-}));
+const requestPackages = [
+  'undici',
+  'node-fetch',
+  'cross-fetch',
+  'http',
+  'https',
+  'node:http',
+  'node:https',
+].map((name) => ({ name, message: outboundFetchFix }));
+const requestPatterns = [{ group: ['undici/*'], message: outboundFetchFix }];
 
 export default tseslint.config(
   {
@@ -89,7 +95,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-globals': [
         'error',
-        ...['fetch', 'globalThis', 'self', 'window'].map((name) => ({
+        ...['fetch', 'global', 'globalThis', 'self', 'window'].map((name) => ({
           name,
           message: `${outboundFetchFix} Name other globals directly, not through the global object.`,
         })),
@@ -99,6 +105,7 @@ export default tseslint.config(
         {
           paths: requestPackages,
           patterns: [
+            ...requestPatterns,
             {
               group: ['@supabase/*'],
               message:
@@ -111,7 +118,12 @@ export default tseslint.config(
   },
   {
     files: ['apps/api/src/identity/managed-deletion.ts'],
-    rules: { 'no-restricted-imports': ['error', { paths: requestPackages }] },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: requestPackages, patterns: requestPatterns },
+      ],
+    },
   },
   {
     files: ['apps/mobile/**/*.{ts,tsx}'],

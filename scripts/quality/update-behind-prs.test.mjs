@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { decide, tokenName, updateBehindPulls } from './update-behind-prs.mjs';
 
 const workflow = readFileSync(
@@ -22,8 +24,15 @@ const pull = (number, mergeStateStatus, extra = {}) => ({
 
 // A fake GitHub. `pages` answers successive GraphQL listings: each entry is
 // the list of PRs for that listing, or an array of pages for one listing.
-// `updates` maps a PR number to the update-branch status (default 202).
-function fakeGitHub({ listings, updates = {}, graphqlStatus = 200 }) {
+// `updates` maps a PR number to the update-branch status (default 202), or to
+// a function of the expected head that returns it. `graphqlErrors` adds an
+// `errors` array beside the data, as GitHub does for a partial failure.
+function fakeGitHub({
+  listings,
+  updates = {},
+  graphqlStatus = 200,
+  graphqlErrors,
+}) {
   const calls = [];
   let listing = -1;
   const fetch = async (url, init) => {
@@ -41,6 +50,7 @@ function fakeGitHub({ listings, updates = {}, graphqlStatus = 200 }) {
       const pages = Array.isArray(current[0]) ? current : [current];
       const index = body.variables.after ? Number(body.variables.after) : 0;
       return reply(200, {
+        ...(graphqlErrors && { errors: graphqlErrors }),
         data: {
           repository: {
             pullRequests: {
@@ -58,7 +68,9 @@ function fakeGitHub({ listings, updates = {}, graphqlStatus = 200 }) {
       url,
     );
     assert.ok(match, `unexpected request ${init.method} ${url}`);
-    const status = updates[Number(match[1])] ?? 202;
+    const answer = updates[Number(match[1])] ?? 202;
+    const status =
+      typeof answer === 'function' ? answer(body.expected_head_sha) : answer;
     return reply(
       status,
       status === 202
@@ -66,6 +78,7 @@ function fakeGitHub({ listings, updates = {}, graphqlStatus = 200 }) {
         : { message: `refused with ${status}` },
     );
   };
+  const listed = () => calls.filter((call) => call.method === 'POST').length;
   const updated = () =>
     calls
       .filter((call) => call.method === 'PUT')
@@ -73,7 +86,7 @@ function fakeGitHub({ listings, updates = {}, graphqlStatus = 200 }) {
         number: Number(call.url.match(/pulls\/(\d+)\//)[1]),
         expected: call.body.expected_head_sha,
       }));
-  return { fetch, calls, updated };
+  return { fetch, calls, listed, updated };
 }
 
 async function runWith(github, extra = {}) {
@@ -145,23 +158,91 @@ test('every request carries the token and asks for the REST API version', async 
   assert.match(list.body.query, /states: OPEN, baseRefName: "main"/);
 });
 
-test('a head that moved or a conflict GitHub finds is skipped with its message; other failures fail the run', async () => {
+test('an update failure other than a refusal fails the run without a retry', async () => {
   const github = fakeGitHub({
-    listings: [[pull(1, 'BEHIND'), pull(2, 'BEHIND'), pull(3, 'BEHIND')]],
-    updates: { 1: 422, 2: 403 },
+    listings: [[pull(2, 'BEHIND'), pull(3, 'BEHIND')]],
+    updates: { 2: 403 },
   });
-  const { result, lines } = await runWith(github);
+  const { result, lines, sleeps } = await runWith(github);
   assert.deepEqual(result.updated, [3]);
-  assert.deepEqual(result.skipped, [
-    {
-      number: 1,
-      reason: `GitHub refused the update of head ${sha(1).slice(0, 7)}: refused with 422`,
-    },
-  ]);
+  assert.deepEqual(result.skipped, []);
   assert.deepEqual(result.failed, [
     { number: 2, status: 403, message: 'refused with 403' },
   ]);
   assert.match(lines.join('\n'), /#2: update failed with 403/);
+  assert.equal(github.listed(), 1);
+  assert.deepEqual(sleeps, []);
+});
+
+test('a PR whose head moved under a racing update is read again once and updated on its new head', async () => {
+  const moved = 'b'.repeat(40);
+  const github = fakeGitHub({
+    listings: [
+      [pull(1, 'BEHIND'), pull(2, 'BEHIND')],
+      [pull(1, 'BEHIND', { headRefOid: moved }), pull(2, 'BEHIND')],
+    ],
+    updates: { 1: (expected) => (expected === moved ? 202 : 422) },
+  });
+  const { result, sleeps } = await runWith(github);
+  assert.deepEqual(github.updated(), [
+    { number: 1, expected: sha(1) },
+    { number: 2, expected: sha(2) },
+    { number: 1, expected: moved },
+  ]);
+  assert.deepEqual(result, { updated: [2, 1], skipped: [], failed: [] });
+  assert.equal(github.listed(), 2);
+  assert.deepEqual(sleeps, [5]);
+});
+
+test('a refused PR that is no longer behind, conflicts or is gone is skipped, not retried', async () => {
+  const github = fakeGitHub({
+    listings: [
+      [pull(1, 'BEHIND'), pull(2, 'BEHIND'), pull(3, 'BEHIND')],
+      [pull(1, 'BLOCKED'), pull(2, 'DIRTY')],
+    ],
+    updates: { 1: 422, 2: 422, 3: 422 },
+  });
+  const { result, lines } = await runWith(github);
+  assert.equal(github.updated().length, 3);
+  assert.deepEqual(result.updated, []);
+  assert.deepEqual(result.failed, []);
+  assert.deepEqual(result.skipped, [
+    { number: 1, reason: 'it is not behind main (BLOCKED)' },
+    {
+      number: 2,
+      reason: 'it conflicts with main; rebase it and get a fresh verdict',
+    },
+    { number: 3, reason: 'it is no longer an armed open PR on main' },
+  ]);
+  assert.match(
+    lines.join('\n'),
+    new RegExp(
+      `#1: GitHub refused the update of head ${sha(1).slice(0, 7)}: refused with 422`,
+    ),
+  );
+});
+
+test('a refusal that persists after the second read fails the run', async () => {
+  const github = fakeGitHub({
+    listings: [[pull(1, 'BEHIND')]],
+    updates: { 1: 422 },
+  });
+  const { result, lines } = await runWith(github);
+  assert.deepEqual(github.updated(), [
+    { number: 1, expected: sha(1) },
+    { number: 1, expected: sha(1) },
+  ]);
+  assert.equal(github.listed(), 2);
+  assert.deepEqual(result.updated, []);
+  assert.deepEqual(result.skipped, []);
+  assert.deepEqual(result.failed, [
+    { number: 1, status: 422, message: 'refused with 422' },
+  ]);
+  assert.match(
+    lines.join('\n'),
+    /#1: GitHub refused the update again while it is still behind main/,
+  );
+  assert.match(lines.at(-1), /Updated 0, skipped 0, failed 1\./);
 });
 
 test('UNKNOWN is asked again until GitHub decides, and only those PRs are rechecked', async () => {
@@ -186,12 +267,13 @@ test('a PR still UNKNOWN after every attempt is tried anyway, and GitHub decides
     updates: { 2: 422 },
   });
   const { result, lines, sleeps } = await runWith(github);
-  assert.equal(sleeps.length, 2);
+  assert.equal(sleeps.length, 3);
   assert.deepEqual(result.updated, [1]);
   assert.deepEqual(
     result.skipped.map(({ number }) => number),
     [2],
   );
+  assert.deepEqual(result.failed, []);
   assert.match(lines.join('\n'), /#1: GitHub still reports UNKNOWN/);
 });
 
@@ -218,8 +300,69 @@ test('a missing token, a bad repository or a failed listing stops before any upd
   await assert.rejects(runWith(github, { repo: 'nope' }), /owner\/name/);
   const denied = fakeGitHub({ listings: [[]], graphqlStatus: 401 });
   await assert.rejects(runWith(denied), /listing open PRs failed with 401/);
+  const partial = fakeGitHub({
+    listings: [[pull(1, 'BEHIND')]],
+    graphqlErrors: [{ message: 'Something went wrong' }],
+  });
+  await assert.rejects(
+    runWith(partial),
+    /listing open PRs failed with 200: .*Something went wrong/,
+  );
   assert.deepEqual(github.updated(), []);
   assert.deepEqual(denied.updated(), []);
+  assert.deepEqual(partial.updated(), []);
+});
+
+// Runs the script as the workflow does, with a stubbed fetch preloaded so no
+// request leaves the process.
+function runScript({ token, nodes = [], update = 202 }) {
+  const stub = `
+    const nodes = ${JSON.stringify(nodes)};
+    globalThis.fetch = async (url) => {
+      const reply = (status, json) => ({ status, text: async () => JSON.stringify(json) });
+      if (url === 'https://api.github.com/graphql')
+        return reply(200, { data: { repository: { pullRequests: {
+          pageInfo: { hasNextPage: false, endCursor: null }, nodes } } } });
+      if (url.endsWith('/update-branch')) return reply(${update}, { message: 'answered ${update}' });
+      throw new Error('unexpected request ' + url);
+    };`;
+  return spawnSync(
+    process.execPath,
+    [
+      '--import',
+      `data:text/javascript,${encodeURIComponent(stub)}`,
+      fileURLToPath(new URL('./update-behind-prs.mjs', import.meta.url)),
+    ],
+    {
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_REPOSITORY: repo,
+        ...(token && { [tokenName]: token }),
+      },
+    },
+  );
+}
+
+test('the script exits non-zero on a missing token or a failed update, and zero otherwise', () => {
+  const missing = runScript({});
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /update-behind-prs: PR_UPDATE_TOKEN is not set/);
+
+  const failed = runScript({
+    token: 'pat-for-test',
+    nodes: [pull(1, 'BEHIND')],
+    update: 403,
+  });
+  assert.equal(failed.status, 1, failed.stderr);
+  assert.match(failed.stdout, /#1: update failed with 403: answered 403\./);
+
+  const passed = runScript({
+    token: 'pat-for-test',
+    nodes: [pull(1, 'BEHIND')],
+  });
+  assert.equal(passed.status, 0, passed.stderr);
+  assert.match(passed.stdout, /Updated 1, skipped 0, failed 0\./);
 });
 
 test('decide names each state', () => {
