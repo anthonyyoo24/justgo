@@ -143,10 +143,11 @@ these rules:
   replaces an earlier one that names the same issue, or that has the same
   evidence text when it names none. The Stop hook blocks until the latest row for
   each bug has a label or a skip reason.
-- A nightly claude.ai cloud routine fixes `agent-fix` issues one at a time, with
-  a builder and a separate verifier for each fix.
-  [Nightly agent-fix](docs/operations/NIGHTLY_AGENT_FIX.md) owns its setup,
-  connectors, prompt and trial limits. During the trial it opens PRs and merges
+- Agents in interactive sessions fix `agent-fix` issues. The nightly claude.ai
+  cloud routine, with a builder and a separate verifier for each fix, has been
+  paused since 2026-11-10, so filing an issue does not queue a fix.
+  [Nightly agent-fix](docs/operations/NIGHTLY_AGENT_FIX.md) owns its status,
+  setup, connectors, prompt and trial limits. During the trial it opens PRs and merges
   nothing. After the trial its PRs follow the [merge rules](#git-and-autonomy).
 - [TestFlight beta](docs/operations/TESTFLIGHT_BETA.md) owns the product stage and
   user count. Check it before you call anything urgent.
