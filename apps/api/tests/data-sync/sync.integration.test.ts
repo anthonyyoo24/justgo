@@ -886,6 +886,7 @@ describe('signed-in immutable journal versions and deletion', () => {
   it('rejects a user id change that would let a childless account return at data epoch 0 (#220), from the API role or a migration', async () => {
     const old = randomUUID(),
       next = randomUUID();
+    owners.add(old);
     await withOwner(db.db, old, (tx) =>
       tx.execute(
         sql`insert into justgo.users (id,data_epoch) values (${old},3)`,
