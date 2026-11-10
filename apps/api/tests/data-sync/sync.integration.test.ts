@@ -536,7 +536,7 @@ describe('managed authentication and guest boundary', () => {
       ).statusCode,
     ).toBe(401);
   });
-  it('retires new legacy bootstrap, transfers and key/code controls while preserving existing-proof migration', async () => {
+  it('retires new legacy bootstrap, transfers and key/code controls while preserving existing-proof recovery, renewal and deletion replay', async () => {
     const managed = buildApp({
       identity,
       legacyIdentityEnabled: false,
@@ -549,7 +549,8 @@ describe('managed authentication and guest boundary', () => {
       sessionToken: randomBytes(32).toString('hex'),
       credential: randomBytes(32).toString('hex'),
     };
-    owners.add((await identity.bootstrap(proof)).userId);
+    const { userId } = await identity.bootstrap(proof);
+    owners.add(userId);
 
     expect(
       (
@@ -588,6 +589,43 @@ describe('managed authentication and guest boundary', () => {
         })
       ).statusCode,
     ).toBe(404);
+
+    const renewed = {
+      sessionId: randomUUID(),
+      sessionToken: randomBytes(32).toString('hex'),
+    };
+    const renewal = await apiRequest(managed, {
+      url: '/v1/sessions',
+      method: 'POST',
+      headers: { authorization: `Bearer ${proof.sessionToken}` },
+      payload: { ...renewed, kind: 'renewal' },
+    });
+    expect(renewal.statusCode, renewal.body).toBe(200);
+    expect(renewal.json()).toMatchObject({
+      userId,
+      sessionId: renewed.sessionId,
+    });
+    const deleteLegacyAccount = () =>
+      apiRequest(managed, {
+        url: '/v1/account',
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${renewed.sessionToken}` },
+        payload: { confirmation: 'delete-account' },
+      });
+    const deletion = await deleteLegacyAccount();
+    expect(deletion.statusCode, deletion.body).toBe(200);
+    expect(deletion.json().userId).toBe(userId);
+    expect(
+      (
+        await apiRequest(managed, {
+          url: '/v1/sessions/current',
+          headers: { authorization: `Bearer ${renewed.sessionToken}` },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const replay = await deleteLegacyAccount();
+    expect(replay.statusCode, replay.body).toBe(200);
+    expect(replay.json()).toEqual(deletion.json());
 
     const legacyOnly = new IdentityService(db.db, {
       rateKey: `no-managed-${randomUUID()}`,
@@ -856,6 +894,42 @@ describe('signed-in immutable journal versions and deletion', () => {
         ])
       ).rows[0]!.deleted_at,
     ).toBeNull();
+  });
+  it('keeps access and purchase entitlement through delete-all', async () => {
+    const a = await signIn(),
+      expiresAt = new Date(Date.now() + 3600000).toISOString();
+    const granted = buildApp({
+      identity,
+      logger: false,
+      checkDatabase: async () => {},
+      ...createBetaAccess([
+        {
+          userId: a.session.userId,
+          startsAt: new Date(Date.now() - 60000).toISOString(),
+          expiresAt,
+        },
+      ]),
+    });
+    const access = () =>
+      apiRequest(granted, {
+        url: '/v1/access',
+        headers: { authorization: `Bearer ${a.token}` },
+      });
+    const verifiedAccess = {
+      status: 'verified',
+      source: 'free_beta',
+      checkedAt: expect.any(String),
+      expiresAt,
+    };
+    expect((await access()).json()).toEqual(verifiedAccess);
+    expect((await restore(a.token, [await completion()])).json().added).toBe(1);
+    const deleted = await request(a.token, '/data', 'DELETE', {
+      expectedEpoch: 0,
+    });
+    expect(deleted.statusCode, deleted.body).toBe(200);
+    const after = await access();
+    expect(after.statusCode, after.body).toBe(200);
+    expect(after.json()).toEqual(verifiedAccess);
   });
   it('rejects any write that lowers a data epoch, from the API role or a migration, and keeps advancing it', async () => {
     const a = await signIn(),
