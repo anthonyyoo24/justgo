@@ -1,4 +1,5 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { AppState, type AppStateStatus } from 'react-native';
 import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { createDataBackup } from '../../../data/backup/data-backup';
 
@@ -390,18 +391,73 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
 it('authenticates before deleting an account journal while signed out', async () => {
   mockKind = 'account';
   const screen = await render(<SettingsDataScreen />);
+  const confirmDeletion = () =>
+    fireEvent.press(
+      within(screen.getByLabelText('Delete all saved data?')).getByRole(
+        'button',
+        { name: 'Delete' },
+      ),
+    );
   await fireEvent.press(
     screen.getByRole('button', { name: 'Delete all my data' }),
   );
-  await fireEvent.press(
-    within(screen.getByLabelText('Delete all saved data?')).getByRole(
-      'button',
-      { name: 'Delete' },
-    ),
-  );
+  await confirmDeletion();
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/account/sign-in',
     params: { returnTo: 'data', ownerId: owner },
   });
   expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
+  await act(() => mockBlur?.());
+  mockSignedIn = true;
+  await screen.rerender(<SettingsDataScreen />);
+  await act(async () => {});
+  expect(screen.queryByLabelText('Delete all saved data?')).toBeNull();
+  expect(pick).not.toHaveBeenCalled();
+  expect(mockActivity.importData).not.toHaveBeenCalled();
+  expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Delete all my data' }),
+  );
+  await confirmDeletion();
+  await screen.findByText(
+    'All saved data was deleted. Your account and downloaded files were kept.',
+  );
+  expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  ['guest', false],
+  ['account', true],
+] as const)(
+  'keeps a file pick with its %s owner while the app leaves for Files',
+  async (kind, signedIn) => {
+    mockKind = kind;
+    mockSignedIn = signedIn;
+    const lifecycle = new Set<(state: AppStateStatus) => void>();
+    const subscribe = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        lifecycle.add(listener);
+        return { remove: () => lifecycle.delete(listener) };
+      });
+    const file = deferred<Uint8Array | null>();
+    pick.mockReturnValueOnce(file.promise);
+    const screen = await render(<SettingsDataScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+    for (const state of ['inactive', 'background', 'active'] as const)
+      await act(() => lifecycle.forEach((listener) => listener(state)));
+    await act(async () => file.resolve(backup(kind)));
+    await screen.findByRole('header', { name: 'Import this data?' });
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Confirm import' }),
+    );
+    await screen.findByText(
+      'Your data was imported. Existing differing journal entries were kept.',
+    );
+    expect(mockActivity.importData).toHaveBeenCalledTimes(1);
+    expect(mockActivity.importData).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: { id: owner, kind } }),
+    );
+    subscribe.mockRestore();
+  },
+);

@@ -20,7 +20,10 @@ import { memoryLocalJournal } from '../../../test-support/local-journal';
 import { journalEntry } from './private-journal';
 
 const owned: AccountRepository[] = [];
-function setup(storage = new MemoryStorage()) {
+function setup(
+  storage = new MemoryStorage(),
+  dataMode: 'local' | 'cloud' = 'local',
+) {
   const transport = backend();
   const repository = new AccountRepository({
     accountId: owner,
@@ -29,7 +32,7 @@ function setup(storage = new MemoryStorage()) {
     today,
     timeZone: zone,
     localJournal: memoryLocalJournal(owner, storage),
-    dataMode: 'local',
+    dataMode,
   });
   owned.push(repository);
   return { repository, storage, transport };
@@ -63,6 +66,30 @@ it('keeps guest history and private writing through relaunch and day changes wit
     1,
   );
 });
+
+it.each(['local', 'cloud'] as const)(
+  'keeps adopted earlier-day history in %s mode through rollover and relaunch',
+  async (dataMode) => {
+    const { repository, storage } = setup(new MemoryStorage(), dataMode);
+    await repository.adoptAttempt(attempt(1));
+    await repository.rollover('2026-10-06', zone);
+    expect(repository.getAttempt(uuid(1))).toBeTruthy();
+    repository.dispose();
+    const next = setup(storage, dataMode);
+    await next.repository.hydrate();
+    await next.repository.rollover('2026-10-07', zone);
+    expect(next.repository.getAttempt(uuid(1))).toMatchObject({
+      activityDate: today,
+    });
+    expect((await next.repository.snapshotData()).attempts).toHaveLength(1);
+    expect(progressMetrics(next.repository.store.getState())?.totalReps).toBe(
+      1,
+    );
+    expect(
+      progressDay(next.repository.store.getState(), today)?.totalReps,
+    ).toBe(1);
+  },
+);
 
 it('merges complete history idempotently and rejects changed historical ownership context', async () => {
   const { repository } = setup();
