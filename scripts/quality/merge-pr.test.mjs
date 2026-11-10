@@ -82,6 +82,8 @@ test('breaking only PRs behind in the order is allowed', () => {
 // branch on the origin, as GitHub does, unless FAKE_FOREIGN_PUSH asks for a
 // plain commit instead. Check runs come back pending FAKE_PENDING times, then
 // with the conclusion FAKE_CHECKS (default success) for every required check.
+// The first FAKE_STALE_VERDICT reads return a failed verdict run that finished
+// before the test verdict comment, as GitHub does until verdict-recheck reruns it.
 // The first FAKE_MAIN_MOVES check-run reads each push a new commit to main, as
 // another merge landing during the wait would.
 const fakeGhSource = String.raw`
@@ -161,13 +163,19 @@ else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([
   const seen = existsSync(counter) ? Number(readFileSync(counter, 'utf8')) : 0;
   writeFileSync(counter, String(seen + 1));
   const pending = seen < Number(process.env.FAKE_PENDING ?? 0);
-  const runs = ['checks', 'description', 'verdict', 'unit'].map((name, id) => ({
-    id: id + 1,
-    name,
-    status: pending ? 'in_progress' : 'completed',
-    conclusion: pending ? null : name === 'unit' ? 'failure' : (process.env.FAKE_CHECKS ?? 'success'),
-    html_url: 'https://example.test/' + name + '/' + match[1],
-  }));
+  const stale = seen < Number(process.env.FAKE_STALE_VERDICT ?? 0);
+  const runs = ['checks', 'description', 'verdict', 'unit'].map((name, id) => {
+    if (name === 'verdict' && stale)
+      return { id: id + 1, name, status: 'completed', conclusion: 'failure', completed_at: '2026-11-07T00:00:00Z', html_url: 'https://example.test/stale' };
+    return {
+      id: id + 1,
+      name,
+      status: pending ? 'in_progress' : 'completed',
+      conclusion: pending ? null : name === 'unit' ? 'failure' : (process.env.FAKE_CHECKS ?? 'success'),
+      completed_at: pending ? null : new Date().toISOString(),
+      html_url: 'https://example.test/' + name + '/' + match[1],
+    };
+  });
   process.stdout.write(JSON.stringify(runs));
 } else if (args[0] === 'api' && (match = /^repos\/\{owner\}\/\{repo\}\/commits\/([0-9a-f]+)$/.exec(path)))
   process.stdout.write(git(origin, 'rev-parse', match[1] + '^{commit}') + '\n');
@@ -685,6 +693,29 @@ test('check state reads the newest run of each required check', () => {
   assert.deepEqual(checkState(runs('cancelled')), {
     failed: ['checks cancelled (u)'],
   });
+  const verdictRun = (completedAt) => [
+    { id: 1, name: 'checks', status: 'completed', conclusion: 'success' },
+    { id: 2, name: 'description', status: 'completed', conclusion: 'success' },
+    {
+      id: 3,
+      name: 'verdict',
+      status: 'completed',
+      conclusion: 'failure',
+      completed_at: completedAt,
+      html_url: 'v',
+    },
+  ];
+  const posted = '2026-11-09T15:01:00Z';
+  assert.equal(
+    checkState(verdictRun('2026-11-09T14:00:00Z'), posted),
+    'pending',
+  );
+  assert.deepEqual(checkState(verdictRun('2026-11-09T15:01:20Z'), posted), {
+    failed: ['verdict failure (v)'],
+  });
+  assert.deepEqual(checkState(verdictRun('2026-11-09T14:00:00Z')), {
+    failed: ['verdict failure (v)'],
+  });
 });
 
 test('the root package runs the script as merge:pr', () => {
@@ -694,5 +725,69 @@ test('the root package runs the script as merge:pr', () => {
   assert.equal(
     manifest.scripts['merge:pr'],
     'node scripts/quality/merge-pr.mjs',
+  );
+});
+
+test('a PR level with main waits for pending checks before it merges', (t) => {
+  const { base, heads, pull, run } = fixture(t);
+  const result = run(
+    ['1', '--head', heads.first],
+    [pull(1, 'first', { comments: [verdict(base, heads.first)] })],
+    { FAKE_PENDING: '2' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.updates, []);
+  assert.match(result.stderr, /Waiting for checks, description and verdict/);
+  assert.equal(
+    result.merged,
+    `pr merge 1 --squash --match-head-commit ${heads.first}`,
+  );
+});
+
+test('a verdict run from before the verdict comment waits for its rerun', (t) => {
+  const { base, heads, pull, run } = fixture(t);
+  const list = [pull(1, 'first', { comments: [verdict(base, heads.first)] })];
+  const rerun = run(['1', '--head', heads.first], list, {
+    FAKE_STALE_VERDICT: '2',
+  });
+  assert.equal(rerun.status, 0, rerun.stderr);
+  assert.equal(
+    rerun.merged,
+    `pr merge 1 --squash --match-head-commit ${heads.first}`,
+  );
+  // With no verdict comment, the same failed run is the answer.
+  const none = run(['1', '--head', heads.first], [pull(1, 'first')], {
+    FAKE_STALE_VERDICT: '1000',
+  });
+  assert.equal(none.status, 1);
+  assert.match(
+    none.stderr,
+    /verdict failure \(https:\/\/example\.test\/stale\)/,
+  );
+  assert.equal(none.merged, '');
+});
+
+test('failing checks on a PR level with main merge nothing, and --auto arms without waiting', (t) => {
+  const { base, heads, pull, run } = fixture(t);
+  const list = [pull(1, 'first', { comments: [verdict(base, heads.first)] })];
+  const failed = run(['1', '--head', heads.first], list, {
+    FAKE_CHECKS: 'failure',
+  });
+  assert.equal(failed.status, 1);
+  assert.match(
+    failed.stderr,
+    /#1 failed against the latest main.*checks failure.*description failure.*verdict failure/,
+  );
+  assert.equal(failed.merged, '');
+  // Checks never finish, so a wait would time out.
+  const auto = run(['1', '--head', heads.first, '--auto'], list, {
+    FAKE_PENDING: '1000',
+    MERGE_PR_CHECKS_MS: '50',
+  });
+  assert.equal(auto.status, 0, auto.stderr);
+  assert.doesNotMatch(auto.stderr, /Waiting/);
+  assert.equal(
+    auto.merged,
+    `pr merge 1 --squash --auto --match-head-commit ${heads.first}`,
   );
 });
