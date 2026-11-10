@@ -536,7 +536,7 @@ describe('managed authentication and guest boundary', () => {
       ).statusCode,
     ).toBe(401);
   });
-  it('retires new legacy bootstrap, transfers and key/code controls while preserving existing-proof recovery, renewal and deletion replay', async () => {
+  it('retires new legacy bootstrap, transfers and key/code controls while preserving existing-proof recovery, renewal, renewal replay and deletion replay', async () => {
     const managed = buildApp({
       identity,
       legacyIdentityEnabled: false,
@@ -605,6 +605,14 @@ describe('managed authentication and guest boundary', () => {
       userId,
       sessionId: renewed.sessionId,
     });
+    const renewalReplay = await apiRequest(managed, {
+      url: '/v1/sessions',
+      method: 'POST',
+      headers: { authorization: `Bearer ${proof.sessionToken}` },
+      payload: { ...renewed, kind: 'renewal' },
+    });
+    expect(renewalReplay.statusCode, renewalReplay.body).toBe(200);
+    expect(renewalReplay.json()).toEqual(renewal.json());
     const deleteLegacyAccount = () =>
       apiRequest(managed, {
         url: '/v1/account',
@@ -895,7 +903,27 @@ describe('signed-in immutable journal versions and deletion', () => {
       ).rows[0]!.deleted_at,
     ).toBeNull();
   });
-  it('keeps access and purchase entitlement through delete-all', async () => {
+  it('keeps the account signed in on its other devices through delete-all', async () => {
+    const credential = randomBytes(32).toString('hex');
+    const proposal = () => ({
+      deviceId: randomUUID(),
+      sessionId: randomUUID(),
+      sessionToken: randomBytes(32).toString('hex'),
+      credential,
+    });
+    const first = proposal(),
+      second = proposal();
+    const { userId } = await identity.bootstrap(first);
+    owners.add(userId);
+    expect((await identity.bootstrap(second)).userId).toBe(userId);
+    const deleted = await request(first.sessionToken, '/data', 'DELETE', {
+      expectedEpoch: 0,
+    });
+    expect(deleted.statusCode, deleted.body).toBe(200);
+    const other = await request(second.sessionToken, '/sessions/current');
+    expect(other.statusCode, other.body).toBe(200);
+  });
+  it('keeps the access grant for reads and uploads through delete-all', async () => {
     const a = await signIn(),
       expiresAt = new Date(Date.now() + 3600000).toISOString();
     const granted = buildApp({
@@ -930,6 +958,21 @@ describe('signed-in immutable journal versions and deletion', () => {
     const after = await access();
     expect(after.statusCode, after.body).toBe(200);
     expect(after.json()).toEqual(verifiedAccess);
+    const entry = await completion({ startedAt: new Date().toISOString() });
+    const upload = await apiRequest(granted, {
+      method: 'POST',
+      url: '/v1/attempts',
+      headers: { authorization: `Bearer ${a.token}` },
+      payload: {
+        id: entry.id,
+        challengeId: entry.challengeId,
+        venue: entry.venue,
+        startedAt: entry.startedAt,
+        startTimeZone: entry.startTimeZone,
+        expectedEpoch: 1,
+      },
+    });
+    expect(upload.statusCode, upload.body).toBe(201);
   });
   it('rejects any write that lowers a data epoch, from the API role or a migration, and keeps advancing it', async () => {
     const a = await signIn(),
