@@ -11,8 +11,8 @@ const secretPatterns = new Set(
     (schema) => z.toJSONSchema(schema).pattern,
   ),
 );
-const secretName =
-  /token|secret|bearer|credential|recovery|proof|password|passphrase|api.?key/i;
+const secretWord =
+  /token|secret|bearer|credential|recovery|proof|password|passphrase|apikey|session|jwt|nonce|authorization|cookie/;
 const methods = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head'];
 
 const isJson = (value: unknown): value is Json =>
@@ -21,6 +21,21 @@ const list = (value: unknown): unknown[] =>
   Array.isArray(value) ? value : value === undefined ? [] : [value];
 const entries = (value: unknown): [string, unknown][] =>
   isJson(value) ? Object.entries(value) : [];
+
+// An identifier such as sessionId names a record, never the bearer itself.
+function isSecretName(name: string): boolean {
+  const words = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  const last = words.at(-1);
+  return (
+    last !== 'id' &&
+    last !== 'ids' &&
+    (words.includes('otp') || secretWord.test(words.join('')))
+  );
+}
 
 function pointer(root: unknown, ref: string): unknown {
   return ref
@@ -34,10 +49,38 @@ function pointer(root: unknown, ref: string): unknown {
     );
 }
 
-function deref(document: Json, value: unknown): unknown {
+const target = (document: Json, root: unknown, ref: string) =>
+  pointer(ref.startsWith('#/components/') ? document : root, ref);
+
+function deref(
+  document: Json,
+  value: unknown,
+  root: unknown = document,
+): unknown {
   return isJson(value) && typeof value.$ref === 'string'
-    ? deref(document, pointer(document, value.$ref))
+    ? deref(document, target(document, root, value.$ref), root)
     : value;
+}
+
+const schemasOf = (value: unknown): unknown[] =>
+  isJson(value)
+    ? [
+        ...list(value.schema),
+        ...entries(value.content).map(([, media]) =>
+          isJson(media) ? media.schema : undefined,
+        ),
+      ]
+    : [];
+
+// A secret-named record with an id, such as a credential list entry, describes
+// the secret. Its own fields are still checked.
+function describesRecords(document: Json, root: unknown, schema: unknown) {
+  const value = deref(document, schema, root);
+  const record = isJson(value) ? deref(document, value.items, root) : undefined;
+  return [value, record].some(
+    (node) =>
+      isJson(node) && isJson(node.properties) && 'id' in node.properties,
+  );
 }
 
 function secretFields(
@@ -51,32 +94,32 @@ function secretFields(
   const children: Field[] = [
     ...(ref === undefined
       ? []
-      : [
-          [
-            pointer(ref.startsWith('#/components/') ? document : root, ref),
-            at,
-            name,
-          ] satisfies Field,
-        ]),
-    ...['allOf', 'oneOf', 'anyOf'].flatMap((key) =>
-      list(schema[key]).map((child): Field => [child, at, name]),
+      : [[target(document, root, ref), at, ''] satisfies Field]),
+    ...['allOf', 'oneOf', 'anyOf', 'not'].flatMap((key) =>
+      list(schema[key]).map((child): Field => [child, at, '']),
     ),
     ...[...list(schema.prefixItems), ...list(schema.items)].map(
-      (child): Field => [child, `${at}[]`, name],
+      (child): Field => [child, `${at}[]`, ''],
     ),
     ...entries(schema.properties).map(([key, child]): Field => [
       child,
       at ? `${at}.${key}` : key,
       key,
     ]),
-    ...list(schema.additionalProperties)
-      .filter(isJson)
-      .map((child): Field => [child, `${at}{}`, name]),
+    ...[
+      ...list(schema.additionalProperties).filter(isJson),
+      ...entries(schema.patternProperties).map(([, child]) => child),
+    ].map((child): Field => [child, `${at}{}`, '']),
+    ...list(schema.propertyNames).map((child): Field => [
+      child,
+      `${at}{key}`,
+      '',
+    ]),
   ];
   const secret =
     (typeof schema.pattern === 'string' &&
       secretPatterns.has(schema.pattern)) ||
-    (children.length === 0 && secretName.test(name));
+    (isSecretName(name) && !describesRecords(document, root, schema));
   const inner = new Set([...ancestors, schema]);
   return [
     ...(secret ? [at || name] : []),
@@ -84,9 +127,11 @@ function secretFields(
   ];
 }
 
-const isSecret = (document: Json, schema: unknown, name: string) =>
-  secretName.test(name) ||
-  secretFields(document, schema, [schema, '', name]).length > 0;
+const isSecret = (document: Json, value: unknown, name: string) =>
+  isSecretName(name) ||
+  schemasOf(value).some(
+    (schema) => secretFields(document, schema, [schema, '', '']).length > 0,
+  );
 
 function operationsOf(document: Json) {
   return entries(document.paths).flatMap(([path, item]) =>
@@ -99,12 +144,13 @@ function operationsOf(document: Json) {
   );
 }
 
-// Bearers ride in the Authorization header or a TLS body, never in a URL or cookie.
+// Bearers ride in the security scheme's Authorization header or a TLS body,
+// never in a URL or cookie.
 function urlSecrets(document: Json): string[] {
   const findings: string[] = [];
   for (const [path, item] of entries(document.paths)) {
     for (const [, name = ''] of path.matchAll(/\{([^}]+)\}/g))
-      if (secretName.test(name)) findings.push(`${path} {${name}}`);
+      if (isSecretName(name)) findings.push(`${path} {${name}}`);
     const parameters = [
       ...list(isJson(item) ? item.parameters : undefined).map(
         (parameter) => [path, parameter] as const,
@@ -119,10 +165,14 @@ function urlSecrets(document: Json): string[] {
     ];
     for (const [where, reference] of parameters) {
       const parameter = deref(document, reference);
-      if (!isJson(parameter) || parameter.in === 'header') continue;
+      if (!isJson(parameter)) continue;
       const name = String(parameter.name);
-      if (isSecret(document, parameter.schema, name))
-        findings.push(`${where} ${String(parameter.in)} ${name}`);
+      const found =
+        parameter.in === 'cookie' ||
+        (parameter.in === 'header'
+          ? /^(authorization|cookie)$/i.test(name)
+          : isSecret(document, parameter, name));
+      if (found) findings.push(`${where} ${String(parameter.in)} ${name}`);
     }
   }
   const schemes = isJson(document.components)
@@ -147,11 +197,7 @@ function responseSecrets(document: Json): string[] {
           }),
           ...entries(response.headers)
             .filter(([header, value]) =>
-              isSecret(
-                document,
-                isJson(value) ? value.schema : undefined,
-                header,
-              ),
+              isSecret(document, deref(document, value), header),
             )
             .map(([header]) => `header ${header}`),
         ].map((field) => `${label} ${status} ${field}`);
@@ -164,20 +210,23 @@ describe.each([
   ['legacy', openApiDocument],
   ['managed', managedOpenApiDocument],
 ])('the %s OpenAPI document', (_, document) => {
-  it('puts no secret-shaped field in a path, query or cookie', () => {
+  it('puts no bearer in a path, query, cookie or hand-declared Authorization header', () => {
     expect(urlSecrets(document)).toEqual([]);
   });
 
   // Credential digests are SHA-256 fingerprints of stored proofs, never bearers.
   it('returns no bearer secret, only the deletion receipt credential digests', () => {
     expect(responseSecrets(document)).toEqual([
+      'DELETE /v1/account 200 credentialDigests',
       'DELETE /v1/account 200 credentialDigests[]',
     ]);
   });
 });
 
-it('finds secrets through refs, compositions, items, maps and headers', () => {
+it('finds secrets through every name, position and keyword', () => {
   const secret = z.toJSONSchema(secretSchema);
+  const text = { type: 'string' };
+  const object = (properties: Json) => ({ type: 'object', properties });
   const probe = {
     components: {
       securitySchemes: {
@@ -185,28 +234,44 @@ it('finds secrets through refs, compositions, items, maps and headers', () => {
         url: { type: 'apiKey', in: 'query', name: 'key' },
       },
       parameters: { token: { name: 'token', in: 'query', schema: {} } },
+      headers: { Next: { schema: secret } },
       schemas: {
-        Session: {
-          type: 'object',
-          properties: { sessionToken: { type: 'string' } },
-        },
+        Session: object({ sessionToken: text }),
       },
     },
     paths: {
       '/probe/{recoveryCode}': {
         parameters: [
-          { name: 'recoveryCode', in: 'path', schema: { type: 'string' } },
+          { name: 'recoveryCode', in: 'path', schema: text },
+          { name: 'sessionId', in: 'path', schema: text },
         ],
         get: {
           parameters: [
             { $ref: '#/components/parameters/token' },
             { name: 'next', in: 'cookie', schema: secret },
+            { name: 'sid', in: 'cookie', schema: text },
+            { name: 'jwt', in: 'query', schema: text },
+            {
+              name: 'filter',
+              in: 'query',
+              content: {
+                'application/json': { schema: object({ owner: secret }) },
+              },
+            },
             { name: 'Authorization', in: 'header', schema: secret },
+            { name: 'cookie', in: 'header', schema: text },
+            { name: 'X-Device-Token', in: 'header', schema: secret },
             { name: 'limit', in: 'query', schema: { type: 'integer' } },
           ],
           responses: {
             '200': {
-              headers: { 'X-Refresh-Token': { schema: { type: 'string' } } },
+              headers: {
+                'X-Refresh-Token': { schema: text },
+                'Set-Cookie': { schema: text },
+                'X-Next': { $ref: '#/components/headers/Next' },
+                'X-Trace': { content: { 'text/plain': { schema: secret } } },
+                'X-Request-Id': { schema: text },
+              },
               content: {
                 'application/json': {
                   schema: {
@@ -220,20 +285,31 @@ it('finds secrets through refs, compositions, items, maps and headers', () => {
                         type: 'object',
                         additionalProperties: { anyOf: [secret] },
                       },
+                      byKey: { type: 'object', propertyNames: secret },
+                      byPattern: {
+                        type: 'object',
+                        patternProperties: { '^d': secret },
+                      },
+                      other: { not: secret },
+                      refreshToken: object({ value: text }),
+                      names: object({
+                        session: text,
+                        jwt: text,
+                        otpCode: text,
+                        nonce: text,
+                        authorization: text,
+                        cookie: text,
+                        refresh_token: text,
+                        apiKey: text,
+                        sessionId: text,
+                        footprint: text,
+                      }),
                       credentials: {
                         type: 'array',
-                        items: {
-                          type: 'object',
-                          properties: { id: { type: 'string' } },
-                        },
+                        items: object({ id: text, createdAt: text }),
                       },
                     },
-                    $defs: {
-                      claim: {
-                        type: 'object',
-                        properties: { claimSecret: { type: 'string' } },
-                      },
-                    },
+                    $defs: { claim: object({ claimSecret: text }) },
                   },
                 },
               },
@@ -248,6 +324,11 @@ it('finds secrets through refs, compositions, items, maps and headers', () => {
       '/probe/{recoveryCode} {recoveryCode}',
       '/probe/{recoveryCode} path recoveryCode',
       'GET /probe/{recoveryCode} cookie next',
+      'GET /probe/{recoveryCode} cookie sid',
+      'GET /probe/{recoveryCode} header Authorization',
+      'GET /probe/{recoveryCode} header cookie',
+      'GET /probe/{recoveryCode} query filter',
+      'GET /probe/{recoveryCode} query jwt',
       'GET /probe/{recoveryCode} query token',
       'securityScheme url in query',
     ].sort(),
@@ -255,8 +336,23 @@ it('finds secrets through refs, compositions, items, maps and headers', () => {
   expect(responseSecrets(probe)).toEqual(
     [
       'GET /probe/{recoveryCode} 200 byDevice{}',
+      'GET /probe/{recoveryCode} 200 byKey{key}',
+      'GET /probe/{recoveryCode} 200 byPattern{}',
       'GET /probe/{recoveryCode} 200 claims[].claimSecret',
+      'GET /probe/{recoveryCode} 200 header Set-Cookie',
+      'GET /probe/{recoveryCode} 200 header X-Next',
+      'GET /probe/{recoveryCode} 200 header X-Trace',
       'GET /probe/{recoveryCode} 200 header X-Refresh-Token',
+      'GET /probe/{recoveryCode} 200 names.apiKey',
+      'GET /probe/{recoveryCode} 200 names.authorization',
+      'GET /probe/{recoveryCode} 200 names.cookie',
+      'GET /probe/{recoveryCode} 200 names.jwt',
+      'GET /probe/{recoveryCode} 200 names.nonce',
+      'GET /probe/{recoveryCode} 200 names.otpCode',
+      'GET /probe/{recoveryCode} 200 names.refresh_token',
+      'GET /probe/{recoveryCode} 200 names.session',
+      'GET /probe/{recoveryCode} 200 other',
+      'GET /probe/{recoveryCode} 200 refreshToken',
       'GET /probe/{recoveryCode} 200 sessionToken',
     ].sort(),
   );
