@@ -28,6 +28,16 @@ const featureDataTypes = [
   'activity/repository',
   'activity/persistence/deck-preferences',
 ];
+// eslint.config.mjs bans names from these packages, which a runtime load hides.
+const namedBanPackages = [
+  'expo-crypto',
+  'react-native',
+  'react-native-safe-area-context',
+  'zustand/middleware',
+];
+const sentryModules = ['event', 'reporter', 'start', 'transport'].map(
+  (module) => `apps/mobile/src/app-support/diagnostics/${module}.ts`,
+);
 const appProvider = 'apps/mobile/src/app-support/providers/AppProvider';
 let composedByAppProvider;
 const composedBy = () =>
@@ -93,13 +103,28 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     !testSource
   )
     return 'Store managed sessions with createAuthStorage() from apps/mobile/src/platform/auth/auth-storage.ts, which keeps them in their own WHEN_UNLOCKED_THIS_DEVICE_ONLY keychain service.';
+  const namedBan = namedBanPackages.find((name) => under(target, name));
   if (
     under(file, 'apps/mobile') &&
-    under(target, 'expo-crypto') &&
+    namedBan &&
     kind !== 'ImportDeclaration' &&
     !testSource
   )
-    return 'Import expo-crypto statically where you use it, so no-restricted-imports can see which functions you read. Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts.';
+    return `Import ${namedBan} statically where you use it, so no-restricted-imports in eslint.config.mjs can see which names you read.`;
+  if (
+    under(file, 'apps/mobile') &&
+    under(target, '@sentry/react-native') &&
+    !sentryModules.includes(file) &&
+    !testSource
+  )
+    return 'Report errors through apps/mobile/src/app-support/diagnostics. A new Sentry API, such as setUser, addAttachment, a user, segment or replay scope, or a manual span, needs a privacy review against docs/legal/DATA_INVENTORY.md#sentry-diagnostic-boundary before its file joins sentryModules in scripts/quality/import-boundaries.mjs.';
+  if (
+    under(file, 'apps/mobile') &&
+    target.startsWith('@supabase/') &&
+    file !== 'apps/mobile/src/app-support/identity/auth/managed-auth.ts' &&
+    !testSource
+  )
+    return 'Mobile uses Supabase only for provider sessions, in apps/mobile/src/app-support/identity/auth/managed-auth.ts. Read and write application data through the JustGO API, never database tables.';
   if (
     mobileSource &&
     under(mobileTarget, 'apps/mobile/src/dev') &&

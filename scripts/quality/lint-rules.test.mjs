@@ -82,6 +82,42 @@ const cases = [
     'no-restricted-imports',
     "import { getRandomValues } from 'expo-crypto'; export const secret = getRandomValues(new Uint8Array(16));",
   ],
+  ...[
+    production,
+    'apps/mobile/src/app-support/identity/random-secret.ts',
+    'apps/mobile/src/app-support/diagnostics/start.ts',
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+  ].flatMap((filePath) => [
+    [
+      'no-restricted-imports',
+      "import { SafeAreaProvider } from 'react-native-safe-area-context'; export const Root = SafeAreaProvider;",
+      filePath,
+    ],
+    [
+      'no-restricted-imports',
+      "import { persist } from 'zustand/middleware'; export const middleware = persist;",
+      filePath,
+    ],
+  ]),
+  [
+    'no-restricted-imports',
+    "import { createJSONStorage } from 'zustand/middleware'; export const storage = createJSONStorage;",
+  ],
+  ...[
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+    'apps/mobile/src/features/progress/day-details/entries/DayEntryList.tsx',
+  ].flatMap((filePath) => [
+    [
+      'no-restricted-imports',
+      "import { FlatList } from 'react-native'; export const List = FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-imports',
+      "import { getRandomBytes } from 'expo-crypto'; export const secret = getRandomBytes(32);",
+      filePath,
+    ],
+  ]),
   // #241: the global crypto object skips randomSecretHex().
   [
     'no-restricted-globals',
