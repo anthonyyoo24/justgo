@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { z } from 'zod';
 import { createAttemptSchema } from '@justgo/contracts';
 import {
+  journeyApiPath,
   journeyApiUrl,
   journeyAppUrl,
   journeyEnvironment,
@@ -54,7 +55,7 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
       route.abort('blockedbyclient'),
     );
     await page.route('**/v1/**', async (route) => {
-      if (new URL(route.request().url()).origin !== journeyApiUrl) {
+      if (journeyApiPath(route.request().url()) === null) {
         await route.abort('blockedbyclient');
         throw new Error('Journey blocked a request to a non-fixture API');
       }
@@ -62,7 +63,8 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
     });
     const invalidActivityWrites: string[] = [];
     page.on('request', (request) => {
-      const path = new URL(request.url()).pathname;
+      const path =
+        journeyApiPath(request.url()) ?? new URL(request.url()).pathname;
       if (!path.startsWith('/v1/attempts') || request.method() === 'GET')
         return;
       let valid = false;
