@@ -28,7 +28,7 @@ Set `JUSTGO_VERIFY_RUN_ID` to name the run. Otherwise it is a UTC timestamp plus
 - `state: serving`: the ports belong to the process groups `bin/verify serve` recorded and run from this checkout. `/ready` is 200 and `/__fixtures/accounts` answers (the fixture API, not the deployable one). The bundle Metro serves has API origin `http://127.0.0.1:3000`, `EXPO_PUBLIC_PROJECT_ROOT` in this checkout, the guarded journey environment, and none of the hosted origins saved in `apps/mobile/.env*`.
 - `state: broken`: read `problems`. A port owned by a process this skill did not start means someone else's server. Do not drive it and do not kill it. Report it.
 
-It also reports the checkout's HEAD, branch and changed-file count, migration status (`current`, `pending`, or `ahead of this checkout` when another branch migrated `justgo_test`), and `justgo.users` and `justgo.attempts` counts. The counts need a running database, so start it first (`LC_ALL=en_US.UTF-8 npm run db:local`, or any earlier `drive` or `serve`). Run doctor before and after a drive. Matching counts prove fixture cleanup.
+It also reports the checkout's HEAD, branch and changed-file count, migration status (`current`, `pending`, or `ahead of this checkout` when another branch migrated `justgo_test`), and `justgo.users` and `justgo.attempts` counts. The counts need a running database, so start it first (`npm run db:local`, or any earlier `drive` or `serve`). Run doctor before and after a drive. Matching counts prove fixture cleanup.
 
 ## Drive
 
@@ -103,7 +103,6 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 ## Gotchas
 
 - Running from a worktree: before Metro, `serve`, `drive` or the journeys, copy the root, `apps/mobile`, `apps/api` and `packages/contracts` `node_modules` from the main checkout with `cp -cR` (an APFS clone). Never symlink them. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. Check `test ! -L node_modules` before you trust a worktree run. Symlinks are fine for Node-only checks such as Jest, ESLint and `node --test`. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
-- PostgreSQL 17 refuses to start from a shell with no locale (`postmaster became multithreaded during startup`). `bin/verify` sets `LC_ALL` for `db:local`. Set it yourself if you run `npm run db:local` directly.
 - Never verify with `npm run dev:web`, `dev:api` or `dev:mobile`. The saved mobile `.env` files point at hosted staging, and Expo's virtual env can prefer `.env.local` even when CLI variables override it. `serve` and `drive` replace that module with the guarded journey environment. Doctor checks the served bundle.
 - `justgo_test` keeps rows from earlier runs (42 users on 2026-11-05). Compare doctor counts before and after instead of expecting zero.
 - Expo logs `Unable to run simctl` when Command Line Tools are selected. Web runs ignore it.
