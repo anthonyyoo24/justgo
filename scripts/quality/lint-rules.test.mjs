@@ -122,6 +122,37 @@ const cases = [
       "import { getRandomBytes } from 'expo-crypto'; export const secret = getRandomBytes(32);",
       filePath,
     ],
+    [
+      'no-restricted-imports',
+      "import { FlatList } from 'react-native-gesture-handler'; export const List = FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import Animated from 'react-native-reanimated'; export const List = Animated.FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import { Animated } from 'react-native'; export const List = Animated.FlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import Reanimated from 'react-native-reanimated'; export const { FlatList } = Reanimated;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "const { FlatList } = require('react-native-gesture-handler'); export const List = FlatList;",
+      filePath,
+    ],
+    // The FlatList property ban replaces the mobile block's crypto property bans unless it repeats them.
+    [
+      'no-restricted-properties',
+      'export const secret = () => globalThis.crypto.getRandomValues(new Uint8Array(32));',
+      filePath,
+    ],
   ]),
   // #241: the global crypto object skips randomSecretHex().
   [

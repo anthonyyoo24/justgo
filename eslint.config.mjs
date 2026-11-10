@@ -45,6 +45,11 @@ const everyMobileFileBans = [
   },
 ];
 const mobileImportBans = [...everyMobileFileBans, randomBytesBan];
+const cryptoPropertyBans = ['globalThis', 'global', 'window', 'self'].map(
+  (object) => ({ object, property: 'crypto', message: randomSecretFix }),
+);
+const dayEntryListFix =
+  "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.";
 
 export default tseslint.config(
   {
@@ -168,14 +173,7 @@ export default tseslint.config(
         'error',
         { name: 'crypto', message: randomSecretFix },
       ],
-      'no-restricted-properties': [
-        'error',
-        ...['globalThis', 'global', 'window', 'self'].map((object) => ({
-          object,
-          property: 'crypto',
-          message: randomSecretFix,
-        })),
-      ],
+      'no-restricted-properties': ['error', ...cryptoPropertyBans],
     },
   },
   {
@@ -193,14 +191,19 @@ export default tseslint.config(
         {
           paths: [
             ...mobileImportBans,
-            {
-              name: 'react-native',
+            ...['react-native', 'react-native-gesture-handler'].map((name) => ({
+              name,
               importNames: ['FlatList'],
-              message:
-                "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.",
-            },
+              message: dayEntryListFix,
+            })),
           ],
         },
+      ],
+      // Reanimated and react-native also expose FlatList as Animated.FlatList.
+      'no-restricted-properties': [
+        'error',
+        ...cryptoPropertyBans,
+        { property: 'FlatList', message: dayEntryListFix },
       ],
     },
   },
