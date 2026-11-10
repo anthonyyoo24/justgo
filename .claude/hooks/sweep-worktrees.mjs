@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   statSync,
 } from 'node:fs';
@@ -26,11 +28,16 @@ import { fileURLToPath } from 'node:url';
 //  - its commit is on a branch: its own, or for a detached HEAD a local
 //    branch or origin/main that contains it, so removal loses no commits
 //    (branches are never deleted, and other remote branches may be),
+//  - no checkout left a commit behind that no branch holds, no rebase, merge,
+//    cherry-pick, revert or bisect is in progress, and it has no refs of its
+//    own, because its HEAD reflog and its own refs go with it (commits that
+//    an amend, rebase or reset replaced are not kept),
 //  - its branch has no open PR (when GitHub cannot be read, keep it),
 //  - no running process has its working directory inside it,
 //  - nothing touched it for a day: the folder (set when it is created), its
 //    HEAD file (rewritten by a checkout), its newest commit, or the
-//    transcripts of a Claude chat that ran in it. The index, the reflog and
+//    transcripts of a Claude chat that ran in it, including a chat started in
+//    the main checkout whose steps ran inside it. The index, the reflog and
 //    the git metadata folder are left out, because a plain `git status`,
 //    `git gc` and lock files touch them with no one working.
 // It never forces a removal, never deletes branches, and must never fail a
@@ -51,13 +58,14 @@ const env = {
   GIT_OPTIONAL_LOCKS: '0',
 };
 
-function git(cwd, args, timeout = gitTimeout) {
+function git(cwd, args, timeout = gitTimeout, input) {
   return execFileSync('git', args, {
     cwd,
     env,
     timeout,
+    input,
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
+    stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'ignore'],
   }).trim();
 }
 
@@ -151,8 +159,9 @@ export function files(worktree) {
   };
 }
 
-// facts: { locked, clean, kept, saved, branch, openBranches, busy,
+// facts: { locked, clean, kept, saved, unsaved, branch, openBranches, busy,
 //          lastTouched }
+// unsaved is why removal would lose a commit or an operation, or ''.
 // openBranches is a Set of branch names with an open PR, or undefined when
 // GitHub could not be read.
 export function decide(facts, now) {
@@ -161,6 +170,7 @@ export function decide(facts, now) {
   if (facts.kept.length > 0)
     return `keep: ignored files that may be unique (${facts.kept.join(', ')})`;
   if (!facts.saved) return 'keep: commit is on no branch';
+  if (facts.unsaved) return `keep: ${facts.unsaved}`;
   if (facts.branch) {
     if (!facts.openBranches) return 'keep: PR state unknown';
     if (facts.openBranches.has(facts.branch)) return 'keep: open PR';
@@ -222,18 +232,131 @@ function newest(dir) {
   return latest;
 }
 
-export function lastTouched(worktree, home) {
+// A chat started in one folder can run its steps in another, such as a
+// desktop chat whose worktree sits under the main checkout. Each transcript
+// line records the folder it ran in, so this maps every folder that a
+// transcript under `dir` changed within the last day to that transcript's
+// time.
+export function chatFolders(dir, now) {
+  const folders = new Map();
+  const visit = (folder, depth) => {
+    let entries;
+    try {
+      entries = readdirSync(folder, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) {
+        if (depth < 2) visit(file, depth + 1);
+        continue;
+      }
+      if (!entry.name.endsWith('.jsonl')) continue;
+      const time = mtime(file);
+      if (now - time >= idleMs) continue;
+      let text;
+      try {
+        text = readFileSync(file, 'utf8');
+      } catch {
+        continue;
+      }
+      for (const [, raw] of text.matchAll(/"cwd":("(?:[^"\\]|\\.)*")/g)) {
+        let cwd;
+        try {
+          cwd = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+        folders.set(cwd, Math.max(folders.get(cwd) ?? 0, time));
+      }
+    }
+  };
+  visit(dir, 0);
+  return folders;
+}
+
+export function lastTouched(worktree, home, chats = new Map()) {
   const gitDir = git(worktree, [
     'rev-parse',
     '--path-format=absolute',
     '--git-dir',
   ]);
+  let chat = 0;
+  for (const [folder, time] of chats)
+    if (within(worktree, folder)) chat = Math.max(chat, time);
   return Math.max(
     mtime(worktree),
     mtime(path.join(gitDir, 'HEAD')),
     Number(git(worktree, ['log', '-1', '--format=%ct', 'HEAD'])) * 1000,
     newest(transcriptDir(worktree, home)),
+    chat,
   );
+}
+
+const inProgress = [
+  'rebase-merge',
+  'rebase-apply',
+  'MERGE_HEAD',
+  'CHERRY_PICK_HEAD',
+  'REVERT_HEAD',
+  'BISECT_LOG',
+];
+
+// Removal deletes the worktree's HEAD reflog and its own refs, so a commit
+// that only they hold is lost. A checkout that leaves a commit no branch
+// holds is the case git itself warns about. Commits that an amend, rebase or
+// reset replaced are left out, because almost every worktree has some.
+export function unsaved(worktree) {
+  const gitDir = git(worktree, [
+    'rev-parse',
+    '--path-format=absolute',
+    '--git-dir',
+  ]);
+  if (inProgress.some((name) => existsSync(path.join(gitDir, name))))
+    return 'a rebase, merge or bisect is in progress';
+  if (
+    git(worktree, [
+      'for-each-ref',
+      '--count=1',
+      '--format=%(refname)',
+      'refs/worktree',
+      'refs/bisect',
+      'refs/rewritten',
+    ]) !== ''
+  )
+    return 'it has refs of its own';
+  // Newest first, so entry i - 1 is the move that left entry i's commit.
+  const log = git(worktree, ['reflog', 'show', '--format=%H %gs', 'HEAD'])
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => ({ commit: line.slice(0, 40), action: line.slice(41) }));
+  if (log.length < 2) return '';
+  const lost = new Set(
+    git(
+      worktree,
+      [
+        'rev-list',
+        '--ignore-missing',
+        '--not',
+        '--branches',
+        'refs/remotes/origin/main',
+        '--stdin',
+      ],
+      gitTimeout,
+      `${log.map((entry) => entry.commit).join('\n')}\n`,
+    )
+      .split('\n')
+      .filter(Boolean),
+  );
+  for (let index = 1; index < log.length; index += 1)
+    if (
+      lost.has(log[index].commit) &&
+      log[index - 1].commit !== log[index].commit &&
+      log[index - 1].action.startsWith('checkout:')
+    )
+      return 'a checkout left a commit no branch holds';
+  return '';
 }
 
 function saved(main, entry) {
@@ -260,6 +383,7 @@ function isMainCheckout(dir) {
 
 // deps: { now, busyPaths(): string[] | undefined, openBranches(): Set | undefined,
 //         home, log(line), dryRun }
+// home defaults to the user's home folder, where Claude keeps transcripts.
 export function sweep(dir, deps) {
   if (!isMainCheckout(dir)) return [];
   const main = realpathSync(git(dir, ['rev-parse', '--show-toplevel']));
@@ -269,6 +393,7 @@ export function sweep(dir, deps) {
   );
   if (candidates.length === 0) return [];
   const busy = deps.busyPaths();
+  const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
   const open = candidates.some((entry) => entry.branch)
     ? deps.openBranches()
     : new Set();
@@ -281,10 +406,11 @@ export function sweep(dir, deps) {
           locked: entry.locked,
           ...files(entry.path),
           saved: saved(main, entry),
+          unsaved: unsaved(entry.path),
           branch: entry.branch,
           openBranches: open,
           busy: !busy || busy.some((file) => within(entry.path, file)),
-          lastTouched: lastTouched(entry.path, deps.home),
+          lastTouched: lastTouched(entry.path, deps.home, chats),
         },
         deps.now,
       );
@@ -304,22 +430,27 @@ export function sweep(dir, deps) {
   return results;
 }
 
-function busyPaths() {
-  // Every process's working directory, or undefined when lsof fails, which
-  // keeps every worktree.
+const lsof = () =>
+  execFileSync('lsof', ['-d', 'cwd', '-Fn'], {
+    encoding: 'utf8',
+    timeout: gitTimeout,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+
+// Every process's working directory, or undefined when lsof fails, which
+// keeps every worktree.
+export function busyPaths(run = lsof) {
   try {
-    return execFileSync('lsof', ['-d', 'cwd', '-Fn'], {
-      encoding: 'utf8',
-      timeout: gitTimeout,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
+    return run()
       .split('\n')
       .filter((line) => line.startsWith('n/'))
       .map((line) => line.slice(1));
   } catch (error) {
     // lsof exits 1 when some processes cannot be read but still prints the
-    // rest.
-    const out = typeof error?.stdout === 'string' ? error.stdout : '';
+    // rest. A timeout or another signal cuts the list short, so it counts as
+    // unreadable.
+    if (error?.status !== 1 || error?.signal) return undefined;
+    const out = typeof error.stdout === 'string' ? error.stdout : '';
     const lines = out.split('\n').filter((line) => line.startsWith('n/'));
     return lines.length > 0 ? lines.map((line) => line.slice(1)) : undefined;
   }
@@ -364,7 +495,7 @@ function main(args) {
     const results = sweep(dir, {
       dryRun,
       now: Date.now(),
-      busyPaths,
+      busyPaths: () => busyPaths(),
       openBranches: () => openBranches(dir),
       log(line) {
         mkdirSync(path.dirname(logFile), { recursive: true });

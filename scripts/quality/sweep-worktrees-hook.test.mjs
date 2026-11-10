@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
+  busyPaths,
   decide,
   disposable,
   idleMs,
@@ -105,6 +106,7 @@ test('decide keeps anything that might still be needed', () => {
     clean: true,
     kept: [],
     saved: true,
+    unsaved: '',
     branch: '',
     openBranches: new Set(),
     busy: false,
@@ -124,6 +126,13 @@ test('decide keeps anything that might still be needed', () => {
   assert.equal(
     decide({ ...idle, saved: false }, now),
     'keep: commit is on no branch',
+  );
+  assert.equal(
+    decide(
+      { ...idle, unsaved: 'a rebase, merge or bisect is in progress' },
+      now,
+    ),
+    'keep: a rebase, merge or bisect is in progress',
   );
   assert.equal(
     decide({ ...idle, branch: 'wip', openBranches: new Set(['wip']) }, now),
@@ -293,6 +302,57 @@ test('keeps every worktree when the process list cannot be read', (t) => {
   assert.equal(existsSync(idle), true);
 });
 
+test('treats a process list cut short as unreadable', () => {
+  const failed = (fields) => () => {
+    throw Object.assign(new Error('lsof'), fields);
+  };
+  assert.deepEqual(
+    busyPaths(() => 'p1\nn/a\nn/b c\n'),
+    ['/a', '/b c'],
+  );
+  // lsof exits 1 when it cannot read some processes and lists the rest.
+  assert.deepEqual(busyPaths(failed({ status: 1, stdout: 'n/a\n' })), ['/a']);
+  assert.equal(busyPaths(failed({ status: 1, stdout: '' })), undefined);
+  // A timeout kills lsof with a signal partway through the list.
+  assert.equal(
+    busyPaths(failed({ status: null, signal: 'SIGTERM', stdout: 'n/a\n' })),
+    undefined,
+  );
+  assert.equal(busyPaths(failed({ status: 2, stdout: 'n/a\n' })), undefined);
+  assert.equal(busyPaths(failed({ code: 'ENOENT' })), undefined);
+});
+
+test('keeps commits and operations that only the worktree holds', (t) => {
+  const repo = fixture(t);
+  // A commit made on a detached HEAD and left by a checkout lives only in
+  // the worktree's HEAD reflog, which removal deletes.
+  const left = repo.add('left', '-b', 'left');
+  git(left, 'checkout', '-q', '--detach');
+  commit(left, 'experiment.txt', 'only in the reflog\n');
+  git(left, 'checkout', '-q', 'left');
+  const ref = repo.add('ref', '--detach');
+  git(ref, 'update-ref', 'refs/worktree/keep', 'HEAD');
+  const bisecting = repo.add('bisecting', '--detach');
+  git(bisecting, 'bisect', 'start');
+  // An amend replaces a commit on purpose, so the old one does not keep it.
+  const amended = repo.add('amended', '-b', 'amended');
+  commit(amended, 'draft.txt', 'first\n');
+  git(amended, 'commit', '-q', '--amend', '-m', 'reworded');
+  assert.deepEqual(repo.run(), {
+    left: 'keep: a checkout left a commit no branch holds',
+    ref: 'keep: it has refs of its own',
+    bisecting: 'keep: a rebase, merge or bisect is in progress',
+    amended: 'remove',
+  });
+  // Once a branch holds the commit, removal loses nothing.
+  git(left, 'branch', 'kept-experiment', 'HEAD@{1}');
+  assert.deepEqual(repo.run(), {
+    left: 'remove',
+    ref: 'keep: it has refs of its own',
+    bisecting: 'keep: a rebase, merge or bisect is in progress',
+  });
+});
+
 test('keeps hidden edits and commits only a non-main remote branch holds', (t) => {
   const repo = fixture(t);
   const skipped = repo.add('skipped', '--detach');
@@ -353,6 +413,8 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
     },
   );
   const chatted = repo.add('chatted', '--detach');
+  const viaMain = repo.add('via-main', '--detach');
+  const pastChat = repo.add('past-chat', '--detach');
   const committed = repo.add('committed', '-b', 'committed');
   commit(committed, 'today.txt', 'new\n');
   const switched = repo.add('switched', '--detach');
@@ -361,6 +423,8 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
     chatted,
     committed,
     switched,
+    viaMain,
+    pastChat,
   ]) {
     const gitDir = git(dir, 'rev-parse', '--path-format=absolute', '--git-dir');
     for (const file of [dir, path.join(gitDir, 'HEAD')])
@@ -390,6 +454,18 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
   const transcripts = transcriptDir(chatted, repo.home);
   mkdirSync(transcripts, { recursive: true });
   writeFileSync(path.join(transcripts, 'chat.jsonl'), '{}\n');
+  // A chat started in the main checkout files its transcript there, and each
+  // line names the folder its step ran in. Only a transcript from the last
+  // day counts.
+  const mainChats = path.join(transcriptDir(repo.main, repo.home), 'chat');
+  mkdirSync(path.join(mainChats, 'subagents'), { recursive: true });
+  writeFileSync(
+    path.join(mainChats, 'subagents', 'agent.jsonl'),
+    `${JSON.stringify({ cwd: path.join(viaMain, 'apps') })}\n`,
+  );
+  const past = path.join(mainChats, 'past.jsonl');
+  writeFileSync(past, `${JSON.stringify({ cwd: pastChat })}\n`);
+  utimesSync(past, old, old);
   // A plain git status, git gc and lock files touch the index, reflog and
   // metadata folder with no one working, so those stay recent here and must
   // not keep the worktree. The fixture's commit is also recent, so commit
@@ -399,6 +475,8 @@ test('keeps worktrees used in the last day, by git or by a chat', (t) => {
   assert.equal(results.chatted, 'keep: used in the last day');
   assert.equal(results.committed, 'keep: used in the last day');
   assert.equal(results.switched, 'keep: used in the last day');
+  assert.equal(results['via-main'], 'keep: used in the last day');
+  assert.equal(results['past-chat'], 'remove');
 });
 
 test('leaves worktrees outside .claude/worktrees and does nothing from a linked worktree', (t) => {
