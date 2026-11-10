@@ -18,9 +18,9 @@ const targetOf = (filename, specifier) =>
 const setsRlsContext = (target) =>
   target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
 const passedRlsContext =
-  'Call setTransactionContext() where you import it. Re-exporting, storing or passing it lets code outside identity set RLS context.';
+  'Import setTransactionContext() statically and call it there. Re-exporting, binding, loading at runtime, storing or passing it lets code outside identity set RLS context.';
 
-function boundaryMessage(filename, specifier, reexport) {
+function boundaryMessage(filename, specifier, kind) {
   const file = relative(filename);
   const target = targetOf(filename, specifier);
   const api = under(target, '@justgo/api') || under(target, 'apps/api');
@@ -48,7 +48,8 @@ function boundaryMessage(filename, specifier, reexport) {
     return 'API source cannot import test code from apps/api/tests.';
   if (apiSource && ['module', 'node:module'].includes(specifier))
     return 'Load API modules with import, not createRequire(), so these boundaries stay checkable.';
-  if (apiSource && setsRlsContext(target) && reexport) return passedRlsContext;
+  if (apiSource && setsRlsContext(target) && kind !== 'ImportDeclaration')
+    return passedRlsContext;
   if (
     apiSource &&
     setsRlsContext(target) &&
@@ -123,20 +124,20 @@ export default {
         context.report({ node, messageId: 'literal' });
         return;
       }
-      const message = boundaryMessage(
-        context.filename,
-        specifier,
-        node.type.startsWith('Export'),
-      );
+      const message = boundaryMessage(context.filename, specifier, node.type);
       if (message)
         context.report({ node, messageId: 'boundary', data: { message } });
     }
-    const called = (node) =>
+    const callee = (node) =>
+      node.parent.type === 'CallExpression' && node.parent.callee === node;
+    // A namespace may call its member directly, as in ns.setTransactionContext().
+    const called = (node, namespace) =>
       node.parent.type === 'TSTypeQuery' ||
-      (node.parent.type === 'CallExpression' && node.parent.callee === node) ||
-      (node.parent.type === 'MemberExpression' &&
+      callee(node) ||
+      (namespace &&
+        node.parent.type === 'MemberExpression' &&
         node.parent.object === node &&
-        called(node.parent));
+        callee(node.parent));
     return {
       ImportDeclaration: (node) => {
         check(node, node.source);
@@ -145,14 +146,17 @@ export default {
           !setsRlsContext(targetOf(context.filename, node.source.value))
         )
           return;
-        for (const variable of context.sourceCode.getDeclaredVariables(node))
+        for (const variable of context.sourceCode.getDeclaredVariables(node)) {
+          const namespace =
+            variable.defs[0]?.node.type === 'ImportNamespaceSpecifier';
           for (const { identifier } of variable.references)
-            if (!called(identifier))
+            if (!called(identifier, namespace))
               context.report({
                 node: identifier,
                 messageId: 'boundary',
                 data: { message: passedRlsContext },
               });
+        }
       },
       ExportNamedDeclaration: (node) => check(node, node.source),
       ExportAllDeclaration: (node) => check(node, node.source),
