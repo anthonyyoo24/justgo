@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import type { ApiEnvironment } from '../src/http/request.js';
 import { listen } from '../src/http/node-server.js';
 import { createHmac, randomUUID } from 'node:crypto';
+import { fixturePathPrefix, underPathPrefix } from './fixture-path-prefix.js';
 import { installFixtureShutdown } from './fixture-shutdown.js';
 import { localTestDatabaseUrl } from './local-test-database.js';
 import { buildApp } from '../src/build-app.js';
@@ -25,6 +26,7 @@ if (
   url.username !== 'justgo_runtime'
 )
   throw new Error('Challenge fixtures require local justgo_test');
+const pathPrefix = fixturePathPrefix(process.env.JUSTGO_JOURNEY_API_PREFIX);
 const database = createDatabase(config);
 const providers = new FixtureProviders();
 // Only this server can allocate cleanup-owned accounts. Requests cannot nominate IDs.
@@ -81,7 +83,7 @@ const shutdown = installFixtureShutdown(async () => {
   await database.pool.end();
 });
 try {
-  server = await listen(app, {
+  server = await listen(underPathPrefix(app, pathPrefix), {
     host: '127.0.0.1',
     port: Number(new URL(journeyApiUrl).port),
   });

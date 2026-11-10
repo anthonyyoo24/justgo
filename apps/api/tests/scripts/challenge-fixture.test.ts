@@ -22,6 +22,8 @@ describe('direct disposable challenge fixture startup', () => {
     { DATABASE_URL: local.replace('justgo_runtime', 'justgo_migrator') },
     { NODE_ENV: 'production' },
     { VERCEL: '1' },
+    { JUSTGO_JOURNEY_API_PREFIX: '/functions/../api' },
+    { JUSTGO_JOURNEY_API_PREFIX: 'functions/v1/api' },
   ])(
     'rejects unsafe fixture environment before creating a database connection',
     async (overrides) => {

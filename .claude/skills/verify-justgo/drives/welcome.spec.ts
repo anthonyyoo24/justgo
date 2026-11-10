@@ -1,5 +1,8 @@
 import { test, expect } from '../../../../e2e/support/fixtures';
-import { journeyApiUrl } from '../../../../e2e/support/environment';
+import {
+  journeyApiPath,
+  journeyApiUrl,
+} from '../../../../e2e/support/environment';
 import { capture, writeProof } from './evidence';
 
 test('welcome-guest: Welcome and Terms lead a guest to the deck without creating an account', async ({
@@ -13,10 +16,11 @@ test('welcome-guest: Welcome and Terms lead a guest to the deck without creating
       )
     ).rows[0]?.n;
   const before = await users();
-  const apiOrigins = new Set<string>();
+  const apiRequests = new Set<string>();
   page.on('request', (request) => {
     const url = new URL(request.url());
-    if (url.pathname.startsWith('/v1/')) apiOrigins.add(url.origin);
+    if ((journeyApiPath(request.url()) ?? url.pathname).startsWith('/v1/'))
+      apiRequests.add(`${url.origin}${url.pathname}`);
   });
 
   await page.goto('/welcome');
@@ -60,9 +64,12 @@ test('welcome-guest: Welcome and Terms lead a guest to the deck without creating
     usersBefore: before,
     usersAfter: await users(),
     guestCollection: Boolean(guest),
-    apiOrigins: [...apiOrigins],
+    apiRequests: [...apiRequests].sort(),
   });
   expect(guest).toBeTruthy();
   expect(await users()).toBe(before);
-  expect([...apiOrigins]).toEqual([journeyApiUrl]);
+  expect(apiRequests.size).toBeGreaterThan(0);
+  expect(
+    [...apiRequests].filter((url) => !url.startsWith(`${journeyApiUrl}/v1/`)),
+  ).toEqual([]);
 });

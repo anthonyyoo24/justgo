@@ -1,19 +1,15 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
-import { journeyApiUrl } from './support/environment';
+import { journeyApiPath, journeyApiUrl } from './support/environment';
 import { continueFromTerms } from './support/acceptance';
 import { signInFixture } from './support/managed-account';
 
 function observeMutations(page: Page) {
   const mutations: string[] = [];
   page.on('request', (request) => {
-    const url = new URL(request.url());
-    if (
-      url.origin === journeyApiUrl &&
-      url.pathname.startsWith('/v1/') &&
-      request.method() !== 'GET'
-    )
-      mutations.push(`${request.method()} ${url.pathname}`);
+    const path = journeyApiPath(request.url());
+    if (path?.startsWith('/v1/') && request.method() !== 'GET')
+      mutations.push(`${request.method()} ${path}`);
   });
   return mutations;
 }

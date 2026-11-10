@@ -9,6 +9,8 @@ function load(extra, script) {
   delete environment.JUSTGO_JOURNEY_FIXTURES;
   delete environment.JUSTGO_JOURNEY_API_PORT;
   delete environment.JUSTGO_JOURNEY_APP_PORT;
+  delete environment.JUSTGO_JOURNEY_API_PREFIX;
+  delete environment.JUSTGO_JOURNEY_API_TRAILING_SLASH;
   delete environment.VERCEL;
   return execFileSync(
     process.execPath,
@@ -38,11 +40,23 @@ test('journey Metro refuses missing database guards and production deployment', 
   ])
     assert.throws(() => load({ JUSTGO_JOURNEY_FIXTURES: '1', ...extra }, ''));
 });
+const prefix = '/functions/v1/api';
 for (const ports of [
   {},
   { JUSTGO_JOURNEY_API_PORT: '3002', JUSTGO_JOURNEY_APP_PORT: '8083' },
+  {
+    JUSTGO_JOURNEY_API_PORT: '3002',
+    JUSTGO_JOURNEY_APP_PORT: '8083',
+    JUSTGO_JOURNEY_API_PREFIX: prefix,
+  },
+  {
+    JUSTGO_JOURNEY_API_PORT: '3002',
+    JUSTGO_JOURNEY_APP_PORT: '8083',
+    JUSTGO_JOURNEY_API_PREFIX: prefix,
+    JUSTGO_JOURNEY_API_TRAILING_SLASH: '1',
+  },
 ]) {
-  const { api } = journeyServiceUrls(ports);
+  const api = `${journeyServiceUrls(ports).api}${ports.JUSTGO_JOURNEY_API_TRAILING_SLASH ? '/' : ''}`;
   test(`isolated web provider resolves fault adapters at ${api}; native and other callers retain normal storage`, () => {
     const output = load(
       {
@@ -104,6 +118,51 @@ for (const api of ['https://hosted.example', 'http://127.0.0.1:3000']) {
         'stderr' in error &&
         String(error.stderr).includes(
           'Journey fixtures require the isolated loopback API URL',
+        ),
+    );
+  });
+}
+for (const [configured, api, slash] of [
+  [prefix, `https://hosted.example${prefix}/`, '1'],
+  [prefix, `http://localhost:3002${prefix}/`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}//`, '1'],
+  [prefix, `http://127.0.0.1:3002${prefix}/`, 'true'],
+  [prefix, `https://hosted.example${prefix}`],
+  [prefix, `http://hosted.example:3002${prefix}`],
+  [prefix, `http://127.0.0.1:3002@hosted.example${prefix}`],
+  [prefix, `http://localhost:3002${prefix}`],
+  [prefix, 'http://127.0.0.1:3002'],
+  [prefix, `http://127.0.0.1:3002${prefix}x`],
+  [prefix, `http://127.0.0.1:3002${prefix}/`],
+  [undefined, `http://127.0.0.1:3002${prefix}`],
+  [`@hosted.example${prefix}`, `http://127.0.0.1:3002@hosted.example${prefix}`],
+]) {
+  test(`journey Metro rejects ${api} when the fixture API prefix is ${configured ?? 'unset'} and the trailing slash is ${slash ?? 'unset'}`, () => {
+    assert.throws(
+      () =>
+        load(
+          {
+            JUSTGO_JOURNEY_FIXTURES: '1',
+            NODE_ENV: 'test',
+            DATABASE_URL:
+              'postgresql://justgo_runtime:fixture@127.0.0.1:54329/justgo_test',
+            MIGRATION_DATABASE_URL:
+              'postgresql://justgo_migrator:fixture@127.0.0.1:54329/justgo_test',
+            DATABASE_SSL: 'disable',
+            JUSTGO_JOURNEY_API_PORT: '3002',
+            JUSTGO_JOURNEY_APP_PORT: '8083',
+            ...(configured ? { JUSTGO_JOURNEY_API_PREFIX: configured } : {}),
+            ...(slash ? { JUSTGO_JOURNEY_API_TRAILING_SLASH: slash } : {}),
+            EXPO_PUBLIC_API_URL: api,
+          },
+          '',
+        ),
+      (error) =>
+        error instanceof Error &&
+        'stderr' in error &&
+        /Journey fixtures require (the isolated loopback API URL|a plain API path prefix)/.test(
+          String(error.stderr),
         ),
     );
   });

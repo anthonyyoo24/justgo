@@ -70,13 +70,16 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/api/src/**/*.ts'],
+    files: ['apps/api/src/**/*.{ts,mts,cts}'],
     ignores: ['apps/api/src/db/transaction-context.ts'],
     plugins: { justgo },
     rules: { 'justgo/rls-context': 'error' },
   },
   {
-    files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
+    files: [
+      'apps/**/*.{ts,tsx,mts,cts}',
+      'packages/contracts/**/*.{ts,tsx,mts,cts}',
+    ],
     plugins: { justgo },
     rules: { 'justgo/import-boundaries': 'error' },
   },
@@ -173,8 +176,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/contracts/src/**/*.ts'],
-    ignores: ['**/*.test.{ts,tsx}'],
+    files: [
+      'apps/*/src/**/*.{ts,tsx,mts,cts}',
+      'packages/contracts/src/**/*.{ts,mts,cts}',
+    ],
+    ignores: ['**/*.test.{ts,tsx,mts,cts}'],
     languageOptions: {
       parserOptions: {
         projectService: true,
