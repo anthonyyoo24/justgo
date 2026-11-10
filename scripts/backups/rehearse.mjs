@@ -421,6 +421,8 @@ export async function rehearse(env = process.env) {
           'alter policy owner_read on justgo.users using (true)',
           'alter policy owner_read on justgo.users to public',
           'grant delete on justgo.users to justgo_runtime',
+          'drop trigger data_epoch_never_decreases on justgo.users',
+          'alter table justgo.users disable trigger data_epoch_never_decreases',
         ])
           assert.notDeepEqual(await reviewedAccess(client, drift), reviewed);
         console.log(
