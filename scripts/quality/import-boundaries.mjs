@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,13 +19,27 @@ const targetOf = (filename, specifier) =>
 const setsRlsContext = (target) =>
   target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
 const featureData = [
-  'activity/repository',
   'activity/progress/progress',
   'activity/progress/useProgressReads',
   'backup/data-backup',
   'backup/journal-backup',
 ];
-const featureDataTypes = ['activity/persistence/deck-preferences'];
+const featureDataTypes = [
+  'activity/repository',
+  'activity/persistence/deck-preferences',
+];
+const appProvider = 'apps/mobile/src/app-support/providers/AppProvider';
+let composedByAppProvider;
+const composedBy = () =>
+  (composedByAppProvider ??= new Set(
+    [
+      ...readFileSync(path.join(root, `${appProvider}.tsx`), 'utf8').matchAll(
+        /from '(\.{1,2}\/[^']+)'/g,
+      ),
+    ].map(([, specifier]) =>
+      relative(path.resolve(root, path.dirname(appProvider), specifier)),
+    ),
+  ));
 const passedRlsContext =
   'Import setTransactionContext() statically and call it there. Re-exporting, binding, loading at runtime, storing or passing it lets code outside identity set RLS context.';
 
@@ -106,8 +121,9 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
       return 'Features cannot import data storage, sync or cloud internals, so they cannot save or upload around the data owners. Use AccountRepository or ActivityRuntime.';
   }
   if (
-    under(file, 'apps/mobile/src/app-support/providers') &&
-    mobileModule === 'apps/mobile/src/app-support/providers/AppProvider' &&
+    mobileModule === appProvider &&
+    (under(file, 'apps/mobile/src/app-support/providers') ||
+      composedBy().has(file.replace(/\.[jt]sx?$/, ''))) &&
     !testSource
   )
     return 'Modules that AppProvider composes cannot import AppProvider, because that creates a module cycle. Pass the runtime as a prop or argument from the composing provider.';

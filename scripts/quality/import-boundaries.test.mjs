@@ -234,12 +234,6 @@ const cases = [
     restricted: true,
   },
   {
-    name: 'features may import activity data',
-    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
-    source: "import '../../data/activity/repository';",
-    restricted: false,
-  },
-  {
     name: 'features cannot import journal storage',
     file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
     source: "import '../../data/journal/storage';",
@@ -312,6 +306,26 @@ const cases = [
     source: "import './AppProvider';",
     restricted: true,
     fix: 'Pass the runtime as a prop',
+  },
+  {
+    name: 'account support that AppProvider composes cannot import AppProvider',
+    file: 'apps/mobile/src/app-support/identity/controller.ts',
+    source: "import '../providers/AppProvider';",
+    restricted: true,
+    fix: 'Pass the runtime as a prop',
+  },
+  {
+    name: 'a feature controller that AppProvider composes cannot import AppProvider',
+    file: 'apps/mobile/src/features/challenges/controller.ts',
+    source: "import '../../app-support/providers/AppProvider';",
+    restricted: true,
+    fix: 'Pass the runtime as a prop',
+  },
+  {
+    name: 'account screens outside the composition may import AppProvider',
+    file: 'apps/mobile/src/app-support/identity/account/ManagedAccountScreen.tsx',
+    source: "import '../../providers/AppProvider';",
+    restricted: false,
   },
   {
     name: 'provider tests may import AppProvider',
@@ -702,6 +716,28 @@ cases.push(
     file: 'apps/api/tests/db/fixtures/BoundaryFixture.ts',
     source:
       "import { setTransactionContext } from '../../../src/db/transaction-context.js'; export { setTransactionContext };",
+    restricted: false,
+  },
+  {
+    name: 'features may import the AccountRepository type',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source:
+      "import type { AccountRepository } from '../../data/activity/repository';",
+    restricted: false,
+  },
+  {
+    name: 'features cannot construct an AccountRepository',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source:
+      "import { AccountRepository } from '../../data/activity/repository'; new AccountRepository();",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'feature tests may construct an AccountRepository',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.test.ts',
+    source:
+      "import { AccountRepository } from '../../data/activity/repository'; new AccountRepository();",
     restricted: false,
   },
   {
