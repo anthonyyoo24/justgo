@@ -86,9 +86,9 @@ export class SQLiteJournalBackend implements JournalBackend {
     );
     let stage: LocalStorageDiagnostic = 'SQLITE_CONFIGURE';
     try {
-      await database.execAsync(
-        'PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA secure_delete = ON; PRAGMA busy_timeout = 5000;',
-      );
+      // Writers run on new connections inside BEGIN, where synchronous cannot
+      // change, so saves rely on the FULL default that app.config.test.ts pins.
+      await database.execAsync('PRAGMA journal_mode = WAL;');
       const version = await database.getFirstAsync<{ user_version: number }>(
         'PRAGMA user_version',
       );
@@ -125,6 +125,8 @@ export class SQLiteJournalBackend implements JournalBackend {
     let result: T | undefined;
     await database
       .withExclusiveTransactionAsync(async (transaction) => {
+        // Per connection, and each exclusive transaction opens a new one.
+        await transaction.execAsync('PRAGMA secure_delete = ON;');
         const decode = (row: { entry_json: string }) =>
           parseOwnedEntry(JSON.parse(row.entry_json) as unknown, accountId);
         result = await action({
