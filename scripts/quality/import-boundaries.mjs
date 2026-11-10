@@ -17,10 +17,18 @@ const targetOf = (filename, specifier) =>
     : specifier.replace(/^@justgo\/api\//, 'apps/api/');
 const setsRlsContext = (target) =>
   target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
+const featureData = [
+  'activity/repository',
+  'activity/progress/progress',
+  'activity/progress/useProgressReads',
+  'backup/data-backup',
+  'backup/journal-backup',
+];
+const featureDataTypes = ['activity/persistence/deck-preferences'];
 const passedRlsContext =
   'Import setTransactionContext() statically and call it there. Re-exporting, binding, loading at runtime, storing or passing it lets code outside identity set RLS context.';
 
-function boundaryMessage(filename, specifier, kind) {
+function boundaryMessage(filename, specifier, kind, typeOnly) {
   const file = relative(filename);
   const target = targetOf(filename, specifier);
   const api = under(target, '@justgo/api') || under(target, 'apps/api');
@@ -60,6 +68,7 @@ function boundaryMessage(filename, specifier, kind) {
   const mobileTarget = target.startsWith('@justgo/mobile/src/')
     ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
     : target;
+  const mobileModule = mobileTarget.replace(/\.[jt]sx?$/, '');
   const mobileSource = under(file, 'apps/mobile/src');
   const testSource = /\.test\.[jt]sx?$/.test(file);
   if (
@@ -84,6 +93,24 @@ function boundaryMessage(filename, specifier, kind) {
     !testSource
   )
     return 'Only the guarded preview route may load mobile developer code.';
+  if (
+    under(file, 'apps/mobile/src/features') &&
+    under(mobileModule, 'apps/mobile/src/data') &&
+    !testSource
+  ) {
+    const module = mobileModule.slice('apps/mobile/src/data/'.length);
+    if (
+      !featureData.includes(module) &&
+      !(typeOnly && featureDataTypes.includes(module))
+    )
+      return 'Features cannot import data storage, sync or cloud internals, so they cannot save or upload around the data owners. Use AccountRepository or ActivityRuntime.';
+  }
+  if (
+    under(file, 'apps/mobile/src/app-support/providers') &&
+    mobileModule === 'apps/mobile/src/app-support/providers/AppProvider' &&
+    !testSource
+  )
+    return 'Modules that AppProvider composes cannot import AppProvider, because that creates a module cycle. Pass the runtime as a prop or argument from the composing provider.';
   if (
     under(file, 'apps/mobile/src/app-support') &&
     under(mobileTarget, 'apps/mobile/src/app') &&
@@ -131,7 +158,19 @@ export default {
         context.report({ node, messageId: 'literal' });
         return;
       }
-      const message = boundaryMessage(context.filename, specifier, node.type);
+      const typeOnly =
+        node.importKind === 'type' ||
+        node.exportKind === 'type' ||
+        (node.specifiers?.length > 0 &&
+          node.specifiers.every(
+            (item) => item.importKind === 'type' || item.exportKind === 'type',
+          ));
+      const message = boundaryMessage(
+        context.filename,
+        specifier,
+        node.type,
+        typeOnly,
+      );
       if (message)
         context.report({ node, messageId: 'boundary', data: { message } });
     }

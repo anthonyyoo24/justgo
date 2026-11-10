@@ -240,6 +240,86 @@ const cases = [
     restricted: false,
   },
   {
+    name: 'features cannot import journal storage',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/journal/storage';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features cannot import the journal entrypoint',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/journal';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features cannot import activity persistence',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/activity/persistence/storage';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features cannot import the activity sync sender',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/activity/sync/sender';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features cannot re-export the cloud coordinator',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "export * from '../../data/cloud/coordinator';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'workspace package paths cannot bypass the feature-data boundary',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '@justgo/mobile/src/data/journal/storage';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features may read progress',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/activity/progress/useProgressReads';",
+    restricted: false,
+  },
+  {
+    name: 'features may use the backup formats',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/backup/data-backup';",
+    restricted: false,
+  },
+  {
+    name: 'feature tests may import data internals',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.test.ts',
+    source: "import '../../data/activity/private-journal';",
+    restricted: false,
+  },
+  {
+    name: 'ProgressRefresh cannot import AppProvider',
+    file: 'apps/mobile/src/app-support/providers/ProgressRefresh.tsx',
+    source: "import './AppProvider';",
+    restricted: true,
+    fix: 'Pass the runtime as a prop',
+  },
+  {
+    name: 'shared activity hooks cannot import AppProvider',
+    file: 'apps/mobile/src/app-support/providers/activity-hooks.ts',
+    source: "import './AppProvider';",
+    restricted: true,
+    fix: 'Pass the runtime as a prop',
+  },
+  {
+    name: 'provider tests may import AppProvider',
+    file: 'apps/mobile/src/app-support/providers/AppProvider.test.tsx',
+    source: "import './AppProvider';",
+    restricted: false,
+  },
+  {
     name: 'data may import shared infrastructure',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
     source: "import '../../lib/network/account-client';",
@@ -625,6 +705,35 @@ cases.push(
     restricted: false,
   },
   {
+    name: 'features may import the deck preferences type',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source:
+      "import type { DeckPreferences } from '../../data/activity/persistence/deck-preferences';",
+    restricted: false,
+  },
+  {
+    name: 'features may import deck preferences type specifiers',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source:
+      "import { type DeckPreferences } from '../../data/activity/persistence/deck-preferences';",
+    restricted: false,
+  },
+  {
+    name: 'features cannot construct deck preferences storage',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source:
+      "import { DeckPreferencesStorage } from '../../data/activity/persistence/deck-preferences';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
+    name: 'features cannot import activity model types',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import type { JournalStorage } from '../../data/activity/model';",
+    restricted: true,
+    fix: 'AccountRepository or ActivityRuntime',
+  },
+  {
     name: 'feature directory entrypoints cannot bypass data boundaries',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
     source: "import '../../features';",
@@ -647,6 +756,11 @@ for (const fixture of cases) {
       fixture.restricted,
       `${fixture.file}: ${fixture.source}\n${JSON.stringify(result.messages)}`,
     );
+    if (fixture.fix)
+      assert.ok(
+        violations.some((message) => message.message.includes(fixture.fix)),
+        JSON.stringify(violations),
+      );
   });
 }
 
