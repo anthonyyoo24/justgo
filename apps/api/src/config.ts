@@ -3,7 +3,7 @@ import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
 const databaseSchema = z.object({
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.url().optional(),
   DATABASE_SSL: z.enum(['verify-full', 'disable']).default('verify-full'),
   DATABASE_CA_CERT: z.string().optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(5).default(1),
@@ -32,7 +32,7 @@ const configSchema = z.object({
   API_SENTRY_DSN: z.string().optional(),
   API_SENTRY_RELEASE: z.string().optional(),
   CORS_ORIGINS: z.string().default(''),
-  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_URL: z.url().optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
   SUPABASE_AUTH_SECRET_KEY: z.string().min(32).optional(),
   MANAGED_AUTH_ENABLED: z
