@@ -17,8 +17,7 @@ database() {
   if ! "$pg_bin/pg_ctl" -D .local/postgres status >/dev/null 2>&1; then
     : >"$db_marker"
   fi
-  # PostgreSQL 17 refuses to start from a shell with no locale set.
-  LC_ALL=${LC_ALL:-en_US.UTF-8} npm run db:local
+  npm run db:local
 }
 run_id() {
   echo "${JUSTGO_VERIFY_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$1}"
