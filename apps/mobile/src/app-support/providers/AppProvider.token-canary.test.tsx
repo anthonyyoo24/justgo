@@ -19,13 +19,10 @@ import { collectExport } from '../../features/settings/export/data-export';
 import { createAuthStorage } from '../../platform/auth/auth-storage';
 import { diagnosticConfiguration } from '../diagnostics/configuration';
 import { createErrorReporter } from '../diagnostics/reporter';
-import { createIdentityApi } from '../identity/api';
+import type { JournalTransaction } from '../../data/journal/backend';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
-import { createManagedAuth } from '../identity/auth/managed-auth';
-import { ManagedIdentityController } from '../identity/auth/managed-controller';
-import { createManagedIdentityStorage } from '../identity/auth/managed-state';
+import type { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { nativeProviderToken } from '../identity/auth/provider-token';
-import { createMemoryVault, type CredentialVault } from '../identity/storage';
 import { AppProvider, useRuntime } from './AppProvider';
 
 jest.mock('expo-crypto', () => {
@@ -33,7 +30,14 @@ jest.mock('expo-crypto', () => {
   return {
     randomUUID: () =>
       `00000000-0000-4000-8000-${String(sequence++).padStart(12, '0')}`,
-    getRandomValues: (array: Uint8Array) => array.fill(0xbb),
+    getRandomValues: (array: Uint8Array) => {
+      array.set(
+        (require('node:crypto') as typeof import('node:crypto')).randomBytes(
+          array.length,
+        ),
+      );
+      return array;
+    },
     CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
     digestStringAsync: (_algorithm: string, value: string) =>
       Promise.resolve(
@@ -58,6 +62,38 @@ jest.mock('expo-secure-store', () => {
       keychain.delete(key);
     },
     keychain,
+  };
+});
+// The legacy vault runs on this in-memory JustGoKeychain native module.
+jest.mock('expo', () => {
+  const actual = jest.requireActual<typeof import('expo')>('expo');
+  let state: string | null = null;
+  const credentials = new Map<string, string>();
+  const justGoKeychain = {
+    readState: async () => state,
+    writeState: async (value: string) => {
+      state = value;
+    },
+    listCredentials: async () =>
+      [...credentials].map(([id, secret]) => ({ id, secret })),
+    addCredential: async (id: string, secret: string) => {
+      credentials.set(id, secret);
+    },
+    removeCredential: async (id: string) => {
+      credentials.delete(id);
+    },
+    reset: () => {
+      state = null;
+      credentials.clear();
+    },
+  };
+  return {
+    ...actual,
+    justGoKeychain,
+    requireOptionalNativeModule: (name: string) =>
+      name === 'JustGoKeychain'
+        ? justGoKeychain
+        : actual.requireOptionalNativeModule(name),
   };
 });
 jest.mock('../identity/auth/provider-token', () => ({
@@ -86,6 +122,8 @@ const canaries = {
   legacySessionToken: hex(),
   legacyRecoverySecret: hex(),
   legacyRegistrationSecret: hex(),
+  // The app makes this one when the legacy session expires and it recovers.
+  recoveredSessionToken: '',
 };
 const userId = id(1);
 const authUserId = id(40);
@@ -105,14 +143,24 @@ const json = (body: unknown, status = 200) =>
   });
 const keychain = (SecureStore as unknown as { keychain: Map<string, string> })
   .keychain;
+const justGoKeychain = (
+  jest.requireMock('expo') as {
+    justGoKeychain: {
+      reset(): void;
+      readState(): Promise<string | null>;
+      writeState(value: string): Promise<void>;
+      addCredential(id: string, secret: string): Promise<void>;
+    };
+  }
+).justGoKeychain;
 
 let runtime: ReturnType<typeof useRuntime>;
 let controller: ManagedIdentityController;
-let vault: CredentialVault;
 let authorizations: string[];
 let sentryBodies: string[];
 let requests: string[];
 let storageWrites: jest.SpyInstance[];
+let journalWrites: string[];
 const originalEnv = { ...process.env };
 
 function Probe() {
@@ -160,17 +208,36 @@ const leaks = (sinks: Record<string, string>) =>
 const asyncStorageWrites = () =>
   JSON.stringify(storageWrites.map((spy) => spy.mock.calls));
 
-const journalRows = (owner: string) =>
-  globalJournalBackend()
-    .transaction(owner, async (transaction) => [
-      await transaction.list(),
-      await transaction.listConflicts(),
-    ])
-    .then((rows) => JSON.stringify(rows));
+// Every journal row put for any owner, so a row a later retirement erases
+// still counts.
+function recordJournalWrites() {
+  journalWrites = [];
+  const backend = globalJournalBackend();
+  const transaction = backend.transaction.bind(backend);
+  jest.spyOn(backend, 'transaction').mockImplementation(((
+    owner: string,
+    action: (inner: JournalTransaction) => Promise<unknown>,
+  ) =>
+    transaction(owner, (inner) =>
+      action({
+        ...inner,
+        put: (entry) => {
+          journalWrites.push(JSON.stringify([owner, entry]));
+          return inner.put(entry);
+        },
+        putConflict: (entry) => {
+          journalWrites.push(JSON.stringify([owner, entry]));
+          return inner.putConflict(entry);
+        },
+      }),
+    )) as typeof backend.transaction);
+}
 
 beforeEach(async () => {
   await AsyncStorage.clear();
   keychain.clear();
+  justGoKeychain.reset();
+  recordJournalWrites();
   authorizations = [];
   sentryBodies = [];
   requests = [];
@@ -186,26 +253,6 @@ beforeEach(async () => {
     token: canaries.appleIdToken,
     nonce: canaries.appleNonce,
   });
-  vault = createMemoryVault();
-  const secure = new Map<string, string>();
-  controller = new ManagedIdentityController({
-    auth: createManagedAuth(),
-    storage: createManagedIdentityStorage(),
-    legacyVault: vault,
-    api: createIdentityApi('http://localhost:3000', (...args) =>
-      fetch(...args),
-    ),
-    secureStorage: {
-      getItem: async (key) => secure.get(key) ?? null,
-      setItem: async (key, value) => {
-        secure.set(key, value);
-      },
-      removeItem: async (key) => {
-        secure.delete(key);
-      },
-    },
-  });
-  jest.mocked(createManagedIdentityController).mockReturnValue(controller);
   const user = {
     id: authUserId,
     aud: 'authenticated',
@@ -289,8 +336,28 @@ beforeEach(async () => {
           identical: 0,
         });
       }
+      // The legacy session has expired, so the sign-in recovers it with the
+      // saved credential and the vault stores the new session token.
       case 'GET http://localhost:3000/v1/sessions/current':
-        return json(session);
+        return authorization === `Bearer ${canaries.legacySessionToken}`
+          ? json({ code: 'SESSION_EXPIRED', requestId: 'fixture' }, 401)
+          : json(session);
+      case 'POST http://localhost:3000/v1/sessions': {
+        const proposal = body as {
+          credential: string;
+          deviceId: string;
+          sessionId: string;
+          sessionToken: string;
+        };
+        if (proposal.credential !== canaries.legacyRecoverySecret)
+          return json({ code: 'UNAUTHORIZED', requestId: 'fixture' }, 401);
+        canaries.recoveredSessionToken = proposal.sessionToken;
+        return json({
+          ...session,
+          deviceId: proposal.deviceId,
+          sessionId: proposal.sessionId,
+        });
+      }
       case 'GET http://localhost:3000/v1/devices':
         return json({ devices: [] });
       case 'GET http://localhost:3000/v1/credentials':
@@ -306,6 +373,14 @@ beforeEach(async () => {
         throw new Error(`Unexpected fixture request: ${method} ${url.href}`);
     }
   });
+  // Build through the real factory after the fetch spy, which its API binds.
+  // The mock only hands the test the controller the provider uses.
+  controller = jest
+    .requireActual<typeof import('../identity/auth/create-managed-identity')>(
+      '../identity/auth/create-managed-identity',
+    )
+    .createManagedIdentityController('http://localhost:3000');
+  jest.mocked(createManagedIdentityController).mockReturnValue(controller);
   jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation(() => ({ remove: () => {} }));
@@ -401,18 +476,22 @@ async function reportThroughSentryBoundary(error: Error) {
 }
 
 it('keeps tokens and credential secrets out of AsyncStorage, the journal, exports and diagnostics through sign-in, renewal and sign-out', async () => {
-  await vault.write({
-    deviceId: session.deviceId,
-    selectedId: id(4),
-    session: { token: canaries.legacySessionToken, info: session },
-    pending: null,
-    savedKey: {
-      id: id(5),
-      secret: canaries.legacyRecoverySecret,
-      registered: true,
-    },
-    registration: { id: id(6), secret: canaries.legacyRegistrationSecret },
-  });
+  // Seed the native module directly so only the app's own vault writes count.
+  await justGoKeychain.writeState(
+    JSON.stringify({
+      deviceId: session.deviceId,
+      selectedId: id(4),
+      session: { token: canaries.legacySessionToken, info: session },
+      pending: null,
+      savedKey: {
+        id: id(4),
+        secret: canaries.legacyRecoverySecret,
+        registered: true,
+      },
+      registration: { id: id(6), secret: canaries.legacyRegistrationSecret },
+    }),
+  );
+  await justGoKeychain.addCredential(id(4), canaries.legacyRecoverySecret);
   await mount();
   const repository = await signIn();
   await act(async () => {
@@ -446,7 +525,7 @@ it('keeps tokens and credential secrets out of AsyncStorage, the journal, export
   });
 
   const stored = asyncStorageWrites();
-  const journal = await journalRows(userId);
+  const journal = journalWrites.join('\n');
   const exported =
     Object.entries(unzipSync(archive.bytes))
       .map(([name, bytes]) => `${name}\n${strFromU8(bytes)}`)
@@ -469,6 +548,10 @@ it('keeps tokens and credential secrets out of AsyncStorage, the journal, export
     ]),
   );
   expect(keychainSession).toContain(canaries.renewedRefreshToken);
+  expect(canaries.recoveredSessionToken).toMatch(/^[a-f0-9]{64}$/);
+  expect(await justGoKeychain.readState()).toContain(
+    canaries.recoveredSessionToken,
+  );
   expect(keychain.size).toBe(0);
   expect(stored).toContain('justgo.identity.managed.v1');
   expect(stored).toContain(uuid(1));
@@ -502,11 +585,13 @@ it('keeps the provider token out of AsyncStorage and the journal while a guest j
   await signIn();
 
   const stored = asyncStorageWrites();
-  const journal = await journalRows(userId);
+  const journal = journalWrites.join('\n');
   expect(leaks({ AsyncStorage: stored, journal })).toEqual([]);
   // The adoption copied the guest rows to the account with the provider token.
   expect(stored).toContain(`justgo:v1:${guestId}:`);
   expect(stored).toMatch(/"status\\":\\"consumed\\"/);
+  expect(journal).toContain(`["${guestId}",`);
+  expect(journal).toContain(`["${userId}",`);
   expect(journal).toContain(reflection);
   expect(authorizations).toContain(`Bearer ${canaries.providerToken}`);
   expect(requests).toEqual(
