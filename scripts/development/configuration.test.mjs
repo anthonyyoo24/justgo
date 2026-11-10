@@ -8,7 +8,7 @@ import {
   validateDevelopmentEnvironment,
   localDevelopmentEnvironment,
   releaseGoogleIosClientId,
-  developmentApiOrigins,
+  developmentApiUrls,
   developmentLaunchOptions,
   validateLocalMetroEnvironment,
 } from './configuration.mjs';
@@ -24,7 +24,7 @@ test('launch configuration pins the separate device variant and prevents Expo do
   );
 });
 
-test('Cloudflare selection is explicit and consumed before forwarding Expo flags', () => {
+test('API target selection is explicit and consumed before forwarding Expo flags', () => {
   assert.deepEqual(developmentLaunchOptions(['--clear', '--web']), {
     apiTarget: 'vercel',
     expoArgs: ['--clear', '--web'],
@@ -33,12 +33,57 @@ test('Cloudflare selection is explicit and consumed before forwarding Expo flags
     apiTarget: 'cloudflare',
     expoArgs: ['--clear'],
   });
+  assert.deepEqual(developmentLaunchOptions(['--web', '--supabase']), {
+    apiTarget: 'supabase',
+    expoArgs: ['--web'],
+  });
   for (const args of [
     ['--api-url=https://other.invalid'],
     ['--cloudflare', '--port', '9090'],
+    ['--cloudflare', '--supabase'],
+    ['--vercel'],
     ['--scheme', 'justgo'],
   ])
     assert.throws(() => developmentLaunchOptions(args));
+});
+
+test('the Supabase target is the Edge Function base path and overrides only the API', async (t) => {
+  assert.equal(
+    developmentApiUrls.supabase,
+    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
+  );
+  const root = await mkdtemp(join(tmpdir(), 'justgo-supabase-dev-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, '.env.development.local');
+  await writeFile(
+    path,
+    Object.entries(publicEnvironment())
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n'),
+  );
+  const standard = await localDevelopmentEnvironment({}, path);
+  const supabase = await localDevelopmentEnvironment({}, path, {
+    apiTarget: 'supabase',
+  });
+  assert.deepEqual(supabase, {
+    ...standard,
+    EXPO_PUBLIC_API_URL: developmentApiUrls.supabase,
+  });
+  assert.throws(() => validateDevelopmentEnvironment(supabase));
+  assert.throws(() =>
+    validateDevelopmentEnvironment(supabase, { apiTarget: 'cloudflare' }),
+  );
+  for (const EXPO_PUBLIC_API_URL of [
+    `${developmentApiUrls.supabase}/`,
+    'https://kmcpcauaxlgpevkkenwd.supabase.co',
+    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/other',
+  ])
+    assert.throws(() =>
+      validateDevelopmentEnvironment(
+        { ...supabase, EXPO_PUBLIC_API_URL },
+        { apiTarget: 'supabase' },
+      ),
+    );
 });
 
 test('Metro override requires local Dev and validates the entire public pairing', async () => {
@@ -47,7 +92,7 @@ test('Metro override requires local Dev and validates the entire public pairing'
     JUSTGO_LOCAL_DEVELOPMENT: '1',
     NODE_ENV: 'development',
   };
-  for (const EXPO_PUBLIC_API_URL of Object.values(developmentApiOrigins)) {
+  for (const EXPO_PUBLIC_API_URL of Object.values(developmentApiUrls)) {
     const environment = { ...development, EXPO_PUBLIC_API_URL };
     assert.equal(validateLocalMetroEnvironment(environment), environment);
   }
@@ -89,10 +134,10 @@ test('local Cloudflare testing overrides only the API after all saved inputs pas
   const cloudflare = await localDevelopmentEnvironment({}, path, {
     apiTarget: 'cloudflare',
   });
-  assert.equal(standard.EXPO_PUBLIC_API_URL, developmentApiOrigins.vercel);
+  assert.equal(standard.EXPO_PUBLIC_API_URL, developmentApiUrls.vercel);
   assert.deepEqual(cloudflare, {
     ...standard,
-    EXPO_PUBLIC_API_URL: developmentApiOrigins.cloudflare,
+    EXPO_PUBLIC_API_URL: developmentApiUrls.cloudflare,
   });
   assert.throws(() => validateDevelopmentEnvironment(cloudflare));
   assert.throws(() =>
@@ -107,7 +152,7 @@ test('local Cloudflare testing overrides only the API after all saved inputs pas
 
   for (const patch of [
     { EXPO_PUBLIC_API_URL: 'https://other.invalid' },
-    { EXPO_PUBLIC_API_URL: developmentApiOrigins.cloudflare },
+    { EXPO_PUBLIC_API_URL: developmentApiUrls.cloudflare },
     { IOS_BUNDLE_IDENTIFIER: 'com.anthonyyoo.justgo' },
     { EXPO_PUBLIC_SENTRY_ENABLED: 'true' },
     { JUSTGO_JOURNEY_FIXTURES: 'true' },
