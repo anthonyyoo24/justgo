@@ -23,7 +23,8 @@ export function poolOptions(config: Config): PoolConfig {
     max: config.DATABASE_POOL_MAX,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 10000,
-    statement_timeout: 5000,
+    // P15-2 trial only: 4,321 ms tells the pool value from the role's 5 s default.
+    statement_timeout: 4321,
     query_timeout: 6000,
     application_name: 'justgo-api',
   };
