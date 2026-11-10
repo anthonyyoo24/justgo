@@ -307,6 +307,7 @@ const cases = [
     source:
       "import { setTransactionContext } from '../db/transaction-context.js';",
     restricted: false,
+    loadedRestricted: true,
   },
   {
     name: 'a package self-reference cannot bypass the RLS context boundary',
@@ -360,11 +361,13 @@ const loadingCases = cases.flatMap((fixture) => {
       ...fixture,
       name: `${fixture.name} with import()`,
       source: `void import('${specifier}');`,
+      restricted: fixture.loadedRestricted ?? fixture.restricted,
     },
     {
       ...fixture,
       name: `${fixture.name} with require()`,
       source: `require('${specifier}');`,
+      restricted: fixture.loadedRestricted ?? fixture.restricted,
     },
   ];
 });
@@ -548,6 +551,49 @@ cases.push(
     file: 'apps/api/src/identity/BoundaryFixture.ts',
     source:
       "import { setTransactionContext } from '../db/transaction-context.js'; export const own = (tx: Parameters<typeof setTransactionContext>[0], id: string) => setTransactionContext(tx, 'app.user_id', id);",
+    restricted: false,
+  },
+  // #240: binding the setter or loading it at runtime passed the reference check.
+  {
+    name: 'identity cannot bind the RLS context setter',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js'; export const bound = setTransactionContext.bind(undefined);",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot bind the RLS context setter from a namespace',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import * as context from '../db/transaction-context.js'; export const bound = context.setTransactionContext.bind(undefined);",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot read the RLS context setter off import()',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "export const lazy = async () => (await import('../db/transaction-context.js')).setTransactionContext;",
+    restricted: true,
+  },
+  {
+    name: 'the guest catalog cannot read the RLS context setter off require()',
+    file: 'apps/api/src/access/guest.ts',
+    source:
+      "export const lazy = () => require('../db/transaction-context.js').setTransactionContext;",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot load the RLS context setter with an import assignment',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import context = require('../db/transaction-context.js'); export const set = context.setTransactionContext;",
+    restricted: true,
+  },
+  {
+    name: 'identity may call the RLS context setter from a namespace',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import * as context from '../db/transaction-context.js'; export const own = (tx: never, id: string) => context.setTransactionContext(tx, 'app.user_id', id);",
     restricted: false,
   },
   {
