@@ -17,6 +17,7 @@ import {
   decide,
   disposable,
   idleMs,
+  localScratch,
   sweep,
   transcriptDir,
 } from '../../.claude/hooks/sweep-worktrees.mjs';
@@ -72,9 +73,11 @@ function fixture(t) {
       git(main, 'worktree', 'add', '-q', ...args, dir, 'main');
       return dir;
     },
-    // open: undefined stands for GitHub being unreadable.
-    run({ now = Date.now() + 2 * idleMs, busy = [], ...rest } = {}) {
+    // open: undefined stands for GitHub being unreadable, and busy:
+    // undefined for lsof failing.
+    run({ now = Date.now() + 2 * idleMs, ...rest } = {}) {
       const open = 'open' in rest ? rest.open : new Set();
+      const busy = 'busy' in rest ? rest.busy : [];
       const results = sweep(main, {
         now,
         home,
@@ -145,7 +148,7 @@ test('decide keeps anything that might still be needed', () => {
   );
 });
 
-test('only rebuildable ignored files and .local scratch are disposable', () => {
+test('only rebuildable ignored files and tool output in .local are disposable', () => {
   for (const entry of [
     'node_modules',
     'node_modules/',
@@ -157,7 +160,6 @@ test('only rebuildable ignored files and .local scratch are disposable', () => {
     'coverage/',
     'tsc.log',
     'apps/mobile/tsconfig.tsbuildinfo',
-    '.local/',
   ])
     assert.equal(disposable(entry), true, entry);
   for (const entry of [
@@ -169,11 +171,28 @@ test('only rebuildable ignored files and .local scratch are disposable', () => {
     '.wrangler/',
   ])
     assert.equal(disposable(entry), false, entry);
-  assert.equal(
-    disposable('.local/', true),
-    false,
-    'a decision trail is unique',
-  );
+  for (const name of [
+    'postgres',
+    'postgres.log',
+    'database.env',
+    'journey-results',
+    'journey-report',
+    'journey-repository.mjs',
+    'exported-web-results',
+    'exported-web-report',
+    'verify-justgo',
+  ])
+    assert.equal(localScratch(name), true, name);
+  for (const name of [
+    'decision-trails',
+    'run.review.md',
+    'pr-body.md',
+    'mutation-run.json',
+    'edge-trial',
+    'swarm',
+    'local-database-54339.mjs',
+  ])
+    assert.equal(localScratch(name), false, name);
 });
 
 test('transcript folders use the chat folder with dashes for other characters', () => {
@@ -230,24 +249,71 @@ test('keeps worktrees with changes, unsaved commits, open PRs or a process insid
   assert.deepEqual(repo.logs, []);
 });
 
-test('removes scratch and local settings but keeps decision trails and keys', (t) => {
+test('removes tool output and local settings but keeps agent records and keys', (t) => {
   const repo = fixture(t);
   const scratch = repo.add('scratch', '--detach');
-  mkdirSync(path.join(scratch, '.local', 'postgres'), { recursive: true });
-  writeFileSync(path.join(scratch, '.local', 'pr-body.md'), 'body\n');
+  for (const dir of ['postgres', 'journey-results', 'verify-justgo/run-1'])
+    mkdirSync(path.join(scratch, '.local', dir), { recursive: true });
+  writeFileSync(path.join(scratch, '.local', 'postgres.log'), 'up\n');
+  writeFileSync(path.join(scratch, '.local', 'database.env'), 'PORT=1\n');
   writeFileSync(path.join(scratch, '.env'), 'PORT=1\n');
   writeFileSync(path.join(scratch, 'tsc.log'), 'ok\n');
   const trail = repo.add('trail', '--detach');
   mkdirSync(path.join(trail, '.local', 'decision-trails'), { recursive: true });
   writeFileSync(path.join(trail, '.local', 'decision-trails', 'run.tsv'), '');
+  // A review beside an empty trail folder, and agent drafts beside a
+  // database, are records too.
+  const review = repo.add('review', '--detach');
+  mkdirSync(path.join(review, '.local', 'decision-trails'), {
+    recursive: true,
+  });
+  writeFileSync(path.join(review, '.local', 'run.review.md'), 'review\n');
+  const drafts = repo.add('drafts', '--detach');
+  mkdirSync(path.join(drafts, '.local', 'postgres'), { recursive: true });
+  writeFileSync(path.join(drafts, '.local', 'pr-body.md'), 'body\n');
   const key = repo.add('key', '--detach');
   writeFileSync(path.join(key, 'signing.key'), 'secret\n');
   assert.deepEqual(repo.run(), {
     scratch: 'remove',
-    trail: 'keep: ignored files that may be unique (.local/)',
+    trail: 'keep: ignored files that may be unique (.local/decision-trails)',
+    review:
+      'keep: ignored files that may be unique (.local/decision-trails, .local/run.review.md)',
+    drafts: 'keep: ignored files that may be unique (.local/pr-body.md)',
     key: 'keep: ignored files that may be unique (signing.key)',
   });
   assert.equal(existsSync(scratch), false);
+});
+
+test('keeps every worktree when the process list cannot be read', (t) => {
+  const repo = fixture(t);
+  const idle = repo.add('idle', '--detach');
+  assert.deepEqual(repo.run({ busy: undefined }), {
+    idle: 'keep: a running process is inside it',
+  });
+  assert.equal(existsSync(idle), true);
+});
+
+test('keeps hidden edits and commits only a non-main remote branch holds', (t) => {
+  const repo = fixture(t);
+  const skipped = repo.add('skipped', '--detach');
+  git(skipped, 'update-index', '--skip-worktree', '.gitignore');
+  writeFileSync(path.join(skipped, '.gitignore'), 'local edit\n');
+  const assumed = repo.add('assumed', '--detach');
+  git(assumed, 'update-index', '--assume-unchanged', '.gitignore');
+  writeFileSync(path.join(assumed, '.gitignore'), 'local edit\n');
+  const remote = repo.add('remote', '--detach');
+  commit(remote, 'pushed.txt', 'on a remote branch only\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/feature', 'HEAD');
+  git(remote, 'push', '-q', '.', 'HEAD:refs/remotes/origin/feature');
+  const onMain = repo.add('on-main', '--detach');
+  commit(onMain, 'landed.txt', 'on origin/main\n');
+  git(onMain, 'push', '-q', '.', 'HEAD:refs/remotes/origin/main');
+  assert.deepEqual(repo.run(), {
+    skipped: 'keep: uncommitted or untracked files',
+    assumed: 'keep: uncommitted or untracked files',
+    remote: 'keep: commit is on no branch',
+    'on-main': 'remove',
+  });
 });
 
 test('keeps branch worktrees when GitHub cannot be read', (t) => {
@@ -352,6 +418,12 @@ test('leaves worktrees outside .claude/worktrees and does nothing from a linked 
   );
   assert.deepEqual(repo.run(), { inside: 'remove' });
   assert.equal(existsSync(outside), true);
+  // A worktree moved or deleted by hand outside .claude/worktrees keeps its
+  // git record: the sweep never prunes.
+  rmSync(outside, { recursive: true, force: true });
+  repo.add('later', '--detach');
+  assert.deepEqual(repo.run(), { later: 'remove' });
+  assert.equal(listed(repo.main).includes('elsewhere'), true);
 });
 
 test('the hook exits 0 silently, inside or outside a repository', (t) => {

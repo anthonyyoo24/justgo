@@ -17,7 +17,8 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\"",
-            "async": true
+            "async": true,
+            "timeout": 3600
           }
         ]
       }
