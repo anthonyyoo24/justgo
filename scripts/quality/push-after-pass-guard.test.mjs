@@ -6,8 +6,10 @@ import test from 'node:test';
 import {
   decide,
   evaluate,
+  newCodeFiles,
   output,
   pushesIn,
+  shellText,
   targetsOf,
 } from '../../.claude/hooks/push-after-pass-guard.mjs';
 
@@ -15,33 +17,89 @@ const hook = fileURLToPath(
   new URL('../../.claude/hooks/push-after-pass-guard.mjs', import.meta.url),
 );
 
+const found = (cwd, refspecs = [], extra = {}) => ({
+  cwd,
+  refspecs,
+  acknowledged: false,
+  branch: undefined,
+  afterChange: false,
+  ...extra,
+});
+
 test('pushes are found with their directory, refspecs and acknowledgement', () => {
-  assert.deepEqual(pushesIn('git push', '/repo'), [
-    { cwd: '/repo', refspecs: [], acknowledged: false },
-  ]);
+  assert.deepEqual(pushesIn('git push', '/repo'), [found('/repo')]);
   assert.deepEqual(
     pushesIn(
       'cd sub && git -C ../other push --force-with-lease -o ci.skip origin HEAD:refs/heads/fix',
       '/repo',
     ),
-    [
-      {
-        cwd: '/repo/other',
-        refspecs: ['HEAD:refs/heads/fix'],
-        acknowledged: false,
-      },
-    ],
+    [found('/repo/other', ['HEAD:refs/heads/fix'])],
   );
   assert.deepEqual(
     pushesIn('git add . && PUSH_AFTER_PASS=1 git push -u origin fix', '/r'),
-    [{ cwd: '/r', refspecs: ['fix'], acknowledged: true }],
+    [found('/r', ['fix'], { acknowledged: true })],
   );
   assert.deepEqual(pushesIn('cd ~/x; git push', '/r'), [
-    { cwd: `${homedir()}/x`, refspecs: [], acknowledged: false },
+    found(`${homedir()}/x`),
   ]);
   assert.deepEqual(pushesIn('git \\\n  push origin "fix"', '/r')[0].refspecs, [
     'fix',
   ]);
+  assert.deepEqual(pushesIn("cd 'a dir' && git push", '/r'), [
+    found('/r/__quoted__'),
+  ]);
+});
+
+test('a push after a commit, merge or rebase in the same command is marked', () => {
+  for (const step of [
+    'git commit -m fix',
+    'git merge origin/main',
+    'git rebase --onto origin/main abc',
+    'git -C sub cherry-pick abc',
+    'git pull --ff-only',
+    'git reset --hard origin/fix',
+  ])
+    assert.equal(
+      pushesIn(`${step} && git push`, '/r')[0].afterChange,
+      true,
+      step,
+    );
+  assert.equal(
+    pushesIn('git push && git commit -m x', '/r')[0].afterChange,
+    false,
+  );
+});
+
+test('a branch switch before the push names the branch it pushes', () => {
+  assert.equal(
+    pushesIn('git checkout -b new && git push -u origin HEAD', '/r')[0].branch,
+    'new',
+  );
+  assert.equal(pushesIn('git switch -c new; git push', '/r')[0].branch, 'new');
+  assert.equal(pushesIn('git checkout fix && git push', '/r')[0].branch, 'fix');
+  assert.equal(
+    pushesIn('git checkout -- a.ts && git push', '/r')[0].branch,
+    undefined,
+  );
+  assert.equal(
+    pushesIn('git checkout new && cd ../b && git push', '/r')[0].branch,
+    undefined,
+  );
+});
+
+test('push text inside messages, heredocs and PR bodies is not a push', () => {
+  for (const command of [
+    'git commit -m "then git push; git push origin fix"',
+    "gh pr create --title x --body 'run git push && git push'",
+    "git commit -F - <<'EOF'\nfix: guard\n\ngit push origin fix\nEOF",
+    'cat <<EOF > note.md\ngit push\nEOF\necho done',
+  ])
+    assert.deepEqual(pushesIn(command, '/r'), [], command);
+  assert.equal(shellText('echo "a b" fix'), 'echo __quoted__ fix');
+  assert.deepEqual(
+    pushesIn('git commit -F - <<EOF\nmsg\nEOF\ngit push', '/r'),
+    [found('/r', [], { afterChange: true })],
+  );
 });
 
 test('dry runs, deletes, tag pushes and other commands are ignored', () => {
@@ -58,14 +116,14 @@ test('dry runs, deletes, tag pushes and other commands are ignored', () => {
 });
 
 test('refspecs name the commit sent and the branch updated', () => {
-  assert.deepEqual(targetsOf([], 'fix'), [{ source: 'HEAD', branch: 'fix' }]);
+  assert.deepEqual(targetsOf([], 'fix'), [{ source: 'fix', branch: 'fix' }]);
   assert.deepEqual(targetsOf([], undefined), []);
   assert.deepEqual(
     targetsOf(['+abc123:refs/heads/fix', 'other', ':gone', 'HEAD'], 'cur'),
     [
       { source: 'abc123', branch: 'fix' },
       { source: 'other', branch: 'other' },
-      { source: 'HEAD', branch: 'cur' },
+      { source: 'cur', branch: 'cur' },
     ],
   );
 });
@@ -115,6 +173,41 @@ test('pushes that keep the verdict, or need a verifier anyway, pass', () => {
     undefined,
   );
   assert.equal(output(undefined), undefined);
+});
+
+test('a commit and push in one command is denied when the head has a PASS', () => {
+  const decision = decide({
+    pr,
+    verdict: pass,
+    remote: carries,
+    pushed: undefined,
+    acknowledged: false,
+    afterChange: true,
+  });
+  assert.equal(decision.permissionDecision, 'deny');
+  assert.match(decision.reason, /separate command/);
+  assert.match(decision.reason, /npm run merge:pr -- 7 --disable-auto/);
+  const base = { pr, verdict: pass, remote: carries, afterChange: true };
+  assert.equal(decide({ ...base, acknowledged: true }), undefined);
+  assert.equal(decide({ ...base, remote: reverify }), undefined);
+  assert.equal(decide({ ...base, verdict: undefined }), undefined);
+});
+
+test('the deny names only code files this push adds to the PR', () => {
+  assert.deepEqual(
+    newCodeFiles(
+      { changed: ['old.ts'] },
+      { changed: ['old.ts', 'new.ts', 'a.md', 'a.test.ts'] },
+    ),
+    ['new.ts'],
+  );
+  assert.deepEqual(
+    newCodeFiles({ changed: ['old.ts'] }, { changed: ['old.ts', 'a.md'] }),
+    ['old.ts'],
+  );
+  assert.deepEqual(newCodeFiles({ changed: [] }, { changed: ['a.md'] }), [
+    'a.md',
+  ]);
 });
 
 function fakeIo({ prs, checks, current = 'fix', sha = 'new' }) {
@@ -214,6 +307,55 @@ test('evaluate lets through pushes with no PR, no PASS, or no new commit', () =>
   });
   assert.equal(evaluate('git push', '/r', same), undefined);
   assert.equal(evaluate('ls', '/r', fakeIo({ prs: [], checks })), undefined);
+});
+
+test('evaluate denies a commit and push to a PR whose head has a PASS', () => {
+  const io = fakeIo({
+    prs: [
+      {
+        number: 9,
+        headRefOid: 'old',
+        baseRefName: 'main',
+        comments: [passComment],
+      },
+    ],
+    checks: { old: { status: 0, stdout: 'carries\n' } },
+  });
+  const decision = evaluate('git commit -m x && git push', '/r', io);
+  assert.match(decision.reason, /PR #9 .*separate command/);
+  assert.ok(!io.calls.some((call) => call[1] === 'rev-parse'));
+});
+
+test('evaluate looks up the branch a switch moves to, and skips one with no commit yet', () => {
+  const io = fakeIo({ prs: [], checks: {} });
+  assert.equal(
+    evaluate('git checkout -b new && git push -u origin HEAD', '/r', io),
+    undefined,
+  );
+  const lookups = io.calls.filter((call) => call[1] === 'pr');
+  assert.deepEqual(
+    lookups.map((call) => call[call.indexOf('--head') + 1]),
+    ['new'],
+  );
+  assert.ok(!io.calls.some((call) => call[1] === 'symbolic-ref'));
+  const missing = fakeIo({
+    prs: [
+      {
+        number: 9,
+        headRefOid: 'old',
+        baseRefName: 'main',
+        comments: [passComment],
+      },
+    ],
+    checks: {},
+  });
+  missing.git = (args) => {
+    missing.calls.push(['git', ...args]);
+    if (args[0] === 'rev-parse') throw new Error('unknown revision');
+    return '';
+  };
+  assert.equal(evaluate('git push origin gone', '/r', missing), undefined);
+  assert.ok(!missing.calls.some((call) => call[0] === 'check'));
 });
 
 test('the hook stays silent for commands that are not pushes', () => {

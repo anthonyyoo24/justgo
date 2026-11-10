@@ -18,8 +18,8 @@ export const maxBatchPulls = 4;
 export const maxBatchLines = 300;
 
 // Files whose change reaches past one capability: shared contracts, the
-// database, CI, dependencies, and the hooks and settings that enforce the
-// agent rules.
+// database, CI, dependencies, and the hooks, settings, skills, lint config and
+// quality scripts that enforce the agent rules.
 const boundary = [
   /^packages\/contracts\//,
   /^apps\/api\/src\/db\//,
@@ -29,6 +29,9 @@ const boundary = [
   /^\.nvmrc$/,
   /^\.claude\/hooks\//,
   /^\.claude\/settings\.json$/,
+  /^\.claude\/skills\//,
+  /^eslint\.config\.mjs$/,
+  /^scripts\/quality\/(?![^/]+\.test\.mjs$)[^/]+\.mjs$/,
 ];
 
 // Tests do not count toward the size. Markdown does, because AGENTS.md and the
@@ -49,7 +52,9 @@ export function countedLines(files) {
 }
 
 // A PR needs a verdict unless the `verdict` check passed, or the newest owner
-// verdict is a PASS on the current head.
+// verdict is a PASS on the current head. While the check is still running, a
+// PASS on an older head may carry (after a merge from main), so the PR waits
+// for the check instead of joining a batch.
 export function needsVerdict(pull) {
   const check = (pull.statusCheckRollup ?? []).find(
     (entry) => entry.name === 'verdict',
@@ -57,7 +62,8 @@ export function needsVerdict(pull) {
   if (check?.conclusion === 'SUCCESS') return false;
   const found = newestVerdictOf(pull.comments);
   if (!found || found.unreadable || found.verdict === 'FAIL') return true;
-  return !pull.headRefOid.startsWith(found.head);
+  if (pull.headRefOid.startsWith(found.head)) return false;
+  return !check || check.status === 'COMPLETED';
 }
 
 // Why a PR needing a verdict cannot join a batch, or undefined when it can.
