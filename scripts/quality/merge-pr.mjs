@@ -129,6 +129,15 @@ function isAncestor(ancestor, descendant, cwd) {
   );
 }
 
+// Posting a verdict comment reruns the verdict check through
+// verdict-recheck.yml, which takes a few seconds to start. Until then the
+// newest verdict run is the one from before the comment.
+function verdictPostedAt(comments) {
+  const url = newestVerdictOf(comments)?.url;
+  if (!url) return undefined;
+  return comments.find((comment) => comment.url === url)?.createdAt;
+}
+
 // Checks the order and returns the gh arguments to run, a branch update to
 // make first, or a refusal.
 export function plan(options, cwd) {
@@ -161,7 +170,12 @@ export function plan(options, cwd) {
   const others = prs.filter((pr) => pr.number !== options.number);
   const refuse = refusal(target, findBreaks({ main, target, others, cwd }));
   if (refuse) return { refuse };
-  if (isAncestor(main, options.head, cwd)) return { gh };
+  // GitHub refuses a direct merge while a required check runs, so a level PR
+  // waits for them. An --auto arm lets GitHub wait instead.
+  if (isAncestor(main, options.head, cwd))
+    return options.auto
+      ? { gh }
+      : { gh, wait: { since: verdictPostedAt(pull.comments) } };
   if (!mergeTree(main, options.head, cwd).clean)
     return {
       refuse:
@@ -227,15 +241,20 @@ function until(what, timeoutMs, pollMs, probe) {
 }
 
 // The newest run of each required check on one commit: 'pass', 'pending', or
-// the failing check's conclusion and link.
-export function checkState(runs) {
+// the failing check's conclusion and link. A verdict run that finished before
+// the verdict comment posted at `since` is pending, since its rerun is coming.
+export function checkState(runs, since) {
   const failed = [];
   let pending = false;
   for (const name of requiredChecks) {
     const latest = runs
       .filter((run) => run.name === name)
       .sort((a, b) => b.id - a.id)[0];
-    if (!latest || latest.status !== 'completed') pending = true;
+    const stale =
+      name === 'verdict' &&
+      since !== undefined &&
+      Date.parse(latest?.completed_at) < Date.parse(since);
+    if (!latest || latest.status !== 'completed' || stale) pending = true;
     else if (!passing.has(latest.conclusion))
       failed.push(`${name} ${latest.conclusion} (${latest.html_url})`);
   }
@@ -318,10 +337,15 @@ export function updateBranch(options, { main, verdict }, cwd, timing) {
       );
     log(carriedVerdict(verdict.head, next, result, changed));
   }
-  if (options.auto) return { head: next };
-  log(`Waiting for ${checkList} on ${next}.`);
+  return { head: next };
+}
+
+// Waits until the required checks on the head finish. Returns a refusal when
+// one fails, and undefined when all pass.
+function waitForChecks({ number, head }, { since }, cwd, timing) {
+  process.stderr.write(`merge-pr: Waiting for ${checkList} on ${head}.\n`);
   const state = until(
-    `${checkList} on ${next}`,
+    `${checkList} on ${head}`,
     timing.checksMs,
     timing.pollMs,
     () => {
@@ -329,43 +353,51 @@ export function updateBranch(options, { main, verdict }, cwd, timing) {
         ghText(
           [
             'api',
-            `repos/{owner}/{repo}/commits/${next}/check-runs?per_page=100`,
+            `repos/{owner}/{repo}/commits/${head}/check-runs?per_page=100`,
             '--jq',
             '.check_runs',
           ],
           cwd,
         ),
       );
-      const now = checkState(runs);
+      const now = checkState(runs, since);
       return now === 'pending' ? undefined : now;
     },
   );
-  if (state !== 'pass')
-    return {
-      refuse:
-        `merge-pr: #${number} failed against the latest main on head ${next}: ${state.failed.join('; ')}. ` +
-        'Nothing merged. Fix the PR, get a verdict that covers the fix, then retry.',
-    };
-  return { head: next };
-}
-
-// Plans, updates the branch when it is behind, and plans again with the new
-// head, until the PR is level with main or the rounds run out.
-export function run(options, cwd, timing) {
-  let current = options;
-  for (let round = 0; round <= maxRounds; round++) {
-    const result = plan(current, cwd);
-    if (!result.update) return result;
-    if (round === maxRounds) break;
-    const updated = updateBranch(current, result.update, cwd, timing);
-    if (updated.refuse) return updated;
-    current = { ...current, head: updated.head };
-  }
+  if (state === 'pass') return undefined;
   return {
     refuse:
-      `merge-pr: main moved during each of ${maxRounds} updates of #${options.number}. ` +
-      'Nothing merged. Retry when main is quiet.',
+      `merge-pr: #${number} failed against the latest main on head ${head}: ${state.failed.join('; ')}. ` +
+      'Nothing merged. Fix the PR, get a verdict that covers the fix, then retry.',
   };
+}
+
+// Plans, updates the branch when it is behind, and waits for the checks once
+// it is level. Each update or wait can see main move, so it plans again after
+// each one, until a plan for a checked head says merge or the updates run out.
+export function run(options, cwd, timing) {
+  let current = options;
+  let checked;
+  let updates = 0;
+  for (;;) {
+    const result = plan(current, cwd);
+    if (result.update) {
+      if (updates === maxRounds)
+        return {
+          refuse:
+            `merge-pr: main moved during each of ${maxRounds} updates of #${options.number}. ` +
+            'Nothing merged. Retry when main is quiet.',
+        };
+      const updated = updateBranch(current, result.update, cwd, timing);
+      if (updated.refuse) return updated;
+      updates++;
+      current = { ...current, head: updated.head };
+    } else if (result.wait && checked !== current.head) {
+      const failed = waitForChecks(current, result.wait, cwd, timing);
+      if (failed) return failed;
+      checked = current.head;
+    } else return result;
+  }
 }
 
 // The last line, from the PR as GitHub reports it after `gh pr merge`
