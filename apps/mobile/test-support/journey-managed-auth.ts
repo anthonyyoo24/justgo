@@ -58,7 +58,7 @@ export function createJourneyManagedAuth(options: {
       !api.port ||
       api.username ||
       api.password ||
-      api.pathname !== '/' ||
+      !/^(\/[A-Za-z0-9_-]+)*\/?$/.test(api.pathname) ||
       api.search ||
       api.hash ||
       origin.protocol !== 'http:' ||
@@ -71,6 +71,8 @@ export function createJourneyManagedAuth(options: {
   } catch {
     throw new ProviderAuthError('CONFIGURATION');
   }
+  // The fixture API may sit under a plain path prefix on the same loopback origin.
+  const fixtures = `${api.origin}${api.pathname.replace(/\/$/, '')}/__fixtures`;
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? Date.now;
   const lifetime = new AbortController();
@@ -139,7 +141,7 @@ export function createJourneyManagedAuth(options: {
     check();
     const expected = generation;
     try {
-      const response = await fetcher(new URL(`/__fixtures/${path}`, api).href, {
+      const response = await fetcher(`${fixtures}/${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

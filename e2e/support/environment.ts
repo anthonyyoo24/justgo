@@ -11,14 +11,35 @@ export function journeyServiceUrls(env: NodeJS.ProcessEnv) {
   const appPort = port('JUSTGO_JOURNEY_APP_PORT', 8081);
   if (apiPort === appPort)
     throw new Error('Journey fixture ports must be distinct');
+  // A prefix is a path only. The host and port above never come from it.
+  const prefix = env.JUSTGO_JOURNEY_API_PREFIX ?? '';
+  if (prefix && !/^(\/[A-Za-z0-9_-]+)+$/.test(prefix))
+    throw new Error('Journey fixtures require a plain API path prefix');
   return {
-    api: `http://127.0.0.1:${apiPort}`,
+    api: `http://127.0.0.1:${apiPort}${prefix}`,
     app: `http://127.0.0.1:${appPort}`,
   };
 }
 const serviceUrls = journeyServiceUrls(process.env);
+/** The fixture API base: its loopback origin plus `JUSTGO_JOURNEY_API_PREFIX`. */
 export const journeyApiUrl = serviceUrls.api;
 export const journeyAppUrl = serviceUrls.app;
+/** The API URL built into the app. The slash checks that the client drops it. */
+export const journeyAppApiUrl =
+  process.env.JUSTGO_JOURNEY_API_TRAILING_SLASH === '1'
+    ? `${journeyApiUrl}/`
+    : journeyApiUrl;
+
+/** The path of a URL below the fixture API base, or null for any other URL. */
+export function journeyApiPath(url: string, api = journeyApiUrl) {
+  const target = new URL(url);
+  const base = new URL(api);
+  const prefix = base.pathname.replace(/\/$/, '');
+  return target.origin === base.origin &&
+    target.pathname.startsWith(`${prefix}/`)
+    ? target.pathname.slice(prefix.length)
+    : null;
+}
 
 /** Fixture writes must never reach a deployed or non-test database. */
 export function journeyEnvironment(env: NodeJS.ProcessEnv) {

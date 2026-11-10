@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import {
   journeyApiUrl,
+  journeyAppApiUrl,
   journeyAppUrl,
   journeyEnvironment,
 } from './support/environment';
@@ -58,7 +59,7 @@ export default defineConfig({
         CI: '1',
         JUSTGO_JOURNEY_FIXTURES: '1',
         EXPO_NO_DOTENV: '1',
-        EXPO_PUBLIC_API_URL: journeyApiUrl,
+        EXPO_PUBLIC_API_URL: journeyAppApiUrl,
         NODE_OPTIONS: '--dns-result-order=ipv4first',
       },
     },

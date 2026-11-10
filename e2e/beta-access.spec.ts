@@ -28,7 +28,7 @@ async function approveBeta(page: Page, mode: 'guest' | 'account') {
     mode === 'guest'
       ? await continueAsGuest(page)
       : (await signInFixture(page)).userId;
-  const key = `justgo:v1:${owner}:access:${mode}:${encodeURIComponent(journeyApiUrl)}`;
+  const key = `justgo:v1:${owner}:access:${mode}:${encodeURIComponent(new URL(journeyApiUrl).origin)}`;
   await expect
     .poll(() =>
       page.evaluate((key) => {
@@ -47,7 +47,7 @@ test('a server denial survives offline restart even when old approval removal fa
   page,
 }) => {
   const { owner, expiresAt } = await approveBeta(page, 'guest');
-  const key = `justgo:v1:${owner}:access:guest:${encodeURIComponent(journeyApiUrl)}`;
+  const key = `justgo:v1:${owner}:access:guest:${encodeURIComponent(new URL(journeyApiUrl).origin)}`;
   const previous = await page.evaluate((key) => localStorage.getItem(key), key);
   expect(previous).not.toBeNull();
   // Preserve the stale cache bytes deliberately; the separately persisted denial
