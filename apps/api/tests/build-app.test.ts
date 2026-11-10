@@ -120,6 +120,18 @@ describe('safe operational configuration', () => {
     ).toThrow();
     expect(() => readConfig({ DATABASE_POOL_MAX: '1000' })).toThrow();
   });
+  it('rejects database and Supabase URLs that do not parse', () => {
+    for (const environment of [
+      { DATABASE_URL: 'not a url' },
+      {
+        SUPABASE_URL: 'example.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'public',
+      },
+    ])
+      expect(() => readConfig(environment)).toThrow(
+        'Invalid API environment configuration',
+      );
+  });
   it('uses a bounded pool and cannot disable certificate validation via the URL', () => {
     const config = readConfig({
       DATABASE_URL:

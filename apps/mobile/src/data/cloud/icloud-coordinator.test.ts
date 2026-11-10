@@ -1464,3 +1464,98 @@ it('pins the original deletion generation before an uncertain reset so retry pre
   expect(remote.records().size).toBe(1);
   expect((await repository.snapshotData()).attempts).toEqual([]);
 });
+
+describe('a finished delete intent survives a later clear (#179)', () => {
+  const receipt = (storage: MemoryStorage, collection: string) =>
+    (
+      JSON.parse(
+        storage.values.get(`justgo:v1:${owner}:icloud-sync:${collection}`)!,
+      ) as { completedDeletionId: string | null }
+    ).completedDeletionId;
+  const writeFromAnotherPhone = async (
+    remote: ReturnType<typeof cloud>,
+    collection: 'guest' | `account:${string}`,
+    accountEpoch: number | null,
+  ) => {
+    const page = await remote.transport.read({ collection });
+    await remote.transport.write({
+      collection,
+      generation: page.generation,
+      records: [
+        {
+          id: uuid(701),
+          value: JSON.stringify(
+            completionData(collection, attempt(2), accountEpoch),
+          ),
+        },
+      ],
+    });
+  };
+  const retryKeepsLaterWriting = async (
+    sync: ICloudDataCoordinator,
+    remote: ReturnType<typeof cloud>,
+    intent: string,
+  ) => {
+    const resets = jest.mocked(remote.transport.reset).mock.calls.length;
+    await sync.deleteData(intent);
+    expect(remote.transport.reset).toHaveBeenCalledTimes(resets);
+    expect(remote.records().has(uuid(701))).toBe(true);
+  };
+
+  it('keeps the receipt through a guest clear for another phone reset', async () => {
+    const { repository, sync, remote, storage } = setup();
+    await repository.complete(input(), card);
+    await sync.synchronize();
+    const intent = uuid(700);
+    await sync.deleteData(intent);
+    await remote.reset();
+    await writeFromAnotherPhone(remote, 'guest', null);
+    await sync.synchronize();
+    const kept = receipt(storage, 'guest');
+    await retryKeepsLaterWriting(sync, remote, intent);
+    expect(kept).toBe(intent);
+  });
+
+  it('keeps the receipt through an account clear for a newer epoch floor', async () => {
+    const collection = `account:${owner}` as const;
+    const { repository, sync, remote, storage } = setup(
+      undefined,
+      owner,
+      collection,
+    );
+    await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await sync.synchronize();
+    const intent = uuid(700);
+    await sync.deleteData(intent);
+    const other = setup(remote, owner, collection, new MemoryStorage(), 300);
+    await other.repository.observeDataEpoch(1);
+    await other.sync.synchronize();
+    await writeFromAnotherPhone(remote, collection, 1);
+    await sync.synchronize();
+    expect(repository.store.getState().dataEpoch).toBe(1);
+    const kept = receipt(storage, collection);
+    await retryKeepsLaterWriting(sync, remote, intent);
+    expect(kept).toBe(intent);
+  });
+
+  it('keeps the receipt through a stale-copy replacement', async () => {
+    const collection = `account:${owner}` as const;
+    const { repository, sync, remote, storage } = setup(
+      undefined,
+      owner,
+      collection,
+    );
+    await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await sync.synchronize();
+    const intent = uuid(700);
+    await sync.deleteData(intent);
+    await repository.observeDataEpoch(1);
+    await sync.synchronize();
+    const kept = receipt(storage, collection);
+    await writeFromAnotherPhone(remote, collection, 1);
+    await retryKeepsLaterWriting(sync, remote, intent);
+    expect(kept).toBe(intent);
+  });
+});

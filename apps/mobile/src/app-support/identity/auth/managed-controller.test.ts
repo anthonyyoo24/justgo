@@ -2047,6 +2047,88 @@ const flush = async () => {
   for (let i = 0; i < 20; i++) await Promise.resolve();
 };
 
+const switchDestination: ProviderSession = {
+  authUserId: uuid(41),
+  accessToken: 'synthetic-destination-token',
+  expiresAt: session.expiresAt,
+  linkedProviders: ['google'],
+  provider: 'google',
+};
+const leaveSwitchProof = async (ctx: ReturnType<typeof setup>) => {
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // The network drops after the destination sheet completes, so revoking the
+  // source app session fails and the switch stops with its proof still saved.
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(switchDestination);
+    ctx.setFailure(new ApiError('UNAVAILABLE'));
+    return switchDestination;
+  });
+  await ctx.controller.signIn('google');
+  expect(JSON.parse(ctx.stored.get(proofKey) ?? 'null')).toEqual({
+    token: session.accessToken,
+    authUserId: session.authUserId,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    switching: true,
+    authenticated: true,
+  });
+  ctx.setFailure(null);
+};
+
+it('revokes a leftover switch proof with the source bearer before logging out the current session (#254)', async () => {
+  const ctx = setup();
+  await leaveSwitchProof(ctx);
+  const before = ctx.calls.length;
+  expect(await ctx.controller.signOut()).toBe(true);
+  expect(
+    ctx.calls
+      .slice(before)
+      .filter(({ path }) => path === '/auth/logout')
+      .map(({ method, token, body }) => ({ method, token, body })),
+  ).toEqual([
+    { method: 'POST', token: session.accessToken, body: { scope: 'session' } },
+    {
+      method: 'POST',
+      token: switchDestination.accessToken,
+      body: { scope: 'session' },
+    },
+  ]);
+  expect(ctx.stored.has(proofKey)).toBe(false);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    mode: 'signed-out',
+    account: null,
+  });
+  ctx.controller.dispose();
+});
+
+it('keeps logout pending and the switch proof stored when revoking the source session fails (#279)', async () => {
+  const ctx = setup();
+  await leaveSwitchProof(ctx);
+  const request = ctx.api.request;
+  ctx.api.request = async (method, path, schema, body, token, signal) => {
+    const response = await request(method, path, schema, body, token, signal);
+    if (path === '/auth/logout' && token === session.accessToken)
+      throw new ApiError('UNAVAILABLE');
+    return response;
+  };
+  const before = ctx.calls.length;
+  expect(await ctx.controller.signOut()).toBe(false);
+  expect(
+    ctx.calls
+      .slice(before)
+      .filter(({ path }) => path === '/auth/logout')
+      .map(({ token }) => token),
+  ).toEqual([session.accessToken]);
+  expect(ctx.saved()?.logoutPending).toBe(true);
+  expect(JSON.parse(ctx.stored.get(proofKey) ?? 'null')).toEqual({
+    token: session.accessToken,
+    authUserId: session.authUserId,
+  });
+  expect(ctx.auth.signOut).not.toHaveBeenCalled();
+  ctx.controller.dispose();
+});
+
 it('re-verifies a source the server rejects while a cancelled switch restores it', async () => {
   const ctx = setup();
   await ctx.controller.initialize();
