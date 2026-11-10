@@ -26,6 +26,7 @@ const entries = (value: unknown): [string, unknown][] =>
 function isSecretName(name: string): boolean {
   const words = name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
@@ -72,14 +73,13 @@ const schemasOf = (value: unknown): unknown[] =>
       ]
     : [];
 
-// A secret-named record with an id, such as a credential list entry, describes
-// the secret. Its own fields are still checked.
+// A secret-named list of records with ids, such as the credential list,
+// describes the secrets. Each record's own fields are still checked.
 function describesRecords(document: Json, root: unknown, schema: unknown) {
   const value = deref(document, schema, root);
   const record = isJson(value) ? deref(document, value.items, root) : undefined;
-  return [value, record].some(
-    (node) =>
-      isJson(node) && isJson(node.properties) && 'id' in node.properties,
+  return (
+    isJson(record) && isJson(record.properties) && 'id' in record.properties
   );
 }
 
@@ -292,10 +292,12 @@ it('finds secrets through every name, position and keyword', () => {
                       },
                       other: { not: secret },
                       refreshToken: object({ value: text }),
+                      accessToken: object({ id: text, value: text }),
                       names: object({
                         session: text,
                         jwt: text,
                         otpCode: text,
+                        OTPCode: text,
                         nonce: text,
                         authorization: text,
                         cookie: text,
@@ -335,6 +337,7 @@ it('finds secrets through every name, position and keyword', () => {
   );
   expect(responseSecrets(probe)).toEqual(
     [
+      'GET /probe/{recoveryCode} 200 accessToken',
       'GET /probe/{recoveryCode} 200 byDevice{}',
       'GET /probe/{recoveryCode} 200 byKey{key}',
       'GET /probe/{recoveryCode} 200 byPattern{}',
@@ -348,6 +351,7 @@ it('finds secrets through every name, position and keyword', () => {
       'GET /probe/{recoveryCode} 200 names.cookie',
       'GET /probe/{recoveryCode} 200 names.jwt',
       'GET /probe/{recoveryCode} 200 names.nonce',
+      'GET /probe/{recoveryCode} 200 names.OTPCode',
       'GET /probe/{recoveryCode} 200 names.otpCode',
       'GET /probe/{recoveryCode} 200 names.refresh_token',
       'GET /probe/{recoveryCode} 200 names.session',
