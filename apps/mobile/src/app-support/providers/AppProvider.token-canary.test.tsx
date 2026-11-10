@@ -52,16 +52,19 @@ jest.mock('expo-crypto', () => {
 // provider tokens may rest.
 jest.mock('expo-secure-store', () => {
   const keychain = new Map<string, string>();
+  const keychainKeys: string[] = [];
   return {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'unlocked-this-device',
     getItemAsync: async (key: string) => keychain.get(key) ?? null,
     setItemAsync: async (key: string, value: string) => {
+      keychainKeys.push(key);
       keychain.set(key, value);
     },
     deleteItemAsync: async (key: string) => {
       keychain.delete(key);
     },
     keychain,
+    keychainKeys,
   };
 });
 // The legacy vault runs on this in-memory JustGoKeychain native module.
@@ -119,6 +122,10 @@ const canaries = {
   renewedRefreshToken: randomBytes(24).toString('base64url'),
   appleIdToken: jwt(),
   appleNonce: hex(),
+  // A second sign-in while signed in switches to this provider session.
+  googleIdToken: jwt(),
+  switchedProviderToken: jwt(),
+  switchedRefreshToken: randomBytes(24).toString('base64url'),
   legacySessionToken: hex(),
   legacyRecoverySecret: hex(),
   legacyRegistrationSecret: hex(),
@@ -141,8 +148,10 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
     status,
   });
-const keychain = (SecureStore as unknown as { keychain: Map<string, string> })
-  .keychain;
+const { keychain, keychainKeys } = SecureStore as unknown as {
+  keychain: Map<string, string>;
+  keychainKeys: string[];
+};
 const justGoKeychain = (
   jest.requireMock('expo') as {
     justGoKeychain: {
@@ -236,6 +245,7 @@ function recordJournalWrites() {
 beforeEach(async () => {
   await AsyncStorage.clear();
   keychain.clear();
+  keychainKeys.length = 0;
   justGoKeychain.reset();
   recordJournalWrites();
   authorizations = [];
@@ -249,10 +259,13 @@ beforeEach(async () => {
   process.env.EXPO_PUBLIC_API_URL = 'http://localhost:3000';
   process.env.EXPO_PUBLIC_SUPABASE_URL = supabaseUrl;
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_fixture';
-  jest.mocked(nativeProviderToken).mockResolvedValue({
-    token: canaries.appleIdToken,
-    nonce: canaries.appleNonce,
-  });
+  jest
+    .mocked(nativeProviderToken)
+    .mockImplementation(async (provider) =>
+      provider === 'google'
+        ? { token: canaries.googleIdToken }
+        : { token: canaries.appleIdToken, nonce: canaries.appleNonce },
+    );
   const user = {
     id: authUserId,
     aud: 'authenticated',
@@ -279,6 +292,7 @@ beforeEach(async () => {
       expires_at: Math.floor(Date.now() / 1000) + 3600,
       user,
     });
+  let providerSignIns = 0;
   const attempts: CompletionRestoreRequest['attempts'] = [];
   const versions: JournalSyncRequest['versions'] = [];
   jest.spyOn(globalThis, 'fetch').mockImplementation(async (target, init) => {
@@ -294,9 +308,17 @@ beforeEach(async () => {
     const body = init?.body ? (JSON.parse(String(init.body)) as unknown) : null;
     switch (`${method} ${url.origin}${url.pathname}`) {
       case `POST ${supabaseUrl}/auth/v1/token`:
-        return url.searchParams.get('grant_type') === 'refresh_token'
-          ? tokens(canaries.renewedProviderToken, canaries.renewedRefreshToken)
-          : tokens(canaries.providerToken, canaries.refreshToken);
+        if (url.searchParams.get('grant_type') === 'refresh_token')
+          return tokens(
+            canaries.renewedProviderToken,
+            canaries.renewedRefreshToken,
+          );
+        return providerSignIns++ === 0
+          ? tokens(canaries.providerToken, canaries.refreshToken)
+          : tokens(
+              canaries.switchedProviderToken,
+              canaries.switchedRefreshToken,
+            );
       case `GET ${supabaseUrl}/auth/v1/user`:
         return json(user);
       case `POST ${supabaseUrl}/auth/v1/logout`:
@@ -367,6 +389,12 @@ beforeEach(async () => {
         return authorization === `Bearer ${canaries.providerToken}`
           ? json({ code: 'SESSION_EXPIRED', requestId: 'fixture' }, 401)
           : json({ ok: true });
+      case 'DELETE http://localhost:3000/v1/account':
+        return json({
+          userId,
+          deletedAt: new Date().toISOString(),
+          credentialDigests: [],
+        });
       case 'GET http://localhost:3000/v1/canary-failure':
         return json({ code: 'INTERNAL', requestId: 'fixture' }, 500);
       default:
@@ -598,6 +626,44 @@ it('keeps the provider token out of AsyncStorage and the journal while a guest j
     expect.arrayContaining([
       'POST http://localhost:3000/v1/completion-restores',
       'POST http://localhost:3000/v1/journal-sync',
+    ]),
+  );
+});
+
+it('keeps the provider tokens out of AsyncStorage and the journal through a provider switch and account deletion', async () => {
+  await mount();
+  const repository = await signIn();
+  await act(async () => {
+    await repository.complete(input(1), card);
+  });
+  // Signing in while signed in keeps the old bearer as a revocation proof.
+  await act(async () => controller.signIn('google'));
+  await waitFor(() =>
+    expect(authorizations).toContain(
+      `Bearer ${canaries.switchedProviderToken}`,
+    ),
+  );
+  await waitFor(() => expect(controller.getSnapshot().mode).toBe('account'));
+  // Deletion keeps the current bearer as its proof until the server answers.
+  await act(async () => controller.deleteAccount());
+  await waitFor(() => expect(controller.getSnapshot().mode).toBe('welcome'));
+
+  const stored = asyncStorageWrites();
+  expect(
+    leaks({ AsyncStorage: stored, journal: journalWrites.join('\n') }),
+  ).toEqual([]);
+  // Both proofs rested in the Keychain during the run and left with it.
+  expect(keychainKeys).toEqual(
+    expect.arrayContaining([
+      expect.stringContaining('justgo.auth.provider-switch-proof.v1'),
+      expect.stringContaining('justgo.auth.deletion-proof.v1'),
+    ]),
+  );
+  expect(stored).toContain(uuid(1));
+  expect(requests).toEqual(
+    expect.arrayContaining([
+      'POST http://localhost:3000/v1/auth/logout',
+      'DELETE http://localhost:3000/v1/account',
     ]),
   );
 });
