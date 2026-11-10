@@ -189,7 +189,6 @@ test('only rebuildable ignored files and tool output in .local are disposable', 
     'journey-repository.mjs',
     'exported-web-results',
     'exported-web-report',
-    'verify-justgo',
   ])
     assert.equal(localScratch(name), true, name);
   for (const name of [
@@ -200,6 +199,7 @@ test('only rebuildable ignored files and tool output in .local are disposable', 
     'edge-trial',
     'swarm',
     'local-database-54339.mjs',
+    'verify-justgo',
   ])
     assert.equal(localScratch(name), false, name);
 });
@@ -261,7 +261,7 @@ test('keeps worktrees with changes, unsaved commits, open PRs or a process insid
 test('removes tool output and local settings but keeps agent records and keys', (t) => {
   const repo = fixture(t);
   const scratch = repo.add('scratch', '--detach');
-  for (const dir of ['postgres', 'journey-results', 'verify-justgo/run-1'])
+  for (const dir of ['postgres', 'journey-results', 'journey-report'])
     mkdirSync(path.join(scratch, '.local', dir), { recursive: true });
   writeFileSync(path.join(scratch, '.local', 'postgres.log'), 'up\n');
   writeFileSync(path.join(scratch, '.local', 'database.env'), 'PORT=1\n');
@@ -280,6 +280,11 @@ test('removes tool output and local settings but keeps agent records and keys', 
   const drafts = repo.add('drafts', '--detach');
   mkdirSync(path.join(drafts, '.local', 'postgres'), { recursive: true });
   writeFileSync(path.join(drafts, '.local', 'pr-body.md'), 'body\n');
+  // The verify-justgo skill says cleanup never touches its evidence.
+  const evidence = repo.add('evidence', '--detach');
+  mkdirSync(path.join(evidence, '.local', 'verify-justgo', 'run-1'), {
+    recursive: true,
+  });
   const key = repo.add('key', '--detach');
   writeFileSync(path.join(key, 'signing.key'), 'secret\n');
   assert.deepEqual(repo.run(), {
@@ -288,6 +293,7 @@ test('removes tool output and local settings but keeps agent records and keys', 
     review:
       'keep: ignored files that may be unique (.local/decision-trails, .local/run.review.md)',
     drafts: 'keep: ignored files that may be unique (.local/pr-body.md)',
+    evidence: 'keep: ignored files that may be unique (.local/verify-justgo)',
     key: 'keep: ignored files that may be unique (signing.key)',
   });
   assert.equal(existsSync(scratch), false);
@@ -324,33 +330,65 @@ test('treats a process list cut short as unreadable', () => {
 
 test('keeps commits and operations that only the worktree holds', (t) => {
   const repo = fixture(t);
-  // A commit made on a detached HEAD and left by a checkout lives only in
-  // the worktree's HEAD reflog, which removal deletes.
+  const lost = 'keep: its HEAD history holds a commit no branch holds';
+  // A commit made on a detached HEAD lives only in the worktree's HEAD
+  // reflog, which removal deletes, once a checkout or a reset leaves it.
   const left = repo.add('left', '-b', 'left');
   git(left, 'checkout', '-q', '--detach');
   commit(left, 'experiment.txt', 'only in the reflog\n');
   git(left, 'checkout', '-q', 'left');
+  const reset = repo.add('reset', '--detach');
+  commit(reset, 'reset.txt', 'dropped by a reset\n');
+  git(reset, 'reset', '-q', '--hard', 'main');
   const ref = repo.add('ref', '--detach');
   git(ref, 'update-ref', 'refs/worktree/keep', 'HEAD');
   const bisecting = repo.add('bisecting', '--detach');
   git(bisecting, 'bisect', 'start');
-  // An amend replaces a commit on purpose, so the old one does not keep it.
+  // On a branch, the branch's own reflog keeps a commit that an amend or a
+  // reset replaced, and it survives the removal.
   const amended = repo.add('amended', '-b', 'amended');
   commit(amended, 'draft.txt', 'first\n');
   git(amended, 'commit', '-q', '--amend', '-m', 'reworded');
+  const rewound = repo.add('rewound', '-b', 'rewound');
+  commit(rewound, 'draft.txt', 'first\n');
+  git(rewound, 'reset', '-q', '--hard', 'HEAD~1');
   assert.deepEqual(repo.run(), {
-    left: 'keep: a checkout left a commit no branch holds',
+    left: lost,
+    reset: lost,
     ref: 'keep: it has refs of its own',
     bisecting: 'keep: a rebase, merge or bisect is in progress',
     amended: 'remove',
+    rewound: 'remove',
   });
-  // Once a branch holds the commit, removal loses nothing.
+  // Once a branch holds the commit, removal loses nothing, even after the
+  // branch's own reflog expires.
   git(left, 'branch', 'kept-experiment', 'HEAD@{1}');
+  git(
+    repo.main,
+    'reflog',
+    'expire',
+    '--expire=all',
+    '--expire-unreachable=all',
+    'refs/heads/kept-experiment',
+  );
+  assert.equal(git(repo.main, 'reflog', 'show', 'kept-experiment'), '');
   assert.deepEqual(repo.run(), {
     left: 'remove',
+    reset: lost,
     ref: 'keep: it has refs of its own',
     bisecting: 'keep: a rebase, merge or bisect is in progress',
   });
+});
+
+test('leaves a worktree inside another worktree to the outer one', (t) => {
+  const repo = fixture(t);
+  const outer = repo.add('outer', '--detach');
+  const inner = repo.add('outer/inner', '--detach');
+  assert.deepEqual(repo.run(), {
+    outer: 'keep: uncommitted or untracked files',
+  });
+  assert.equal(existsSync(inner), true);
+  assert.equal(existsSync(outer), true);
 });
 
 test('keeps hidden edits and commits only a non-main remote branch holds', (t) => {

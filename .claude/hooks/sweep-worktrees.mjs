@@ -28,10 +28,11 @@ import { fileURLToPath } from 'node:url';
 //  - its commit is on a branch: its own, or for a detached HEAD a local
 //    branch or origin/main that contains it, so removal loses no commits
 //    (branches are never deleted, and other remote branches may be),
-//  - no checkout left a commit behind that no branch holds, no rebase, merge,
-//    cherry-pick, revert or bisect is in progress, and it has no refs of its
-//    own, because its HEAD reflog and its own refs go with it (commits that
-//    an amend, rebase or reset replaced are not kept),
+//  - every commit its HEAD reflog records is on a branch, on origin/main or in
+//    a branch's own reflog, no rebase, merge, cherry-pick, revert or bisect is
+//    in progress, and it has no refs of its own, because its HEAD reflog and
+//    its own refs go with it,
+//  - it is not inside another worktree,
 //  - its branch has no open PR (when GitHub cannot be read, keep it),
 //  - no running process has its working directory inside it,
 //  - nothing touched it for a day: the folder (set when it is created), its
@@ -98,9 +99,10 @@ export function disposable(entry) {
 
 // What the repository's own tools write into `.local/`: the loopback database
 // (scripts/local-database.mjs), the journey and exported-web Playwright
-// output (e2e/*.config.ts) and verify-justgo runs. Anything else there, such
-// as a decision trail, a review, a PR body draft or a mutation run, is an
-// agent's own record and keeps the worktree.
+// output (e2e/*.config.ts). Anything else there, such as a decision trail, a
+// review, a PR body draft, a mutation run or verify-justgo evidence (its skill
+// says cleanup never touches it), is an agent's own record and keeps the
+// worktree.
 const toolOutput = new Set([
   'postgres',
   'database.env',
@@ -109,7 +111,6 @@ const toolOutput = new Set([
   'journey-report',
   'exported-web-results',
   'exported-web-report',
-  'verify-justgo',
 ]);
 
 export function localScratch(name) {
@@ -303,11 +304,20 @@ const inProgress = [
   'BISECT_LOG',
 ];
 
+// Every commit a branch's own reflog records. Branch reflogs live in the
+// shared repository and survive a worktree's removal, so a commit that an
+// amend, rebase or reset replaced on a branch stays reachable after it.
+export function branchHistory(dir) {
+  return git(dir, ['log', '--walk-reflogs', '--format=%H', '--branches'])
+    .split('\n')
+    .filter(Boolean);
+}
+
 // Removal deletes the worktree's HEAD reflog and its own refs, so a commit
-// that only they hold is lost. A checkout that leaves a commit no branch
-// holds is the case git itself warns about. Commits that an amend, rebase or
-// reset replaced are left out, because almost every worktree has some.
-export function unsaved(worktree) {
+// that only they hold is lost: one made on a detached HEAD and then left by a
+// checkout, a reset or an amend. A commit on a branch, on origin/main or in a
+// branch's own reflog is safe.
+export function unsaved(worktree, history = branchHistory(worktree)) {
   const gitDir = git(worktree, [
     'rev-parse',
     '--path-format=absolute',
@@ -326,37 +336,27 @@ export function unsaved(worktree) {
     ]) !== ''
   )
     return 'it has refs of its own';
-  // Newest first, so entry i - 1 is the move that left entry i's commit.
-  const log = git(worktree, ['reflog', 'show', '--format=%H %gs', 'HEAD'])
+  const log = git(worktree, ['reflog', 'show', '--format=%H', 'HEAD'])
     .split('\n')
-    .filter(Boolean)
-    .map((line) => ({ commit: line.slice(0, 40), action: line.slice(41) }));
-  if (log.length < 2) return '';
-  const lost = new Set(
-    git(
-      worktree,
-      [
-        'rev-list',
-        '--ignore-missing',
-        '--not',
-        '--branches',
-        'refs/remotes/origin/main',
-        '--stdin',
-      ],
-      gitTimeout,
-      `${log.map((entry) => entry.commit).join('\n')}\n`,
-    )
-      .split('\n')
-      .filter(Boolean),
+    .filter(Boolean);
+  if (log.length === 0) return '';
+  const lost = git(
+    worktree,
+    [
+      'rev-list',
+      '--ignore-missing',
+      '--max-count=1',
+      '--not',
+      '--branches',
+      'refs/remotes/origin/main',
+      '--stdin',
+    ],
+    gitTimeout,
+    // Revisions read from stdin are not flipped by --not, so the branch
+    // reflog commits are passed as ^ exclusions.
+    `${[...log, ...history.map((commit) => `^${commit}`)].join('\n')}\n`,
   );
-  for (let index = 1; index < log.length; index += 1)
-    if (
-      lost.has(log[index].commit) &&
-      log[index - 1].commit !== log[index].commit &&
-      log[index - 1].action.startsWith('checkout:')
-    )
-      return 'a checkout left a commit no branch holds';
-  return '';
+  return lost ? 'its HEAD history holds a commit no branch holds' : '';
 }
 
 function saved(main, entry) {
@@ -388,12 +388,20 @@ export function sweep(dir, deps) {
   if (!isMainCheckout(dir)) return [];
   const main = realpathSync(git(dir, ['rev-parse', '--show-toplevel']));
   const root = path.join(main, '.claude', 'worktrees');
-  const candidates = worktrees(main).filter(
-    (entry) => entry.path !== main && within(root, entry.path),
+  const all = worktrees(main).filter((entry) => entry.path !== main);
+  // A worktree inside another one is left to the outer one, whose chats and
+  // processes it cannot see.
+  const candidates = all.filter(
+    (entry) =>
+      within(root, entry.path) &&
+      !all.some(
+        (other) => other.path !== entry.path && within(other.path, entry.path),
+      ),
   );
   if (candidates.length === 0) return [];
   const busy = deps.busyPaths();
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
+  const history = branchHistory(main);
   const open = candidates.some((entry) => entry.branch)
     ? deps.openBranches()
     : new Set();
@@ -406,7 +414,7 @@ export function sweep(dir, deps) {
           locked: entry.locked,
           ...files(entry.path),
           saved: saved(main, entry),
-          unsaved: unsaved(entry.path),
+          unsaved: unsaved(entry.path, history),
           branch: entry.branch,
           openBranches: open,
           busy: !busy || busy.some((file) => within(entry.path, file)),
