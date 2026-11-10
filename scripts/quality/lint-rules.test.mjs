@@ -215,6 +215,16 @@ const cases = [
     'apps/api/src/http/boundary.cts',
   ],
   [
+    'justgo/import-boundaries',
+    "import { localJournalBackend } from '../../data/journal/storage'; export const backend = localJournalBackend;",
+    'apps/mobile/src/features/progress/ProgressScreen.tsx',
+  ],
+  [
+    'justgo/import-boundaries',
+    "import { useRuntime } from './AppProvider'; export const read = useRuntime;",
+    'apps/mobile/src/app-support/providers/ProgressRefresh.tsx',
+  ],
+  [
     '@typescript-eslint/no-floating-promises',
     'export async function f() { Promise.resolve(1); }',
     'apps/api/src/http/boundary.mts',
