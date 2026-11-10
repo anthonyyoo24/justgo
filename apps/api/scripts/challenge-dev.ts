@@ -88,7 +88,7 @@ try {
     port: Number(new URL(journeyApiUrl).port),
   });
   console.info(
-    `Disposable challenge test server listening on ${journeyApiUrl}${pathPrefix}`,
+    `Disposable challenge test server listening on ${journeyApiUrl}`,
   );
 } catch {
   console.error('Disposable challenge test server startup failed');

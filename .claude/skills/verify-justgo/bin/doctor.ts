@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Pool } from 'pg';
 import {
   journeyApiUrl,
+  journeyAppApiUrl,
   journeyAppUrl,
   journeyEnvironment,
 } from '../../../../e2e/support/environment';
@@ -202,8 +203,8 @@ else {
   report.app = served;
   if (served.bundle !== 200) problems.push('app: Metro did not serve a bundle');
   else {
-    if (served.apiOrigin !== journeyApiUrl)
-      problems.push(`app: bundle API origin is not ${journeyApiUrl}`);
+    if (served.apiOrigin !== journeyAppApiUrl)
+      problems.push(`app: bundle API origin is not ${journeyAppApiUrl}`);
     if (served.servedProject !== path.join(root, 'apps/mobile'))
       problems.push('app: Metro serves a different checkout');
     if (!served.journeyFixtures)
