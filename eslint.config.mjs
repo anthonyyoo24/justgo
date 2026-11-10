@@ -23,6 +23,8 @@ const requestPackages = [
   'node:https',
 ].map((name) => ({ name, message: outboundFetchFix }));
 const requestPatterns = [{ group: ['undici/*'], message: outboundFetchFix }];
+const randomSecretFix =
+  'Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts. getRandomBytes falls back to Math.random in development.';
 
 export default tseslint.config(
   {
@@ -152,11 +154,22 @@ export default tseslint.config(
                 'getRandomBytes',
                 'getRandomBytesAsync',
               ],
-              message:
-                'Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts. getRandomBytes falls back to Math.random in development.',
+              message: randomSecretFix,
             },
           ],
         },
+      ],
+      'no-restricted-globals': [
+        'error',
+        { name: 'crypto', message: randomSecretFix },
+      ],
+      'no-restricted-properties': [
+        'error',
+        ...['globalThis', 'global', 'window', 'self'].map((object) => ({
+          object,
+          property: 'crypto',
+          message: randomSecretFix,
+        })),
       ],
     },
   },
