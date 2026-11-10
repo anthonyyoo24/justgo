@@ -1,5 +1,8 @@
 import { test, expect } from '../../../../e2e/support/fixtures';
-import { journeyApiUrl } from '../../../../e2e/support/environment';
+import {
+  journeyApiPath,
+  journeyApiUrl,
+} from '../../../../e2e/support/environment';
 import { capture, writeProof } from './evidence';
 
 test('welcome-guest: Welcome and Terms lead a guest to the deck without creating an account', async ({
@@ -16,7 +19,7 @@ test('welcome-guest: Welcome and Terms lead a guest to the deck without creating
   const apiRequests = new Set<string>();
   page.on('request', (request) => {
     const url = new URL(request.url());
-    if (url.pathname.includes('/v1/'))
+    if ((journeyApiPath(request.url()) ?? url.pathname).startsWith('/v1/'))
       apiRequests.add(`${url.origin}${url.pathname}`);
   });
 
