@@ -7,6 +7,10 @@ records its settings so that review can catch drift.
 
 ## Settings
 
+- **Status:** paused. On 2026-11-10 Anthony had the routine disabled because
+  its runs were not fixing the queue, and `agent-fix` bugs are fixed in
+  interactive sessions instead. It keeps its schedule and prompt, so turning it
+  back on in claude.ai resumes it. Update this line when it is re-enabled.
 - **Name:** "JustGO nightly agent-fix". Manage it at
   `https://claude.ai/code/routines/trig_01ThN5gi4EiYaPUHD4676SvD`.
 - **Schedule:** cron `0 6 * * *` in UTC, which is 1 am Eastern Standard Time
