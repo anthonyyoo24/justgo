@@ -54,7 +54,8 @@ function localTargets(markdown) {
 // paths and placeholder suffixes such as `<run>.review.md` never match.
 const markdownMention = /(?<=^|[\s`'"([|*])[\w./-]*[\w-]\.md(?![\w-])/gm;
 
-// Ignored local output and pstack plugin files live outside the tracked tree.
+// Ignored local output and pstack plugin files live outside the tracked tree,
+// unless the prefix names a tracked folder beside the doc or at the root.
 const outsideRepoPrefixes = [
   '.local/',
   'pstack/',
@@ -68,27 +69,32 @@ function staleMentions(file, markdown, files) {
   const basenames = new Set(
     [...files].map((name) => path.posix.basename(name)),
   );
+  const bases = ['', path.posix.dirname(file)];
+  const isTrackedFolder = (folder) =>
+    [...files].some((name) => name.startsWith(folder));
   return withoutFences(markdown)
     .split('\n')
     .flatMap((line, index) =>
-      /git history|\bplanned\b/i.test(line)
+      /git history|\(planned\)/i.test(line)
         ? []
         : [...line.matchAll(markdownMention)].map(([name]) => ({
             name,
             line: index + 1,
           })),
     )
-    .filter(
-      ({ name }) =>
-        !outsideRepoPrefixes.some((prefix) => name.startsWith(prefix)),
-    )
-    .filter(({ name }) =>
-      name.includes('/')
-        ? ![name, path.posix.join(path.posix.dirname(file), name)].some(
-            (candidate) => files.has(path.posix.normalize(candidate)),
-          )
-        : !basenames.has(name),
-    )
+    .filter(({ name }) => {
+      if (!name.includes('/')) {
+        return !basenames.has(name);
+      }
+      if (bases.some((base) => files.has(path.posix.join(base, name)))) {
+        return false;
+      }
+      const prefix = outsideRepoPrefixes.find((p) => name.startsWith(p));
+      return (
+        !prefix ||
+        bases.some((base) => isTrackedFolder(path.posix.join(base, prefix)))
+      );
+    })
     .map(({ name, line }) => `${file}:${line} mentions ${name}`);
 }
 
@@ -143,7 +149,7 @@ test('every local link in tracked Markdown points at a file that exists', () => 
   assert.deepEqual(broken, [], `Broken local links:\n${broken.join('\n')}`);
 });
 
-test('mention extraction resolves paths and names and skips code blocks, URLs, placeholders, history and planned notes, and outside-repo paths', () => {
+test('mention extraction resolves paths and names and skips code blocks, URLs, placeholders, history and (planned) notes, and outside-repo paths', () => {
   const files = new Set(['docs/A.md', 'docs/guide/B.md', 'README.md']);
   assert.deepEqual(
     staleMentions(
@@ -212,8 +218,8 @@ test('every Markdown file mentioned in tracked Markdown exists', () => {
       'Markdown mentions a .md file that does not exist:',
       ...stale,
       'Update each mention to the current file.',
-      'A line that says "git history" may name a deleted file, and a line that says',
-      '"planned" may name a file the plan will create.',
+      'A line that says "git history" may name a deleted file, and a line marked',
+      '"(planned)" may name a file the plan will create.',
       'Write pstack plugin files with their folder (playbooks/x.md, skills/x/SKILL.md)',
       'and ignored output under .local/; those are outside the tracked tree.',
     ].join('\n'),

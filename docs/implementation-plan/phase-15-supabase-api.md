@@ -561,7 +561,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Files.**
 
-- [ ] Create the planned `docs/handoffs/phase-15-supabase-api.md` with the acceptance receipts.
+- [ ] Create `docs/handoffs/phase-15-supabase-api.md` (planned) with the acceptance receipts.
 - [ ] Edit `docs/implementation-plan/README.md` to point Phase 15 at the new handoff.
 
 **Build.**
@@ -614,7 +614,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Files.**
 
 - [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
-- [ ] Create the planned `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`.
+- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` (planned) from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`.
 - [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
 
 **Build.**
