@@ -157,6 +157,24 @@ const cases = [
     "import { request } from 'undici'; export const send = request;",
     'apps/api/src/http/server-error-reporter.ts',
   ],
+  // #239: Node's global, undici subpaths and Node's HTTP modules skip outboundFetch.
+  [
+    'no-restricted-globals',
+    "export const send = () => global.fetch('https://example.invalid');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  ...[
+    "import { fetch } from 'undici/lib/web/fetch/index.js'; export const send = fetch;",
+    "import { request } from 'node:http'; export const send = request;",
+    "import { request } from 'node:https'; export const send = request;",
+    "import { get } from 'http'; export const send = get;",
+    "import { request } from 'https'; export const send = request;",
+  ].flatMap((source) =>
+    [
+      'apps/api/src/http/server-error-reporter.ts',
+      'apps/api/src/identity/managed-deletion.ts',
+    ].map((filePath) => ['no-restricted-imports', source, filePath]),
+  ),
   [
     'no-restricted-imports',
     "import crossFetch from 'cross-fetch'; export const send = crossFetch;",
