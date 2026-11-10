@@ -108,16 +108,17 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     under(file, 'apps/mobile') &&
     namedBan &&
     kind !== 'ImportDeclaration' &&
+    !typeOnly &&
     !testSource
   )
-    return `Import ${namedBan} statically where you use it, so no-restricted-imports in eslint.config.mjs can see which names you read.`;
+    return `Import ${namedBan} statically where you use it, so no-restricted-imports in eslint.config.mjs can see which names you read and name the fix.`;
   if (
     under(file, 'apps/mobile') &&
-    under(target, '@sentry/react-native') &&
+    target.startsWith('@sentry/') &&
     !sentryModules.includes(file) &&
     !testSource
   )
-    return 'Report errors through apps/mobile/src/app-support/diagnostics. A new Sentry API, such as setUser, addAttachment, a user, segment or replay scope, or a manual span, needs a privacy review against docs/legal/DATA_INVENTORY.md#sentry-diagnostic-boundary before its file joins sentryModules in scripts/quality/import-boundaries.mjs.';
+    return 'Load @sentry/* packages only in apps/mobile/src/app-support/diagnostics. A new Sentry API, such as setUser, addAttachment, a user, segment or replay scope, or a manual span, needs a privacy review against docs/legal/DATA_INVENTORY.md#sentry-diagnostic-boundary before its file joins sentryModules in scripts/quality/import-boundaries.mjs.';
   if (
     under(file, 'apps/mobile') &&
     target.startsWith('@supabase/') &&

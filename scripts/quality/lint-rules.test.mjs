@@ -103,6 +103,11 @@ const cases = [
     'no-restricted-imports',
     "import { createJSONStorage } from 'zustand/middleware'; export const storage = createJSONStorage;",
   ],
+  [
+    'no-restricted-imports',
+    "export { FlatList } from 'react-native';",
+    'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
+  ],
   ...[
     'apps/mobile/src/features/progress/day-details/DaySheet.tsx',
     'apps/mobile/src/features/progress/day-details/entries/DayEntryList.tsx',

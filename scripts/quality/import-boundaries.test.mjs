@@ -500,12 +500,32 @@ const cases = [
     source: "import '@sentry/react-native/dist/js/sdk';",
     restricted: true,
   },
+  ...['@sentry/core', '@sentry/react'].map((specifier) => ({
+    name: `only the diagnostics modules may load ${specifier}`,
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: `import { setUser } from '${specifier}';`,
+    restricted: true,
+    fix: 'privacy review',
+  })),
   ...['event', 'reporter', 'start', 'transport'].map((module) => ({
     name: `the diagnostics ${module} module loads the Sentry SDK`,
     file: `apps/mobile/src/app-support/diagnostics/${module}.ts`,
     source: "import * as Sentry from '@sentry/react-native';",
     restricted: false,
   })),
+  ...['@sentry/core', '@sentry/react'].map((specifier) => ({
+    name: `the diagnostics modules may load ${specifier}`,
+    file: 'apps/mobile/src/app-support/diagnostics/start.ts',
+    source: `import { setUser } from '${specifier}';`,
+    restricted: false,
+  })),
+  {
+    name: 'mobile code may re-export react-native types',
+    file: 'apps/mobile/src/components/BoundaryFixture.ts',
+    source: "export type { ViewStyle } from 'react-native';",
+    restricted: false,
+    loadedRestricted: true,
+  },
   {
     name: 'mobile tests may load the Sentry SDK',
     file: 'apps/mobile/src/app-support/providers/BoundaryFixture.test.tsx',
