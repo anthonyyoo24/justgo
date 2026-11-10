@@ -1,6 +1,7 @@
 # Nightly agent-fix routine
 
-A claude.ai cloud routine works through open `agent-fix` issues every night. The
+A claude.ai cloud routine works through open `agent-fix` issues each night it is
+enabled. It is paused now, as **Status** below says. The
 labeling rules are under "Where facts live" in [AGENTS.md](../../AGENTS.md). The
 routine lives in Anthony's claude.ai account, not in this repository, so this doc
 records its settings so that review can catch drift.
