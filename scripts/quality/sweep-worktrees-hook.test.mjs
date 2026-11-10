@@ -82,7 +82,7 @@ function fixture(t) {
       const results = sweep(main, {
         now,
         home,
-        busyPaths: () => busy,
+        busyPaths: rest.busyPaths ?? (() => busy),
         openBranches: () => open,
         log: (line) => logs.push(line),
       });
@@ -378,6 +378,90 @@ test('keeps commits and operations that only the worktree holds', (t) => {
     ref: 'keep: it has refs of its own',
     bisecting: 'keep: a rebase, merge or bisect is in progress',
   });
+});
+
+test('keeps a worktree for every operation in progress and every ref of its own', (t) => {
+  const repo = fixture(t);
+  const expected = {};
+  for (const [name, dir] of [
+    ['rebase-merge', true],
+    ['rebase-apply', true],
+    ['MERGE_HEAD', false],
+    ['CHERRY_PICK_HEAD', false],
+    ['REVERT_HEAD', false],
+    ['BISECT_LOG', false],
+    ['sequencer', true],
+  ]) {
+    const worktree = repo.add(name.toLowerCase(), '--detach');
+    const marker = path.join(
+      git(worktree, 'rev-parse', '--path-format=absolute', '--git-dir'),
+      name,
+    );
+    if (dir) mkdirSync(marker);
+    else writeFileSync(marker, `${git(worktree, 'rev-parse', 'HEAD')}\n`);
+    expected[name.toLowerCase()] =
+      'keep: a rebase, merge or bisect is in progress';
+  }
+  for (const ref of [
+    'refs/worktree/keep',
+    'refs/bisect/bad',
+    'refs/rewritten/x',
+  ]) {
+    const name = ref.split('/')[1];
+    const worktree = repo.add(name, '--detach');
+    git(worktree, 'update-ref', ref, 'HEAD');
+    expected[name] = 'keep: it has refs of its own';
+  }
+  assert.deepEqual(repo.run(), expected);
+});
+
+test('keeps the remaining steps of a cherry-pick after a conflict is committed', (t) => {
+  const repo = fixture(t);
+  const source = repo.add('source', '-b', 'source');
+  commit(source, 'shared.txt', 'a\n');
+  commit(source, 'shared.txt', 'b\n');
+  const conflicting = git(source, 'rev-parse', 'HEAD');
+  commit(source, 'other.txt', 'c\n');
+  const last = git(source, 'rev-parse', 'HEAD');
+  const picking = repo.add('picking', '-b', 'picking');
+  commit(picking, 'shared.txt', 'mine\n');
+  assert.throws(() => git(picking, 'cherry-pick', conflicting, last));
+  writeFileSync(path.join(picking, 'shared.txt'), 'resolved\n');
+  git(picking, 'add', 'shared.txt');
+  git(picking, 'commit', '-q', '--no-edit');
+  assert.deepEqual(repo.run({ open: new Set(['source']) }), {
+    source: 'keep: open PR',
+    picking: 'keep: a rebase, merge or bisect is in progress',
+  });
+});
+
+test('looks again for a process or a chat just before each removal', (t) => {
+  const repo = fixture(t);
+  const first = repo.add('first', '--detach');
+  const busy = repo.add('busy', '--detach');
+  const chatted = repo.add('chatted', '--detach');
+  const slug = transcriptDir(repo.main, repo.home);
+  let calls = 0;
+  // The first call is the sweep's own look. By the next one, a process has
+  // started in one worktree and a chat has resumed in another.
+  const busyPaths = () => {
+    calls += 1;
+    if (calls === 1) return [];
+    mkdirSync(slug, { recursive: true });
+    writeFileSync(
+      path.join(slug, 'resumed.jsonl'),
+      `${JSON.stringify({ cwd: chatted })}\n`,
+    );
+    return [path.join(busy, 'apps')];
+  };
+  assert.deepEqual(repo.run({ busyPaths }), {
+    first: 'remove',
+    busy: 'keep: a running process is inside it',
+    chatted: 'keep: used in the last day',
+  });
+  assert.equal(existsSync(first), false);
+  assert.equal(existsSync(busy), true);
+  assert.equal(existsSync(chatted), true);
 });
 
 test('leaves a worktree inside another worktree to the outer one', (t) => {

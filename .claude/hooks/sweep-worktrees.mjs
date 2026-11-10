@@ -29,12 +29,14 @@ import { fileURLToPath } from 'node:url';
 //    branch or origin/main that contains it, so removal loses no commits
 //    (branches are never deleted, and other remote branches may be),
 //  - every commit its HEAD reflog records is on a branch, on origin/main or in
-//    a branch's own reflog, no rebase, merge, cherry-pick, revert or bisect is
-//    in progress, and it has no refs of its own, because its HEAD reflog and
-//    its own refs go with it,
+//    a branch's own reflog, no rebase, merge, cherry-pick, revert (including
+//    the remaining steps of a multi-commit one) or bisect is in progress, and
+//    it has no refs of its own, because its HEAD reflog and its own refs go
+//    with it,
 //  - it is not inside another worktree,
 //  - its branch has no open PR (when GitHub cannot be read, keep it),
-//  - no running process has its working directory inside it,
+//  - no running process has its working directory inside it, checked again
+//    with the chats just before each removal,
 //  - nothing touched it for a day: the folder (set when it is created), its
 //    HEAD file (rewritten by a checkout), its newest commit, or the
 //    transcripts of a Claude chat that ran in it, including a chat started in
@@ -236,9 +238,9 @@ function newest(dir) {
 // A chat started in one folder can run its steps in another, such as a
 // desktop chat whose worktree sits under the main checkout. Each transcript
 // line records the folder it ran in, so this maps every folder that a
-// transcript under `dir` changed within the last day to that transcript's
-// time.
-export function chatFolders(dir, now) {
+// transcript under `dir` changed after `since` (by default, within the last
+// day) to that transcript's time.
+export function chatFolders(dir, now, since = now - idleMs) {
   const folders = new Map();
   const visit = (folder, depth) => {
     let entries;
@@ -255,7 +257,7 @@ export function chatFolders(dir, now) {
       }
       if (!entry.name.endsWith('.jsonl')) continue;
       const time = mtime(file);
-      if (now - time >= idleMs) continue;
+      if (time <= since) continue;
       let text;
       try {
         text = readFileSync(file, 'utf8');
@@ -302,6 +304,9 @@ const inProgress = [
   'CHERRY_PICK_HEAD',
   'REVERT_HEAD',
   'BISECT_LOG',
+  // A multi-commit cherry-pick or revert keeps its remaining steps here after
+  // a conflict is committed and CHERRY_PICK_HEAD or REVERT_HEAD is gone.
+  'sequencer',
 ];
 
 // Every commit a branch's own reflog records. Branch reflogs live in the
@@ -399,6 +404,7 @@ export function sweep(dir, deps) {
       ),
   );
   if (candidates.length === 0) return [];
+  const started = Date.now();
   const busy = deps.busyPaths();
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
   const history = branchHistory(main);
@@ -425,6 +431,8 @@ export function sweep(dir, deps) {
     } catch {
       verdict = 'keep: could not inspect';
     }
+    if (verdict === 'remove' && !deps.dryRun)
+      verdict = recheck(main, entry.path, deps, started);
     if (verdict === 'remove' && !deps.dryRun) {
       // No --force: git refuses if the worktree changed since the check.
       if (succeeds(main, ['worktree', 'remove', entry.path], removeTimeout))
@@ -436,6 +444,23 @@ export function sweep(dir, deps) {
     results.push({ path: entry.path, verdict });
   }
   return results;
+}
+
+// One removal can take minutes, so just before each one this looks again for
+// a process inside the worktree, or a chat that touched it since the sweep
+// began.
+function recheck(main, worktree, deps, started) {
+  const busy = deps.busyPaths();
+  if (!busy || busy.some((file) => within(worktree, file)))
+    return 'keep: a running process is inside it';
+  let chat = newest(transcriptDir(worktree, deps.home));
+  for (const [folder, time] of chatFolders(
+    transcriptDir(main, deps.home),
+    started,
+    started - 1,
+  ))
+    if (within(worktree, folder)) chat = Math.max(chat, time);
+  return chat >= started ? 'keep: used in the last day' : 'remove';
 }
 
 const lsof = () =>
