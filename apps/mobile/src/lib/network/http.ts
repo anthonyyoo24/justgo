@@ -63,8 +63,8 @@ function localDevelopmentHost(hostname: string) {
     (first === 192 && second === 168)
   );
 }
-/** Canonical API scope shared by transport validation and local access metadata. */
-export function apiOrigin(baseUrl: string | undefined): string | null {
+/** The admitted API origin and its path prefix, which has no trailing slash. */
+function apiBase(baseUrl: string | undefined) {
   try {
     const base = new URL(baseUrl ?? '');
     return (base.protocol === 'https:' ||
@@ -74,12 +74,17 @@ export function apiOrigin(baseUrl: string | undefined): string | null {
       !base.username &&
       !base.password &&
       !base.search &&
-      !base.hash
-      ? base.origin
+      !base.hash &&
+      !base.pathname.includes('//')
+      ? { origin: base.origin, prefix: base.pathname.replace(/\/$/, '') }
       : null;
   } catch {
     return null;
   }
+}
+/** Canonical API scope shared by transport validation and local access metadata. */
+export function apiOrigin(baseUrl: string | undefined): string | null {
+  return apiBase(baseUrl)?.origin ?? null;
 }
 export function createHttpClient(
   baseUrl: string | undefined,
@@ -91,20 +96,20 @@ export function createHttpClient(
       schema: z.ZodType<T>,
       options: RequestOptions = {},
     ): Promise<T> {
-      const origin = apiOrigin(baseUrl);
-      if (!origin) throw new ApiError('UNAVAILABLE');
+      const base = apiBase(baseUrl);
+      if (!base) throw new ApiError('UNAVAILABLE');
       let target: URL;
       try {
-        target = new URL(path, origin);
+        target = new URL(base.prefix + path, base.origin);
       } catch {
         throw new ApiError('UNAVAILABLE');
       }
       // Progress reads use encoded query parameters. Resolve the relative path
-      // against the trusted API origin so a query cannot redirect the request.
+      // against the trusted API base so a query cannot redirect the request.
       if (
         !path.startsWith('/v1/') ||
-        target.origin !== origin ||
-        !target.pathname.startsWith('/v1/') ||
+        target.origin !== base.origin ||
+        !target.pathname.startsWith(`${base.prefix}/v1/`) ||
         path.includes('#')
       )
         throw new ApiError('UNAVAILABLE');
