@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { ESLint } from 'eslint';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -9,7 +10,7 @@ const eslint = new ESLint({ cwd: root });
 const production = 'apps/mobile/src/components/PrimaryButton.tsx';
 const tests = 'apps/mobile/src/components/PrimaryButton.test.tsx';
 
-for (const [rule, source, filePath = production, severity = 2] of [
+const cases = [
   [
     '@typescript-eslint/switch-exhaustiveness-check',
     "export function choose(value: 'a' | 'b') { switch (value) { case 'a': return 1; } }",
@@ -171,6 +172,32 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { fetch } from 'undici'; export const send = fetch;",
     'apps/api/src/identity/managed-deletion.ts',
   ],
+  // #219: .mts and .cts files skip the import boundaries and the typed rules.
+  [
+    'justgo/import-boundaries',
+    "import { x } from '../../../mobile/src/lib/x.js'; export const y = x;",
+    'apps/api/src/http/boundary.mts',
+  ],
+  [
+    'justgo/import-boundaries',
+    "import { x } from '../../../mobile/src/lib/x.js'; export const y = x;",
+    'apps/api/src/http/boundary.cts',
+  ],
+  [
+    '@typescript-eslint/no-floating-promises',
+    'export async function f() { Promise.resolve(1); }',
+    'apps/api/src/http/boundary.mts',
+  ],
+  [
+    '@typescript-eslint/no-floating-promises',
+    'export async function f() { Promise.resolve(1); }',
+    'apps/api/src/http/boundary.cts',
+  ],
+  [
+    'justgo/rls-context',
+    "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
+    'apps/api/src/data-sync/journal.mts',
+  ],
   ...[
     "import { sql } from 'drizzle-orm'; export const leak = (tx: { execute(query: unknown): unknown }, id: string) => tx.execute(sql`select set_config('app.user_id', ${id}, false)`);",
     "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
@@ -185,7 +212,30 @@ for (const [rule, source, filePath = production, severity = 2] of [
     source,
     'apps/api/src/data-sync/journal.ts',
   ]),
-]) {
+];
+
+// The typed rules' project service lints only files on disk, and no source
+// file uses .mts or .cts yet. Empty placeholders let lintText supply the code.
+// A placeholder that already exists stops the run, and the ones made before it
+// are removed here, because after() never runs when this file throws on load.
+const placeholders = [];
+const removePlaceholders = () => {
+  for (const file of placeholders.splice(0)) rmSync(file, { force: true });
+};
+after(removePlaceholders);
+try {
+  for (const filePath of new Set(cases.map(([, , filePath]) => filePath))) {
+    if (!/\.[mc]ts$/.test(filePath ?? '')) continue;
+    const file = path.join(root, filePath);
+    writeFileSync(file, '', { flag: 'wx' });
+    placeholders.push(file);
+  }
+} catch (error) {
+  removePlaceholders();
+  throw error;
+}
+
+for (const [rule, source, filePath = production, severity = 2] of cases) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
       filePath: path.join(root, filePath),
