@@ -2047,6 +2047,57 @@ const flush = async () => {
   for (let i = 0; i < 20; i++) await Promise.resolve();
 };
 
+it('revokes a leftover switch proof with the source bearer before logging out the current session (#254)', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const destination: ProviderSession = {
+    authUserId: uuid(41),
+    accessToken: 'synthetic-destination-token',
+    expiresAt: session.expiresAt,
+    linkedProviders: ['google'],
+    provider: 'google',
+  };
+  // The network drops after the destination sheet completes, so revoking the
+  // source app session fails and the switch stops with its proof still saved.
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(destination);
+    ctx.setFailure(new ApiError('UNAVAILABLE'));
+    return destination;
+  });
+  await ctx.controller.signIn('google');
+  expect(JSON.parse(ctx.stored.get(proofKey) ?? 'null')).toEqual({
+    token: session.accessToken,
+    authUserId: session.authUserId,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    switching: true,
+    authenticated: true,
+  });
+  ctx.setFailure(null);
+  const before = ctx.calls.length;
+  expect(await ctx.controller.signOut()).toBe(true);
+  expect(
+    ctx.calls
+      .slice(before)
+      .filter(({ path }) => path === '/auth/logout')
+      .map(({ method, token, body }) => ({ method, token, body })),
+  ).toEqual([
+    { method: 'POST', token: session.accessToken, body: { scope: 'session' } },
+    {
+      method: 'POST',
+      token: destination.accessToken,
+      body: { scope: 'session' },
+    },
+  ]);
+  expect(ctx.stored.has(proofKey)).toBe(false);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    mode: 'signed-out',
+    account: null,
+  });
+  ctx.controller.dispose();
+});
+
 it('re-verifies a source the server rejects while a cancelled switch restores it', async () => {
   const ctx = setup();
   await ctx.controller.initialize();
