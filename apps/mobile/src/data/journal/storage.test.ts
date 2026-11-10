@@ -1,5 +1,5 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as SQLite from 'expo-sqlite';
@@ -16,37 +16,43 @@ jest.mock('expo-sqlite', () => {
     jest.requireActual<typeof import('node:sqlite')>('node:sqlite');
   const { join } = jest.requireActual<typeof import('node:path')>('node:path');
   const { rmSync } = jest.requireActual<typeof import('node:fs')>('node:fs');
+  const connect = (file: string) => {
+    const database = new DatabaseSync(file);
+    mockConnections.push(database);
+    return {
+      execAsync: (sql: string) => Promise.resolve(database.exec(sql)),
+      getFirstAsync: (sql: string, ...parameters: SQLInputValue[]) =>
+        Promise.resolve(database.prepare(sql).get(...parameters) ?? null),
+      getAllAsync: (sql: string, ...parameters: SQLInputValue[]) =>
+        Promise.resolve(database.prepare(sql).all(...parameters)),
+      runAsync: (sql: string, ...parameters: SQLInputValue[]) =>
+        Promise.resolve(database.prepare(sql).run(...parameters)),
+      closeAsync: () => Promise.resolve(database.close()),
+      // Like Expo on native, each exclusive transaction runs on a new
+      // connection, so per-connection pragmas start at their defaults.
+      withExclusiveTransactionAsync: async (
+        action: (connection: unknown) => Promise<void>,
+      ) => {
+        const transaction = connect(file);
+        await transaction.execAsync('BEGIN');
+        try {
+          await action(transaction);
+          if (mockFailCommit) throw new Error('Synthetic commit failure');
+          await transaction.execAsync('COMMIT');
+        } catch (error) {
+          await transaction.execAsync('ROLLBACK');
+          throw error;
+        } finally {
+          await transaction.closeAsync();
+        }
+      },
+    };
+  };
   return {
-    openDatabaseAsync: (name: string) => {
-      if (mockFailOpen)
-        return Promise.reject(new Error('Synthetic open failure'));
-      const database = new DatabaseSync(join(mockDirectory, name));
-      mockConnections.push(database);
-      const connection = {
-        execAsync: (sql: string) => Promise.resolve(database.exec(sql)),
-        getFirstAsync: (sql: string, ...parameters: SQLInputValue[]) =>
-          Promise.resolve(database.prepare(sql).get(...parameters) ?? null),
-        getAllAsync: (sql: string, ...parameters: SQLInputValue[]) =>
-          Promise.resolve(database.prepare(sql).all(...parameters)),
-        runAsync: (sql: string, ...parameters: SQLInputValue[]) =>
-          Promise.resolve(database.prepare(sql).run(...parameters)),
-        closeAsync: () => Promise.resolve(database.close()),
-        withExclusiveTransactionAsync: async (
-          action: (connection: unknown) => Promise<void>,
-        ) => {
-          database.exec('BEGIN IMMEDIATE');
-          try {
-            await action(connection);
-            if (mockFailCommit) throw new Error('Synthetic commit failure');
-            database.exec('COMMIT');
-          } catch (error) {
-            database.exec('ROLLBACK');
-            throw error;
-          }
-        },
-      };
-      return Promise.resolve(connection);
-    },
+    openDatabaseAsync: (name: string) =>
+      mockFailOpen
+        ? Promise.reject(new Error('Synthetic open failure'))
+        : Promise.resolve(connect(join(mockDirectory, name))),
     deleteDatabaseAsync: (name: string) => {
       // Match Expo's native delete: only the main file, and absent files fail.
       rmSync(join(mockDirectory, name));
@@ -97,7 +103,7 @@ it('uses real SQLite SQL to preserve entries and alternatives across connection 
     reflection: { ...entry.reflection, text: 'Legacy copy' },
   };
   await journal.mergeLegacy([entry, alternative, alternative]);
-  for (const database of mockConnections) database.close();
+  for (const database of mockConnections) if (database.isOpen) database.close();
   const reopened = new LocalJournalRepository(owner, backendWithDriver());
   expect(await reopened.snapshot()).toEqual({
     entries: [entry],
@@ -119,6 +125,29 @@ it('stores the journal file in WAL mode', async () => {
     journal_mode: 'wal',
   });
   file.close();
+});
+
+it('leaves no trace of replaced writing in the checkpointed journal file', async () => {
+  const journal = new LocalJournalRepository(owner, backendWithDriver());
+  const replaced = 'Synthetic replaced reflection';
+  await journal.save({
+    ...entry,
+    reflection: { ...entry.reflection, text: replaced },
+  });
+  await journal.save({ ...entry, id: secondId });
+  await journal.save({
+    ...entry,
+    reflection: {
+      ...entry.reflection,
+      text: 'Edited '.repeat(40),
+      revision: 2,
+    },
+  });
+  const file = new DatabaseSync(filename(owner));
+  file.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+  file.close();
+  expect(readFileSync(filename(owner) + '-wal')).toHaveLength(0);
+  expect(readFileSync(filename(owner)).includes(replaced)).toBe(false);
 });
 
 it('binds private writing as data and rolls back a failed multi-entry commit', async () => {
