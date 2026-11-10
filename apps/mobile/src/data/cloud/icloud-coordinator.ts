@@ -419,6 +419,7 @@ export class ICloudDataCoordinator {
           remote.generation,
           metadata.associatedTokens,
         ),
+        completedDeletionId: metadata.completedDeletionId,
         clearing: true,
         accountEpochFloor: account
           ? (remote.accountEpoch ?? accountEpoch)
@@ -748,6 +749,7 @@ export class ICloudDataCoordinator {
         reset.generation,
         metadata.associatedTokens,
       ),
+      completedDeletionId: metadata.completedDeletionId,
       replacing: true,
       replacementExpectedGeneration: expectedGeneration,
       cleanup: true,
