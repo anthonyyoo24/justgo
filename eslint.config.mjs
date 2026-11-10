@@ -50,6 +50,39 @@ const cryptoPropertyBans = ['globalThis', 'global', 'window', 'self'].map(
 );
 const dayEntryListFix =
   "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.";
+const accountKeyFix =
+  "Build query keys with accountKey() from apps/mobile/src/lib/network/account-client.ts, or a variable that holds one, so each key starts with ['account', userId]. An unscoped key serves one account's cached data to another.";
+const mobileSyntaxBans = [
+  {
+    selector:
+      "Property:matches([key.name='queryKey'], [key.value='queryKey']):not([value.type='Identifier'], [value.callee.name='accountKey'])",
+    message: accountKeyFix,
+  },
+  {
+    selector:
+      "CallExpression[callee.property.name=/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/]:not([arguments.0.type='Identifier'], [arguments.0.callee.name='accountKey'])",
+    message: accountKeyFix,
+  },
+  {
+    selector: 'ImportExpression',
+    message:
+      'Load modules with a static import or a literal require(). In development, import() fetches a separate split bundle, so opening saved data can fail on that request.',
+  },
+];
+const coordinatedDataOperations =
+  '/^(clearData|erase|restoreJournal|mergeCompletions|mergeSyncedJournal|observeDataEpoch|withDataMigration)$/';
+const routeAndFeatureSyntaxBans = [
+  ...mobileSyntaxBans,
+  ...[
+    `MemberExpression[property.name=${coordinatedDataOperations}]`,
+    `MemberExpression[property.value=${coordinatedDataOperations}]`,
+    `ObjectPattern > Property[key.name=${coordinatedDataOperations}]`,
+  ].map((selector) => ({
+    selector,
+    message:
+      'Clear or replace local data only through ActivityRuntime.deleteAllData() or ActivityRuntime.importData(). They stop sync, keep the delete-all intent and check the account first, so a direct call can lose data or let sync bring deleted data back.',
+  })),
+];
 
 export default tseslint.config(
   {
@@ -175,6 +208,19 @@ export default tseslint.config(
       ],
       'no-restricted-properties': ['error', ...cryptoPropertyBans],
     },
+  },
+  {
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', ...mobileSyntaxBans] },
+  },
+  {
+    files: [
+      'apps/mobile/src/features/**/*.{ts,tsx}',
+      'apps/mobile/src/app/**/*.{ts,tsx}',
+    ],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', ...routeAndFeatureSyntaxBans] },
   },
   {
     files: ['apps/mobile/src/app-support/identity/random-secret.ts'],

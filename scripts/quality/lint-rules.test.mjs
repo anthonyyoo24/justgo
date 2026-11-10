@@ -167,6 +167,28 @@ const cases = [
     'no-restricted-properties',
     `export const secret = () => ${object}.crypto.getRandomValues(new Uint8Array(32));`,
   ]),
+  // The route and feature block replaces the mobile syntax bans unless it repeats them.
+  ...[
+    production,
+    'apps/mobile/src/features/progress/ProgressScreen.tsx',
+    'apps/mobile/src/app/data.tsx',
+  ].flatMap((filePath) =>
+    [
+      "import { useQuery } from '@tanstack/react-query'; export const useRead = () => useQuery({ queryKey: ['progress'] as const, queryFn: () => 1 });",
+      "import type { QueryClient } from '@tanstack/react-query'; export const seed = (queries: QueryClient) => queries.setQueryData(['progress'], 1);",
+      "export const open = () => import('./native-store');",
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
+  ),
+  ...[
+    'export const wipe = (repository: { clearData(): Promise<void> }) => repository.clearData();',
+    "export const wipe = (repository: { erase(): Promise<void> }) => repository['erase']();",
+    'export const restore = (repository: { restoreJournal(): Promise<void> }) => { const { restoreJournal } = repository; return restoreJournal; };',
+  ].flatMap((source) =>
+    [
+      'apps/mobile/src/features/settings/data/SettingsDataScreen.tsx',
+      'apps/mobile/src/app/data.tsx',
+    ].map((filePath) => ['no-restricted-syntax', source, filePath]),
+  ),
   [
     'no-restricted-syntax',
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
@@ -381,6 +403,37 @@ test('RLS context lint accepts ordinary SQL, messages and built-in connection op
   assert.deepEqual(
     result.messages.filter(
       (message) => message.ruleId === 'justgo/rls-context',
+    ),
+    [],
+  );
+});
+
+test('Mobile syntax bans accept scoped query keys, type-only imports and coordinated data calls', async () => {
+  const [result] = await eslint.lintText(
+    `
+    import { useQuery, type QueryClient } from '@tanstack/react-query';
+    import { accountKey } from '../../lib/network/account-client';
+    import type { ActivityRuntime } from '../../app-support/providers/activity-runtime';
+    export type Native = typeof import('react-native');
+    export const useRead = (owner: string, queries: QueryClient) => {
+      const queryKey = accountKey(owner, 'progress');
+      void queries.invalidateQueries({ queryKey });
+      queries.setQueryData(accountKey(owner, 'progress', 'day'), 1);
+      return useQuery({ queryKey: accountKey(owner, 'access'), queryFn: () => queries.getQueryData(queryKey) });
+    };
+    export const wipe = (activity: ActivityRuntime) => activity.deleteAllData();
+  `,
+    {
+      filePath: path.join(
+        root,
+        'apps/mobile/src/features/progress/ProgressScreen.tsx',
+      ),
+    },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'no-restricted-syntax',
     ),
     [],
   );
