@@ -326,4 +326,32 @@ describe('Expo project configuration', () => {
       ],
     ).toEqual(['iCloud.com.anthonyyoo.justgo']);
   });
+
+  it('keeps the FULL synchronous SQLite default that journal saves rely on', () => {
+    // Journal writes run inside BEGIN on new connections, where
+    // PRAGMA synchronous cannot change (#202). Build flags could lower it.
+    type Flags = { customBuildFlags?: string };
+    const eas = require('./eas.json');
+    for (const env of [
+      {},
+      { ...eas.build.beta.env, EAS_BUILD_PROFILE: 'beta' },
+    ]) {
+      jest.resetModules();
+      process.env = { ...process.env, ...env };
+      const { default: config } = require('./app.config');
+      const sqliteOptions = (config.plugins as unknown[])
+        .filter(
+          (
+            plugin,
+          ): plugin is [string, Flags & { ios?: Flags; android?: Flags }] =>
+            Array.isArray(plugin) && plugin[0] === 'expo-sqlite',
+        )
+        .flatMap(([, options]) => [options, options.ios, options.android]);
+      expect(
+        sqliteOptions
+          .map((options) => options?.customBuildFlags)
+          .filter(Boolean),
+      ).toEqual([]);
+    }
+  });
 });
