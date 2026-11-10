@@ -3,6 +3,7 @@ import { uuid, deferred } from './journal';
 
 const apiUrl = 'http://127.0.0.1:4311';
 const origin = 'http://127.0.0.1:8091';
+const prefix = '/functions/v1/api';
 const response = (body: unknown, ok = true) =>
   ({ ok, url: apiUrl, json: async () => body }) as Response;
 function storage() {
@@ -101,8 +102,17 @@ it.each([
   { production: true },
   { apiUrl: 'https://hosted.example' },
   { apiUrl: 'http://localhost:4311' },
-  { apiUrl: `${apiUrl}/unexpected` },
+  { apiUrl: `${apiUrl}/functions//api` },
+  { apiUrl: `${apiUrl}/functions/v1/api.hosted.example` },
+  { apiUrl: `${apiUrl}/functions/v1/api@hosted.example` },
   { apiUrl: `${apiUrl}?target=hosted` },
+  { apiUrl: `${apiUrl}${prefix}?target=hosted` },
+  { apiUrl: `${apiUrl}${prefix}#hosted` },
+  { apiUrl: `https://hosted.example${prefix}` },
+  { apiUrl: `http://hosted.example:4311${prefix}` },
+  { apiUrl: `http://localhost:4311${prefix}` },
+  { apiUrl: `${apiUrl}@hosted.example${prefix}` },
+  { apiUrl: `https://127.0.0.1:4311${prefix}` },
   { origin: 'https://hosted.example' },
   { origin: 'file:///tmp/test' },
 ])('rejects an unguarded or non-loopback provider fixture (%#)', (patch) => {
@@ -112,6 +122,40 @@ it.each([
   ).toThrow('CONFIGURATION');
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+it.each([prefix, `${prefix}/`])(
+  'reaches the provider fixture under the API base path %s on the same loopback origin',
+  async (path) => {
+    const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>(
+      async (url) =>
+        response(
+          String(url).endsWith('provider-sign-outs')
+            ? { ok: true }
+            : {
+                subjectHandle: '1'.padStart(32, '0'),
+                session: {
+                  authUserId: uuid(1),
+                  accessToken: `fixture.${'1'.padStart(30, '0')}.signature`,
+                  expiresAt: '2030-01-01T00:00:00.000Z',
+                  linkedProviders: ['apple'],
+                },
+              },
+        ),
+    );
+    const { auth } = createJourneyManagedAuth({
+      ...options(),
+      apiUrl: `${apiUrl}${path}`,
+      fetcher,
+    });
+    await auth.signIn('apple');
+    await auth.signOut();
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      `${apiUrl}${prefix}/__fixtures/provider-sessions`,
+      `${apiUrl}${prefix}/__fixtures/provider-sign-outs`,
+    ]);
+    auth.dispose();
+  },
+);
 
 it('starts guest without a provider request and persists only a run-allocated session after explicit sign-in', async () => {
   const base = options();
