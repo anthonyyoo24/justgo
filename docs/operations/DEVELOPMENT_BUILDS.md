@@ -11,8 +11,11 @@ generated Podfile properties disable precompiled Expo modules, and the SDK
 template forces that setting off even if the incoming EAS environment enables
 it. React Native core keeps its matching prebuilt framework. ExpoModulesJSI
 builds its framework against the current Pods headers. This policy requires a
-new binary. Metro reloads and JavaScript exports do not validate it. See the
-[native linkage policy](../architecture/APP_SHELL.md#app-error-reporting).
+new binary. Metro reloads and JavaScript exports do not validate it. Sentry's
+Cocoa 9.29 prebuilt framework and its attachment-clearing Swift callback also need
+the static linkage that `apps/mobile/app.config.test.ts` pins. A build under this
+policy needs its own signed-device privacy acceptance, because earlier signed-build
+receipts cover only their own inputs.
 
 To rebuild locally with an existing `apps/mobile/ios/` directory, use the intended
 variant and public build environment for every step:
@@ -186,9 +189,17 @@ unchanged.
 Put the phone and the Mac on the same Wi-Fi, and scan the current **server** QR
 code. This code differs from the **installation** QR code. If the phone cannot
 reach Metro, allow JustGO's Local Network access in iOS Settings and retry.
-Ordinary UI and JavaScript changes reload. Native module and configuration
-changes require another Dev binary. After configuration or module-path changes,
-restart with `--clear` and verify the LAN host in the iOS manifest.
+Ordinary UI and JavaScript changes reload. After you change provider lifecycle
+effects, fully reload the app, because Fast Refresh can keep a disposed runtime. A
+preview with file watching off serves an edit only after a restart. Native module
+and configuration changes require another Dev binary. After configuration or
+module-path changes, restart with `--clear` and verify the LAN host in the iOS
+manifest.
+
+Browser, simulator and component checks cannot prove native launch configuration,
+notched-layout insets on first and repeated challenge openings, or `DayEntryList`
+row expansion and scrolling. Check them on the phone, and file each deferred check
+as a `gate` issue.
 
 ## Configured account prerequisites
 
