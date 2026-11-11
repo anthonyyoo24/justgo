@@ -12,9 +12,13 @@ import {
 } from './model';
 
 function storageFailure(stage: LocalStorageDiagnostic, error: unknown) {
-  return error instanceof LocalJournalError
+  if (!(error instanceof LocalJournalError))
+    return new LocalJournalError('UNAVAILABLE', stage);
+  // Only a storage outage names the SQLite stage. A conflict or stop raised by
+  // the journal itself keeps its own label, or none.
+  return error.code === 'UNAVAILABLE'
     ? new LocalJournalError(error.code, error.diagnostic ?? stage)
-    : new LocalJournalError('UNAVAILABLE', stage);
+    : error;
 }
 
 function nativeImportDiagnostic(error: unknown): LocalStorageDiagnostic {

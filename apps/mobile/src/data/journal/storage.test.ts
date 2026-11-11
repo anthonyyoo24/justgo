@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as SQLite from 'expo-sqlite';
-import type { LocalJournalEntry } from './model';
+import { LocalJournalError, type LocalJournalEntry } from './model';
 import { SQLiteJournalBackend } from './storage';
 import { LocalJournalRepository } from './repository';
 
@@ -167,6 +167,24 @@ it('binds private writing as data and rolls back a failed multi-entry commit', a
   ]);
   await journal.merge([{ ...entry, id: secondId }]);
   expect(await journal.list()).toHaveLength(2);
+});
+
+it('labels only storage failures inside a transaction as SQLITE_TRANSACTION', async () => {
+  const backend = backendWithDriver();
+  for (const code of ['CONFLICT', 'STOPPED'] as const) {
+    const refused = await backend
+      .transaction(owner, () => Promise.reject(new LocalJournalError(code)))
+      .catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(LocalJournalError);
+    expect(refused).toMatchObject({ code, diagnostic: undefined });
+  }
+  mockFailCommit = true;
+  await expect(
+    backend.transaction(owner, (transaction) => transaction.put(entry)),
+  ).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+    diagnostic: 'SQLITE_TRANSACTION',
+  });
 });
 
 it('removes only the deleted account database and its SQLite sidecars', async () => {
