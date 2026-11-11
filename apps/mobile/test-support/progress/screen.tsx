@@ -4,15 +4,7 @@ jest.mock('../../src/app-support/saving/SavingFeedback', () => ({
 import { act, cleanup, fireEvent, render } from '@testing-library/react-native';
 import { memoryLocalJournal } from '../local-journal';
 import { AccountRepository } from '../../src/data/activity/repository';
-import {
-  MemoryStorage,
-  backend,
-  card,
-  input,
-  owner,
-  today,
-  zone,
-} from '../journal';
+import { MemoryStorage, card, input, owner, today, zone } from '../journal';
 import { ProgressScreen } from '../../src/features/progress/ProgressScreen';
 
 jest.mock('../../src/app-support/providers/activity-hooks', () => ({
@@ -63,7 +55,6 @@ async function repository(accountId = owner) {
     accountId,
     storage,
     localJournal: memoryLocalJournal(accountId, storage),
-    transport: backend(),
     today,
     timeZone: zone,
   });

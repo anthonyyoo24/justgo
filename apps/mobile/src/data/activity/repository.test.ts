@@ -7,7 +7,6 @@ import {
 } from '../../../test-support/local-journal';
 import {
   MemoryStorage,
-  backend,
   card,
   deferred,
   input,
@@ -31,24 +30,18 @@ afterEach(async () => {
   expect(jest.getTimerCount()).toBe(0);
   jest.useRealTimers();
 });
-async function setup(
-  storage = new MemoryStorage(),
-  transport = backend(),
-  accountId = owner,
-) {
+async function setup(storage = new MemoryStorage(), accountId = owner) {
   const repo = new AccountRepository({
     accountId,
     localJournal: memoryLocalJournal(accountId, storage),
     storage,
-    transport,
     today,
     timeZone: zone,
-    random: () => 0.5,
   });
   repositories.push(repo);
   repo.setEnvironment({ online: false, active: true });
   await repo.hydrate();
-  return { repo, storage, transport };
+  return { repo, storage };
 }
 const state = (repo: AccountRepository) => repo.store.getState();
 it('retains the first metadata failure through blocked private preparation without exposing raw errors', async () => {
@@ -59,7 +52,6 @@ it('retains the first metadata failure through blocked private preparation witho
   const repo = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
     dataMode: 'local',
@@ -103,12 +95,11 @@ const disk = (storage: MemoryStorage) =>
   journalSchema.parse(JSON.parse(storage.values.get(key)!));
 
 it('commits completion plus upload intent together and survives offline relaunch', async () => {
-  const { repo, storage, transport } = await setup();
+  const { repo, storage } = await setup();
   await Promise.all([
     repo.complete(input(), card),
     repo.complete(input(), card),
   ]);
-  expect(transport.calls).toEqual([]);
   expect(disk(storage).operations).toHaveLength(1);
   expect(disk(storage).records[uuid(1)]?.phoneVersion).toBe(1);
   expect(state(repo).warning).toBeNull();
@@ -123,30 +114,24 @@ it('commits completion plus upload intent together and survives offline relaunch
     ),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
 });
-it('ordinary local saves finish while HTTP is still pending', async () => {
-  const { repo, transport, storage } = await setup();
-  const pending = deferred<ReturnType<typeof attempt>>();
-  transport.create = async () => pending.promise;
-  repo.setEnvironment({ active: true, online: true });
-  await expect(repo.complete(input(), card)).resolves.toEqual(attempt());
-  expect(disk(storage).records[uuid(1)]?.phoneVersion).toBe(1);
-  expect(state(repo).warning).toBeNull();
-  pending.resolve(attempt());
-  await repo.synchronize();
-});
 it('retries one failed phone write after clearing only replaceable caches', async () => {
   const { repo, storage } = await setup();
   await repo.cacheCatalog({ cards: [card] });
   const catalog = storage.values.get(`justgo:v1:${owner}:catalog`);
-  await repo.acceptCalendar(
-    { month: '2026-10', monthlyReps: 0, activeDays: 0, days: [] },
-    zone,
-    0,
-  );
-  await repo.acceptTodayPage(
-    { date: today, totalReps: 0, entries: [], nextCursor: null },
-    zone,
-  );
+  // Saved journals from before #293 can still hold these server caches.
+  repo.store.setState({
+    journal: {
+      ...state(repo).journal,
+      calendar: {
+        data: { month: '2026-10', monthlyReps: 0, activeDays: 0, days: [] },
+        timeZone: zone,
+      },
+      today: {
+        data: { date: today, totalReps: 0, entries: [], nextCursor: null },
+        timeZone: zone,
+      },
+    },
+  });
   const before = storage.writes.length;
   storage.failures = 1;
   await repo.complete(input(), card);
@@ -302,7 +287,6 @@ it('preserves parked accounts and rejects submissions to inactive/disposed repos
       accountId,
       localJournal: memoryLocalJournal(accountId, storage),
       storage,
-      transport: backend(),
       today,
       timeZone: zone,
     });
@@ -326,77 +310,6 @@ it('preserves parked accounts and rejects submissions to inactive/disposed repos
   });
 });
 
-it('rejects stale aggregate refreshes and keeps limited current-period downloads with safe page merging', async () => {
-  const { repo } = await setup();
-  const initialFence = repo.captureAggregateFence()!;
-  await repo.complete(input(), card);
-  expect(repo.captureAggregateFence()).toBeNull();
-  const summary = {
-    today,
-    timeZone: zone,
-    totalReps: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    streakContext: { month: '2026-10', precedingRun: 0, bestBeforeMonth: 0 },
-  };
-  expect(await repo.acceptSummary(summary, initialFence)).toBe(false);
-  expect(
-    await repo.acceptCalendar(
-      { month: '2026-10', monthlyReps: 0, activeDays: 0, days: [] },
-      zone,
-      initialFence,
-    ),
-  ).toBe(false);
-  repo.setEnvironment({ active: true, online: true });
-  await repo.synchronize();
-  const fence = repo.captureAggregateFence()!;
-  expect(await repo.acceptSummary({ ...summary, timeZone: 'UTC' }, fence)).toBe(
-    false,
-  );
-  expect(
-    await repo.acceptCalendar(
-      { month: '2026-09', monthlyReps: 0, activeDays: 0, days: [] },
-      zone,
-      fence,
-    ),
-  ).toBe(true);
-  expect(state(repo).journal.calendar).toBeNull();
-  await repo.acceptTodayPage(
-    { date: '2026-10-04', totalReps: 1, entries: [], nextCursor: null },
-    zone,
-  );
-  expect(state(repo).journal.today).toBeNull();
-  const current = {
-    ...attempt(),
-    reflection: { feeling: null, text: 'Newer canonical fixture', revision: 2 },
-  };
-  await repo.acceptTodayPage(
-    {
-      date: today,
-      totalReps: 2,
-      entries: [current],
-      nextCursor: 'fixture-next',
-    },
-    zone,
-  );
-  await repo.acceptTodayPage(
-    {
-      date: today,
-      totalReps: 2,
-      entries: [attempt(), attempt(2)],
-      nextCursor: null,
-    },
-    zone,
-    true,
-  );
-  expect(state(repo).journal.today?.data.entries).toHaveLength(2);
-  expect(state(repo).journal.today?.data.entries[0]?.reflection).toBeNull();
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
-    'Newer canonical fixture',
-  );
-  await repo.rollover('2026-11-01', zone);
-  expect(state(repo).journal.today).toBeNull();
-});
 it('adopts confirmed online history even when device caching fails and protects newer local submissions from stale reads', async () => {
   const { repo, storage } = await setup();
   storage.fail = true;

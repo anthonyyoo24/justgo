@@ -4,7 +4,6 @@ import { AccountRepository } from '../../data/activity/repository';
 import { catalog } from '../../../test-support/challenge-catalog';
 import {
   MemoryStorage,
-  backend,
   deferred,
   owner,
   otherOwner,
@@ -24,7 +23,6 @@ function setup(
   const repository = new AccountRepository({
     accountId,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
   });

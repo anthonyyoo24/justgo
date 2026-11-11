@@ -6,7 +6,6 @@ import {
 } from './progress/progress';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -24,32 +23,29 @@ function setup(
   storage = new MemoryStorage(),
   dataMode: 'local' | 'cloud' = 'local',
 ) {
-  const transport = backend();
   const repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport,
     today,
     timeZone: zone,
     localJournal: memoryLocalJournal(owner, storage),
     dataMode,
   });
   owned.push(repository);
-  return { repository, storage, transport };
+  return { repository, storage };
 }
 afterEach(() => {
   owned.splice(0).forEach((repository) => repository.dispose());
 });
 
-it('keeps guest history and private writing through relaunch and day changes without sending anything', async () => {
-  const { repository, storage, transport } = setup();
+it('keeps guest history and private writing through relaunch and day changes', async () => {
+  const { repository, storage } = setup();
   await repository.complete(input(), card);
   await repository.submitReflection(uuid(1), uuid(2), {
     text: 'Guest writing',
   });
   await repository.synchronize();
   await repository.rollover('2026-08-15', zone);
-  expect(transport.calls).toEqual([]);
   repository.dispose();
   const next = setup(storage);
   next.repository.setEnvironment({ active: true, online: false });
@@ -111,7 +107,7 @@ it('merges complete history idempotently and rejects changed historical ownershi
 it.each(['.000000Z', 'Z'])(
   'restores private writing and alternatives when completion timestamp precision differs (%s)',
   async (fraction) => {
-    const { repository, transport } = setup();
+    const { repository } = setup();
     await repository.mergeCompletions([attempt(1)]);
     const entry = journalEntry(owner, {
       ...attempt(1),
@@ -134,7 +130,6 @@ it.each(['.000000Z', 'Z'])(
       alternatives: [alternative],
     });
     expect(progressMetrics(repository.store.getState())?.totalReps).toBe(1);
-    expect(transport.calls).toEqual([]);
   },
 );
 
