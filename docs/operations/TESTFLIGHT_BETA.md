@@ -38,7 +38,9 @@ preview variables.
 The `beta` and `development` profiles keep app crash reporting off. The optional
 `beta-diagnostics` profile keeps the same store identity, staging services and
 signing, and turns on only the filtered Sentry crash and error path. Product
-analytics, replay, tracing, profiling and attachments stay disabled.
+analytics, replay, tracing, profiling and attachments stay disabled. Native Sentry
+settings are compiled into the binary, so an over-the-air JavaScript disable does
+not stop native reporting in a build made with it on.
 
 The workflow's `diagnostics` input defaults to `false`. Select `true` for both the
 Phase 15 build run and its submit run, to keep build 5's approved essential-error
