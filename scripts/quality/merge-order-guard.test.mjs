@@ -110,6 +110,21 @@ test('parameter expansion, repeated flags and the merge queue are denied', () =>
     'gh pr m$@erge 1',
     'gh pr $x"merge" 1',
     'gh pr m${x}$y"erge" 1',
+    // Only the unquoted copy that drops unset `$name` variables and keeps
+    // `${…}` whole sees this one.
+    'echo ${HOME#$(gh pr m$x"erge" 1)}',
+    // gh reads an empty `--repo=` as no override, so these still merge.
+    'gh pr --repo= merge 1',
+    'gh pr -R a/b --repo= merge 1',
+    'gh pr --repo= "merge" 1',
+    'gh pr --repo=\tmerge 1',
+    'gh pr --repo= --repo= -R= merge 1',
+    // Alternate, substring and subscript expansions can expand to nothing
+    // or to a single letter.
+    'gh pr m${x:+zz}erge 1',
+    'gh pr m${x+zz}erge 1',
+    'gh pr m${x:0:1}erge 1',
+    'gh pr m${x[-1]}erge 1',
     // Main denies this too. Only the unquoted copy that keeps `$n` sees a
     // path segment between `pulls/` and `/merge`.
     'gh api -X PUT repos/o/r/pul"ls/$n/merge"',
@@ -142,6 +157,9 @@ test('120k-character lines take well under a second, far below the 10 s timeout'
     fill('-R pr '),
     `gh ${fill('-R pr ')}`,
     `gh pr ${fill('-R=a ')}`,
+    `gh pr ${fill('--repo= ')}`,
+    `gh pr ${fill('-R a -Rb --repo= ')}`,
+    `gh pr ${fill('m${x:+zz}')}`,
     fill('${'),
     fill('${x:-'),
     `gh pr ${fill('${x}')}`,

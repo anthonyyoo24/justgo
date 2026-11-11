@@ -11,11 +11,14 @@ import { fileURLToPath } from 'node:url';
 // `enqueuePullRequest` mutation. Shell quotes and backslashes only group
 // words, so it also checks the text with them removed, which catches
 // `gh pr "merge"`, `gh pr $'merge'` and a backslash-newline inside the word.
-// Two more unquoted copies drop each `$name` variable, and the last of them
+// Three more unquoted copies drop each `$name` variable. The second of them
 // also replaces each `${…}` expansion with its default or alternate word, or
-// with nothing. They catch `gh pr m$x"erge"`, `gh pr ${x:-merge}` and
-// `gh pr m${x}erge`, while the first unquoted copy keeps any command inside
-// an expansion, such as `${HOME#$(gh pr "merge" 1)}`. GraphQL `mergeBranch`
+// with nothing, and the third drops each `${…}` whole. They catch
+// `gh pr m$x"erge"`, `gh pr ${x:-merge}`, `gh pr m${x}erge` and
+// `gh pr m${x:+zz}erge`, while the first two unquoted copies keep any command
+// inside an expansion, such as `${HOME#$(gh pr "merge" 1)}`. A mention split
+// across lines, such as `gh pr` and `merge` on separate lines, merges nothing
+// and passes. GraphQL `mergeBranch`
 // and the REST `merges` endpoint merge branches, not PRs. Branch protection blocks them on `main`, and on a
 // PR branch they do what `update-branch` does, so they pass. It reads text
 // and does not parse shell, so a harmless mention such as a grep is denied
@@ -29,11 +32,14 @@ import { fileURLToPath } from 'node:url';
 
 // `pr merge` after the first `gh` of a line. Searching from that one `gh`,
 // instead of trying a lazy `gh.*?pr` from every `gh`, keeps a long line of
-// repeated `gh pr` linear. Each flag has one parse, because its value cannot
-// start with `=` or a space, and the count is capped, so a long line of
-// flags cannot backtrack badly either.
+// repeated `gh pr` linear. A flag is `-R=…` or `--repo=…` with any value,
+// even an empty one, which gh reads as no override, or the flag, spaces and
+// a value, or `-Rvalue`. The three forms start with `=`, a space or another
+// character, so each flag has one parse, and the count is capped, so a long
+// line of flags cannot backtrack badly either.
 const ghWord = /\bgh\b/;
-const prMerge = /\bpr\s+(?:(?:-R|--repo)(?:\s+|=)?[^\s=]\S*\s+){0,16}merge\b/;
+const prMerge =
+  /\bpr\s+(?:(?:-R|--repo)(?:=\S*|\s+\S+|[^\s=]\S*)\s+){0,16}merge\b/;
 const ghPrMerge = (text) =>
   text.split('\n').some((line) => {
     const gh = ghWord.exec(line);
@@ -48,7 +54,8 @@ const graphqlMerge =
 // is linear in the text length.
 const expansion = /\$\{([^{}]*)\}/g;
 // `${x:-w}`, `${x-w}`, `${x:=w}`, `${x:+w}` and the like keep `w`. `${x}`,
-// `${#x}` and zsh's `${}` keep nothing.
+// `${#x}` and zsh's `${}` keep nothing. `${x:+zz}`, `${x:0:1}` and zsh's
+// `${x[-1]}` can expand to nothing, which dropping the whole `${…}` covers.
 const expanded = (body) => body.replace(/^[^:=+?-]*:?[-=+?]?/, '');
 // `$name`, `$1` and the special parameters `$@`, `$*`, `$#`, `$?`, `$$`,
 // `$!` and `$-`. Not `${`, `$(` or `$'`.
@@ -74,13 +81,14 @@ export function decide(command) {
   // An unset variable expands to nothing, so `m$x"erge"` and `m$@erge` run
   // `merge`. Variables go before the quotes, which end their names.
   const bare = spliced.replace(variable, '');
-  // Each copy only adds matches: the expanded copy drops the text inside an
-  // expansion, so the other two keep it, as in `${HOME#$(gh pr "merge" 1)}`.
+  // Each copy only adds matches: the last two drop the text inside an
+  // expansion, so the others keep it, as in `${HOME#$(gh pr "merge" 1)}`.
   const denied = [
     joined,
     unquote(spliced),
     unquote(bare),
     unquote(bare.replace(expansion, (_, body) => expanded(body))),
+    unquote(bare.replace(expansion, '')),
   ].some(
     (text) => ghPrMerge(text) || apiMerge.test(text) || graphqlMerge.test(text),
   );
