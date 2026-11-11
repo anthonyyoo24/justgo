@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { continueFromTerms } from './support/acceptance';
+import { openSettingsLink } from './support/screens';
 
 const ingestion =
   'https://o123.ingest.us.sentry.io/api/4512279181459456/envelope/';
@@ -22,7 +23,7 @@ async function openDiagnostics(page: Page, providerStatus = 200) {
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
+  await openSettingsLink(page).click();
   await page
     .getByRole('link', { name: 'Test error reporting', exact: true })
     .click();
