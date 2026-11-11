@@ -1,11 +1,12 @@
 import { test, expect } from './support/fixtures';
 import { continueAsGuest } from './support/managed-account';
+import { openSettingsLink } from './support/screens';
 
 test('Settings keeps its title and Back button fixed while scrolling to the last row', async ({
   page,
 }) => {
   await continueAsGuest(page);
-  await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
+  await openSettingsLink(page).click();
   const title = page.getByRole('heading', { name: 'Settings', exact: true });
   const back = page.getByRole('button', { name: 'Back', exact: true });
   const firstSection = page.getByRole('heading', {

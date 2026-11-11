@@ -2,6 +2,7 @@ import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { completeChallenge, signInFixture } from './support/managed-account';
 import { localJournalEntries } from './support/journal';
+import { openSettingsLink } from './support/screens';
 
 const deletionCopy =
   'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.\n\nDeleting your account does not cancel an App Store subscription. Manage subscriptions separately in your device’s Settings.';
@@ -26,7 +27,7 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
   await expect
     .poll(async () => (await localJournalEntries(page, account.userId)).length)
     .toBe(1);
-  await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
+  await openSettingsLink(page).click();
   await page.getByRole('link', { name: 'Account', exact: true }).click();
   const confirmation = page.getByRole('alertdialog', {
     name: 'Delete your account?',
