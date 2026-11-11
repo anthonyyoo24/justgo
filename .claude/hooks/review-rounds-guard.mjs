@@ -3,7 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { newestVerdictOf } from '../../scripts/quality/merge-order.mjs';
 import { runVerdictPatch } from '../../scripts/quality/verdict-status.mjs';
-import { isVerifier } from './verifier-model.mjs';
+import { isVerifier, prKeysIn, thisRepo } from './verifier-model.mjs';
 
 // PreToolUse hook on Agent. It stops review loops, as AGENTS.md "Review
 // rounds" says. It denies a verifier on an open PR in two cases:
@@ -18,12 +18,18 @@ import { isVerifier } from './verifier-model.mjs';
 // Anthony asks for one. Any git or GitHub failure lets the call through: this
 // guard saves review rounds and protects no data.
 
-const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
 const anotherRound = /^[ \t]*\**Another round:\**[ \t]*\S/im;
 const maxFails = 3;
 
+// JustGO's PR numbers in a text, read as verifier-model.mjs reads them: a
+// link to another repository, such as a pstack PR being ported, is not one.
+const ours = `${thisRepo}#`;
 const numbersIn = (text) => [
-  ...new Set([...(text ?? '').matchAll(prReference)].map(([, n]) => n)),
+  ...new Set(
+    prKeysIn(text)
+      .filter((key) => key.startsWith(ours))
+      .map((key) => key.slice(ours.length)),
+  ),
 ];
 
 // The PRs under review: those the description names, or else those the
