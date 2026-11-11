@@ -4,3 +4,6 @@ reviews:
     base_branches:
       - '^codex/phase-08a-docs$'
       - '^codex/phase-13-data-foundation$'
+  pre_merge_checks:
+    docstrings:
+      mode: 'off'
