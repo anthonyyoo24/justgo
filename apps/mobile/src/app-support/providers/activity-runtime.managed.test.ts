@@ -409,6 +409,46 @@ it('adopts phone writing once, retires its source and syncs later signed-out edi
   ).toBe(true);
 });
 
+it('never copies guest admission metadata into the adopting account', async () => {
+  const { runtime, activate, storage } = setup();
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(), card);
+  await guest.submitReflection(uuid(1), uuid(2), { text: 'Adopted' });
+  const origin = 'https://admission-sentinel.test';
+  await storage.setItem(
+    `justgo:v1:${otherOwner}:access:guest:${encodeURIComponent(origin)}`,
+    JSON.stringify({
+      version: 1,
+      origin,
+      owner: { id: otherOwner, kind: 'guest' },
+      receivedAt: Date.now(),
+    }),
+  );
+  await runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  const target = await activate(owner, 'cloud', 'account');
+  expect(
+    (await target.snapshotJournal()).entries[0]?.reflection.text,
+  ).toContain('Adopted');
+  // The guest's own key stays until retirement; nothing else may hold admission.
+  expect(
+    [...storage.values].filter(
+      ([key, value]) =>
+        !key.startsWith(`justgo:v1:${otherOwner}:`) &&
+        (key.includes(':access:') || value.includes('admission-sentinel')),
+    ),
+  ).toEqual([]);
+  const server = servers.get(owner)!;
+  const uploaded = JSON.stringify([
+    ...server.attempts.values(),
+    ...server.versions.values(),
+  ]);
+  expect(uploaded).toContain('Adopted');
+  expect(uploaded).not.toContain('admission-sentinel');
+});
+
 it('keeps source writing through adoption failure and fences concurrent new submissions until retry', async () => {
   const { runtime, activate } = setup();
   const guest = await activate(otherOwner, 'local', 'guest');
