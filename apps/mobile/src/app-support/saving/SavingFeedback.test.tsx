@@ -97,7 +97,7 @@ it('keeps storage failures out of layout and discoverable in Data after dismissa
   expect(StyleSheet.flatten(overlay.props.style).position).toBe('absolute');
   expect(screen.queryByLabelText('Saving details')).toBeNull();
   await fireEvent.press(
-    screen.getByRole('button', { name: 'Close saving warning' }),
+    screen.getByRole('button', { name: 'Close saved entries warning' }),
   );
   expect(screen.queryByTestId('saving-notice-overlay')).toBeNull();
   expect(screen.getByTestId('saving-recovery-panel')).toBeTruthy();
@@ -522,4 +522,64 @@ it('keeps retained problems readable in the active modal without offering page n
     screen.getByRole('button', { name: 'Recover account' }),
   );
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
+});
+it('names the close button after the notice it closes', async () => {
+  const screen = await render(<SavingNotice />);
+  const close = () => screen.getByRole('button', { name: /^Close / });
+  await act(() =>
+    mockRepository.store.setState({ hydrationError: 'unreadable' }),
+  );
+  expect(close()).toHaveAccessibleName('Close saved entries warning');
+  await act(() =>
+    mockRepository.store.setState({
+      hydrationError: null,
+      warning: {
+        visible: true,
+        dismissed: false,
+        episode: 1,
+        online: false,
+        storageFull: false,
+      },
+    }),
+  );
+  expect(close()).toHaveAccessibleName('Close saving warning');
+  const journal = structuredClone(mockRepository.store.getState().journal);
+  journal.operations[0]!.state = 'rejected';
+  journal.operations[0]!.code = 'NOT_FOUND';
+  await act(() => mockRepository.store.setState({ warning: null, journal }));
+  expect(close()).toHaveAccessibleName('Close upload warning');
+});
+it('keeps a dismissed notice hidden when a sheet opens over the app', async () => {
+  mockRepository.store.setState({ hydrationError: 'unreadable' });
+  const shell = (sheet: boolean) => (
+    <SavingFeedbackShell>
+      {sheet ? <SavingSheetSurface /> : <Text>Route content</Text>}
+    </SavingFeedbackShell>
+  );
+  const screen = await render(shell(false));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saved entries warning' }),
+  );
+  expect(screen.queryByTestId('saving-notice-overlay')).toBeNull();
+  await screen.rerender(shell(true));
+  expect(screen.queryByTestId('saving-notice-overlay')).toBeNull();
+  await act(() => mockRepository.store.setState({ hydrationError: null }));
+  const journal = structuredClone(mockRepository.store.getState().journal);
+  journal.operations[0]!.state = 'rejected';
+  journal.operations[0]!.code = 'NOT_FOUND';
+  await act(() => mockRepository.store.setState({ journal }));
+  expect(screen.getAllByTestId('saving-notice-overlay')).toHaveLength(2);
+});
+it('announces a resolved storage failure again when it returns', async () => {
+  mockRepository.store.setState({ hydrationError: 'unreadable' });
+  const screen = await render(<SavingNotice />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saved entries warning' }),
+  );
+  expect(screen.queryByTestId('saving-notice-overlay')).toBeNull();
+  await act(() => mockRepository.store.setState({ hydrationError: null }));
+  await act(() =>
+    mockRepository.store.setState({ hydrationError: 'unreadable' }),
+  );
+  expect(screen.getByTestId('saving-notice-overlay')).toBeTruthy();
 });
