@@ -131,3 +131,38 @@ it('enforces expiry, per-device revocation, and independent revocable recovery k
   const fresh = { ...proposal(), credential: a.input.credential };
   expect((await service.bootstrap(fresh, false)).userId).toBe(a.session.userId);
 });
+
+it('re-reads the credential under the owner lock, so a revocation that commits while recovery waits wins', async () => {
+  const a = await account();
+  const holder = await admin.connect();
+  try {
+    await holder.query('begin');
+    await holder.query('select id from justgo.users where id=$1 for update', [
+      a.session.userId,
+    ]);
+    await holder.query(
+      'update justgo.recovery_credentials set revoked_at=now() where digest=$1',
+      [digest(a.input.credential)],
+    );
+    const pid = (
+      await holder.query<{ pid: number }>('select pg_backend_pid() as pid')
+    ).rows[0]!.pid;
+    const recovery = service
+      .bootstrap({ ...proposal(), credential: a.input.credential }, false)
+      .catch((error: unknown) => error);
+    for (let tries = 0; ; tries++) {
+      const waiting = await holder.query(
+        'select 1 from pg_locks where not granted and $1 = any(pg_blocking_pids(pid))',
+        [pid],
+      );
+      if (waiting.rows.length) break;
+      if (tries === 200) throw new Error('Recovery never waited on the owner');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await holder.query('commit');
+    expect(await recovery).toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+  } finally {
+    await holder.query('rollback');
+    holder.release();
+  }
+});
