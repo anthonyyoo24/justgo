@@ -604,7 +604,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `claude -p /autocompact` shows the window in force, and `get_usage` reports
   where auto-compact starts.
 - The sensitive areas are sign-in and identity, account data and
-  deletion, database migrations, and release and backup scripts.
+  deletion, database migrations, release and backup scripts, and privacy:
+  secret storage, the code that carries account data or writing,
+  diagnostics, outbound requests and the legal pages.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
   lists their paths, and the verifier hook reads that list.
 - Only Claude models are available here. Where pstack asks for a reviewer, judge

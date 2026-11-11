@@ -116,6 +116,35 @@ test('drafts, sensitive paths, boundary files and large PRs keep their own verif
   );
 });
 
+test('privacy code and the legal pages are sensitive', () => {
+  for (const path of [
+    'apps/api/src/build-app.ts',
+    'apps/api/src/http/outbound-fetch.ts',
+    'apps/api/src/http/server-error-reporter.ts',
+    'apps/api/src/db/owner-transaction.ts',
+    'apps/mobile/src/app-support/providers/AppProvider.tsx',
+    'apps/mobile/src/app-support/diagnostics/event.ts',
+    'apps/mobile/src/data/activity/model.ts',
+    'apps/mobile/src/data/journal/storage.ts',
+    'apps/mobile/src/features/settings/data/SettingsDataScreen.tsx',
+    'apps/mobile/src/features/settings/export/data-export.ts',
+    'apps/mobile/src/lib/network/account-client.ts',
+    'apps/mobile/src/platform/auth/auth-storage.ts',
+    'apps/mobile/src/platform/icloud/index.ts',
+    'apps/mobile/plugins/with-sentry-privacy.cjs',
+    'docs/legal/PRIVACY_POLICY_DRAFT.md',
+  ])
+    assert.match(exclusion(pull(1, [[path, 1]])), /^sensitive path/, path);
+  // Neighbours outside the privacy areas stay small.
+  for (const path of [
+    'apps/mobile/src/app-support/saving/SavingNotice.tsx',
+    'apps/mobile/src/lib/network/http.ts',
+    'apps/mobile/src/platform/haptics/index.ts',
+    'apps/api/src/http/parse.ts',
+  ])
+    assert.equal(exclusion(pull(1, [[path, 1]])), undefined, path);
+});
+
 test('tests and docs do not count toward the size, but agent instructions do', () => {
   assert.equal(
     exclusion(
