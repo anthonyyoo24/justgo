@@ -892,6 +892,96 @@ test('a box in the trash that holds files but no worktree git knows is kept', (t
   assert.equal(existsSync(path.dirname(hollow)), false);
 });
 
+// #364 fix round 2: a killed `git worktree remove` deletes the worktree's
+// .git file early, so status there has to go through git's own record.
+const stoppedWithoutGitFile = (asides) => (worktree) => {
+  asides.push(worktree);
+  rmSync(path.join(worktree, '.git'));
+  rmSync(path.join(worktree, 'a.txt'));
+  return 'stopped';
+};
+
+test('a stopped removal that lost its .git file keeps a file added in the trash', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('gone', '--detach');
+  const asides = [];
+  assert.deepEqual(repo.run({ remove: stoppedWithoutGitFile(asides) }), {
+    gone: stoppedVerdict,
+  });
+  writeFileSync(path.join(asides[0], 'draft.txt'), 'new\n');
+  repo.run();
+  repo.run();
+  assert.equal(
+    readFileSync(path.join(asides[0], 'draft.txt'), 'utf8'),
+    'new\n',
+  );
+  assert.deepEqual(listed(repo.main), ['main', 'gone']);
+});
+
+test('a stopped removal that lost its .git file is finished when nothing was added', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('gone', '--detach');
+  const asides = [];
+  repo.run({ remove: stoppedWithoutGitFile(asides) });
+  repo.run();
+  assert.equal(existsSync(path.dirname(asides[0])), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a locked worktree in the trash is kept even when nothing in it changed', (t) => {
+  const repo = fixture(t);
+  const refused = repo.add('refused', '--detach');
+  let aside;
+  const refuse = (worktree) => {
+    aside = worktree;
+    writeFileSync(refused, '');
+    return 'refused';
+  };
+  repo.run({ remove: refuse });
+  repo.run();
+  assert.equal(existsSync(path.join(aside, '.git')), true);
+  assert.deepEqual(listed(repo.main), ['main', 'refused']);
+});
+
+test('a move that renames the worktree and then fails never deletes it', (t) => {
+  const repo = fixture(t);
+  const moved = repo.add('moved', '--detach');
+  writeFileSync(path.join(moved, 'notes.log'), 'mine\n');
+  // git renames the folder, then cannot rewrite its record.
+  const record = path.join(repo.main, '.git', 'worktrees', 'moved', 'gitdir');
+  chmodSync(record, 0o444);
+  assert.deepEqual(repo.run(), { moved: 'keep: could not move it aside' });
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const [box] = readdirSync(trash);
+  const notes = path.join(trash, box, 'moved', 'notes.log');
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n');
+  repo.run();
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n', 'the next sweep too');
+});
+
+test('a box in the trash that cannot be deleted is kept and the sweep goes on', (t) => {
+  const repo = fixture(t);
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const stuck = path.join(trash, 'a-stuck', 'sealed');
+  mkdirSync(path.join(stuck, 'inner'), { recursive: true });
+  chmodSync(stuck, 0o555);
+  const hollow = path.join(trash, 'z-hollow');
+  mkdirSync(hollow);
+  const idle = repo.add('idle', '--detach');
+  try {
+    assert.deepEqual(repo.run(), { idle: 'remove' });
+    assert.equal(existsSync(path.join(stuck, 'inner')), true);
+    assert.equal(existsSync(hollow), false);
+    assert.equal(existsSync(idle), false);
+  } finally {
+    chmodSync(stuck, 0o755);
+  }
+});
+
 test('leaves a worktree inside another worktree to the outer one', (t) => {
   const repo = fixture(t);
   const outer = repo.add('outer', '--detach');
