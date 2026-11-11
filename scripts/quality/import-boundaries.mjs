@@ -130,6 +130,15 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     return 'Mobile uses Supabase only for provider sessions, in apps/mobile/src/app-support/identity/auth/managed-auth.ts. Read and write application data through the JustGO API, never database tables.';
   if (
     mobileSource &&
+    under(mobileModule, 'apps/mobile/src/app-support/diagnostics') &&
+    ['app-support/identity', 'data', 'features'].some((owner) =>
+      under(file, `apps/mobile/src/${owner}`),
+    ) &&
+    !testSource
+  )
+    return 'Identity, writing, recovery and deletion never depend on diagnostics delivery. Let the error reach the route fallback, which reports it from apps/mobile/src/app-support/fallbacks.';
+  if (
+    mobileSource &&
     under(mobileTarget, 'apps/mobile/src/dev') &&
     !under(file, 'apps/mobile/src/dev') &&
     file !== 'apps/mobile/src/app/preview.tsx' &&
