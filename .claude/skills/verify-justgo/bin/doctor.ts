@@ -1,6 +1,6 @@
 // Read-only: reports whether this checkout's JustGO instance is worth driving.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { Pool } from 'pg';
 import {
@@ -31,6 +31,22 @@ const checkout = {
   changedFiles: sh('git', ['status', '--porcelain']).split('\n').filter(Boolean)
     .length,
 };
+
+// Linked packages let Metro serve another checkout's transform, so the journey
+// sign-in seam does not load or a run passes on the wrong tree.
+const linkedPackages = ['.', 'apps/mobile', 'apps/api', 'packages/contracts']
+  .map((folder) => path.join(folder, 'node_modules'))
+  .filter((folder) => {
+    try {
+      return lstatSync(path.join(root, folder)).isSymbolicLink();
+    } catch {
+      return false;
+    }
+  });
+if (linkedPackages.length)
+  problems.push(
+    `node_modules: ${linkedPackages.join(', ')} links to another checkout. Run bin/verify worktree prepare, which replaces the links with pnpm install --frozen-lockfile.`,
+  );
 
 let migrationUrl: string | undefined;
 try {
