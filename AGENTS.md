@@ -421,12 +421,21 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   verifier that did not write the PR proves the behavior and posts the verdict.
   Each fix round gets a fresh verifier, as [Agent effort](#agent-effort) says.
   Sensitive PRs get the same one verifier. Run a swarm or `/pstack:interrogate`
-  only when Anthony asks for one on that PR.
+  only when Anthony asks for one on that PR. The verifier reads the PR's CI for
+  the full suites (install, typechecks, lint, architecture, workspace tests,
+  `test:db`, journeys and exports) and does not rerun them locally. When CI has
+  not finished, it waits for the result. It runs the focused tests for the
+  changed behavior, drives a user-facing change with `verify-justgo`, and
+  probes only what the change touches. It writes no fuzzer or broad sweep
+  unless a concrete failure needs one, and any probe that runs generated shell
+  text runs it with stub commands, never real programs such as `say` or `open`.
 - **Review rounds end.** Only a shown defect blocks a PR: a `FAIL` names, on a
   `Failure shown:` line, the command or test that broke on the head and what it
   printed. A risk, a wording gap or a missing case with no failure shown is a
   note, so the verdict is `PASS+NOTES`. Notes never start another round. The
-  PR merges, and each note goes in an issue or a follow-up PR. A PR gets at most
+  PR merges, and its notes stay in the verdict comment. File an issue only for
+  a note that is a bug, under the bug rules in [Where facts live](#where-facts-live),
+  or a deferred device, hosted or staging gate. A PR gets at most
   two fix rounds. After a third `FAIL`, stop and bring it to Anthony with what
   still fails. Another round past these limits runs only when Anthony asks, and
   its brief carries a line `Another round: <his words>`.
@@ -499,6 +508,15 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
+- Hooks are frozen to cut usage (Anthony, 2026-11-11). Change a hook in
+  `.claude/hooks/` only when it blocks or misfires in real use, shown by the
+  command it got wrong, or when Anthony asks. A shell form agents do not write,
+  such as unusual quoting, expansions or heredocs, stays caught only in review.
+  Open no issue or PR for one.
+- Start a session on the Mac mini (the `Mac mini` SSH connection) with `cwd`
+  `/Users/anthony/Documents/apps/justgo` or a worktree inside it, never the
+  home folder. Outside the repository, JustGO's `.claude/settings.json` does
+  not load, so its hooks and compaction window are off.
 - Subagents and helpers run at `medium` or `high` effort. Never use `low` or
   `max`. Anthony capped effort at `high` on 2026-11-07 to cut usage. `high` is
   the default, including for the sensitive areas below.
