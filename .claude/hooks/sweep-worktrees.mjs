@@ -1,54 +1,53 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import {
   appendFileSync,
+  cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// SessionStart hook for brand-new chats, run in the background. Every agent
-// works in its own git worktree under .claude/worktrees/, and on 2026-11-09
-// 93 of them had piled up, each with its own node_modules, because nothing
-// removed a worktree once its work was done (auto-merge lands a PR long after
-// the agent that opened it has finished). This removes the ones nobody needs:
-// it runs only from the main checkout and removes a worktree only when all of
-// these hold:
-//  - it sits under <main>/.claude/worktrees/ and is not locked,
+// Removes the agent worktrees under .claude/worktrees/ that nobody needs.
+// Agents create about 60 a day, each with about 1.4 GB of node_modules, and on
+// 2026-11-10 the 76 left behind filled the disk. The SessionStart (startup)
+// and SessionEnd hooks start it as a detached process, and it runs only from
+// the main checkout. It removes a worktree only when all of these hold:
+//  - it is not locked and not inside another worktree,
 //  - `git status` shows no changes and no untracked files, and no file is
 //    marked skip-worktree or assume-unchanged (git status hides their edits),
-//  - every ignored file is one a command rebuilds (see `disposable` and
-//    `localScratch`), so removal loses nothing unique, such as a decision
-//    trail, a review, a mutation run or a signing key,
-//  - its commit is on a branch: its own, or for a detached HEAD a local
-//    branch or origin/main that contains it, so removal loses no commits
-//    (branches are never deleted, and other remote branches may be),
-//  - every commit its HEAD reflog records is on a branch, on origin/main or in
-//    a branch's own reflog, no rebase, merge, notes merge, cherry-pick, revert
-//    (including the remaining steps of a multi-commit one) or bisect is in
-//    progress, and it has no refs of its own, because its HEAD reflog and its
-//    own refs go with it,
-//  - it is not inside another worktree,
-//  - its branch has no open PR (when GitHub cannot be read, keep it),
+//  - every ignored file outside .local/ is one a command rebuilds (see
+//    `disposable`), so removal loses nothing unique, such as a signing key,
+//  - no rebase, merge, notes merge, cherry-pick, revert or bisect is in
+//    progress, it has no refs of its own, and every commit its HEAD reflog
+//    records is on a branch, a remote branch, a branch's own reflog or HEAD
+//    itself, because its HEAD reflog and its own refs go with it,
+//  - its HEAD commit is on a remote branch, or the PR of its branch, or the
+//    PR a `ver-<n>` or `adv-<n>` worktree is named after, is merged or closed,
+//  - no open PR uses its branch or its HEAD commit (when GitHub cannot be
+//    read, keep it),
 //  - no running process has its working directory inside it, checked again
 //    with the chats just before each removal,
-//  - nothing touched it for a day: the folder (set when it is created), its
-//    HEAD file (rewritten by a checkout), its newest commit, or the
+//  - nothing touched it for 2 hours: a file or folder outside node_modules,
+//    its HEAD file (rewritten by a checkout), its newest commit, or the
 //    transcripts of a Claude chat that ran in it, including a chat started in
-//    the main checkout whose steps ran inside it. The index, the reflog and
-//    the git metadata folder are left out, because a plain `git status`,
-//    `git gc` and lock files touch them with no one working.
-// It never forces a removal, never deletes branches, and must never fail a
-// session: every error ends it silently with exit 0. Each removal is logged
-// to .local/worktree-sweep.log with its branch and commit, so a worktree can
-// be recreated with `git worktree add`.
+//    the main checkout whose steps ran inside it.
+// Before each removal, the ref refs/archive/worktrees/<name> keeps its HEAD
+// commit reachable, and its .local/ records are copied to
+// <main>/.local/archived-worktrees/<name>/. It never forces a removal, never
+// deletes branches, and must never fail a session: every error ends it
+// silently with exit 0. Each removal is logged to .local/worktree-sweep.log
+// with its branch, commit and archive ref.
 
-export const idleMs = 24 * 60 * 60 * 1000;
+export const idleMs = 2 * 60 * 60 * 1000;
 const gitTimeout = 10_000;
 // Deleting a worktree with its node_modules can take minutes. A kill midway
 // leaves it half-deleted, so the removal gets far more time than a lookup.
@@ -83,8 +82,8 @@ function succeeds(cwd, args, timeout) {
 
 // Ignored paths that a command rebuilds: installed packages, build output,
 // logs and the loopback `.env` files `npm run db:local` writes. Every other
-// ignored path, such as a `*.key` or `apps/mobile/ios/`, keeps the worktree.
-// `.local/` is judged entry by entry in `localScratch`.
+// ignored path outside .local/, such as a `*.key` or `apps/mobile/ios/`,
+// keeps the worktree.
 const rebuilt = new Set(['node_modules', 'dist', '.expo', 'coverage']);
 
 export function disposable(entry) {
@@ -99,12 +98,11 @@ export function disposable(entry) {
   );
 }
 
-// What the repository's own tools write into `.local/`: the loopback database
-// (scripts/local-database.mjs), the journey and exported-web Playwright
-// output (e2e/*.config.ts). Anything else there, such as a decision trail, a
-// review, a PR body draft, a mutation run or verify-justgo evidence (its skill
-// says cleanup never touches it), is an agent's own record and keeps the
-// worktree.
+// What the repository's own tools write into `.local/` and rebuild: the
+// loopback database (scripts/local-database.mjs) and the journey and
+// exported-web Playwright output (e2e/*.config.ts). The archive leaves these
+// out and copies everything else, such as a decision trail, a review or
+// verify-justgo evidence.
 const toolOutput = new Set([
   'postgres',
   'database.env',
@@ -116,17 +114,7 @@ const toolOutput = new Set([
 ]);
 
 export function localScratch(name) {
-  return toolOutput.has(name) || /\.log$/.test(name) || name === '.DS_Store';
-}
-
-function localKept(worktree) {
-  try {
-    return readdirSync(path.join(worktree, '.local'))
-      .filter((name) => !localScratch(name))
-      .map((name) => `.local/${name}`);
-  } catch {
-    return ['.local/'];
-  }
+  return toolOutput.has(name) || name === '.DS_Store';
 }
 
 // Files whose edits git status hides: skip-worktree (S) and assume-unchanged
@@ -138,7 +126,7 @@ function hidden(worktree) {
 }
 
 // Returns { clean, kept }: whether git shows no changes or untracked files,
-// and the ignored paths that are not disposable.
+// and the ignored paths outside .local/ that are not disposable.
 export function files(worktree) {
   const lines = git(worktree, [
     'status',
@@ -153,34 +141,46 @@ export function files(worktree) {
     kept: lines
       .filter((line) => line.startsWith('!! '))
       .map((line) => line.slice(3))
-      .flatMap((entry) => {
-        const [top, name] = entry.replace(/\/$/, '').split('/');
-        if (top !== '.local') return disposable(entry) ? [] : [entry];
-        if (!name) return localKept(worktree);
-        return localScratch(name) ? [] : [entry];
-      }),
+      .filter(
+        (entry) => entry.split('/')[0] !== '.local' && !disposable(entry),
+      ),
   };
 }
 
-// facts: { locked, clean, kept, saved, unsaved, branch, openBranches, busy,
-//          lastTouched }
-// unsaved is why removal would lose a commit or an operation, or ''.
-// openBranches is a Set of branch names with an open PR, or undefined when
-// GitHub could not be read.
+// facts: { locked, clean, kept, unsaved, pushed, pr, busy, lastTouched }
+// unsaved is why removal would lose a commit or an operation, or ''. pushed
+// is whether a remote branch holds the HEAD commit, and pr is its `prState`.
 export function decide(facts, now) {
   if (facts.locked) return 'keep: locked';
   if (!facts.clean) return 'keep: uncommitted or untracked files';
   if (facts.kept.length > 0)
     return `keep: ignored files that may be unique (${facts.kept.join(', ')})`;
-  if (!facts.saved) return 'keep: commit is on no branch';
   if (facts.unsaved) return `keep: ${facts.unsaved}`;
-  if (facts.branch) {
-    if (!facts.openBranches) return 'keep: PR state unknown';
-    if (facts.openBranches.has(facts.branch)) return 'keep: open PR';
-  }
+  if (!facts.pr) return 'keep: PR state unknown';
+  if (facts.pr === 'open') return 'keep: open PR';
+  if (!facts.pushed && facts.pr !== 'finished')
+    return 'keep: commit is on no remote branch and its PR is not merged or closed';
   if (facts.busy) return 'keep: a running process is inside it';
-  if (now - facts.lastTouched < idleMs) return 'keep: used in the last day';
+  if (now - facts.lastTouched < idleMs) return 'keep: used in the last 2 hours';
   return 'remove';
+}
+
+// prs is every PR as `gh pr list --json number,state,headRefName,headRefOid`
+// lists it, or undefined when GitHub could not be read. The state is 'open'
+// when an open PR uses the branch or the HEAD commit, 'finished' when the
+// branch's PR, or the PR a `ver-<n>` or `adv-<n>` worktree is named after, is
+// merged or closed, and 'none' otherwise.
+export function prState(prs, { name, branch, head }) {
+  if (!prs) return undefined;
+  const number = Number(/^(?:ver|adv)-(\d+)(?!\d)/.exec(name)?.[1]);
+  let state = 'none';
+  for (const pr of prs) {
+    const ownBranch = branch !== '' && pr.headRefName === branch;
+    if (pr.state === 'OPEN') {
+      if (ownBranch || pr.headRefOid === head) return 'open';
+    } else if (ownBranch || pr.number === number) state = 'finished';
+  }
+  return state;
 }
 
 export function worktrees(main) {
@@ -212,6 +212,37 @@ function mtime(file) {
   }
 }
 
+// The newest change to a file or folder in `dir` outside node_modules. It
+// stops at the first change after `since`, because one is enough.
+export function newestFile(dir, since) {
+  let latest = 0;
+  const folders = [dir];
+  while (folders.length > 0) {
+    const folder = folders.pop();
+    latest = Math.max(latest, mtime(folder));
+    let entries;
+    try {
+      entries = readdirSync(folder, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (latest > since) return latest;
+      if (entry.name === 'node_modules') continue;
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) folders.push(file);
+      else {
+        try {
+          latest = Math.max(latest, lstatSync(file).mtimeMs);
+        } catch {
+          // Deleted while the sweep looked.
+        }
+      }
+    }
+  }
+  return latest;
+}
+
 // Claude stores a chat's transcripts under ~/.claude/projects/<slug>, where
 // the slug is the chat's folder with every non-alphanumeric character
 // replaced by a dash.
@@ -238,8 +269,8 @@ function newest(dir) {
 // A chat started in one folder can run its steps in another, such as a
 // desktop chat whose worktree sits under the main checkout. Each transcript
 // line records the folder it ran in, so this maps every folder that a
-// transcript under `dir` changed after `since` (by default, within the last
-// day) to that transcript's time.
+// transcript under `dir` changed after `since` (by default, within the idle
+// window) to that transcript's time.
 export function chatFolders(dir, now, since = now - idleMs) {
   const folders = new Map();
   const visit = (folder, depth) => {
@@ -279,7 +310,7 @@ export function chatFolders(dir, now, since = now - idleMs) {
   return folders;
 }
 
-export function lastTouched(worktree, home, chats = new Map()) {
+export function lastTouched(worktree, home, chats, since) {
   const gitDir = git(worktree, [
     'rev-parse',
     '--path-format=absolute',
@@ -289,7 +320,7 @@ export function lastTouched(worktree, home, chats = new Map()) {
   for (const [folder, time] of chats)
     if (within(worktree, folder)) chat = Math.max(chat, time);
   return Math.max(
-    mtime(worktree),
+    newestFile(worktree, since),
     mtime(path.join(gitDir, 'HEAD')),
     Number(git(worktree, ['log', '-1', '--format=%ct', 'HEAD'])) * 1000,
     newest(transcriptDir(worktree, home)),
@@ -322,8 +353,9 @@ export function branchHistory(dir) {
 
 // Removal deletes the worktree's HEAD reflog and its own refs, so a commit
 // that only they hold is lost: one made on a detached HEAD and then left by a
-// checkout, a reset or an amend. A commit on a branch, on origin/main or in a
-// branch's own reflog is safe.
+// checkout, a reset or an amend. A commit on a branch, a remote branch, an
+// archive ref, a branch's own reflog or HEAD (which the archive ref keeps) is
+// safe.
 export function unsaved(worktree, history = branchHistory(worktree)) {
   const gitDir = git(worktree, [
     'rev-parse',
@@ -355,7 +387,9 @@ export function unsaved(worktree, history = branchHistory(worktree)) {
       '--max-count=1',
       '--not',
       '--branches',
-      'refs/remotes/origin/main',
+      '--remotes',
+      '--glob=refs/archive/*',
+      'HEAD',
       '--stdin',
     ],
     gitTimeout,
@@ -366,19 +400,51 @@ export function unsaved(worktree, history = branchHistory(worktree)) {
   return lost ? 'its HEAD history holds a commit no branch holds' : '';
 }
 
-function saved(main, entry) {
-  if (entry.branch) return true;
-  if (!entry.head) return false;
+function pushed(main, head) {
   return (
     git(main, [
       'for-each-ref',
       '--count=1',
       '--format=%(refname)',
-      `--contains=${entry.head}`,
-      'refs/heads',
-      'refs/remotes/origin/main',
+      `--contains=${head}`,
+      'refs/remotes',
     ]) !== ''
   );
+}
+
+function refCommit(main, ref) {
+  try {
+    return git(main, ['rev-parse', '--verify', '--quiet', ref]);
+  } catch {
+    return '';
+  }
+}
+
+// Keeps the worktree's HEAD commit reachable with a local ref and copies its
+// .local/ records into the main checkout, leaving out tool output. A name an
+// earlier archive used for another commit gets a numbered slot, so no archive
+// is overwritten, and a retry after a refused removal reuses its own slot.
+// Returns the ref, or throws when it cannot archive.
+export function archive(main, entry, name) {
+  for (let n = 1; n <= 100; n += 1) {
+    const slot = n === 1 ? name : `${name}-${n}`;
+    const ref = `refs/archive/worktrees/${slot}`;
+    const dest = path.join(main, '.local', 'archived-worktrees', slot);
+    const held = refCommit(main, ref);
+    if (held ? held !== entry.head : existsSync(dest)) continue;
+    // An empty old value makes git refuse a ref that appeared meanwhile.
+    if (!held) git(main, ['update-ref', ref, entry.head, '']);
+    const local = path.join(entry.path, '.local');
+    if (existsSync(local))
+      cpSync(local, dest, {
+        recursive: true,
+        verbatimSymlinks: true,
+        filter: (file) =>
+          file === local || !localScratch(path.relative(local, file)),
+      });
+    return ref;
+  }
+  throw new Error(`no free archive name for ${name}`);
 }
 
 function isMainCheckout(dir) {
@@ -388,8 +454,43 @@ function isMainCheckout(dir) {
   );
 }
 
-// deps: { now, busyPaths(): string[] | undefined, openBranches(): Set | undefined,
-//         home, log(line), dryRun }
+function alive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === 'EPERM';
+  }
+}
+
+// Session starts and ends overlap, so one sweep runs at a time. A lock left by
+// a sweep that died is taken over. Returns a release function, or undefined
+// while another sweep runs.
+export function lock(main) {
+  const file = path.join(main, '.local', 'worktree-sweep.lock');
+  mkdirSync(path.dirname(file), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      writeFileSync(file, `${process.pid}\n`, { flag: 'wx' });
+      return () => rmSync(file, { force: true });
+    } catch (error) {
+      if (error?.code !== 'EEXIST') return undefined;
+    }
+    let owner;
+    try {
+      owner = Number(readFileSync(file, 'utf8'));
+    } catch {
+      continue;
+    }
+    if (alive(owner)) return undefined;
+    rmSync(file, { force: true });
+  }
+  return undefined;
+}
+
+// deps: { now, busyPaths(): string[] | undefined,
+//         pullRequests(): object[] | undefined, home, log(line), dryRun }
 // home defaults to the user's home folder, where Claude keeps transcripts.
 export function sweep(dir, deps) {
   if (!isMainCheckout(dir)) return [];
@@ -406,27 +507,40 @@ export function sweep(dir, deps) {
       ),
   );
   if (candidates.length === 0) return [];
+  const release = deps.dryRun ? () => {} : lock(main);
+  if (!release) return [];
+  try {
+    return sweepCandidates(main, root, candidates, deps);
+  } finally {
+    release();
+  }
+}
+
+function sweepCandidates(main, root, candidates, deps) {
   const started = Date.now();
   const busy = deps.busyPaths();
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
   const history = branchHistory(main);
-  const open = candidates.some((entry) => entry.branch)
-    ? deps.openBranches()
-    : new Set();
+  const prs = deps.pullRequests();
   const results = [];
   for (const entry of candidates) {
+    const name = path.relative(root, entry.path);
     let verdict;
     try {
       verdict = decide(
         {
           locked: entry.locked,
           ...files(entry.path),
-          saved: saved(main, entry),
           unsaved: unsaved(entry.path, history),
-          branch: entry.branch,
-          openBranches: open,
+          pushed: pushed(main, entry.head),
+          pr: prState(prs, { name, branch: entry.branch, head: entry.head }),
           busy: !busy || busy.some((file) => within(entry.path, file)),
-          lastTouched: lastTouched(entry.path, deps.home, chats),
+          lastTouched: lastTouched(
+            entry.path,
+            deps.home,
+            chats,
+            deps.now - idleMs,
+          ),
         },
         deps.now,
       );
@@ -436,12 +550,20 @@ export function sweep(dir, deps) {
     if (verdict === 'remove' && !deps.dryRun)
       verdict = recheck(main, entry.path, deps, started);
     if (verdict === 'remove' && !deps.dryRun) {
+      let ref;
+      try {
+        ref = archive(main, entry, name);
+      } catch {
+        verdict = 'keep: could not archive it';
+      }
       // No --force: git refuses if the worktree changed since the check.
-      if (succeeds(main, ['worktree', 'remove', entry.path], removeTimeout))
-        deps.log(
-          `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head}`,
-        );
-      else verdict = 'keep: git refused the removal';
+      if (ref) {
+        if (succeeds(main, ['worktree', 'remove', entry.path], removeTimeout))
+          deps.log(
+            `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}`,
+          );
+        else verdict = 'keep: git refused the removal';
+      }
     }
     results.push({ path: entry.path, verdict });
   }
@@ -462,7 +584,7 @@ function recheck(main, worktree, deps, started) {
     started - 1,
   ))
     if (within(worktree, folder)) chat = Math.max(chat, time);
-  return chat >= started ? 'keep: used in the last day' : 'remove';
+  return chat >= started ? 'keep: used in the last 2 hours' : 'remove';
 }
 
 const lsof = () =>
@@ -491,7 +613,7 @@ export function busyPaths(run = lsof) {
   }
 }
 
-function openBranches(main) {
+function pullRequests(main) {
   try {
     const list = JSON.parse(
       execFileSync(
@@ -500,30 +622,44 @@ function openBranches(main) {
           'pr',
           'list',
           '--state',
-          'open',
+          'all',
           '--limit',
-          '500',
+          '5000',
           '--json',
-          'headRefName',
+          'number,state,headRefName,headRefOid',
         ],
         {
           cwd: main,
           encoding: 'utf8',
-          timeout: 15_000,
+          timeout: 60_000,
           stdio: ['ignore', 'pipe', 'ignore'],
         },
       ),
     );
-    return new Set(list.map((pr) => pr.headRefName));
+    return Array.isArray(list) ? list : undefined;
   } catch {
     return undefined;
   }
 }
 
-// As a hook it prints nothing. Run by hand, `--dry-run` lists what it would
-// remove without removing it, and `--report` removes and lists.
+const self = fileURLToPath(import.meta.url);
+
+// As a hook it prints nothing. `--detach` starts the sweep as its own process
+// and returns at once, so it outlives the session that started it. Run by
+// hand, `--dry-run` lists what it would remove without removing it, and
+// `--report` removes and lists.
 function main(args) {
   try {
+    if (args.includes('--detach')) {
+      spawn(
+        process.execPath,
+        [self, ...args.filter((arg) => arg !== '--detach')],
+        { detached: true, stdio: 'ignore' },
+      )
+        .on('error', () => {})
+        .unref();
+      return;
+    }
     const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
     const logFile = path.join(dir, '.local', 'worktree-sweep.log');
     const dryRun = args.includes('--dry-run');
@@ -531,7 +667,7 @@ function main(args) {
       dryRun,
       now: Date.now(),
       busyPaths: () => busyPaths(),
-      openBranches: () => openBranches(dir),
+      pullRequests: () => pullRequests(dir),
       log(line) {
         mkdirSync(path.dirname(logFile), { recursive: true });
         appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
@@ -545,6 +681,5 @@ function main(args) {
   }
 }
 
-const self = fileURLToPath(import.meta.url);
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(self))
   main(process.argv.slice(2));
