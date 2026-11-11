@@ -24,7 +24,7 @@ The check reports a counterexample for each of three invariants:
 From the repository root:
 
 ```sh
-npm run test -w @justgo/mobile -- --runTestsByPath src/data/cloud/coordinator-deletion.model.test.ts
+pnpm --filter @justgo/mobile run test --runTestsByPath src/data/cloud/coordinator-deletion.model.test.ts
 ```
 
 The file holds two tests. The exploration covers 6,607 schedules at the sync commit and took 22 to 27 seconds on an 8 GB Mac, depending on load. Before it offered an ordinary sync, it covered 4,137 schedules in 13 to 16 seconds, and CI ran it in 21 seconds against its 60-second timeout. The other test replays the issue #156 schedule. The full mobile suite and CI run both.
@@ -122,7 +122,7 @@ When a change to the covered code is intended:
 
 ## Not covered
 
-- The real PostgreSQL transaction. `Server.deleteData` is one atomic step, and `npm run test:db` covers the SQL.
+- The real PostgreSQL transaction. `Server.deleteData` is one atomic step, and `pnpm run test:db` covers the SQL.
 - Journal-version uploads from other devices.
 - iCloud deletion (`ICloudDataCoordinator.deletePreviouslySyncedData`), which runs between `deleteData` and `clearData` in the runtime.
 - An ordinary sync that runs at the same time as `deleteData`. The exploration runs the sync only between attempts. `mergeGuestData` builds its own coordinator over the same `cloud-sync` key, so two coordinators could save that key in an interleaved order.

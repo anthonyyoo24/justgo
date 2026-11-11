@@ -31,12 +31,12 @@ import { runVerdictPatch } from './verdict-status.mjs';
 // `gh pr merge` so that agents come through here.
 //
 // Usage:
-//   npm run merge:pr -- <n> --head <sha> [--auto] [--squash]
-//   npm run merge:pr -- <n> --disable-auto
+//   pnpm run merge:pr <n> --head <sha> [--auto] [--squash]
+//   pnpm run merge:pr <n> --disable-auto
 
 export const usage =
-  'usage: npm run merge:pr -- <n> --head <sha> [--auto] [--squash]\n' +
-  '       npm run merge:pr -- <n> --disable-auto';
+  'usage: pnpm run merge:pr <n> --head <sha> [--auto] [--squash]\n' +
+  '       pnpm run merge:pr <n> --disable-auto';
 
 export function parseArgs(argv) {
   const options = { auto: false, disable: false };

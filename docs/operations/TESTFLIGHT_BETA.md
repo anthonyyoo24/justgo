@@ -94,7 +94,7 @@ From `apps/mobile`, check the resolved remote public settings for the
 reporting-enabled candidate:
 
 ```sh
-EXPO_PUBLIC_SENTRY_ENABLED=false npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'RELEASE_DIAGNOSTICS=true EXPO_PUBLIC_SENTRY_ENABLED=true npm --prefix ../.. run release:beta:check' --non-interactive
+EXPO_PUBLIC_SENTRY_ENABLED=false npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'RELEASE_DIAGNOSTICS=true EXPO_PUBLIC_SENTRY_ENABLED=true pnpm --dir ../.. run release:beta:check' --non-interactive
 ```
 
 [`scripts/release/check-beta.mjs`](../../scripts/release/check-beta.mjs) owns the

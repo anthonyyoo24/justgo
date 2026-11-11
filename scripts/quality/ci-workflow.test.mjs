@@ -19,11 +19,11 @@ test('database CI runs real Worker and encrypted recovery boundaries after share
   assert.match(job, /postgresql-client-17 age/);
   const runs = commands(job);
   for (const command of [
-    'npm run test:workers',
-    'npm run test:backup:recovery',
+    'pnpm run test:workers',
+    'pnpm run test:backup:recovery',
   ]) {
     assert.ok(runs.includes(command));
-    assert.ok(runs.indexOf('npm run db:migrate') < runs.indexOf(command));
+    assert.ok(runs.indexOf('pnpm run db:migrate') < runs.indexOf(command));
     assert.ok(
       runs.indexOf('node scripts/quality/api-coverage.mjs database') <
         runs.indexOf(command),
@@ -100,7 +100,7 @@ test('the change classifier runs first, reads the full PR diff and only feeds th
   );
 });
 
-test('native iCloud regressions run on a bounded macOS producer without npm prerequisites', () => {
+test('native iCloud regressions run on a bounded macOS producer without pnpm prerequisites', () => {
   const job = jobs['native-icloud'];
   assert.match(job, /^ {4}runs-on: macos-15$/m);
   assert.match(job, /^ {4}timeout-minutes: 10$/m);
@@ -111,24 +111,37 @@ test('native iCloud regressions run on a bounded macOS producer without npm prer
   assert.deepEqual(commands(job), [
     'swift test --package-path apps/mobile/modules/justgo-icloud --scratch-path .local/justgo-icloud-swift --jobs 1',
   ]);
-  assert.doesNotMatch(job, /setup-node|\bnpm\b|\bnode\b|continue-on-error/);
+  assert.doesNotMatch(job, /setup-node|\bp?npm\b|\bnode\b|continue-on-error/);
+});
+
+test('every job installs the pinned pnpm from the frozen lockfile through one cached store', () => {
+  const setup = action('setup-node');
+  assert.match(setup, /node-version-file: \.nvmrc/);
+  assert.match(setup, /corepack enable pnpm/);
+  assert.match(
+    setup,
+    /key: \$\{\{ runner\.os \}\}-pnpm-store-\$\{\{ hashFiles\('pnpm-lock\.yaml'\) \}\}/,
+  );
+  assert.match(setup, /- run: pnpm install --frozen-lockfile\n/);
+  assert.doesNotMatch(setup, /\bnpm (?:ci|install)\b|cache: npm/);
+  assert.match(rootPackage.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
 });
 
 test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
   const runs = commands(jobs.static);
   assert.ok(
-    runs.indexOf('npm run doctor -w @justgo/mobile') <
-      runs.indexOf('npm run check:static'),
+    runs.indexOf('pnpm --filter @justgo/mobile run doctor') <
+      runs.indexOf('pnpm run check:static'),
   );
-  assert.ok(runs.includes('npm run audit:api'));
+  assert.ok(runs.includes('pnpm run audit:api'));
   assert.equal(
     rootPackage.scripts['audit:api'],
     'node scripts/quality/audit-api-dependencies.mjs',
   );
-  assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
+  assert.match(rootPackage.scripts['check:static'], /pnpm run typecheck/);
   assert.match(
     rootPackage.scripts['check:static'],
-    /npm run test:architecture$/,
+    /pnpm run test:architecture$/,
   );
 });
 
@@ -155,8 +168,8 @@ test('static CI checks workflow syntax and context availability with a checksum-
 
 test('unit and database suites run once', () => {
   assert.deepEqual(commands(jobs.unit), [
-    'npm run test:coverage -w @justgo/mobile',
-    'npm run test:coverage -w @justgo/contracts',
+    'pnpm --filter @justgo/mobile run test:coverage',
+    'pnpm --filter @justgo/contracts run test:coverage',
     'node scripts/quality/api-coverage.mjs unit',
   ]);
   assert.ok(
@@ -167,9 +180,12 @@ test('unit and database suites run once', () => {
   for (const job of Object.values(jobs))
     assert.doesNotMatch(
       job,
-      /run: npm run (?:check$|test$|test:db$|test:migrations$|test:coverage$)/m,
+      /run: pnpm run (?:check$|test$|test:db$|test:migrations$|test:coverage$)/m,
     );
-  assert.match(rootPackage.scripts['test:coverage'], /--workspaces/);
+  assert.match(
+    rootPackage.scripts['test:coverage'],
+    /pnpm -r run test:coverage/,
+  );
 });
 
 test('database and journey prerequisites share isolated roles without ignored env files', () => {
@@ -191,7 +207,7 @@ test('database and journey prerequisites share isolated roles without ignored en
   assert.match(jobs.journeys, /^ {4}services: \*postgres-service$/m);
   for (const name of ['database', 'journeys'])
     assert.match(jobs[name], /uses: \.\/\.github\/actions\/setup-database/);
-  assert.match(jobs.database, /- run: npm run db:migrate/);
+  assert.match(jobs.database, /- run: pnpm run db:migrate/);
   // The journey wrapper validates its environment and migrates before service start.
   assert.doesNotMatch(action('setup-database'), /db:migrate/);
   assert.match(action('setup-database'), /apps\/api\/scripts\/provision.sql/);
@@ -206,20 +222,20 @@ test('browser cache is versioned, installs system dependencies on hits, and expo
     setup,
     /key: \$\{\{ runner.os \}\}-playwright-\$\{\{ steps.playwright.outputs.version \}\}/,
   );
-  assert.match(setup, /- run: npx playwright install-deps chromium/);
+  assert.match(setup, /- run: pnpm exec playwright install-deps chromium/);
   assert.match(
     setup,
-    /if: steps.browser-cache.outputs.cache-hit != 'true'\n {6}run: npx playwright install chromium/,
+    /if: steps.browser-cache.outputs.cache-hit != 'true'\n {6}run: pnpm exec playwright install chromium/,
   );
   for (const name of ['journeys', 'exports'])
     assert.match(jobs[name], /uses: \.\/\.github\/actions\/setup-playwright/);
   assert.ok(
-    jobs.exports.indexOf('npm run export:web -w @justgo/mobile') <
-      jobs.exports.indexOf('npm run test:exported-web'),
+    jobs.exports.indexOf('pnpm --filter @justgo/mobile run export:web') <
+      jobs.exports.indexOf('pnpm run test:exported-web'),
   );
   assert.ok(
-    jobs.exports.indexOf('npm run test:exported-web') <
-      jobs.exports.indexOf('npm run export:ios -w @justgo/mobile'),
+    jobs.exports.indexOf('pnpm run test:exported-web') <
+      jobs.exports.indexOf('pnpm --filter @justgo/mobile run export:ios'),
   );
 });
 
@@ -269,6 +285,6 @@ test('Jest uses one local worker and two on CI without changing local verificati
   }
   assert.equal(
     rootPackage.scripts.check,
-    'npm run doctor -w @justgo/mobile && npm run check:static && npm run test --workspaces',
+    'pnpm --filter @justgo/mobile run doctor && pnpm run check:static && pnpm -r run test',
   );
 });

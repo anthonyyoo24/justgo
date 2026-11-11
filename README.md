@@ -17,24 +17,24 @@ Optional iCloud Sync and the complete Download and Import controls are separate.
 
 ## Start locally
 
-Use the Node version in `.nvmrc` and the npm version in `package.json`. `npm ci` builds the shared contracts. Rerun `npm run build:contracts` after you edit a contract. From this repository root:
+Use the Node version in `.nvmrc` and the pnpm version that `packageManager` pins in `package.json`. Run `corepack enable pnpm` once to get it. `pnpm install --frozen-lockfile` links packages from the shared pnpm store and builds the shared contracts. Rerun `pnpm run build:contracts` after you edit a contract. From this repository root:
 
 ```sh
-npm ci
-npm run db:local
-npm run db:migrate
-npm run dev:api
+pnpm install --frozen-lockfile
+pnpm run db:local
+pnpm run db:migrate
+pnpm run dev:api
 # In another terminal:
-npm run dev:web
+pnpm run dev:web
 ```
 
 The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) is the tested way to start the app on loopback fixtures and check that it serves this checkout.
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere, set `JUSTGO_PG_BIN` to their directory. The `test:db` migration rehearsal and the backup scripts read it too.
 
-`db:local` creates a loopback-only cluster at `.local/postgres` on port **54329** with the `justgo_test` database, and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Database tests need `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `JUSTGO_TEST_ADMIN_DATABASE_URL`, all with `DATABASE_SSL=disable`. `db:local` writes them to a new `apps/api/.env`. If an older `.env` lacks any of them, copy them from `.local/database.env`. This disposable cluster trusts local host authentication, so never expose its port or use it for personal data.
+`db:local` creates a loopback-only cluster at `.local/postgres` on port **54329** with the `justgo_test` database, and creates missing workspace `.env` files without replacing existing ones. Stop it with `pnpm run db:stop`. Database tests need `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `JUSTGO_TEST_ADMIN_DATABASE_URL`, all with `DATABASE_SSL=disable`. `db:local` writes them to a new `apps/api/.env`. If an older `.env` lacks any of them, copy them from `.local/database.env`. This disposable cluster trusts local host authentication, so never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081` and the API at `http://localhost:3000`. To run the challenge, reflection and Progress flow on disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`, because plain `dev:api` answers `/v1/access` with access unavailable until Phase 16. `dev:challenges` grants a test entitlement only on loopback `justgo_test`.
+The browser preview is at `http://localhost:8081` and the API at `http://localhost:3000`. To run the challenge, reflection and Progress flow on disposable local data, run `pnpm --filter @justgo/api run dev:challenges` **instead of** `dev:api`, because plain `dev:api` answers `/v1/access` with access unavailable until Phase 16. `dev:challenges` grants a test entitlement only on loopback `justgo_test`.
 
 A physical iPhone needs a reachable HTTPS API route, because `localhost` on a phone refers to the phone.
 
@@ -49,12 +49,12 @@ Compile native builds on the linked EAS cloud project, not on the owner's 8 GB M
 
 ```sh
 cd apps/mobile
-npx eas-cli@latest build --platform ios --profile development-simulator
+pnpm dlx eas-cli@latest build --platform ios --profile development-simulator
 ```
 
-The simulator profile needs no Apple signing. `app.config.ts` links the existing Expo project. Do not create another. If EAS requires authentication, run `npx eas-cli@latest login`. Device and distribution profiles need the confirmed `IOS_BUNDLE_IDENTIFIER` and [Apple setup](docs/operations/APPLE_SETUP.md).
+The simulator profile needs no Apple signing. `app.config.ts` links the existing Expo project. Do not create another. If EAS requires authentication, run `pnpm dlx eas-cli@latest login`. Device and distribution profiles need the confirmed `IOS_BUNDLE_IDENTIFIER` and [Apple setup](docs/operations/APPLE_SETUP.md).
 
-After the cloud build finishes, download its artifact and launch **one** installed simulator. Start the local database and API, then start Metro with `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1` from `apps/mobile`. The IPv4 option keeps Metro's localhost binding compatible with the simulator's `127.0.0.1` bundle URL. Install the downloaded `.app` and open `justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`. Reuse that development binary for JavaScript, styling and UI changes through Fast Refresh. Rebuild only when native dependencies or configuration change. Do not restart a heavy local Xcode build as a fallback until you explain an EAS access, quota or configuration blocker.
+After the cloud build finishes, download its artifact and launch **one** installed simulator. Start the local database and API, then start Metro with `NODE_OPTIONS=--dns-result-order=ipv4first pnpm exec expo start --dev-client --localhost --max-workers 1` from `apps/mobile`. The IPv4 option keeps Metro's localhost binding compatible with the simulator's `127.0.0.1` bundle URL. Install the downloaded `.app` and open `justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`. Reuse that development binary for JavaScript, styling and UI changes through Fast Refresh. Rebuild only when native dependencies or configuration change. Do not restart a heavy local Xcode build as a fallback until you explain an EAS access, quota or configuration blocker.
 
 EAS runs Continuous Native Generation from app config. Inspect the archive before you change `.easignore`.
 

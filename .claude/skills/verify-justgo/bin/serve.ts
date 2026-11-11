@@ -65,11 +65,11 @@ async function start(runId: string) {
   journeyEnvironment(process.env);
   await assertJourneyPortsAvailable();
   for (const script of ['build:contracts', 'db:migrate']) {
-    const result = spawnSync('npm', ['run', script], {
+    const result = spawnSync('pnpm', ['run', script], {
       stdio: 'inherit',
       env: process.env,
     });
-    if (result.status !== 0) throw new Error(`npm run ${script} failed`);
+    if (result.status !== 0) throw new Error(`pnpm run ${script} failed`);
   }
   const runDir = path.join(root, '.local/verify-justgo', runId);
   mkdirSync(runDir, { recursive: true });

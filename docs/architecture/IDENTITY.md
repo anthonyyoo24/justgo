@@ -128,7 +128,7 @@ Each account has a `data_epoch` that only increases.
 
 Staging runs `justgo.purge_expired_identity_records` hourly (the
 [identity retention job](../operations/TESTFLIGHT_BETA.md#identity-retention-job)).
-No hosted schedule runs the operator Auth cleanup (`npm run auth:cleanup`). Any
+No hosted schedule runs the operator Auth cleanup (`pnpm run auth:cleanup`). Any
 other hosted schedule needs separate approval.
 
 Deletion receipts, canonical subject tombstones, deleted record IDs and revoked

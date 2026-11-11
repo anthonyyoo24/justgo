@@ -110,9 +110,9 @@ test('mobile and CI typechecking generate route types before TypeScript reads th
     mobilePackage.scripts.typecheck,
     'node ../../scripts/quality/generate-route-types.mjs && tsc --noEmit && tsc --project tsconfig.tests.json --noEmit',
   );
-  assert.match(rootPackage.scripts.typecheck, /npm run typecheck --workspaces/);
-  assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
-  assert.match(workflow, /run: npm run check:static/);
+  assert.match(rootPackage.scripts.typecheck, /pnpm -r run typecheck/);
+  assert.match(rootPackage.scripts['check:static'], /pnpm run typecheck/);
+  assert.match(workflow, /run: pnpm run check:static/);
 });
 
 test('generated route declarations stay ignored while handwritten source remains checked', async () => {

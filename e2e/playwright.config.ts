@@ -49,7 +49,7 @@ export default defineConfig({
     },
     {
       name: 'Expo web',
-      command: `npm run start -w @justgo/mobile -- --web --port ${new URL(journeyAppUrl).port} --localhost --max-workers 1`,
+      command: `pnpm --filter @justgo/mobile run start --web --port ${new URL(journeyAppUrl).port} --localhost --max-workers 1`,
       cwd: '..',
       url: `${journeyAppUrl}/recovery`,
       reuseExistingServer: false,

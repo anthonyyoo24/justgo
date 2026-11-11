@@ -35,7 +35,7 @@ function packageDir(name) {
     const dir = join(base, 'node_modules', name);
     if (existsSync(join(dir, 'package.json'))) return dir;
   }
-  throw new Error(`${name} is not installed. Run npm ci first.`);
+  throw new Error(`${name} is not installed. Run pnpm install first.`);
 }
 
 // A package ships native code when it has a podspec, an Expo module config,

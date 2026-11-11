@@ -678,7 +678,7 @@ existing isolated PostgreSQL environment, including PostgreSQL 17 client tools,
 ([local test database](../../README.md#start-locally)). Then run:
 
 ```sh
-npm run test:backup:recovery
+pnpm run test:backup:recovery
 ```
 
 The rehearsal validates the loopback `justgo_test` administrator and runtime

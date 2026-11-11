@@ -91,7 +91,7 @@ a phone that is already registered, use [DEVELOPMENT_BUILDS.md](DEVELOPMENT_BUIL
    the passcode.
 2. With Anthony's permission, register the phone in Apple Developer. Keep its UDID
    in ignored `.local/` files only.
-3. Anthony runs `npx eas-cli@25.3.0 device:create` from `apps/mobile`, chooses
+3. Anthony runs `pnpm dlx eas-cli@25.3.0 device:create` from `apps/mobile`, chooses
    `anthonyyoos-team`, signs in to Apple privately and picks the registered phone
    under **Developer Portal**.
 4. Regenerate the ad hoc profile of each app the phone should run, and keep the

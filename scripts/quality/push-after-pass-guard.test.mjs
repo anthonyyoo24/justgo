@@ -110,7 +110,7 @@ test('dry runs, deletes, tag pushes and other commands are ignored', () => {
     'git push --tags',
     'git status',
     'git log --oneline | grep push',
-    'npm run merge:pr -- 3 --head abc --auto',
+    'pnpm run merge:pr 3 --head abc --auto',
   ])
     assert.deepEqual(pushesIn(command, '/r'), [], command);
 });
@@ -145,7 +145,7 @@ test('a code push after a PASS on the head is denied with a way out', () => {
   assert.match(decision.reason, /PR #7 has a PASS verdict/);
   assert.match(decision.reason, /changes a\.ts/);
   assert.match(decision.reason, /follow-up PR/);
-  assert.match(decision.reason, /npm run merge:pr -- 7 --disable-auto/);
+  assert.match(decision.reason, /pnpm run merge:pr 7 --disable-auto/);
   assert.match(decision.reason, /PUSH_AFTER_PASS=1 git push/);
   assert.equal(output(decision).hookSpecificOutput.permissionDecision, 'deny');
 });
@@ -186,7 +186,7 @@ test('a commit and push in one command is denied when the head has a PASS', () =
   });
   assert.equal(decision.permissionDecision, 'deny');
   assert.match(decision.reason, /separate command/);
-  assert.match(decision.reason, /npm run merge:pr -- 7 --disable-auto/);
+  assert.match(decision.reason, /pnpm run merge:pr 7 --disable-auto/);
   const base = { pr, verdict: pass, remote: carries, afterChange: true };
   assert.equal(decide({ ...base, acknowledged: true }), undefined);
   assert.equal(decide({ ...base, remote: reverify }), undefined);

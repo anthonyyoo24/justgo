@@ -10,215 +10,238 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import yaml from 'js-yaml';
 import {
   apiProductionLock,
   auditApiDependencies,
   auditArguments,
 } from './audit-api-dependencies.mjs';
 
+const exact = (version) => ({ specifier: version, version });
+
 function fixture() {
   return {
-    lockfileVersion: 3,
-    packages: {
-      '': {
-        name: 'repo',
-        workspaces: ['apps/*', 'packages/*'],
-        devDependencies: { tooling: '1.0.0' },
-      },
+    lockfileVersion: '9.0',
+    settings: { autoInstallPeers: true, excludeLinksFromLockfile: false },
+    importers: {
+      '.': { devDependencies: { tooling: exact('1.0.0') } },
       'apps/api': {
-        name: '@justgo/api',
-        version: '1.0.0',
         dependencies: {
-          '@justgo/contracts': '1.0.0',
-          'drizzle-orm': '1.0.0',
-          pg: '1.0.0',
-          plugin: '1.0.0',
-          other: '1.0.0',
-          aliased: 'npm:actual-name@1.0.0',
+          '@justgo/contracts': {
+            specifier: 'workspace:*',
+            version: 'link:../../packages/contracts',
+          },
+          'drizzle-orm': {
+            specifier: '1.0.0',
+            version: '1.0.0(expo-sqlite@1.0.0)(pg@1.0.0)',
+          },
+          pg: exact('1.0.0'),
+          plugin: { specifier: '1.0.0', version: '1.0.0(required@1.0.0)' },
+          other: exact('1.0.0'),
+          aliased: {
+            specifier: 'npm:actual-name@1.0.0',
+            version: 'actual-name@1.0.0',
+          },
         },
-        devDependencies: { tooling: '1.0.0' },
+        devDependencies: { tooling: exact('1.0.0') },
       },
-      'packages/contracts': {
-        name: '@justgo/contracts',
-        version: '1.0.0',
-        dependencies: { zod: '1.0.0' },
-      },
-      'apps/mobile': {
-        name: '@justgo/mobile',
-        version: '1.0.0',
-        dependencies: { 'expo-sqlite': '1.0.0' },
-      },
-      'node_modules/@justgo/api': { link: true, resolved: 'apps/api' },
-      'node_modules/@justgo/contracts': {
-        link: true,
-        resolved: 'packages/contracts',
-      },
-      'node_modules/drizzle-orm': {
-        version: '1.0.0',
+      'packages/contracts': { dependencies: { zod: exact('1.0.0') } },
+      'apps/mobile': { dependencies: { 'expo-sqlite': exact('1.0.0') } },
+    },
+    packages: {
+      'drizzle-orm@1.0.0': {
+        resolution: { integrity: 'drizzle-integrity' },
         peerDependencies: { pg: '*', 'expo-sqlite': '*' },
         peerDependenciesMeta: {
           pg: { optional: true },
           'expo-sqlite': { optional: true },
         },
       },
-      'node_modules/pg': {
-        version: '1.0.0',
+      'pg@1.0.0': { resolution: { integrity: 'pg-integrity' } },
+      'pg-cloudflare@1.0.0': { resolution: { integrity: 'cf-integrity' } },
+      'expo-sqlite@1.0.0': { resolution: { integrity: 'sqlite-integrity' } },
+      'expo@1.0.0': { resolution: { integrity: 'expo-integrity' } },
+      'plugin@1.0.0': {
+        resolution: { integrity: 'plugin-integrity' },
+        peerDependencies: { required: '1.0.0' },
+      },
+      'nested@1.0.0': { resolution: { integrity: 'exact-nested-integrity' } },
+      'nested@2.0.0': { resolution: { integrity: 'nested-2-integrity' } },
+      'other@1.0.0': { resolution: { integrity: 'other-integrity' } },
+      'required@1.0.0': { resolution: { integrity: 'required-integrity' } },
+      'actual-name@1.0.0': {
+        resolution: { integrity: 'exact-alias-integrity' },
+      },
+      'zod@1.0.0': { resolution: { integrity: 'zod-integrity' } },
+      'tooling@1.0.0': { resolution: { integrity: 'tooling-integrity' } },
+    },
+    snapshots: {
+      'drizzle-orm@1.0.0(expo-sqlite@1.0.0)(pg@1.0.0)': {
+        optionalDependencies: { 'expo-sqlite': '1.0.0', pg: '1.0.0' },
+      },
+      'pg@1.0.0': {
         optionalDependencies: {
           'pg-cloudflare': '1.0.0',
           'uninstalled-optional': '1.0.0',
         },
       },
-      'node_modules/pg-cloudflare': { version: '1.0.0', optional: true },
-      'node_modules/expo-sqlite': {
-        version: '1.0.0',
-        dependencies: { expo: '1.0.0' },
+      'pg-cloudflare@1.0.0': { optional: true },
+      'expo-sqlite@1.0.0': { dependencies: { expo: '1.0.0' } },
+      'expo@1.0.0': {},
+      'plugin@1.0.0(required@1.0.0)': {
+        dependencies: { nested: '1.0.0', required: '1.0.0' },
       },
-      'node_modules/expo': { version: '1.0.0' },
-      'node_modules/plugin': {
-        version: '1.0.0',
-        dependencies: { nested: '1.0.0' },
-        peerDependencies: { required: '1.0.0' },
-      },
-      'node_modules/plugin/node_modules/nested': {
-        version: '1.0.0',
-        integrity: 'exact-nested-integrity',
-      },
-      'node_modules/other': {
-        version: '1.0.0',
-        dependencies: { nested: '2.0.0' },
-      },
-      'node_modules/nested': { version: '2.0.0' },
-      'node_modules/required': {
-        version: '1.0.0',
-        dev: true,
-        devOptional: true,
-        peer: true,
-      },
-      'node_modules/aliased': {
-        name: 'actual-name',
-        version: '1.0.0',
-        resolved:
-          'https://registry.npmjs.org/actual-name/-/actual-name-1.0.0.tgz',
-        integrity: 'exact-alias-integrity',
-      },
-      'node_modules/zod': { version: '1.0.0' },
-      'node_modules/tooling': { version: '1.0.0', dev: true },
+      'nested@1.0.0': {},
+      'other@1.0.0': { dependencies: { nested: '2.0.0' } },
+      'nested@2.0.0': {},
+      'required@1.0.0': {},
+      'actual-name@1.0.0': {},
+      'zod@1.0.0': {},
+      'tooling@1.0.0': {},
     },
   };
 }
 
 test('audits the exact API runtime, not an optional driver supplied solely by mobile', () => {
   const projected = apiProductionLock(fixture());
-  assert.ok(projected.packages['node_modules/drizzle-orm']);
-  assert.ok(projected.packages['node_modules/pg']);
-  assert.ok(projected.packages['node_modules/pg-cloudflare']);
-  assert.equal(projected.packages['node_modules/expo-sqlite'], undefined);
-  assert.equal(projected.packages['node_modules/expo'], undefined);
-  assert.equal(projected.packages['apps/mobile'], undefined);
-  assert.equal(projected.packages['node_modules/tooling'], undefined);
-  assert.equal(projected.packages['apps/api'].devDependencies, undefined);
+  assert.ok(projected.packages['drizzle-orm@1.0.0']);
+  assert.ok(projected.packages['pg@1.0.0']);
+  assert.ok(projected.packages['pg-cloudflare@1.0.0']);
+  assert.equal(projected.packages['expo-sqlite@1.0.0'], undefined);
+  assert.equal(projected.packages['expo@1.0.0'], undefined);
+  assert.equal(projected.importers['apps/mobile'], undefined);
+  assert.equal(projected.packages['tooling@1.0.0'], undefined);
+  assert.equal(projected.importers['apps/api'].devDependencies, undefined);
+  assert.deepEqual(
+    projected.snapshots['drizzle-orm@1.0.0(expo-sqlite@1.0.0)(pg@1.0.0)'],
+    { optionalDependencies: {} },
+  );
 });
 
 test('includes the formerly optional provider when API explicitly adopts it', () => {
   const lock = fixture();
-  lock.packages['apps/api'].dependencies['expo-sqlite'] = '1.0.0';
+  lock.importers['apps/api'].dependencies['expo-sqlite'] = exact('1.0.0');
   const projected = apiProductionLock(lock);
-  assert.ok(projected.packages['node_modules/expo-sqlite']);
-  assert.ok(projected.packages['node_modules/expo']);
+  assert.ok(projected.packages['expo-sqlite@1.0.0']);
+  assert.ok(projected.packages['expo@1.0.0']);
 });
 
-test('includes a required peer and cannot hide it behind global dev/peer flags', () => {
+test('includes a required peer and an optional dependency the API runtime reaches', () => {
   const projected = apiProductionLock(fixture());
-  assert.deepEqual(projected.packages['node_modules/required'], {
-    version: '1.0.0',
-  });
-  assert.deepEqual(projected.packages['node_modules/pg-cloudflare'], {
-    version: '1.0.0',
-  });
+  assert.ok(projected.snapshots['required@1.0.0']);
+  assert.ok(projected.snapshots['pg-cloudflare@1.0.0']);
+  assert.equal(projected.snapshots['uninstalled-optional@1.0.0'], undefined);
 });
 
 test('preserves nested versions, aliases, integrity and workspace runtime dependencies', () => {
   const lock = fixture();
   const projected = apiProductionLock(lock);
-  for (const location of [
-    'node_modules/plugin/node_modules/nested',
-    'node_modules/nested',
-    'node_modules/aliased',
-    'node_modules/zod',
-    'node_modules/@justgo/contracts',
+  for (const key of [
+    'nested@1.0.0',
+    'nested@2.0.0',
+    'actual-name@1.0.0',
+    'zod@1.0.0',
   ])
-    assert.deepEqual(projected.packages[location], lock.packages[location]);
-  assert.deepEqual(projected.workspaces, ['apps/api', 'packages/contracts']);
+    assert.deepEqual(projected.packages[key], lock.packages[key]);
+  assert.deepEqual(Object.keys(projected.importers), [
+    '.',
+    'apps/api',
+    'packages/contracts',
+  ]);
+  assert.deepEqual(
+    projected.importers['packages/contracts'],
+    lock.importers['packages/contracts'],
+  );
 });
 
-test('resolves package-local and scoped dependencies and permits ordinary dependency cycles', () => {
+test('resolves scoped dependencies and permits ordinary dependency cycles', () => {
   const lock = fixture();
-  lock.packages['apps/api'].dependencies['@scope/service'] = '1.0.0';
-  lock.packages['apps/api/node_modules/@scope/service'] = {
-    version: '1.0.0',
-    dependencies: { plugin: '1.0.0' },
+  lock.importers['apps/api'].dependencies['@scope/service'] = exact('1.0.0');
+  lock.packages['@scope/service@1.0.0'] = { resolution: { integrity: 's' } };
+  lock.snapshots['@scope/service@1.0.0'] = {
+    dependencies: { plugin: '1.0.0(required@1.0.0)' },
   };
-  lock.packages['node_modules/nested'].dependencies = { other: '1.0.0' };
+  lock.snapshots['nested@2.0.0'] = { dependencies: { other: '1.0.0' } };
   const projected = apiProductionLock(lock);
-  assert.ok(projected.packages['apps/api/node_modules/@scope/service']);
-  assert.ok(projected.packages['node_modules/plugin']);
+  assert.ok(projected.packages['@scope/service@1.0.0']);
+  assert.ok(projected.packages['plugin@1.0.0']);
 });
 
 test('fails closed for missing required dependencies or required peers', () => {
-  for (const location of ['node_modules/pg', 'node_modules/required']) {
-    const lock = fixture();
-    delete lock.packages[location];
-    assert.throws(() => apiProductionLock(lock), /Missing locked dependency/);
-  }
+  const missingSnapshot = fixture();
+  delete missingSnapshot.snapshots['other@1.0.0'];
+  assert.throws(
+    () => apiProductionLock(missingSnapshot),
+    /Missing locked dependency/,
+  );
+  const missingPeer = fixture();
+  delete missingPeer.snapshots['plugin@1.0.0(required@1.0.0)'].dependencies
+    .required;
+  assert.throws(
+    () => apiProductionLock(missingPeer),
+    /Missing locked dependency/,
+  );
 });
 
 test('fails closed for unsupported locks, invalid links and dependency traversal', () => {
   assert.throws(
-    () => apiProductionLock({ ...fixture(), lockfileVersion: 2 }),
-    /v3/,
+    () => apiProductionLock({ ...fixture(), lockfileVersion: '6.0' }),
+    /v9/,
   );
-  for (const target of [
-    '../outside',
-    '/outside',
-    'C:/outside',
-    'packages/../contracts',
-    'node_modules/expo',
+  for (const link of [
+    'link:../../../outside',
+    'link:/outside',
+    'link:../../node_modules/expo',
+    'link:../../packages/missing',
   ]) {
     const lock = fixture();
-    lock.packages['node_modules/@justgo/contracts'].resolved = target;
-    assert.throws(() => apiProductionLock(lock), /Invalid/);
+    lock.importers['apps/api'].dependencies['@justgo/contracts'].version = link;
+    assert.throws(() => apiProductionLock(lock), /Invalid|Missing/, link);
   }
-  const missing = fixture();
-  delete missing.packages['node_modules/@justgo/contracts'];
-  assert.throws(() => apiProductionLock(missing), /Missing locked dependency/);
+  const nestedLink = fixture();
+  nestedLink.snapshots['other@1.0.0'].dependencies.nested = 'link:../x';
+  assert.throws(() => apiProductionLock(nestedLink), /Invalid workspace link/);
   const traversal = fixture();
-  traversal.packages['apps/api'].dependencies['@scope/..'] = '1.0.0';
+  traversal.importers['apps/api'].dependencies['@scope/..'] = exact('1.0.0');
   assert.throws(() => apiProductionLock(traversal), /Invalid dependency name/);
+  const unsupported = fixture();
+  unsupported.importers['apps/api'].dependencies.pg.version =
+    'https://example.test/pg.tgz';
+  assert.throws(() => apiProductionLock(unsupported), /Unsupported/);
 });
 
-test('uses ordinary npm audit with the low threshold and includes runtime optionals/peers', () => {
-  assert.deepEqual(auditArguments, [
-    'audit',
-    '--workspace',
-    '@justgo/api',
-    '--package-lock-only',
-    '--omit=dev',
-    '--include=optional',
-    '--include=peer',
-    '--include-workspace-root=false',
-    '--audit-level=low',
-  ]);
+test('uses ordinary pnpm audit of production dependencies with the low threshold', () => {
+  assert.deepEqual(auditArguments, ['audit', '--prod', '--audit-level', 'low']);
 });
 
-async function sourceFixture() {
+function manifests() {
+  return {
+    'apps/api': {
+      name: '@justgo/api',
+      version: '1.0.0',
+      dependencies: Object.fromEntries(
+        Object.entries(fixture().importers['apps/api'].dependencies).map(
+          ([name, { specifier }]) => [name, specifier],
+        ),
+      ),
+      devDependencies: { tooling: '1.0.0' },
+    },
+    'packages/contracts': {
+      name: '@justgo/contracts',
+      version: '1.0.0',
+      dependencies: { zod: '1.0.0' },
+    },
+  };
+}
+
+async function sourceFixture(manifest = manifests()) {
   const root = await mkdtemp(path.join(tmpdir(), 'justgo-audit-source-test-'));
-  const lock = fixture();
-  await writeFile(path.join(root, 'package-lock.json'), JSON.stringify(lock));
-  for (const location of ['apps/api', 'packages/contracts']) {
+  await writeFile(path.join(root, 'pnpm-lock.yaml'), yaml.dump(fixture()));
+  for (const [location, content] of Object.entries(manifest)) {
     await mkdir(path.join(root, location), { recursive: true });
     await writeFile(
       path.join(root, location, 'package.json'),
-      JSON.stringify(lock.packages[location]),
+      JSON.stringify(content),
     );
   }
   return root;
@@ -231,14 +254,20 @@ test('keeps exact metadata on disk, propagates audit failures and always cleans 
       let auditFolder;
       const operation = auditApiDependencies(root, async (folder) => {
         auditFolder = folder;
-        const projected = JSON.parse(
-          await readFile(path.join(folder, 'package-lock.json'), 'utf8'),
+        const projected = yaml.load(
+          await readFile(path.join(folder, 'pnpm-lock.yaml'), 'utf8'),
         );
         assert.equal(
-          projected.packages['node_modules/aliased'].integrity,
+          projected.packages['actual-name@1.0.0'].resolution.integrity,
           'exact-alias-integrity',
         );
-        assert.equal(projected.packages['node_modules/expo'], undefined);
+        assert.equal(projected.packages['expo-sqlite@1.0.0'], undefined);
+        assert.deepEqual(
+          yaml.load(
+            await readFile(path.join(folder, 'pnpm-workspace.yaml'), 'utf8'),
+          ),
+          { packages: ['apps/api', 'packages/contracts'] },
+        );
         assert.equal(
           JSON.parse(
             await readFile(path.join(folder, 'apps/api/package.json'), 'utf8'),
@@ -259,14 +288,10 @@ test('keeps exact metadata on disk, propagates audit failures and always cleans 
 });
 
 test('rejects manifest/lock drift without invoking the audit', async () => {
-  const root = await sourceFixture();
+  const drifted = manifests();
+  drifted['apps/api'].dependencies.pg = '2.0.0';
+  const root = await sourceFixture(drifted);
   try {
-    const manifest = fixture().packages['apps/api'];
-    manifest.dependencies.pg = '2.0.0';
-    await writeFile(
-      path.join(root, 'apps/api/package.json'),
-      JSON.stringify(manifest),
-    );
     await assert.rejects(
       auditApiDependencies(root, () => {
         throw new Error('must not audit');

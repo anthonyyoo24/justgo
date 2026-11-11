@@ -30,15 +30,15 @@ test('raw merges are denied in every shape and point at the script', () => {
   ]) {
     const decision = decide(command);
     assert.equal(decision?.permissionDecision, 'deny', command);
-    assert.match(decision.reason, /npm run merge:pr -- <n> --head <sha>/);
+    assert.match(decision.reason, /pnpm run merge:pr <n> --head <sha>/);
     assert.match(decision.reason, /harmless mentions/);
   }
 });
 
 test('the merge script and other commands pass', () => {
   for (const command of [
-    `npm run merge:pr -- 236 --head ${'a'.repeat(40)} --auto --squash`,
-    'npm run merge:pr -- 236 --disable-auto',
+    `pnpm run merge:pr 236 --head ${'a'.repeat(40)} --auto --squash`,
+    'pnpm run merge:pr 236 --disable-auto',
     'node scripts/quality/merge-pr.mjs 5 --head abc',
     'node scripts/quality/merge-order.mjs',
     "grep -n 'pr merge' AGENTS.md",

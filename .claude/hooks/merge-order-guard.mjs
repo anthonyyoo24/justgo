@@ -2,7 +2,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Bash. Agents merge only through
-// scripts/quality/merge-pr.mjs (`npm run merge:pr`), which checks the merge
+// scripts/quality/merge-pr.mjs (`pnpm run merge:pr`), which checks the merge
 // order with git merge-tree before it calls gh. This hook keeps that the only
 // door. It denies any Bash command whose text runs or mentions `gh … pr merge`
 // on one line (after joining backslash-newlines) or a `pulls/<n>/merge` API
@@ -17,7 +17,7 @@ const ghPrMerge = /\bgh\b[^\n]*?\bpr\s+merge\b/;
 const apiMerge = /\bpulls\/[^\s/]+\/merge\b/;
 
 const reason =
-  'merge-order-guard: merge only through `npm run merge:pr -- <n> --head <sha> [--auto]` ' +
+  'merge-order-guard: merge only through `pnpm run merge:pr <n> --head <sha> [--auto]` ' +
   '(or `-- <n> --disable-auto` to disarm), which checks the merge order first. ' +
   'This hook denies any Bash command whose text contains `gh pr merge` or a ' +
   '`pulls/<n>/merge` API path, including harmless mentions such as a grep or ' +

@@ -26,6 +26,8 @@ const boundary = [
   /^apps\/api\/drizzle\//,
   /^\.github\//,
   /(^|\/)package(-lock)?\.json$/,
+  /^pnpm-(lock|workspace)\.yaml$/,
+  /(^|\/)\.npmrc$/,
   /^\.nvmrc$/,
   /^\.claude\/hooks\//,
   /^\.claude\/settings\.json$/,

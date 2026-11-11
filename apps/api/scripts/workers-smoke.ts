@@ -241,7 +241,7 @@ async function run() {
         flag: 'wx',
       });
       console.info(
-        `Local workerd CPU profile saved: ${output}. Functional smoke was not run; use npm run test:workers.`,
+        `Local workerd CPU profile saved: ${output}. Functional smoke was not run; use pnpm run test:workers.`,
       );
       return;
     }

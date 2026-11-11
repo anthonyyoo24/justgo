@@ -91,5 +91,5 @@ try {
   await admin.end();
 }
 console.info(
-  'JustGO local database ready on 127.0.0.1:54329. Existing .env files were preserved. Run npm run db:migrate.',
+  'JustGO local database ready on 127.0.0.1:54329. Existing .env files were preserved. Run pnpm run db:migrate.',
 );

@@ -17,7 +17,7 @@ database() {
   if ! "$pg_bin/pg_ctl" -D .local/postgres status >/dev/null 2>&1; then
     : >"$db_marker"
   fi
-  npm run db:local
+  pnpm run db:local
 }
 run_id() {
   echo "${JUSTGO_VERIFY_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$1}"
@@ -51,7 +51,7 @@ drive)
   database
   echo "Evidence: .local/verify-justgo/$id"
   # shellcheck disable=SC2086
-  JUSTGO_VERIFY_RUN_ID=$id npm run test:journey -- \
+  JUSTGO_VERIFY_RUN_ID=$id pnpm run test:journey \
     "--config=$skill/verify.config.ts" $specs
   ;;
 serve)
@@ -78,7 +78,7 @@ stop)
   fi
   tsx_node "$skill/bin/serve.ts" stop || status=$?
   if [ -f "$db_marker" ]; then
-    npm run db:stop || status=$?
+    pnpm run db:stop || status=$?
     rm -f "$db_marker"
   fi
   exit "$status"
