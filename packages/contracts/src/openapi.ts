@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import * as challenges from './activity/challenges.ts';
 import * as identity from './identity.ts';
-import { identityErrorSchema } from './errors.ts';
+import { identityErrorSchema, type IdentityErrorCode } from './errors.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
@@ -17,6 +17,44 @@ const accountExportBudget =
 const json = (schema: z.ZodType) => ({
   'application/json': { schema: z.toJSONSchema(schema) },
 });
+const failure = (code: IdentityErrorCode, description: string) => ({
+  description: `${code}: ${description}`,
+  content: json(identityErrorSchema.extend({ code: z.literal(code) })),
+});
+const invalidRequest = {
+  '400': failure(
+    'INVALID_REQUEST',
+    'malformed or invalid input; do not retry unchanged input',
+  ),
+};
+const bodyFailures = (bodyLimit = '32 KiB') => ({
+  '413': failure(
+    'REQUEST_TOO_LARGE',
+    `body exceeds ${bodyLimit}; do not retry unchanged input`,
+  ),
+  '415': failure(
+    'UNSUPPORTED_MEDIA_TYPE',
+    'unsupported request content type; do not retry unchanged input',
+  ),
+});
+const uuidPathId = {
+  name: 'id',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', format: 'uuid' },
+};
+const syncPage = [
+  {
+    name: 'cursor',
+    in: 'query',
+    schema: { type: 'string', format: 'uuid' },
+  },
+  {
+    name: 'limit',
+    in: 'query',
+    schema: { type: 'integer', minimum: 1, maximum: 50, default: 50 },
+  },
+];
 function operation(
   response: z.ZodType,
   body?: z.ZodType,
@@ -28,33 +66,27 @@ function operation(
     ...(body ? { requestBody: { required: true, content: json(body) } } : {}),
     responses: {
       '200': { description: 'Validated response', content: json(response) },
-      ...(body
-        ? {
-            '413': {
-              description: `REQUEST_TOO_LARGE: body exceeds ${bodyLimit}; do not retry unchanged input`,
-              content: json(
-                identityErrorSchema.extend({
-                  code: z.literal('REQUEST_TOO_LARGE'),
-                }),
-              ),
-            },
-            '415': {
-              description:
-                'UNSUPPORTED_MEDIA_TYPE: unsupported request content type; do not retry unchanged input',
-              content: json(
-                identityErrorSchema.extend({
-                  code: z.literal('UNSUPPORTED_MEDIA_TYPE'),
-                }),
-              ),
-            },
-          }
-        : {}),
+      ...(body ? { ...invalidRequest, ...bodyFailures(bodyLimit) } : {}),
+      '503': failure(
+        'UNAVAILABLE',
+        'transient service failure; retry the same request later',
+      ),
       default: {
         description:
           'Typed failure; never includes secrets or supplied values. 4xx statuses are client errors identified by code, and an unlisted 4xx uses INVALID_REQUEST. 503 UNAVAILABLE is a transient service failure.',
         content: json(identityErrorSchema),
       },
     },
+  };
+}
+function withParameters<
+  T extends ReturnType<typeof operation>,
+  P extends { name: string; in: string },
+>(base: T, parameters: P[]) {
+  return {
+    ...base,
+    parameters,
+    responses: { ...base.responses, ...invalidRequest },
   };
 }
 export const openApiDocument = {
@@ -113,20 +145,11 @@ export const openApiDocument = {
         description: `Atomic owner-only import of up to 50 bounded completion contexts, without entitlement or private journal fields. expectedEpoch must match. Identical IDs replay; changed contexts conflict; deleted IDs remain blocked unless a user-confirmed import explicitly supplies restoreDeleted:true. Routine sync never sets that flag. ${accountWriteBudget}`,
       },
       get: {
-        ...operation(sync.completionRestorePageSchema),
+        ...withParameters(
+          operation(sync.completionRestorePageSchema),
+          syncPage,
+        ),
         description: `Owner-only UUID-ordered history page, up to 50 records, with dataEpoch and nextCursor. Enumerate from the beginning on a later sync to reconcile concurrent inserts. ${accountExportBudget}`,
-        parameters: [
-          {
-            name: 'cursor',
-            in: 'query',
-            schema: { type: 'string', format: 'uuid' },
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', minimum: 1, maximum: 50, default: 50 },
-          },
-        ],
       },
     },
     '/v1/journal-sync': {
@@ -140,20 +163,8 @@ export const openApiDocument = {
         description: `Managed signed-in journal sync only. Immutable owner-scoped versions and parents preserve concurrent writing. A journal-only entry requires its strict historical context and creates no completion or rep. Existing completion context may be derived for older clients. Atomic batches up to 50 require expectedEpoch; restoreDeleted is reserved for a user-confirmed import. ${accountWriteBudget}`,
       },
       get: {
-        ...operation(sync.journalSyncPageSchema),
+        ...withParameters(operation(sync.journalSyncPageSchema), syncPage),
         description: `Managed signed-in journal versions, UUID-ordered pages up to 50. A full enumeration on later sync reconciles concurrent inserts. ${accountExportBudget}`,
-        parameters: [
-          {
-            name: 'cursor',
-            in: 'query',
-            schema: { type: 'string', format: 'uuid' },
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', minimum: 1, maximum: 50, default: 50 },
-          },
-        ],
       },
     },
     '/v1/data': {
@@ -178,23 +189,22 @@ export const openApiDocument = {
     },
     '/v1/account/export': {
       get: {
-        ...operation(completionExportPageSchema),
-        description: `Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned. ${accountExportBudget}`,
-        parameters: [
+        ...withParameters(operation(completionExportPageSchema), [
           {
             name: 'cursor',
             in: 'query',
             required: false,
             schema: { type: 'string', format: 'uuid' },
           },
-        ],
+        ]),
+        description: `Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned. ${accountExportBudget}`,
       },
     },
     '/v1/challenges': { get: operation(challenges.catalogSchema) },
     '/v1/attempts': {
-      get: {
-        ...operation(progress.completionProgressDayResponseSchema),
-        parameters: [
+      get: withParameters(
+        operation(progress.completionProgressDayResponseSchema),
+        [
           {
             name: 'date',
             in: 'query',
@@ -214,7 +224,7 @@ export const openApiDocument = {
             schema: { type: 'string' },
           },
         ],
-      },
+      ),
       post: {
         ...operation(
           attempts.completionAttemptResultSchema,
@@ -234,52 +244,38 @@ export const openApiDocument = {
       },
     },
     '/v1/attempts/{id}': {
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          schema: { type: 'string', format: 'uuid' },
-        },
-      ],
+      parameters: [uuidPathId],
       patch: {
         security: [],
         description:
           'Retired private journal write. Update the client and preserve pending content locally. The body is not read, accepted or replayed.',
         responses: {
-          '410': {
-            description:
-              'PRIVATE_JOURNAL_LOCAL: permanent retirement; never retry private input',
-            content: json(
-              identityErrorSchema.extend({
-                code: z.literal('PRIVATE_JOURNAL_LOCAL'),
-              }),
-            ),
-          },
+          '410': failure(
+            'PRIVATE_JOURNAL_LOCAL',
+            'permanent retirement; never retry private input',
+          ),
         },
       },
     },
     '/v1/progress/summary': {
-      parameters: [
+      get: withParameters(operation(progress.progressSummarySchema), [
         {
           name: 'timeZone',
           in: 'query',
           required: true,
           schema: z.toJSONSchema(challenges.timeZoneSchema),
         },
-      ],
-      get: operation(progress.progressSummarySchema),
+      ]),
     },
     '/v1/progress/calendar': {
-      parameters: [
+      get: withParameters(operation(progress.progressCalendarSchema), [
         {
           name: 'month',
           in: 'query',
           required: true,
           schema: z.toJSONSchema(progress.calendarMonthSchema),
         },
-      ],
-      get: operation(progress.progressCalendarSchema),
+      ]),
     },
     '/v1/access': { get: operation(accessResponseSchema) },
     '/v1/sessions': {
@@ -301,20 +297,20 @@ export const openApiDocument = {
       post: operation(identity.okSchema, identity.credentialCreateSchema),
     },
     ...Object.fromEntries(
-      ['devices', 'credentials'].map((resource) => [
-        `/v1/${resource}/{id}`,
-        {
-          parameters: [
-            {
-              name: 'id',
-              in: 'path',
-              required: true,
-              schema: { type: 'string', format: 'uuid' },
+      ['devices', 'credentials'].map((resource) => {
+        const revoke = withParameters(operation(identity.okSchema), [
+          uuidPathId,
+        ]);
+        return [
+          `/v1/${resource}/{id}`,
+          {
+            delete: {
+              ...revoke,
+              responses: { ...revoke.responses, ...bodyFailures() },
             },
-          ],
-          delete: operation(identity.okSchema),
-        },
-      ]),
+          },
+        ];
+      }),
     ),
     '/v1/transfers': {
       post: operation(
@@ -324,14 +320,7 @@ export const openApiDocument = {
       ),
     },
     '/v1/transfers/{id}': {
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          schema: { type: 'string', format: 'uuid' },
-        },
-      ],
+      parameters: [uuidPathId],
       delete: {
         ...operation(
           identity.transferCancelResponseSchema,
