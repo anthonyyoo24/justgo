@@ -16,7 +16,11 @@ import { artifactMetadata } from './storage.mjs';
 import { encryptSnapshot } from './snapshot.mjs';
 import { verifyBackupRole } from './backup-role.mjs';
 import { restoreLocal } from './restore-local.mjs';
-import { cleanupRehearsal } from './rehearsal-cleanup.mjs';
+import {
+  cleanupRehearsal,
+  dropStaleRehearsal,
+  rehearsalMarker,
+} from './rehearsal-cleanup.mjs';
 import { readPolicy } from './configuration.mjs';
 import { rehearseRecoveryFence } from './recovery-fence-fixture.mjs';
 
@@ -71,7 +75,8 @@ async function capturedOutput(run) {
 /**
  * Exercise encrypted backup, privilege-drift rejection and deletion replay using
  * synthetic records in two run-owned databases on the guarded loopback fixture.
- * Refuses an existing backup role and cleans up only resources this run created.
+ * First drops a killed run's backup role and marked databases, unless another run holds the
+ * rehearsal lock, then cleans up only resources this run created.
  * The minimal Auth fixture does not establish hosted Supabase restore compatibility.
  *
  * @param env Local administrator/runtime URLs and PostgreSQL/age tool locations.
@@ -104,25 +109,21 @@ export async function rehearse(env = process.env) {
   try {
     admin = new Client({ connectionString: adminUrl.href, ssl: false });
     await admin.connect();
+    const createOwnedDatabase = async (name) => {
+      await admin.query(`create database ${name} template template0`);
+      ownedDatabases.push(name);
+      await admin.query(`comment on database ${name} is '${rehearsalMarker}'`);
+    };
     step = 'isolated setup';
-    if (
-      (
-        await admin.query(
-          "select 1 from pg_roles where rolname='justgo_backup'",
-        )
-      ).rowCount
-    )
-      throw new Error('Backup rehearsal refuses an existing role');
+    await dropStaleRehearsal(admin);
     const password = secret();
     await admin.query(
       await readFile(new URL('./backup-role.sql', import.meta.url), 'utf8'),
     );
     ownsRole = true;
     await admin.query(`alter role justgo_backup password '${password}'`);
-    for (const name of [sourceName, targetName]) {
-      await admin.query(`create database ${name} template template0`);
-      ownedDatabases.push(name);
-    }
+    for (const name of [sourceName, targetName])
+      await createOwnedDatabase(name);
     const source = new Client(sourceConfig);
     clients.push(source);
     await source.connect();
@@ -474,8 +475,7 @@ export async function rehearse(env = process.env) {
     assert.equal(result.writersMayOpen, false);
     step = 'closed-target acceptance failure';
     const rejectedName = `justgo_restore_${randomBytes(6).toString('hex')}`;
-    await admin.query(`create database ${rejectedName} template template0`);
-    ownedDatabases.push(rejectedName);
+    await createOwnedDatabase(rejectedName);
     const rejectedUrl = new URL(targetUrl);
     rejectedUrl.pathname = `/${rejectedName}`;
     let rejectionHookEntered = false,

@@ -681,9 +681,19 @@ existing isolated PostgreSQL environment, including PostgreSQL 17 client tools,
 pnpm run test:backup:recovery
 ```
 
+`apps/api/tests/db/recovery-rehearsal.integration.test.ts` runs the same
+rehearsal after a killed run's leftovers, so it needs the same tools. CI runs it
+in the database job, and `pnpm run test:db` leaves it out.
+
 The rehearsal validates the loopback `justgo_test` administrator and runtime
 credentials before it creates two run-owned disposable databases and a temporary
-backup reader. It refuses an existing `justgo_backup` role. It applies the current
+backup reader. It marks each database it creates with the comment
+`justgo recovery rehearsal`, because a manual restore uses the same name pattern.
+Before setup it takes a session advisory lock on the administrator connection and
+refuses to start while another rehearsal holds it. A killed run's lock ends with
+its session, so the rehearsal then drops the `justgo_backup` role and the marked
+`justgo_restore_*` databases that the killed run left. It never drops an unmarked
+database. It applies the current
 migration registry, seeds synthetic app and Auth state, and verifies rejection of
 an extra MAINTAIN grant and inherited ownership. It then takes a real encrypted
 `pg_dump`, makes later account and data deletions and revocations, captures the
