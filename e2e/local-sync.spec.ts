@@ -82,93 +82,7 @@ function repository(
   };
 }
 
-test('offline journal replays a lost acknowledgement through the real transport once', async ({
-  fixtureDatabase,
-}) => {
-  const { token, account, card } = await fixtureAccount();
-  const storage = new MemoryStorage();
-  let drop = true;
-  let calls = 0;
-  const fetcher: typeof fetch = async (url, options) => {
-    const response = await fetch(url, options);
-    if (options?.method === 'POST' && String(url).endsWith('/v1/attempts')) {
-      calls++;
-      if (drop) {
-        drop = false;
-        throw new Error('Synthetic lost response after commit');
-      }
-    }
-    return response;
-  };
-  const { repo, close } = repository(account.userId, token, storage, fetcher);
-  try {
-    repo.setEnvironment({ active: true, online: false });
-    await repo.hydrate();
-    await repo.cacheCatalog({ cards: [card] });
-    const completion = {
-      id: randomUUID(),
-      challengeId: card.challengeId,
-      venue: card.venue,
-      startedAt: new Date().toISOString(),
-      startTimeZone: 'UTC',
-    };
-    const submissionId = randomUUID();
-    await repo.complete(completion, card);
-    await repo.submitReflection(completion.id, submissionId, {
-      feeling: 'a_little_better',
-      text: 'Disposable synchronization fixture.',
-    });
-    expect(repo.store.getState().journal.operations).toHaveLength(1);
-    expect(calls).toBe(0);
-    repo.setEnvironment({ active: true, online: true });
-    await repo.synchronize();
-    expect(repo.store.getState().journal.operations[0]?.code).toBe('NETWORK');
-    const existing = await fixtureDatabase.query<{ count: string }>(
-      'select count(*)::text as count from justgo.attempts where user_id=$1',
-      [account.userId],
-    );
-    expect(existing.rows[0]?.count).toBe('1');
-    // Restart before the retry; the immutable intent and cooldown survive.
-    close();
-    const resumed = repository(account.userId, token, storage, fetcher);
-    try {
-      resumed.repo.setEnvironment({ active: true, online: false });
-      await resumed.repo.hydrate();
-      expect(resumed.repo.getAttempt(completion.id)?.reflection?.text).toBe(
-        'Disposable synchronization fixture.',
-      );
-      resumed.repo.setEnvironment({ active: true, online: true });
-      await expect
-        .poll(async () => {
-          await resumed.repo.synchronize();
-          return resumed.repo.store.getState().journal.operations.length;
-        })
-        .toBe(0);
-      const rows = await fixtureDatabase.query<{
-        id: string;
-        reflection_revision: number;
-        reflection_text: string | null;
-      }>(
-        'select id,reflection_revision,reflection_text from justgo.attempts where user_id=$1',
-        [account.userId],
-      );
-      expect(rows.rows).toEqual([
-        {
-          id: completion.id,
-          reflection_revision: 0,
-          reflection_text: null,
-        },
-      ]);
-      expect(calls).toBe(2);
-    } finally {
-      resumed.close();
-    }
-  } finally {
-    close();
-  }
-});
-
-test('private journal failures preserve input locally and never fall back to the real API', async ({
+test('private journal failures preserve input locally and send nothing to the API', async ({
   fixtureDatabase,
 }) => {
   const { token, account, card } = await fixtureAccount();
@@ -206,18 +120,17 @@ test('private journal failures preserve input locally and never fall back to the
     expect(repo.getAttempt(completion.id)?.reflection?.text).toBe(
       'Private failed save fixture.',
     );
-    expect(
-      writes.every((body) => !body.includes('Private failed save fixture.')),
-    ).toBe(true);
-    expect(writes.every((body) => !body.includes('reflection'))).toBe(true);
+    // No data mode uploads through the attempts API since #293 retired the
+    // legacy sender, so the server holds nothing this phone saved.
+    expect(writes).toEqual([]);
     expect(
       (
         await fixtureDatabase.query(
-          'select reflection_text,reflection_revision from justgo.attempts where user_id=$1',
+          'select id from justgo.attempts where user_id=$1',
           [account.userId],
         )
       ).rows,
-    ).toEqual([{ reflection_text: null, reflection_revision: 0 }]);
+    ).toEqual([]);
     expect(
       (
         await fixtureDatabase.query(
@@ -231,7 +144,7 @@ test('private journal failures preserve input locally and never fall back to the
   }
 });
 
-test('ten long offline submissions persist and recover with measured serialization bounds', async ({
+test('ten long submissions persist on the phone with measured serialization bounds and stay off the server', async ({
   fixtureDatabase,
 }, testInfo) => {
   const { token, account, card } = await fixtureAccount();
@@ -260,7 +173,6 @@ test('ten long offline submissions persist and recover with measured serializati
     JSON.stringify(repo.store.getState().journal);
     const serializationMs = performance.now() - serializedAt;
     expect(Object.keys(repo.store.getState().journal.records)).toHaveLength(10);
-    expect(repo.store.getState().journal.operations).toHaveLength(10);
     expect(await repo.listJournalEntries()).toHaveLength(10);
     expect(envelope).not.toContain('x'.repeat(100));
     // Regression budgets for this representative fixture; not an eviction limit.
@@ -281,8 +193,7 @@ test('ten long offline submissions persist and recover with measured serializati
       'select count(*)::text as count from justgo.attempts where user_id=$1',
       [account.userId],
     );
-    expect(count.rows[0]?.count).toBe('10');
-    expect(repo.store.getState().journal.operations).toHaveLength(0);
+    expect(count.rows[0]?.count).toBe('0');
   } finally {
     close();
   }

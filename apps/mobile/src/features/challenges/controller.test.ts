@@ -6,7 +6,6 @@ import {
   backend,
   deferred,
   owner,
-  otherOwner,
   today,
   uuid,
   zone,
@@ -123,38 +122,20 @@ it('retains the completion identity through an interrupted save and refuses give
   expect(ids).toHaveBeenCalledTimes(1);
   expect(repository.store.getState().journal.operations).toHaveLength(1);
 });
-it('finishes after phone saving while the upload remains pending', async () => {
-  await downloaded();
-  const cloud = deferred<never>();
-  // Runtime uses the actual repository; only the external transport is controlled.
-  current = new AccountRepository({
-    accountId: otherOwner,
-    storage,
-    transport: { create: () => cloud.promise, patch: () => cloud.promise },
-    today,
-    timeZone: zone,
-  });
-  await current.hydrate();
-  await current.cacheCatalog(catalog);
-  controller.changeAccount(otherOwner);
-
-  await controller.complete(start);
-  expect(controller.getSnapshot().success).toBeTruthy();
-  expect(controller.getSnapshot().saving).toBe(false);
-  current.dispose();
-  cloud.reject(new Error('cancelled fixture'));
-});
-it('allows memory-only continuation with risk when both save paths fail', async () => {
+it('keeps the completion retryable when the phone save fails', async () => {
   await downloaded();
 
   storage.fail = true;
   await controller.complete(start);
-  expect(controller.getSnapshot().success).toBeTruthy();
-  expect(repository.store.getState().warning).toMatchObject({
-    visible: true,
-    online: false,
-    storageFull: true,
+  expect(controller.getSnapshot()).toMatchObject({
+    success: null,
+    saving: false,
+    error: 'This challenge could not be recorded. Try Completed again.',
   });
+  storage.fail = false;
+  await controller.complete(start);
+  expect(controller.getSnapshot().success?.id).toBe(uuid(1));
+  expect(ids).toHaveBeenCalledTimes(1);
 });
 it('shows a first-download recovery state and clears it after a successful download', async () => {
   await controller.refresh();

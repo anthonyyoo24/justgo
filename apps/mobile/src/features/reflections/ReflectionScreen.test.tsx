@@ -92,7 +92,12 @@ it('replaces the missing-activity message with a working editor after a slow jou
   const raw = storage.values.get(`justgo:v1:${owner}:journal`)!;
   mockRepository!.dispose();
   const read = deferred<string | null>();
-  jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
+  const getItem = storage.getItem.bind(storage);
+  jest
+    .spyOn(storage, 'getItem')
+    .mockImplementation((key) =>
+      key === `justgo:v1:${owner}:journal` ? read.promise : getItem(key),
+    );
   mockRepository = new AccountRepository({
     accountId: owner,
     storage,
