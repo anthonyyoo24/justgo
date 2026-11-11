@@ -35,8 +35,8 @@ records its settings so that review can catch drift.
 2. Checks that each issue has a reproducing failing test and needs no change to
    what users see. If not, it relabels the issue `needs-decision` or comments why.
 3. Has one builder subagent open a small PR, then a separate verifier subagent post
-   a verdict on that PR's base and head. A fix in a sensitive area also gets two
-   adversarial reviewers before the PR opens.
+   a verdict on that PR's base and head. A fix in a sensitive area gets the same one
+   verifier.
 4. Stops when the queue is empty, after 2 issues in a row without a passing
    verdict, or after 10 issues.
 5. Reports a check it cannot run in the cloud, such as `test:db` without

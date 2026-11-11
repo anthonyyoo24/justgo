@@ -10,7 +10,7 @@ The last recorded deploys put the API on two staging hosts. Vercel has the old F
 
 One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA. The body is a how-to. The appendices explain and record.
 
-The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges a verified PR that touches no [Agent-effort](../../AGENTS.md#agent-effort) path. P15-3, P15-4, P15-5, P15-6, P15-7, P15-8, P15-10 and P15-11 are Anthony's items and stop at merge-ready. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
+The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges each verified PR, including those that touch an [Agent-effort](../../AGENTS.md#agent-effort) path, as Anthony decided on November 10, 2026. P15-10 still waits for his review of the notices, and P15-3 for his Vercel check, before merge. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -67,7 +67,6 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] Run the checks that the [check matrix](../../AGENTS.md#choosing-checks) names for the touched paths once before the PR-facing push. Push with hooks on.
 - [ ] Run `/deslop` before each commit when `cursor-team-kit` is installed, and run `/no-comments` before review.
 - [ ] Triage every bot and security-review comment per pstack's `references/bugbot-triage.md`.
-- [ ] P15-3, P15-4, P15-5, P15-6, P15-7, P15-8 and P15-11 each touch an Agent-effort path, so each stops at merge-ready for Anthony.
 - [ ] Rebase onto current trunk before the code-ready report and babysit. Keep that merge base in fix rounds. Rebase again only at merge prep, on a `git merge-tree` conflict with trunk, on a CI failure that comes from a change on trunk, or when a known concurrent change to the same files lands.
 
 ### Verdict and merge, for every PR
@@ -75,7 +74,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] One verifier runs at the code-ready head, per [Git and autonomy](../../AGENTS.md#git-and-autonomy). It re-runs the gates, runs the live lanes from the PR's **Verify, live** block and the perf lane from its **Verify, perf** block, then reads the diff and the receipts and distrusts the PR body. Each fix round gets a fresh verifier at the new head. A rebase or merge-conflict resolution gets one unless its verdict carries under the rule below, and a wording-only change gets none. A full swarm, per pstack's `skills/swarm/SKILL.md`, runs only when Anthony asks for one. The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the execution playbook's blocking rule. The verdict is clean when none blocks. A failure on trunk behavior in a lane marked `Regression lane against trunk.` is recorded against trunk and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in pstack's `playbooks/shipping.md`.
 - [ ] Post each verdict as a PR comment whose verdict line has the form that [AGENTS.md](../../AGENTS.md#git-and-autonomy) gives, with each SHA in backticks. The `verdict` check parses only that form. The verifier is a separate Claude agent that did not write the PR, and the comment says so.
-- [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent squash-merges its own PR when the PR touches no Agent-effort path. Anthony merges the rest.
+- [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent merges its own PR through `pnpm run merge:pr`, Agent-effort paths included.
 
 ### Boot recipe, for every live lane
 
@@ -254,10 +253,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `apps/api/src/identity/`.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Land the parked recovery checks (P15-4)
 
@@ -309,10 +308,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/backups/`.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Remove the API Worker and its release lane (P15-5)
 
@@ -370,10 +369,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/release/` and identity docs.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Add the Edge Functions entry and its CI smoke (P15-6)
 
@@ -433,10 +432,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the entry changes how sign-in and owner context run.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Support a base path in the mobile API client (P15-7)
 
@@ -488,10 +487,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the fixture prefix touches `apps/api/scripts/`.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Release staging through Supabase Edge Functions (P15-8)
 
@@ -550,10 +549,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches `scripts/release/` and a staging workflow.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Record hosted staging acceptance (P15-9)
 
@@ -662,7 +661,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries` or `docs-tests-only`.
-- [ ] Anthony merges and approves publication separately.
+- [ ] The owner merges after Anthony approves the text. Publication waits for his separate go.
 
 ## Switch builds to the function and retire the old hosts (P15-11)
 
@@ -720,10 +719,10 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA. Anthony merges it, because the PR touches release scripts and workflows.
+- [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] Anthony merges. The owner stops at merge-ready.
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Close the program
 

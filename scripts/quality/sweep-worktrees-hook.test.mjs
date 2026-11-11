@@ -5,13 +5,17 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
@@ -20,13 +24,23 @@ import {
   disposable,
   idleMs,
   localScratch,
+  prState,
+  staleLockMs,
   sweep,
+  takeOver,
   transcriptDir,
 } from '../../.claude/hooks/sweep-worktrees.mjs';
 
 const hook = fileURLToPath(
   new URL('../../.claude/hooks/sweep-worktrees.mjs', import.meta.url),
 );
+
+const author = {
+  GIT_AUTHOR_NAME: 'Sweep Test',
+  GIT_AUTHOR_EMAIL: 'sweep@example.test',
+  GIT_COMMITTER_NAME: 'Sweep Test',
+  GIT_COMMITTER_EMAIL: 'sweep@example.test',
+};
 
 function git(cwd, ...args) {
   return execFileSync(
@@ -50,8 +64,39 @@ function commit(cwd, file, text) {
   git(cwd, 'commit', '-q', '-m', `change ${file}`);
 }
 
-// A main checkout with worktrees under .claude/worktrees/, and an empty home
-// folder for chat transcripts.
+// A commit dated `seconds` (since the epoch) on top of `parent`, on no branch.
+function oldCommit(cwd, parent, seconds) {
+  const date = `@${Math.floor(seconds)} +0000`;
+  return execFileSync(
+    'git',
+    ['commit-tree', `${parent}^{tree}`, '-p', parent, '-m', 'old'],
+    {
+      cwd,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ...author,
+        GIT_AUTHOR_DATE: date,
+        GIT_COMMITTER_DATE: date,
+      },
+    },
+  ).trim();
+}
+
+// Dates every file and folder in a worktree, and its HEAD file, to `seconds`.
+function age(dir, seconds) {
+  for (const entry of readdirSync(dir, {
+    recursive: true,
+    withFileTypes: true,
+  }))
+    utimesSync(path.join(entry.parentPath, entry.name), seconds, seconds);
+  utimesSync(dir, seconds, seconds);
+  const gitDir = git(dir, 'rev-parse', '--path-format=absolute', '--git-dir');
+  utimesSync(path.join(gitDir, 'HEAD'), seconds, seconds);
+}
+
+// A main checkout whose main branch is on origin, with worktrees under
+// .claude/worktrees/, and an empty home folder for chat transcripts.
 function fixture(t) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'sweep-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -65,6 +110,7 @@ function fixture(t) {
     '.gitignore',
     'node_modules/\n.env\n.local/\n*.log\n*.key\n.claude/worktrees/\n',
   );
+  git(main, 'update-ref', 'refs/remotes/origin/main', 'main');
   const logs = [];
   return {
     main,
@@ -75,16 +121,16 @@ function fixture(t) {
       git(main, 'worktree', 'add', '-q', ...args, dir, 'main');
       return dir;
     },
-    // open: undefined stands for GitHub being unreadable, and busy:
+    // prs: undefined stands for GitHub being unreadable, and busy:
     // undefined for lsof failing.
     run({ now = Date.now() + 2 * idleMs, ...rest } = {}) {
-      const open = 'open' in rest ? rest.open : new Set();
+      const prs = 'prs' in rest ? rest.prs : [];
       const busy = 'busy' in rest ? rest.busy : [];
       const results = sweep(main, {
         now,
         home,
         busyPaths: rest.busyPaths ?? (() => busy),
-        openBranches: () => open,
+        pullRequests: () => prs,
         log: (line) => logs.push(line),
       });
       return Object.fromEntries(
@@ -100,21 +146,30 @@ const listed = (main) =>
     .filter((line) => line.startsWith('worktree '))
     .map((line) => path.basename(line.slice(9)));
 
+const archived = (main, name) =>
+  git(main, 'rev-parse', `refs/archive/worktrees/${name}`);
+
+const noRemote =
+  'keep: commit is on no remote branch and its PR is not merged or closed';
+
 test('decide keeps anything that might still be needed', () => {
   const now = 10 * idleMs;
   const idle = {
     locked: false,
     clean: true,
     kept: [],
-    saved: true,
     unsaved: '',
-    branch: '',
-    openBranches: new Set(),
+    pushed: true,
+    pr: 'none',
     busy: false,
     lastTouched: now - idleMs,
   };
   assert.equal(decide(idle, now), 'remove');
-  assert.equal(decide({ ...idle, branch: 'done' }, now), 'remove');
+  assert.equal(
+    decide({ ...idle, pushed: false, pr: 'finished' }, now),
+    'remove',
+  );
+  assert.equal(decide({ ...idle, pr: 'finished' }, now), 'remove');
   assert.equal(decide({ ...idle, locked: true }, now), 'keep: locked');
   assert.equal(
     decide({ ...idle, clean: false }, now),
@@ -125,28 +180,17 @@ test('decide keeps anything that might still be needed', () => {
     'keep: ignored files that may be unique (signing.key)',
   );
   assert.equal(
-    decide({ ...idle, saved: false }, now),
-    'keep: commit is on no branch',
-  );
-  assert.equal(
     decide(
       { ...idle, unsaved: 'a rebase, merge or bisect is in progress' },
       now,
     ),
     'keep: a rebase, merge or bisect is in progress',
   );
+  assert.equal(decide({ ...idle, pushed: false }, now), noRemote);
+  assert.equal(decide({ ...idle, pr: 'open' }, now), 'keep: open PR');
   assert.equal(
-    decide({ ...idle, branch: 'wip', openBranches: new Set(['wip']) }, now),
-    'keep: open PR',
-  );
-  assert.equal(
-    decide({ ...idle, branch: 'wip', openBranches: undefined }, now),
+    decide({ ...idle, pr: undefined }, now),
     'keep: PR state unknown',
-  );
-  assert.equal(
-    decide({ ...idle, openBranches: undefined }, now),
-    'remove',
-    'a detached worktree needs no PR state',
   );
   assert.equal(
     decide({ ...idle, busy: true }, now),
@@ -154,11 +198,38 @@ test('decide keeps anything that might still be needed', () => {
   );
   assert.equal(
     decide({ ...idle, lastTouched: now - idleMs + 1 }, now),
-    'keep: used in the last day',
+    'keep: used in the last 2 hours',
   );
 });
 
-test('only rebuildable ignored files and tool output in .local are disposable', () => {
+test('a PR that uses the branch or HEAD is open, and a merged or closed one named by the branch or a verifier checkout is finished', () => {
+  const head = 'a'.repeat(40);
+  const prs = [
+    { number: 288, state: 'MERGED', headRefName: 'done', headRefOid: 'b' },
+    { number: 291, state: 'CLOSED', headRefName: 'dropped', headRefOid: 'c' },
+    { number: 299, state: 'OPEN', headRefName: 'wip', headRefOid: head },
+    { number: 300, state: 'CLOSED', headRefName: 'redo', headRefOid: 'd' },
+    { number: 301, state: 'OPEN', headRefName: 'redo', headRefOid: 'e' },
+    { number: 3010, state: 'MERGED', headRefName: 'other', headRefOid: 'f' },
+  ];
+  const state = (name, branch = '', commit = 'z') =>
+    prState(prs, { name, branch, head: commit });
+  assert.equal(state('agent-1', 'done'), 'finished');
+  assert.equal(state('agent-1', 'dropped'), 'finished');
+  assert.equal(state('agent-1', 'wip'), 'open');
+  assert.equal(state('agent-1', 'redo'), 'open', 'a newer open PR wins');
+  assert.equal(state('agent-1', '', head), 'open', 'a checkout of its head');
+  assert.equal(state('agent-1', 'local-only'), 'none');
+  assert.equal(state('ver-288'), 'finished');
+  assert.equal(state('ver-291b'), 'finished');
+  assert.equal(state('adv-288-a'), 'finished');
+  assert.equal(state('ver-299'), 'none', 'its PR is still open');
+  assert.equal(state('ver-301'), 'none', 'not PR 3010');
+  assert.equal(state('verify-288'), 'none');
+  assert.equal(prState(undefined, { name: 'ver-288', branch: '' }), undefined);
+});
+
+test('only rebuildable ignored files are disposable, and only tool output in .local is not archived', () => {
   for (const entry of [
     'node_modules',
     'node_modules/',
@@ -183,7 +254,6 @@ test('only rebuildable ignored files and tool output in .local are disposable', 
     assert.equal(disposable(entry), false, entry);
   for (const name of [
     'postgres',
-    'postgres.log',
     'database.env',
     'journey-results',
     'journey-report',
@@ -196,10 +266,8 @@ test('only rebuildable ignored files and tool output in .local are disposable', 
     'decision-trails',
     'run.review.md',
     'pr-body.md',
-    'mutation-run.json',
-    'edge-trial',
-    'swarm',
-    'local-database-54339.mjs',
+    'postgres.log',
+    'verify-301.log',
     'verify-justgo',
   ])
     assert.equal(localScratch(name), false, name);
@@ -212,22 +280,75 @@ test('transcript folders use the chat folder with dashes for other characters', 
   );
 });
 
-test('removes idle clean worktrees, ignored files included, and keeps their branches', (t) => {
+test('removes idle clean worktrees, ignored files included, and keeps their branches and commits', (t) => {
   const repo = fixture(t);
   const detached = repo.add('verifier', '--detach');
   const merged = repo.add('merged', '-b', 'merged');
   commit(merged, 'feature.txt', 'done\n');
   const head = git(merged, 'rev-parse', 'HEAD');
+  const main = git(repo.main, 'rev-parse', 'main');
   mkdirSync(path.join(detached, 'node_modules', 'pkg'), { recursive: true });
   writeFileSync(path.join(detached, 'node_modules', 'pkg', 'index.js'), '');
-  assert.deepEqual(repo.run(), { verifier: 'remove', merged: 'remove' });
+  assert.deepEqual(
+    repo.run({
+      prs: [
+        { number: 7, state: 'MERGED', headRefName: 'merged', headRefOid: head },
+      ],
+    }),
+    { verifier: 'remove', merged: 'remove' },
+  );
   assert.equal(existsSync(detached), false);
   assert.equal(existsSync(merged), false);
   assert.deepEqual(listed(repo.main), ['main']);
   assert.equal(git(repo.main, 'rev-parse', 'merged'), head);
+  assert.equal(archived(repo.main, 'merged'), head);
+  assert.equal(archived(repo.main, 'verifier'), main);
   assert.equal(repo.logs.length, 2);
-  assert.match(repo.logs.join('\n'), /branch=\(detached\)/);
-  assert.match(repo.logs.join('\n'), new RegExp(`branch=merged head=${head}`));
+  assert.match(
+    repo.logs.join('\n'),
+    /branch=\(detached\) head=\w+ archive=refs\/archive\/worktrees\/verifier/,
+  );
+  assert.match(
+    repo.logs.join('\n'),
+    new RegExp(
+      `branch=merged head=${head} archive=refs/archive/worktrees/merged`,
+    ),
+  );
+});
+
+test('removes a verifier checkout of a merged or closed PR whose branch is gone, and archives its commit', (t) => {
+  const repo = fixture(t);
+  const heads = {};
+  for (const name of ['ver-301c', 'adv-302-a', 'ver-303', 'ver-304']) {
+    const dir = repo.add(name, '--detach');
+    commit(dir, 'pr.txt', `${name}\n`);
+    heads[name] = git(dir, 'rev-parse', 'HEAD');
+  }
+  const pr = (number, state) => ({
+    number,
+    state,
+    headRefName: `deleted-${number}`,
+    headRefOid: 'f'.repeat(40),
+  });
+  assert.deepEqual(
+    repo.run({
+      prs: [pr(301, 'MERGED'), pr(302, 'CLOSED'), pr(304, 'OPEN')],
+    }),
+    {
+      'ver-301c': 'remove',
+      'adv-302-a': 'remove',
+      'ver-303': noRemote,
+      'ver-304': noRemote,
+    },
+  );
+  for (const name of ['ver-301c', 'adv-302-a']) {
+    assert.equal(archived(repo.main, name), heads[name]);
+    assert.notEqual(
+      git(repo.main, 'for-each-ref', `--contains=${heads[name]}`),
+      '',
+      `${name} stays reachable`,
+    );
+  }
 });
 
 test('keeps worktrees with changes, unsaved commits, open PRs or a process inside', (t) => {
@@ -238,69 +359,145 @@ test('keeps worktrees with changes, unsaved commits, open PRs or a process insid
   writeFileSync(path.join(scratch, 'notes.txt'), 'draft\n');
   const orphan = repo.add('orphan', '--detach');
   commit(orphan, 'lost.txt', 'only here\n');
+  const local = repo.add('local', '-b', 'local');
+  commit(local, 'unpushed.txt', 'on a local branch only\n');
   repo.add('open-pr', '-b', 'open-pr');
+  const checkout = repo.add('checkout', '--detach');
+  commit(checkout, 'pushed.txt', 'an open PR head\n');
+  const openHead = git(checkout, 'rev-parse', 'HEAD');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/feature', openHead);
   const busy = repo.add('busy', '--detach');
   repo.add('locked', '--detach', '--lock');
   assert.deepEqual(
     repo.run({
       busy: [path.join(busy, '.local', 'postgres')],
-      open: new Set(['open-pr']),
+      prs: [
+        { number: 1, state: 'OPEN', headRefName: 'open-pr', headRefOid: 'x' },
+        {
+          number: 2,
+          state: 'OPEN',
+          headRefName: 'feature',
+          headRefOid: openHead,
+        },
+      ],
     }),
     {
       edited: 'keep: uncommitted or untracked files',
       scratch: 'keep: uncommitted or untracked files',
-      orphan: 'keep: commit is on no branch',
+      orphan: noRemote,
+      local: noRemote,
       'open-pr': 'keep: open PR',
+      checkout: 'keep: open PR',
       busy: 'keep: a running process is inside it',
       locked: 'keep: locked',
     },
   );
-  assert.equal(listed(repo.main).length, 7);
+  assert.equal(listed(repo.main).length, 9);
   assert.deepEqual(repo.logs, []);
+  assert.equal(git(repo.main, 'for-each-ref', 'refs/archive'), '');
 });
 
-test('removes tool output and local settings but keeps agent records and keys', (t) => {
+test('copies .local records into the main checkout and keeps only unique ignored files outside it', (t) => {
   const repo = fixture(t);
   const scratch = repo.add('scratch', '--detach');
   for (const dir of ['postgres', 'journey-results', 'journey-report'])
     mkdirSync(path.join(scratch, '.local', dir), { recursive: true });
+  writeFileSync(path.join(scratch, '.local', 'postgres', 'PG_VERSION'), '17\n');
   writeFileSync(path.join(scratch, '.local', 'postgres.log'), 'up\n');
   writeFileSync(path.join(scratch, '.local', 'database.env'), 'PORT=1\n');
   writeFileSync(path.join(scratch, '.env'), 'PORT=1\n');
+  mkdirSync(path.join(scratch, 'apps', 'api'), { recursive: true });
+  writeFileSync(path.join(scratch, 'apps', 'api', '.env'), 'PORT=1\n');
   writeFileSync(path.join(scratch, 'tsc.log'), 'ok\n');
   const trail = repo.add('trail', '--detach');
   mkdirSync(path.join(trail, '.local', 'decision-trails'), { recursive: true });
-  writeFileSync(path.join(trail, '.local', 'decision-trails', 'run.tsv'), '');
-  // A review beside an empty trail folder, and agent drafts beside a
-  // database, are records too.
-  const review = repo.add('review', '--detach');
-  mkdirSync(path.join(review, '.local', 'decision-trails'), {
+  writeFileSync(
+    path.join(trail, '.local', 'decision-trails', 'run.tsv'),
+    'a\n',
+  );
+  writeFileSync(path.join(trail, '.local', 'run.review.md'), 'review\n');
+  mkdirSync(path.join(trail, '.local', 'verify-justgo', 'run-1'), {
     recursive: true,
   });
-  writeFileSync(path.join(review, '.local', 'run.review.md'), 'review\n');
-  const drafts = repo.add('drafts', '--detach');
-  mkdirSync(path.join(drafts, '.local', 'postgres'), { recursive: true });
-  writeFileSync(path.join(drafts, '.local', 'pr-body.md'), 'body\n');
-  // The verify-justgo skill says cleanup never touches its evidence.
-  const evidence = repo.add('evidence', '--detach');
-  mkdirSync(path.join(evidence, '.local', 'verify-justgo', 'run-1'), {
-    recursive: true,
-  });
+  writeFileSync(
+    path.join(trail, '.local', 'verify-justgo', 'run-1', 'shot.png'),
+    'png',
+  );
   const key = repo.add('key', '--detach');
   writeFileSync(path.join(key, 'signing.key'), 'secret\n');
+  mkdirSync(path.join(key, '.local'));
+  writeFileSync(path.join(key, '.local', 'pr-body.md'), 'body\n');
   assert.deepEqual(repo.run(), {
     scratch: 'remove',
-    trail: 'keep: ignored files that may be unique (.local/decision-trails)',
-    review:
-      'keep: ignored files that may be unique (.local/decision-trails, .local/run.review.md)',
-    drafts: 'keep: ignored files that may be unique (.local/pr-body.md)',
-    evidence: 'keep: ignored files that may be unique (.local/verify-justgo)',
+    trail: 'remove',
     key: 'keep: ignored files that may be unique (signing.key)',
   });
-  assert.equal(existsSync(scratch), false);
+  const store = path.join(repo.main, '.local', 'archived-worktrees');
+  assert.deepEqual(readdirSync(path.join(store, 'scratch')).sort(), [
+    'postgres.log',
+  ]);
+  for (const [file, text] of [
+    ['decision-trails/run.tsv', 'a\n'],
+    ['run.review.md', 'review\n'],
+    ['verify-justgo/run-1/shot.png', 'png'],
+  ])
+    assert.equal(
+      readFileSync(path.join(store, 'trail', file), 'utf8'),
+      text,
+      file,
+    );
+  assert.equal(existsSync(path.join(store, 'key')), false);
+  assert.equal(existsSync(path.join(key, '.local', 'pr-body.md')), true);
 });
 
-test('keeps a worktree whose .local folder cannot be read', (t) => {
+test('archives under a new name when an earlier archive holds the name', (t) => {
+  const repo = fixture(t);
+  const earlier = oldCommit(repo.main, 'main', Date.now() / 1000 - 1000);
+  git(repo.main, 'update-ref', 'refs/archive/worktrees/reused', earlier);
+  const store = path.join(repo.main, '.local', 'archived-worktrees');
+  mkdirSync(path.join(store, 'taken'), { recursive: true });
+  writeFileSync(path.join(store, 'taken', 'old.md'), 'earlier run\n');
+  const reused = repo.add('reused', '--detach');
+  const taken = repo.add('taken', '--detach');
+  for (const dir of [reused, taken]) {
+    mkdirSync(path.join(dir, '.local'));
+    writeFileSync(path.join(dir, '.local', 'new.md'), 'this run\n');
+  }
+  assert.deepEqual(repo.run(), { reused: 'remove', taken: 'remove' });
+  const main = git(repo.main, 'rev-parse', 'main');
+  assert.equal(archived(repo.main, 'reused'), earlier);
+  assert.equal(archived(repo.main, 'reused-2'), main);
+  assert.equal(archived(repo.main, 'taken-2'), main);
+  assert.deepEqual(readdirSync(path.join(store, 'taken')), ['old.md']);
+  assert.deepEqual(readdirSync(path.join(store, 'reused-2')), ['new.md']);
+  assert.deepEqual(readdirSync(path.join(store, 'taken-2')), ['new.md']);
+});
+
+test('never overwrites an archive that a same-name worktree on the same commit left', (t) => {
+  const repo = fixture(t);
+  // An earlier verifier checkout of the same PR head left its archive.
+  git(repo.main, 'update-ref', 'refs/archive/worktrees/ver-9', 'main');
+  const store = path.join(repo.main, '.local', 'archived-worktrees');
+  mkdirSync(path.join(store, 'ver-9'), { recursive: true });
+  writeFileSync(path.join(store, 'ver-9', 'verdict.md'), 'earlier verdict\n');
+  const again = repo.add('ver-9', '--detach');
+  mkdirSync(path.join(again, '.local'));
+  writeFileSync(path.join(again, '.local', 'verdict.md'), 'later verdict\n');
+  assert.deepEqual(repo.run(), { 'ver-9': 'remove' });
+  const main = git(repo.main, 'rev-parse', 'main');
+  assert.equal(archived(repo.main, 'ver-9'), main);
+  assert.equal(archived(repo.main, 'ver-9-2'), main);
+  assert.equal(
+    readFileSync(path.join(store, 'ver-9', 'verdict.md'), 'utf8'),
+    'earlier verdict\n',
+  );
+  assert.equal(
+    readFileSync(path.join(store, 'ver-9-2', 'verdict.md'), 'utf8'),
+    'later verdict\n',
+  );
+});
+
+test('keeps a worktree whose .local folder cannot be copied', (t) => {
   const repo = fixture(t);
   const sealed = repo.add('sealed', '--detach');
   const local = path.join(sealed, '.local');
@@ -308,9 +505,7 @@ test('keeps a worktree whose .local folder cannot be read', (t) => {
   writeFileSync(path.join(local, 'run.review.md'), 'review\n');
   chmodSync(local, 0);
   try {
-    assert.deepEqual(repo.run(), {
-      sealed: 'keep: ignored files that may be unique (.local/)',
-    });
+    assert.deepEqual(repo.run(), { sealed: 'keep: could not archive it' });
   } finally {
     chmodSync(local, 0o755);
   }
@@ -370,7 +565,13 @@ test('keeps commits and operations that only the worktree holds', (t) => {
   const rewound = repo.add('rewound', '-b', 'rewound');
   commit(rewound, 'draft.txt', 'first\n');
   git(rewound, 'reset', '-q', '--hard', 'HEAD~1');
-  assert.deepEqual(repo.run(), {
+  const prs = ['amended', 'rewound'].map((branch, number) => ({
+    number,
+    state: 'MERGED',
+    headRefName: branch,
+    headRefOid: 'x',
+  }));
+  assert.deepEqual(repo.run({ prs }), {
     left: lost,
     reset: lost,
     ref: 'keep: it has refs of its own',
@@ -448,10 +649,17 @@ test('keeps the remaining steps of a cherry-pick after a conflict is committed',
   writeFileSync(path.join(picking, 'shared.txt'), 'resolved\n');
   git(picking, 'add', 'shared.txt');
   git(picking, 'commit', '-q', '--no-edit');
-  assert.deepEqual(repo.run({ open: new Set(['source']) }), {
-    source: 'keep: open PR',
-    picking: 'keep: a rebase, merge or bisect is in progress',
-  });
+  assert.deepEqual(
+    repo.run({
+      prs: [
+        { number: 1, state: 'OPEN', headRefName: 'source', headRefOid: last },
+      ],
+    }),
+    {
+      source: 'keep: open PR',
+      picking: 'keep: a rebase, merge or bisect is in progress',
+    },
+  );
 });
 
 test('keeps a notes merge stopped on a conflict', (t) => {
@@ -492,8 +700,8 @@ test('looks again for a process or a chat just before each removal', (t) => {
   assert.deepEqual(repo.run({ busyPaths }), {
     first: 'remove',
     busy: 'keep: a running process is inside it',
-    chatted: 'keep: used in the last day',
-    'own-chat': 'keep: used in the last day',
+    chatted: 'keep: used in the last 2 hours',
+    'own-chat': 'keep: used in the last 2 hours',
   });
   assert.equal(existsSync(first), false);
   assert.equal(existsSync(busy), true);
@@ -529,7 +737,7 @@ test('leaves a worktree inside another worktree to the outer one', (t) => {
   assert.equal(existsSync(outer), true);
 });
 
-test('keeps hidden edits and commits only a non-main remote branch holds', (t) => {
+test('keeps hidden edits and removes commits a remote branch holds', (t) => {
   const repo = fixture(t);
   const skipped = repo.add('skipped', '--detach');
   git(skipped, 'update-index', '--skip-worktree', '.gitignore');
@@ -539,7 +747,6 @@ test('keeps hidden edits and commits only a non-main remote branch holds', (t) =
   writeFileSync(path.join(assumed, '.gitignore'), 'local edit\n');
   const remote = repo.add('remote', '--detach');
   commit(remote, 'pushed.txt', 'on a remote branch only\n');
-  git(repo.main, 'update-ref', 'refs/remotes/origin/feature', 'HEAD');
   git(remote, 'push', '-q', '.', 'HEAD:refs/remotes/origin/feature');
   const onMain = repo.add('on-main', '--detach');
   commit(onMain, 'landed.txt', 'on origin/main\n');
@@ -547,120 +754,131 @@ test('keeps hidden edits and commits only a non-main remote branch holds', (t) =
   assert.deepEqual(repo.run(), {
     skipped: 'keep: uncommitted or untracked files',
     assumed: 'keep: uncommitted or untracked files',
-    remote: 'keep: commit is on no branch',
+    remote: 'remove',
     'on-main': 'remove',
   });
 });
 
-test('keeps branch worktrees when GitHub cannot be read', (t) => {
+test('keeps every worktree when GitHub cannot be read', (t) => {
   const repo = fixture(t);
   repo.add('branch', '-b', 'branch');
   repo.add('detached', '--detach');
-  assert.deepEqual(repo.run({ open: undefined }), {
+  assert.deepEqual(repo.run({ prs: undefined }), {
     branch: 'keep: PR state unknown',
-    detached: 'remove',
+    detached: 'keep: PR state unknown',
   });
 });
 
-test('keeps worktrees used in the last day, by git or by a chat', (t) => {
+test('keeps worktrees used in the last 2 hours, by a file outside node_modules, git or a chat', (t) => {
   const repo = fixture(t);
+  const now = Date.now();
   repo.add('fresh', '--detach');
-  assert.deepEqual(repo.run({ now: Date.now() }), {
-    fresh: 'keep: used in the last day',
+  assert.deepEqual(repo.run({ now }), {
+    fresh: 'keep: used in the last 2 hours',
   });
-  const old = (Date.now() - 3 * idleMs) / 1000;
-  const date = `@${Math.floor(old)} +0000`;
-  execFileSync(
-    'git',
-    [
-      '-c',
-      'user.name=Sweep Test',
-      '-c',
-      'user.email=sweep@example.test',
-      'commit',
-      '-q',
-      '--allow-empty',
-      '-m',
-      'old',
-    ],
-    {
-      cwd: repo.main,
-      env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
-    },
+  const old = (now - 3 * idleMs) / 1000;
+  git(repo.main, 'reset', '-q', oldCommit(repo.main, 'main', old));
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const side = oldCommit(repo.main, 'main', old);
+  git(repo.main, 'update-ref', 'refs/remotes/origin/side', side);
+  const names = [
+    'stale',
+    'modules',
+    'edited',
+    'switched',
+    'chatted',
+    'via-main',
+    'past-chat',
+  ];
+  const dirs = Object.fromEntries(
+    names.map((name) => [name, repo.add(name, '--detach')]),
   );
-  const chatted = repo.add('chatted', '--detach');
-  const viaMain = repo.add('via-main', '--detach');
-  const pastChat = repo.add('past-chat', '--detach');
-  const committed = repo.add('committed', '-b', 'committed');
-  commit(committed, 'today.txt', 'new\n');
-  const switched = repo.add('switched', '--detach');
-  // A worktree created today on an old commit is new only by its folder.
-  const created = repo.add('created', '--detach');
-  const createdHead = path.join(
-    git(created, 'rev-parse', '--path-format=absolute', '--git-dir'),
-    'HEAD',
-  );
-  utimesSync(createdHead, old, old);
-  for (const dir of [
-    repo.add('stale', '--detach'),
-    chatted,
-    committed,
-    switched,
-    viaMain,
-    pastChat,
-  ]) {
-    const gitDir = git(dir, 'rev-parse', '--path-format=absolute', '--git-dir');
-    for (const file of [dir, path.join(gitDir, 'HEAD')])
-      utimesSync(file, old, old);
-  }
-  // A checkout rewrites HEAD without touching the folder or making a commit:
-  // move to another old commit, on a branch so it counts as saved.
-  const side = execFileSync(
-    'git',
-    ['commit-tree', 'main^{tree}', '-p', 'main', '-m', 'side'],
-    {
-      cwd: repo.main,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: 'Sweep Test',
-        GIT_AUTHOR_EMAIL: 'sweep@example.test',
-        GIT_COMMITTER_NAME: 'Sweep Test',
-        GIT_COMMITTER_EMAIL: 'sweep@example.test',
-        GIT_AUTHOR_DATE: date,
-        GIT_COMMITTER_DATE: date,
-      },
-    },
-  ).trim();
-  git(repo.main, 'branch', 'side', side);
-  git(switched, 'checkout', '-q', '--detach', 'side');
-  const transcripts = transcriptDir(chatted, repo.home);
+  mkdirSync(path.join(dirs.modules, 'node_modules', 'pkg'), {
+    recursive: true,
+  });
+  mkdirSync(path.join(dirs.edited, '.local'));
+  for (const dir of Object.values(dirs)) age(dir, old);
+  // Packages installed or rebuilt in node_modules are not work. A change to
+  // any other file, ignored ones included, is.
+  writeFileSync(path.join(dirs.modules, 'node_modules', 'pkg', 'index.js'), '');
+  writeFileSync(path.join(dirs.edited, '.local', 'notes.md'), 'draft\n');
+  // A checkout rewrites HEAD without changing a file or making a commit.
+  git(dirs.switched, 'checkout', '-q', '--detach', side);
+  const transcripts = transcriptDir(dirs.chatted, repo.home);
   mkdirSync(transcripts, { recursive: true });
   writeFileSync(path.join(transcripts, 'chat.jsonl'), '{}\n');
   // A chat started in the main checkout files its transcript there, and each
-  // line names the folder its step ran in. Only a transcript from the last
-  // day counts.
+  // line names the folder its step ran in. Only a recent transcript counts.
   const mainChats = path.join(transcriptDir(repo.main, repo.home), 'chat');
   mkdirSync(path.join(mainChats, 'subagents'), { recursive: true });
   writeFileSync(
     path.join(mainChats, 'subagents', 'agent.jsonl'),
-    `${JSON.stringify({ cwd: path.join(viaMain, 'apps') })}\n`,
+    `${JSON.stringify({ cwd: path.join(dirs['via-main'], 'apps') })}\n`,
   );
   const past = path.join(mainChats, 'past.jsonl');
-  writeFileSync(past, `${JSON.stringify({ cwd: pastChat })}\n`);
+  writeFileSync(past, `${JSON.stringify({ cwd: dirs['past-chat'] })}\n`);
   utimesSync(past, old, old);
-  // A plain git status, git gc and lock files touch the index, reflog and
-  // metadata folder with no one working, so those stay recent here and must
-  // not keep the worktree. The fixture's commit is also recent, so commit
-  // with an old date first.
-  const results = repo.run({ now: Date.now() });
-  assert.equal(results.stale, 'remove');
-  assert.equal(results.chatted, 'keep: used in the last day');
-  assert.equal(results.committed, 'keep: used in the last day');
-  assert.equal(results.switched, 'keep: used in the last day');
-  assert.equal(results['via-main'], 'keep: used in the last day');
-  assert.equal(results.created, 'keep: used in the last day');
-  assert.equal(results['past-chat'], 'remove');
+  const results = repo.run({ now });
+  assert.deepEqual(
+    Object.fromEntries(names.map((name) => [name, results[name]])),
+    {
+      stale: 'remove',
+      modules: 'remove',
+      edited: 'keep: used in the last 2 hours',
+      switched: 'keep: used in the last 2 hours',
+      chatted: 'keep: used in the last 2 hours',
+      'via-main': 'keep: used in the last 2 hours',
+      'past-chat': 'remove',
+    },
+  );
+});
+
+test('runs one sweep at a time and takes over the lock of a sweep that died', (t) => {
+  const repo = fixture(t);
+  const idle = repo.add('idle', '--detach');
+  const file = path.join(repo.main, '.local', 'worktree-sweep.lock');
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `${process.pid}\n`);
+  assert.deepEqual(repo.run(), {});
+  assert.equal(existsSync(idle), true);
+  const dead = spawnSync(process.execPath, ['-e', '']).pid;
+  writeFileSync(file, `${dead}\n`);
+  assert.deepEqual(repo.run(), { idle: 'remove' });
+  assert.equal(existsSync(file), false);
+});
+
+test('takes over a lock older than the stale limit even when its PID now names a live process', (t) => {
+  const repo = fixture(t);
+  const idle = repo.add('idle', '--detach');
+  const file = path.join(repo.main, '.local', 'worktree-sweep.lock');
+  mkdirSync(path.dirname(file), { recursive: true });
+  // After a reboot, the PID a dead sweep wrote can name an unrelated process.
+  writeFileSync(file, `${process.pid}\n`);
+  const old = (Date.now() - staleLockMs - 60_000) / 1000;
+  utimesSync(file, old, old);
+  assert.deepEqual(repo.run(), { idle: 'remove' });
+  assert.equal(existsSync(idle), false);
+  assert.equal(existsSync(file), false);
+});
+
+test('a sweep that judged a lock stale never removes a fresh lock another sweep took first', (t) => {
+  const dir = realpathSync(mkdtempSync(path.join(tmpdir(), 'sweep-lock-')));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'worktree-sweep.lock');
+  const dead = spawnSync(process.execPath, ['-e', '']).pid;
+  writeFileSync(file, `${dead}\n`);
+  const old = (Date.now() - staleLockMs - 60_000) / 1000;
+  utimesSync(file, old, old);
+  const judged = statSync(file);
+  // Between that look and the takeover, another sweep replaced the stale
+  // lock with its own.
+  rmSync(file);
+  writeFileSync(file, `${process.pid}\n`);
+  assert.equal(takeOver(file, judged), false);
+  assert.equal(readFileSync(file, 'utf8'), `${process.pid}\n`);
+  assert.deepEqual(readdirSync(dir), ['worktree-sweep.lock']);
+  assert.equal(takeOver(file, statSync(file)), true);
+  assert.deepEqual(readdirSync(dir), []);
 });
 
 test('leaves worktrees outside .claude/worktrees and does nothing from a linked worktree', (t) => {
@@ -677,7 +895,7 @@ test('leaves worktrees outside .claude/worktrees and does nothing from a linked 
       now: Date.now() + 2 * idleMs,
       home: repo.home,
       busyPaths: () => [],
-      openBranches: () => new Set(),
+      pullRequests: () => [],
       log: () => assert.fail('nothing should be removed'),
     }),
     [],
@@ -714,4 +932,58 @@ test('the hook exits 0 silently, inside or outside a repository', (t) => {
     existsSync(path.join(repo.main, '.local', 'worktree-sweep.log')),
     false,
   );
+  assert.equal(existsSync(path.join(outside, '.local')), false);
+});
+
+test('--detach returns at once and the sweep finishes in its own process', async (t) => {
+  const repo = fixture(t);
+  const old = (Date.now() - 3 * idleMs) / 1000;
+  git(repo.main, 'reset', '-q', oldCommit(repo.main, 'main', old));
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const idle = repo.add('idle', '--detach');
+  age(idle, old);
+  // A stand-in gh that lists no PRs, so the sweep can read GitHub offline.
+  const bin = path.join(repo.home, 'bin');
+  mkdirSync(bin);
+  writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\necho "[]"\n');
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const result = spawnSync(process.execPath, [hook, '--detach'], {
+    cwd: repo.main,
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: repo.main,
+      HOME: repo.home,
+      PATH: `${bin}:${process.env.PATH}`,
+    },
+    encoding: 'utf8',
+    timeout: 10_000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+  const log = path.join(repo.main, '.local', 'worktree-sweep.log');
+  const lock = path.join(repo.main, '.local', 'worktree-sweep.lock');
+  for (let i = 0; i < 300 && (!existsSync(log) || existsSync(lock)); i += 1)
+    await sleep(100);
+  assert.match(
+    readFileSync(log, 'utf8'),
+    /removed .*\/idle branch=\(detached\) head=\w+ archive=refs\/archive\/worktrees\/idle\n/,
+  );
+  assert.equal(existsSync(idle), false);
+});
+
+test('a chat that starts or ends in the main checkout starts a detached sweep', () => {
+  const { hooks } = JSON.parse(
+    readFileSync(new URL('../../.claude/settings.json', import.meta.url)),
+  );
+  const command =
+    'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs" --detach';
+  const sweeps = (event) =>
+    hooks[event].flatMap((group) =>
+      group.hooks
+        .filter((entry) => entry.command === command)
+        .map(() => group.matcher ?? 'any'),
+    );
+  assert.deepEqual(sweeps('SessionStart'), ['startup']);
+  assert.deepEqual(sweeps('SessionEnd'), ['any']);
 });

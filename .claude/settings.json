@@ -16,9 +16,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\" --detach",
             "async": true,
-            "timeout": 3600
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\" --detach",
+            "timeout": 5
           }
         ]
       }
@@ -43,6 +54,11 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/verifier-model.mjs\"",
             "timeout": 15,
             "onFailure": "block"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/review-rounds-guard.mjs\"",
+            "timeout": 60
           }
         ]
       },

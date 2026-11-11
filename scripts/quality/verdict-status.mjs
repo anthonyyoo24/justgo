@@ -8,8 +8,11 @@ const verdictLine =
 const verdictMention = /verifier[\s*_]+verdicts?|\bverdicts?[ \t*_]*:/i;
 // Every verdict also says whether the change is sensitive, on a line of its own.
 const sensitiveLine = /^[ \t]*\**Sensitive:\**[ \t]*\**(yes|no)\**[ \t]*$/gim;
+// Only a shown defect blocks. A FAIL also names the check that broke on the
+// head and what it printed, on a line of its own.
+const failureLine = /^[ \t]*\**Failure shown:[ \t*]*[^\s*]/im;
 export const verdictFormat =
-  'Verifier verdict: PASS|PASS+NOTES|FAIL on base `<base-sha>`, head `<head-sha>`, followed by a line `Sensitive: yes` or `Sensitive: no`';
+  'Verifier verdict: PASS|PASS+NOTES|FAIL on base `<base-sha>`, head `<head-sha>`, followed by a line `Sensitive: yes` or `Sensitive: no`, and for a FAIL a line `Failure shown: <the command or test that broke on the head, and what it printed>`';
 const verdictPatch = fileURLToPath(
   new URL('./verdict-patch.mjs', import.meta.url),
 );
@@ -30,6 +33,7 @@ export function newestVerdict(comments) {
         base,
         head,
         sensitive: flag[1].toLowerCase() === 'yes',
+        ...(verdict === 'FAIL' && { failureShown: failureLine.test(body) }),
         url: comment.html_url,
       };
     }
@@ -53,6 +57,11 @@ export function verdictStatus(comments, pr, check) {
     };
   const named = `The newest verdict (${found.url}) is ${found.verdict} on base ${found.base}, head ${found.head}.`;
   const rerun = `Then rerun this check with \`gh run rerun ${pr.runId ?? '<run-id>'} --failed\`.`;
+  if (found.verdict === 'FAIL' && !found.failureShown)
+    return {
+      ok: false,
+      message: `${named} It has no \`Failure shown:\` line, so it shows no defect. Only a shown defect blocks a PR. Post a fresh verdict on head ${pr.head}: a FAIL with a line \`Failure shown: <the command or test that broke on the head, and what it printed>\`, or PASS+NOTES with each note filed as an issue or left for a follow-up PR. ${rerun}`,
+    };
   if (found.verdict === 'FAIL')
     return {
       ok: false,
