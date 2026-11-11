@@ -22,6 +22,8 @@ import {
   attempt,
   backend,
   card,
+  deckFields,
+  deckPreferences,
   input,
   owner,
   otherOwner,
@@ -220,6 +222,19 @@ afterEach(() =>
   }),
 );
 
+it('keeps saved deck order and venue out of iCloud records', async () => {
+  const { repository, sync, remote } = setup();
+  repository.deckPreferences.save(deckPreferences);
+  await repository.complete(input(), card);
+  await repository.submitReflection(uuid(1), uuid(2), { text: 'Kept' });
+  await expect(repository.deckPreferences.read()).resolves.toEqual(
+    deckPreferences,
+  );
+  await sync.synchronize();
+  const records = JSON.stringify([...remote.records().values()]);
+  expect(records).toContain('Kept');
+  expect(records).not.toMatch(deckFields);
+});
 it('adopts local writing without touching never-used disabled iCloud', async () => {
   const { repository, sync, remote } = setup();
   await remote.transport.setEnabled(false);
