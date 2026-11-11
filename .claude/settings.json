@@ -79,6 +79,16 @@
         ]
       },
       {
+        "matcher": "Agent|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sync-main.mjs\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "mcp__ccd_session__start_session|mcp__ccd_session_mgmt__set_session_model",
         "hooks": [
           {
