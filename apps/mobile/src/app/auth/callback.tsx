@@ -13,7 +13,17 @@ export default function AuthCallbackRoute() {
   const state = useIdentity();
   const { identity } = useRuntime();
   const router = useRouter();
-  if (state.account) return <Redirect href="/access" />;
+  if (state.account)
+    return (
+      <Redirect
+        href={
+          // An abandoned provider switch returns to the Account page it began on.
+          'switchCancelled' in state && state.switchCancelled
+            ? '/recovery'
+            : '/access'
+        }
+      />
+    );
   return (
     <Screen title="Signing in">
       {state.busy || !state.initialized ? (

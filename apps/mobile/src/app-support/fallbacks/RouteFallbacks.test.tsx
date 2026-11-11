@@ -86,6 +86,8 @@ it('keeps showing the error screen when a retry fails again', async () => {
   ).toBe(true);
 });
 
+// Go home enters the unprotected gate, because replacing the URL with the
+// protected `/` can do nothing while access is unavailable.
 it('shows unknown links as not found and enters the access gate', async () => {
   const navigation = await renderRouter(
     {
