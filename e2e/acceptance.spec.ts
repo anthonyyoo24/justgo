@@ -45,6 +45,10 @@ test('Welcome shows provider logos above Continue, opens direct documents and co
     await expect(continueButton).toBeVisible();
     await expect(apple.locator('svg')).toHaveCount(1);
     await expect(google.locator('svg')).toHaveCount(1);
+    await expect(continueButton).toBeInViewport({ ratio: 1 });
+    await google.evaluate((button) =>
+      button.scrollIntoView({ block: 'center' }),
+    );
     await expect(async () => {
       const [a, g, c] = await Promise.all([
         apple.boundingBox(),
