@@ -104,7 +104,8 @@ function succeeds(cwd, args, timeout) {
 // Ignored paths that a command rebuilds: installed packages, build output,
 // logs and the loopback `apps/<name>/.env` files `pnpm run db:local` writes.
 // Every other ignored path outside .local/, such as a `*.key`, a root or
-// nested `.env` or `apps/mobile/ios/`, keeps the worktree.
+// nested `.env`, an `apps/<name>/.env/` directory or `apps/mobile/ios/`,
+// keeps the worktree.
 const rebuilt = new Set(['node_modules', 'dist', '.expo', 'coverage']);
 
 export function disposable(entry) {
@@ -114,7 +115,7 @@ export function disposable(entry) {
     rebuilt.has(name) ||
     name === 'expo-env.d.ts' ||
     name === '.DS_Store' ||
-    /^apps\/[^/]+\/\.env$/.test(file) ||
+    /^apps\/[^/]+\/\.env$/.test(entry) ||
     /\.(log|tsbuildinfo)$/.test(name)
   );
 }
