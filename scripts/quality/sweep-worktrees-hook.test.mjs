@@ -133,6 +133,7 @@ function fixture(t) {
         pullRequests: () => prs,
         log: (line) => logs.push(line),
         remove: rest.remove,
+        removeTimeout: rest.removeTimeout,
       });
       return Object.fromEntries(
         results.map((entry) => [path.basename(entry.path), entry.verdict]),
@@ -784,7 +785,7 @@ test('locks a refused removal that cannot move back, and later sweeps keep it', 
     aside = worktree;
     writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
     writeFileSync(refused, '');
-    return false;
+    return 'refused';
   };
   assert.deepEqual(repo.run({ remove: refuse }), {
     refused: 'keep: git refused the removal',
@@ -795,6 +796,97 @@ test('locks a refused removal that cannot move back, and later sweeps keep it', 
     git(repo.main, 'worktree', 'list', '--porcelain'),
     /^locked git refused the sweep's removal/m,
   );
+});
+
+const stoppedVerdict =
+  'keep: removal stopped partway; the next sweep finishes it';
+
+// #275, fix round 1 on #364
+test('finishes a removal the time limit stopped partway, without --force', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const killed = repo.add('killed', '--detach');
+  const timedOut = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: timedOut }), { killed: stoppedVerdict });
+  assert.deepEqual(repo.run(), {}, 'the next sweep finishes it');
+  assert.equal(existsSync(killed), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+  assert.match(repo.logs.at(-1), /^finished removing /);
+});
+
+test('a real removal past its time limit is finished by the next sweep', (t) => {
+  const repo = fixture(t);
+  const slow = repo.add('slow', '--detach');
+  assert.deepEqual(repo.run({ removeTimeout: 1 }), { slow: stoppedVerdict });
+  assert.equal(existsSync(slow), false, 'it waits in the trash');
+  assert.deepEqual(repo.run(), {});
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a removal git gives up on after deleting files stays in the trash and is finished', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('failed', '--detach');
+  const failsPartway = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'refused';
+  };
+  assert.deepEqual(repo.run({ remove: failsPartway }), {
+    failed: stoppedVerdict,
+  });
+  repo.run();
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a stopped removal changed in the trash since is kept there', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('edited', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  repo.run({ remove: stopped });
+  writeFileSync(path.join(aside, 'draft.txt'), 'new\n');
+  repo.run();
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+  assert.deepEqual(listed(repo.main), ['main', 'edited']);
+});
+
+test('a stopped removal of a worktree changed since its check goes back', (t) => {
+  const repo = fixture(t);
+  const changed = repo.add('changed', '--detach');
+  const stopped = (worktree) => {
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), {
+    changed: 'keep: git refused the removal',
+  });
+  assert.equal(readFileSync(path.join(changed, 'draft.txt'), 'utf8'), 'new\n');
+});
+
+test('a box in the trash that holds files but no worktree git knows is kept', (t) => {
+  const repo = fixture(t);
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const kept = path.join(trash, 'moved-abc', 'moved', 'notes.md');
+  mkdirSync(path.dirname(kept), { recursive: true });
+  writeFileSync(kept, 'mine\n');
+  const hollow = path.join(trash, 'hollow-abc', 'hollow');
+  mkdirSync(hollow, { recursive: true });
+  repo.run();
+  assert.equal(readFileSync(kept, 'utf8'), 'mine\n');
+  assert.equal(existsSync(path.dirname(hollow)), false);
 });
 
 test('leaves a worktree inside another worktree to the outer one', (t) => {
