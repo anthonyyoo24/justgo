@@ -417,6 +417,12 @@ class ReactNativeDelegate:`,
     ])
       expect(contents).not.toContain(`options.${absent}`);
   });
+  it('calls no native Sentry API but start, so a scope, span or attachment call needs review', async () => {
+    const contents = await evaluate();
+    expect([
+      ...new Set(contents.match(/\b(?:SentrySDK|scope|span)\.\w+/gi)),
+    ]).toEqual(['SentrySDK.start']);
+  });
   it('keeps cached numeric version/build metadata ahead of the upgraded binary fallback', async () => {
     const contents = await evaluate();
     for (const text of [
