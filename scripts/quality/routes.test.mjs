@@ -6,6 +6,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { getFileInfo } from 'prettier';
+import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 const { getRoutes } = require('expo-router/internal/routing');
@@ -93,6 +94,51 @@ test('the root stack declares actual hoisted routes and keeps the access gate fi
     ),
     false,
   );
+});
+
+test('the installation preference providers wrap the account and access providers', () => {
+  const preferences = [
+    'MotionPreferencesProvider',
+    'HapticsPreferencesProvider',
+  ];
+  const renders = [];
+  const sourceRoot = join(appRoot, '..');
+  for (const path of files(sourceRoot).filter(
+    (path) => path.endsWith('.tsx') && !/\.test\.tsx$/.test(path),
+  )) {
+    const source = ts.createSourceFile(
+      path,
+      readFileSync(path, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    (function visit(node, ancestors) {
+      let inner = ancestors;
+      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const tag = (
+          ts.isJsxElement(node) ? node.openingElement : node
+        ).tagName.getText(source);
+        renders.push({ file: relative(sourceRoot, path), tag, ancestors });
+        inner = [...ancestors, tag];
+      }
+      ts.forEachChild(node, (child) => visit(child, inner));
+    })(source, []);
+  }
+  const appProviders = renders.filter(({ tag }) => tag === 'AppProvider');
+  assert.ok(appProviders.length > 0, 'AppProvider is rendered');
+  for (const render of renders.filter(({ tag }) => preferences.includes(tag)))
+    assert.equal(
+      render.file,
+      join('app', '_layout.tsx'),
+      `${render.tag} renders only in the root layout, once per installation`,
+    );
+  for (const render of appProviders)
+    for (const tag of preferences)
+      assert.ok(
+        render.ancestors.includes(tag),
+        `${render.file} renders AppProvider outside ${tag}. Keep ${tag} above AppProvider, because the preference belongs to the installation, not to an account`,
+      );
 });
 
 test('mobile and CI typechecking generate route types before TypeScript reads them', () => {
