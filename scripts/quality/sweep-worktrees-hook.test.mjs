@@ -256,6 +256,9 @@ test('only rebuildable ignored files are disposable, and only tool output in .lo
     'apps/.env',
     'apps/api/config/.env',
     'packages/contracts/.env',
+    // #349: git lists an ignored directory with a trailing slash, and an
+    // apps/<name>/.env directory may hold a key such as key.pem.
+    'apps/api/.env/',
     'output/',
     '.wrangler/',
   ])
