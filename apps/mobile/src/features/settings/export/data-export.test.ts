@@ -1,3 +1,4 @@
+import { strFromU8, unzipSync } from 'fflate';
 import { readDataBackup } from '../../../data/backup/data-backup';
 import { AccountRepository } from '../../../data/activity/repository';
 import { collectExport } from './data-export';
@@ -12,6 +13,8 @@ import {
   uuid,
   zone,
   attempt,
+  deckFields,
+  deckPreferences,
   deferred,
 } from '../../../../test-support/journal';
 
@@ -72,6 +75,22 @@ it('downloads the durable guest history, exact private writing and preferences w
   });
   expect(data.preferences).toEqual({ reduceMotion: false, haptics: true });
   expect(sync).not.toHaveBeenCalled();
+});
+
+it('keeps saved deck order and venue out of the archive', async () => {
+  const ctx = await setup();
+  ctx.repository.deckPreferences.save(deckPreferences);
+  await ctx.repository.complete(input(), card);
+  await ctx.repository.submitReflection(uuid(1), uuid(10), { text: 'Kept' });
+  await expect(ctx.repository.deckPreferences.read()).resolves.toEqual(
+    deckPreferences,
+  );
+  const archive = await ctx.collect();
+  const files = Object.values(unzipSync(archive.bytes)).map((file) =>
+    strFromU8(file),
+  );
+  expect(files.join('\n')).toContain('Kept');
+  expect(files.join('\n')).not.toMatch(deckFields);
 });
 
 it('refreshes the complete signed-in history before taking the local download snapshot', async () => {
