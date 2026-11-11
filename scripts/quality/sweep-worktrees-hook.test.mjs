@@ -238,6 +238,7 @@ test('only rebuildable ignored files are disposable, and only tool output in .lo
     'apps/mobile/.expo/',
     'apps/mobile/expo-env.d.ts',
     'apps/api/.env',
+    'apps/mobile/.env',
     'coverage/',
     'tsc.log',
     'apps/mobile/tsconfig.tsbuildinfo',
@@ -248,6 +249,13 @@ test('only rebuildable ignored files are disposable, and only tool output in .lo
     'AuthKey.p8',
     'signing.key',
     'apps/api/.env.staging',
+    // #308: only the apps/<name>/.env files `pnpm run db:local` writes are
+    // rebuilt, so any other .env may be the only copy of a key.
+    '.env',
+    'e2e/.env',
+    'apps/.env',
+    'apps/api/config/.env',
+    'packages/contracts/.env',
     'output/',
     '.wrangler/',
   ])
@@ -405,7 +413,6 @@ test('copies .local records into the main checkout and keeps only unique ignored
   writeFileSync(path.join(scratch, '.local', 'postgres', 'PG_VERSION'), '17\n');
   writeFileSync(path.join(scratch, '.local', 'postgres.log'), 'up\n');
   writeFileSync(path.join(scratch, '.local', 'database.env'), 'PORT=1\n');
-  writeFileSync(path.join(scratch, '.env'), 'PORT=1\n');
   mkdirSync(path.join(scratch, 'apps', 'api'), { recursive: true });
   writeFileSync(path.join(scratch, 'apps', 'api', '.env'), 'PORT=1\n');
   writeFileSync(path.join(scratch, 'tsc.log'), 'ok\n');
@@ -427,11 +434,25 @@ test('copies .local records into the main checkout and keeps only unique ignored
   writeFileSync(path.join(key, 'signing.key'), 'secret\n');
   mkdirSync(path.join(key, '.local'));
   writeFileSync(path.join(key, '.local', 'pr-body.md'), 'body\n');
+  // #308: a root or nested .env outside apps/<name>/ may hold a unique key.
+  const env = repo.add('env', '--detach');
+  writeFileSync(path.join(env, '.env'), 'STAGING_SERVICE_KEY=unique\n');
+  mkdirSync(path.join(env, 'e2e'));
+  writeFileSync(path.join(env, 'e2e', '.env'), 'X=unique\n');
   assert.deepEqual(repo.run(), {
     scratch: 'remove',
     trail: 'remove',
     key: 'keep: ignored files that may be unique (signing.key)',
+    env: 'keep: ignored files that may be unique (.env, e2e/.env)',
   });
+  assert.equal(
+    readFileSync(path.join(env, '.env'), 'utf8'),
+    'STAGING_SERVICE_KEY=unique\n',
+  );
+  assert.equal(
+    readFileSync(path.join(env, 'e2e', '.env'), 'utf8'),
+    'X=unique\n',
+  );
   const store = path.join(repo.main, '.local', 'archived-worktrees');
   assert.deepEqual(readdirSync(path.join(store, 'scratch')).sort(), [
     'postgres.log',
