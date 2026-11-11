@@ -3,7 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { newestVerdictOf } from '../../scripts/quality/merge-order.mjs';
 import { runVerdictPatch } from '../../scripts/quality/verdict-status.mjs';
-import { isVerifier } from './verifier-model.mjs';
+import { isVerifier, thisRepo } from './verifier-model.mjs';
 
 // PreToolUse hook on Agent. It stops review loops, as AGENTS.md "Review
 // rounds" says. It denies a verifier on an open PR in two cases:
@@ -21,19 +21,27 @@ import { isVerifier } from './verifier-model.mjs';
 // time: every git, GitHub and verdict-patch call shares one budget that ends
 // well before the hook timeout in settings.json.
 
-// A reference is one PR (`PR #7`, a `/pull/7` link) or a list (`PRs #7, #8
+// A reference is one PR (`PR #7`, a GitHub pull link) or a list (`PRs #7, #8
 // and #9`). Each listed number keeps its `#`, so `PR #7, 2 files` names one PR.
+// A link names its repository, as verifier-model.mjs reads it, so a link to
+// another repository, such as a pstack PR being ported, and the numbers
+// listed after it name no JustGO PR.
 const prReference =
-  /(?:\bPRs?\s*#|\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
+  /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
 const anotherRound = /^[ \t]*\**Another round:\**[ \t]*\S/im;
 const maxFails = 3;
 export const budgetMs = 45000;
 const callMs = 15000;
 
+// JustGO's PR numbers in a text. Only digits after `#` or `/pull/` count, so
+// the digits in a repository name never do.
 const numbersIn = (text) => [
   ...new Set(
-    [...(text ?? '').matchAll(prReference)].flatMap(([list]) =>
-      list.match(/\d+/g),
+    [...(text ?? '').matchAll(prReference)].flatMap(
+      ([list, repo = thisRepo]) =>
+        repo.toLowerCase() === thisRepo
+          ? list.match(/(?<=#|\/pull\/)\d+/g)
+          : [],
     ),
   ),
 ];
