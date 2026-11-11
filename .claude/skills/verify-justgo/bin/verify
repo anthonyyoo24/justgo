@@ -83,8 +83,59 @@ stop)
   fi
   exit "$status"
   ;;
+worktree)
+  common=$(git rev-parse --path-format=absolute --git-common-dir)
+  if [ "$(git rev-parse --path-format=absolute --git-dir)" = "$common" ]; then
+    echo "bin/verify worktree runs in a linked worktree, not the main checkout" >&2
+    exit 2
+  fi
+  main=$(dirname "$common")
+  case "${1:-}" in
+  prepare)
+    # db:local uses ./.local, so a worktree shares the main checkout's cluster
+    # through a link instead of starting a second one on the same port.
+    if [ -L .local ]; then
+      if [ "$(readlink .local)" != "$main/.local" ]; then
+        echo ".local links to $(readlink .local), not $main/.local. Remove the link and rerun." >&2
+        exit 1
+      fi
+    elif [ -e .local ]; then
+      echo ".local is a folder here. Move anything you need out of it, remove it and rerun." >&2
+      exit 1
+    else
+      ln -s "$main/.local" .local
+    fi
+    # Linked packages let Metro serve another checkout's transform. Removing a
+    # link leaves its target alone, and the install clones from the pnpm store.
+    for dir in . apps/mobile apps/api packages/contracts; do
+      if [ -L "$dir/node_modules" ]; then rm "$dir/node_modules"; fi
+    done
+    pnpm install --frozen-lockfile
+    # Starts the shared database and writes only missing apps/*/.env files.
+    pnpm run db:local
+    echo "Prepared. .local links to $main/.local. Run bin/verify doctor, then drive."
+    ;;
+  teardown)
+    here=$(pwd -P)
+    if [ -f .local/verify-justgo/serving.json ] &&
+      [ "$(node -p 'require("./.local/verify-justgo/serving.json").root')" = "$here" ]; then
+      echo "This checkout is serving. Run bin/verify stop first." >&2
+      exit 1
+    fi
+    if [ -L .local ]; then
+      rm .local
+      echo "Removed the .local link. Evidence stays in $main/.local/verify-justgo."
+    fi
+    echo "From $main, run: git worktree remove $here"
+    ;;
+  *)
+    echo "Usage: bin/verify worktree prepare | teardown" >&2
+    exit 2
+    ;;
+  esac
+  ;;
 *)
-  echo "Usage: bin/verify doctor | drive <feature> | serve | stop" >&2
+  echo "Usage: bin/verify doctor | drive <feature> | serve | stop | worktree prepare|teardown" >&2
   exit 2
   ;;
 esac
