@@ -11,7 +11,7 @@ Run every command from the repository root. `bin/` paths below are relative to t
 
 ## Launch
 
-Two modes share one local stack: Postgres 17 on `127.0.0.1:54329` (database `justgo_test`), the fixture API on `127.0.0.1:3000` (`apps/api/scripts/challenge-dev.ts`, the same server `pnpm --filter @justgo/api run dev:challenges` runs) and Expo web on `127.0.0.1:8081`.
+Two modes share one local stack: Postgres 17 on `127.0.0.1:54329` (database `justgo_test`), the fixture API on `127.0.0.1:3000` (`apps/api/scripts/challenge-dev.ts`, the same server `pnpm --filter @justgo/api run dev:challenges` runs) and Expo web on `127.0.0.1:8081`. In a linked worktree, run `bin/verify worktree prepare` once before either mode.
 
 - **Scripted drive (evidence).** `bin/verify drive <feature>...`, for example `bin/verify drive challenge` or `bin/verify drive welcome challenge progress account data`. It starts the database (`pnpm run db:local`, which also creates the cluster, roles and missing `.env` files on a fresh checkout), then runs `pnpm run test:journey` with this skill's `verify.config.ts`. The wrapper validates the loopback database roles, refuses occupied ports, builds contracts, migrates (migrations seed the challenge catalog), starts both services, runs the drives and stops the services. Ready is built in: each drive waits for the deck's `Accept challenge` button before acting.
 - **Saved journeys.** `pnpm run test:journey` runs every journey spec in `e2e/` except the exported-web smoke (`testIgnore` in `e2e/playwright.config.ts`) through the same wrapper, and `pnpm run test:journey e2e/<name>.spec.ts` runs one. Install the pinned browser first with `pnpm exec playwright install chromium`. Failures write `.local/journey-results` and `.local/journey-report`.
@@ -64,12 +64,14 @@ For pane checks, save screenshots under the same run folder and read `read_netwo
   sessionStorage.clear();
   ```
 
+- Before `git worktree remove`, run `bin/verify worktree teardown`. The `.local/` ignore rule matches only folders, so git lists the `.local` link as untracked and `git worktree remove` refuses the worktree. While the link exists, stage files by name, not with `git add -A`.
 - `bin/verify stop` also stops the database when a `bin/verify` command started it (marker `.local/verify-justgo/database-started`). Otherwise it leaves the database running. Never stop a database or kill a process by name.
 - Cleanup never touches `.local/verify-justgo/<run-id>/`. Confirm the evidence is still there before you report.
 
 ## Helpers
 
-- `bin/verify doctor | drive <feature>... | serve | stop`: the entry point. Run it from the repository root.
+- `bin/verify doctor | drive <feature>... | serve | stop | worktree prepare|teardown`: the entry point. Run it from the repository root.
+- `bin/verify worktree prepare`: in a linked worktree, links `.local` to the main checkout's, replaces any linked `node_modules` with `pnpm install --frozen-lockfile` and runs `db:local`, which writes the missing `.env` files. It refuses in the main checkout and when `.local` is a folder or links elsewhere. `bin/verify worktree teardown` refuses while this worktree is serving, removes only the `.local` link and prints the `git worktree remove` command to run from the main checkout.
 - `bin/doctor.ts`: the read-only health report behind `doctor`.
 - `bin/serve.ts start|stop`: starts and stops the interactive services and records their process groups.
 - `drives/evidence.ts`: `capture` and `writeProof` for screenshots, accessibility trees and side-effect proofs.
@@ -84,7 +86,7 @@ Run one instance per machine and one drive at a time. Queue further drives into 
 
 - Ports: the harness binds `127.0.0.1:3000` and `:8081` and refuses occupied ports before migrating. `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` move them, but that only separates sockets.
 - Base path: `JUSTGO_JOURNEY_API_PREFIX=/functions/v1/api` mounts the fixture API under that path on the same loopback port, for drives, journeys, `serve` and `doctor`. The app is then built with `http://127.0.0.1:3000/functions/v1/api`, and every API request path must start with `/functions/v1/api/v1/`. Set the variable for every command of the run, `doctor` and `stop` included. `JUSTGO_JOURNEY_API_TRAILING_SLASH=1` builds the app with that base plus one `/`, to check that the client drops it. Neither variable can change the host.
-- Database: every instance shares the one `justgo_test` database in the main checkout's `.local/postgres`, and every launch migrates it. A second worktree on another branch can migrate it ahead of this checkout. Doctor reports that. `db:local` uses the current folder's `.local`, so in a fresh worktree it creates a second cluster on the same port. Symlink the worktree's `.local` to the main checkout's before `db:local`, and let `db:local` write the missing `.env` files. Do not copy the hosted-origin `apps/mobile/.env.local` or `.env.development.local`.
+- Database: every instance shares the one `justgo_test` database in the main checkout's `.local/postgres`, and every launch migrates it. A second worktree on another branch can migrate it ahead of this checkout. Doctor reports that. `db:local` uses the current folder's `.local`, so in a fresh worktree it creates a second cluster on the same port. `bin/verify worktree prepare` links the worktree's `.local` to the main checkout's before `db:local`, so `db:local` reuses that cluster and writes only the missing `.env` files. Do not copy the hosted-origin `apps/mobile/.env.local` or `.env.development.local`.
 - Data: lanes on one instance stay apart through fixture accounts. Each run's fixture API registers only its own accounts and rate-limit buckets, and teardown deletes only those.
 - Memory: one launched instance plus headless Chromium took system free memory from 64% down to 31-36% across two runs on the owner's 8 GB Mac.
 - Do not run `pnpm run test:journey`, `pnpm run test:db` or `pnpm run test:coverage` while an instance is serving. They use the same ports or database.
@@ -102,7 +104,7 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 
 ## Gotchas
 
-- Running from a worktree: before Metro, `serve`, `drive` or the journeys, run `pnpm install --frozen-lockfile` in the worktree. It clones every package from the shared pnpm store, so it takes seconds and adds almost no disk. Never symlink `node_modules` from another checkout. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. Check `test ! -L node_modules` before you trust a worktree run. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
+- Running from a worktree: before Metro, `serve`, `drive` or the journeys, run `bin/verify worktree prepare` in the worktree. Its `pnpm install --frozen-lockfile` clones every package from the shared pnpm store, so it takes seconds and adds almost no disk. Never symlink `node_modules` from another checkout. Doctor reports a linked `node_modules` as broken. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
 - Never verify with `pnpm run dev:web`, `dev:api` or `dev:mobile`. The saved mobile `.env` files point at hosted staging, and Expo's virtual env can prefer `.env.local` even when CLI variables override it. `serve` and `drive` replace that module with the guarded journey environment. Doctor checks the served bundle.
 - `justgo_test` keeps rows from earlier runs (42 users on 2026-11-05). Compare doctor counts before and after instead of expecting zero.
 - Expo logs `Unable to run simctl` when Command Line Tools are selected. Web runs ignore it.
