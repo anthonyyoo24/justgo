@@ -161,7 +161,7 @@ Deferred beta recovery work:
 
 **Cutover**
 
-Anthony's November 1 decision makes phone testing the next owner checkpoint before proceeding beyond migration acceptance. Land the remaining changes as small PRs from `main` under [Git and autonomy](../../AGENTS.md#git-and-autonomy). Agents merge verified PRs, and Anthony merges the sensitive areas that section names. An earlier owner-only synthetic Dev check may use the guarded Cloudflare launcher option under [development builds](../operations/DEVELOPMENT_BUILDS.md#run-the-development-server), once a compatible binary and genuine disposable identity are available. Preserve the final TestFlight/publication/cutover prerequisites below; general continuation does not approve a tag push, new build or release.
+Anthony's November 1 decision makes phone testing the next owner checkpoint before proceeding beyond migration acceptance. Land the remaining changes as small PRs from `main` under [Git and autonomy](../../AGENTS.md#git-and-autonomy). Agents merge verified PRs. An earlier owner-only synthetic Dev check may use the guarded Cloudflare launcher option under [development builds](../operations/DEVELOPMENT_BUILDS.md#run-the-development-server), once a compatible binary and genuine disposable identity are available. Preserve the final TestFlight/publication/cutover prerequisites below; general continuation does not approve a tag push, new build or release.
 
 With Anthony's go, a code-only phone-test release may deploy a committed branch
 through the [local staging lane](../operations/SERVER_RELEASES.md#local-branch-staging-tests),

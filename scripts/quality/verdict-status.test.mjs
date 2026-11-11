@@ -213,6 +213,33 @@ test('no verdict fails, FAIL fails, and verdict-patch decides the rest', () => {
   );
 });
 
+test('a FAIL counts only with a Failure shown line, and otherwise asks for PASS+NOTES', () => {
+  const line = 'Verifier verdict: FAIL on base `aaaaaaa`, head `bbbbbbb`';
+  const unused = () => assert.fail('verdict-patch should not run');
+  const bare = verdictStatus([comment(1, 1, line)], pr, unused);
+  assert.equal(newestVerdict([comment(1, 1, line)])?.failureShown, false);
+  assert.equal(bare.ok, false);
+  assert.match(bare.message, /no `Failure shown:` line/);
+  assert.match(bare.message, /PASS\+NOTES/);
+  assert.match(bare.message, /gh run rerun 42 --failed/);
+  for (const empty of [
+    'Failure shown:',
+    '**Failure shown:**  ',
+    '> Failure shown: x',
+  ])
+    assert.equal(
+      newestVerdict([comment(1, 1, `${line}\n${empty}`)])?.failureShown,
+      false,
+      empty,
+    );
+  const shown = `${line}\n**Failure shown:** \`node --test x.test.mjs\` fails: expected 1, got 2`;
+  assert.equal(newestVerdict([comment(1, 1, shown)])?.failureShown, true);
+  const failed = verdictStatus([comment(1, 1, shown)], pr, unused);
+  assert.equal(failed.ok, false);
+  assert.doesNotMatch(failed.message, /no `Failure shown:` line/);
+  assert.match(failed.message, /Fix the findings/);
+});
+
 // The #129 and #141 verdicts predate the canonical line, so their stale
 // verdicts are restated in it with the same base and head.
 test(
