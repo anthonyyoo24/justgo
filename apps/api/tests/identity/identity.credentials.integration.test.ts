@@ -161,8 +161,10 @@ it('re-reads the credential under the owner lock, so a revocation that commits w
     }
     await holder.query('commit');
     expect(await recovery).toMatchObject({ code: 'CREDENTIAL_REJECTED' });
-  } finally {
+  } catch (error) {
     await holder.query('rollback');
+    throw error;
+  } finally {
     holder.release();
   }
 });
