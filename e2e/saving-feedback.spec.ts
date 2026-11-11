@@ -55,7 +55,7 @@ for (const width of [320, 390]) {
     await expect(details).toBeHidden();
     await unchanged();
     await page
-      .getByRole('button', { name: 'Close saving warning', exact: true })
+      .getByRole('button', { name: 'Close saved entries warning', exact: true })
       .click();
     await expect(notice).toBeHidden();
     await unchanged();
@@ -71,3 +71,23 @@ for (const width of [320, 390]) {
     await expect(page.getByTestId('saving-notice-overlay')).toBeHidden();
   });
 }
+
+test('a dismissed storage notice stays closed when the active challenge opens over the deck', async ({
+  page,
+}) => {
+  await signInFixture(page);
+  await page.goto('/?storageRead=unreadable');
+  const notices = page.getByTestId('saving-notice-overlay');
+  await expect(notices).toHaveCount(1);
+  await page
+    .getByRole('button', { name: 'Close saved entries warning', exact: true })
+    .click();
+  await expect(notices).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Accept challenge', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Completed', exact: true }),
+  ).toBeVisible();
+  await expect(notices).toHaveCount(0);
+});
