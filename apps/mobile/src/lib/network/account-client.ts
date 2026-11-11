@@ -129,7 +129,7 @@ export class AccountClient {
       check();
       return result;
     };
-    // Freeze an action's serialized input across authentication replay/manual retry.
+    // A session-renewal replay must send the body the caller passed, even if it changed since.
     if (options.body !== undefined)
       options = {
         ...options,

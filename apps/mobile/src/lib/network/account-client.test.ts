@@ -292,6 +292,22 @@ it('does not retry a write after an uncertain failure', async () => {
   ).rejects.toBeInstanceOf(ApiError);
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+it('replays a write after session renewal with the body as first sent', async () => {
+  const input = { answer: 'original' };
+  const fetcher = jest
+    .fn()
+    .mockImplementationOnce(async () => {
+      input.answer = 'changed';
+      return failure('SESSION_EXPIRED');
+    })
+    .mockResolvedValue(ok());
+  const { client } = setup(fetcher);
+  await client.request('/v1/test', okSchema, { body: input });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({
+    answer: 'original',
+  });
+});
 it('cancels and clears account data immediately; late responses cannot populate the next account', async () => {
   let resolve!: (value: ReturnType<typeof ok>) => void;
   const fetcher = jest.fn(
