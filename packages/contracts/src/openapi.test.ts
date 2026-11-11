@@ -22,14 +22,17 @@ const list = (value: unknown): unknown[] =>
 const entries = (value: unknown): [string, unknown][] =>
   isJson(value) ? Object.entries(value) : [];
 
-// An identifier such as sessionId names a record, never the bearer itself.
-function isSecretName(name: string): boolean {
-  const words = name
+const wordsOf = (name: string) =>
+  name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
+
+// An identifier such as sessionId names a record, never the bearer itself.
+function isSecretName(name: string): boolean {
+  const words = wordsOf(name);
   const last = words.at(-1);
   return (
     last !== 'id' &&
@@ -83,7 +86,15 @@ function describesRecords(document: Json, root: unknown, schema: unknown) {
   );
 }
 
-function secretFields(
+type FieldTest = (
+  document: Json,
+  root: unknown,
+  schema: Json,
+  name: string,
+) => boolean;
+
+function fieldsWhere(
+  matches: FieldTest,
   document: Json,
   root: unknown,
   [schema, at, name]: Field,
@@ -116,16 +127,25 @@ function secretFields(
       '',
     ]),
   ];
-  const secret =
-    (typeof schema.pattern === 'string' &&
-      secretPatterns.has(schema.pattern)) ||
-    (isSecretName(name) && !describesRecords(document, root, schema));
   const inner = new Set([...ancestors, schema]);
   return [
-    ...(secret ? [at || name] : []),
-    ...children.flatMap((child) => secretFields(document, root, child, inner)),
+    ...(matches(document, root, schema, name) ? [at || name] : []),
+    ...children.flatMap((child) =>
+      fieldsWhere(matches, document, root, child, inner),
+    ),
   ];
 }
+
+const secretFields = (document: Json, root: unknown, field: Field) =>
+  fieldsWhere(
+    (document, root, schema, name) =>
+      (typeof schema.pattern === 'string' &&
+        secretPatterns.has(schema.pattern)) ||
+      (isSecretName(name) && !describesRecords(document, root, schema)),
+    document,
+    root,
+    field,
+  );
 
 const isSecret = (document: Json, value: unknown, name: string) =>
   isSecretName(name) ||
@@ -206,12 +226,55 @@ function responseSecrets(document: Json): string[] {
     .sort();
 }
 
+const ownerWords = new Set(['owner', 'user', 'account', 'subject', 'sub']);
+const isOwnerName = (name: string) =>
+  wordsOf(name).some((word) => ownerWords.has(word));
+
+function requestOwnerFields(document: Json): string[] {
+  const owned: FieldTest = (_document, _root, _schema, name) =>
+    isOwnerName(name);
+  return operationsOf(document)
+    .flatMap(({ path, label, operation }) => {
+      const item = isJson(document.paths) ? document.paths[path] : undefined;
+      const parameters = [
+        ...list(isJson(item) ? item.parameters : undefined),
+        ...list(operation.parameters),
+      ]
+        .map((parameter) => deref(document, parameter))
+        .filter(isJson);
+      const body = deref(document, operation.requestBody);
+      return [
+        ...[...path.matchAll(/\{([^}]+)\}/g)]
+          .map(([, name = '']) => name)
+          .filter(isOwnerName)
+          .map((name) => `{${name}}`),
+        ...parameters.flatMap((parameter) => {
+          const name = String(parameter.name);
+          return [
+            ...(isOwnerName(name) ? [`${String(parameter.in)} ${name}`] : []),
+            ...schemasOf(parameter).flatMap((schema) =>
+              fieldsWhere(owned, document, schema, [schema, name, '']),
+            ),
+          ];
+        }),
+        ...schemasOf(body).flatMap((schema) =>
+          fieldsWhere(owned, document, schema, [schema, '', '']),
+        ),
+      ].map((field) => `${label} ${field}`);
+    })
+    .sort();
+}
+
 describe.each([
   ['legacy', openApiDocument],
   ['managed', managedOpenApiDocument],
 ])('the %s OpenAPI document', (_, document) => {
   it('puts no bearer in a path, query, cookie or hand-declared Authorization header', () => {
     expect(urlSecrets(document)).toEqual([]);
+  });
+
+  it('takes the owner from the bearer only, never from a request field', () => {
+    expect(requestOwnerFields(document)).toEqual([]);
   });
 
   // Credential digests are SHA-256 fingerprints of stored proofs, never bearers.
@@ -358,6 +421,69 @@ it('finds secrets through every name, position and keyword', () => {
       'GET /probe/{recoveryCode} 200 other',
       'GET /probe/{recoveryCode} 200 refreshToken',
       'GET /probe/{recoveryCode} 200 sessionToken',
+    ].sort(),
+  );
+});
+
+it('finds an owner named in any request position', () => {
+  const text = { type: 'string' };
+  const object = (properties: Json) => ({ type: 'object', properties });
+  const probe = {
+    components: {
+      parameters: { owner: { name: 'ownerId', in: 'query', schema: text } },
+      schemas: { Target: object({ user_id: text, deviceId: text }) },
+    },
+    paths: {
+      '/probe/{accountId}': {
+        parameters: [{ name: 'accountId', in: 'path', schema: text }],
+        post: {
+          parameters: [
+            { $ref: '#/components/parameters/owner' },
+            { name: 'X-Sub', in: 'header', schema: text },
+            {
+              name: 'filter',
+              in: 'query',
+              content: {
+                'application/json': { schema: object({ userId: text }) },
+              },
+            },
+            { name: 'sessionId', in: 'query', schema: text },
+          ],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  allOf: [{ $ref: '#/components/schemas/Target' }],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: object({ authUserId: text, id: text }),
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              content: {
+                'application/json': { schema: object({ userId: text }) },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  expect(requestOwnerFields(probe)).toEqual(
+    [
+      'POST /probe/{accountId} {accountId}',
+      'POST /probe/{accountId} path accountId',
+      'POST /probe/{accountId} query ownerId',
+      'POST /probe/{accountId} header X-Sub',
+      'POST /probe/{accountId} filter.userId',
+      'POST /probe/{accountId} user_id',
+      'POST /probe/{accountId} items[].authUserId',
     ].sort(),
   );
 });

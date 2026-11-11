@@ -377,6 +377,17 @@ const cases = [
     source,
     'apps/api/src/data-sync/journal.ts',
   ]),
+  ...[
+    "import { sql } from 'drizzle-orm'; export const read = (identity: any, token: string) => identity.withSession(token, async () => identity.db.execute(sql`select 1`));",
+    "export const read = (identity: any, token: string) => identity.withSession(token, async (_tx: unknown, session: any) => { await identity.rateLimit(session.userId, 'write'); });",
+    'export const read = (identity: any, token: string) => identity.withAccountDeletion(token, async () => identity.withSession(token, async () => 1));',
+    "import { sql } from 'drizzle-orm'; export const read = (identity: any, database: any, token: string) => identity.withSession(token, async () => database.pool.query('select 1'));",
+    "import { sql } from 'drizzle-orm'; export const read = (db: any) => db.transaction(async () => db.execute(sql`select 1`));",
+  ].map((source) => [
+    'no-restricted-syntax',
+    source,
+    'apps/api/src/data-sync/journal.ts',
+  ]),
 ];
 
 // The typed rules' project service lints only files on disk, and no source
@@ -433,6 +444,30 @@ test('RLS context lint accepts ordinary SQL, messages and built-in connection op
   assert.deepEqual(
     result.messages.filter(
       (message) => message.ruleId === 'justgo/rls-context',
+    ),
+    [],
+  );
+});
+
+test('Owner transaction lint accepts work through tx and connections opened outside the callback', async () => {
+  const [result] = await eslint.lintText(
+    `
+    import { sql } from 'drizzle-orm';
+    export const read = async (identity: any, token: string, address: string) => {
+      await identity.rateLimit(address, 'identity');
+      const rows = await identity.withSession(token, async (tx: any, session: any) => {
+        await identity.rateLimitAccount(tx, session.userId, 'write');
+        return tx.execute(sql\`select id from justgo.devices\`);
+      });
+      return identity.db.transaction(async (tx: any) => ({ rows, guest: await tx.execute(sql\`select 1\`) }));
+    };
+  `,
+    { filePath: path.join(root, 'apps/api/src/data-sync/journal.ts') },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'no-restricted-syntax',
     ),
     [],
   );
