@@ -13,6 +13,10 @@ const justgo = {
 
 const outboundFetchFix =
   'Send requests through outboundFetch() from apps/api/src/http/outbound-fetch.ts. It keeps redirects manual so credentials never follow a Location, and fails a 3xx as UNAVAILABLE unread.';
+const ownerTransactionCallback =
+  'CallExpression[callee.property.name=/^(withSession|withAccountDeletion|transaction)$/] > :function';
+const ownerTransactionFix =
+  'Query only through the tx this callback receives. Another connection or pool has none of the transaction-local owner context, so RLS hides the owner rows, and a second checkout can deadlock a one-connection pool. Use rateLimitAccount(tx, ...) for an account rate limit, and run other transactions before or after this one.';
 const requestPackages = [
   'undici',
   'node-fetch',
@@ -151,6 +155,18 @@ export default tseslint.config(
     ignores: ['apps/api/src/db/transaction-context.ts'],
     plugins: { justgo },
     rules: { 'justgo/rls-context': 'error' },
+  },
+  {
+    files: ['apps/api/src/**/*.{ts,mts,cts}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...[
+          `${ownerTransactionCallback} MemberExpression[property.name=/^(db|pool|rateLimit|withSession|withAccountDeletion)$/]`,
+          `${ownerTransactionCallback} MemberExpression[object.name=/^(db|pool|database)$/]`,
+        ].map((selector) => ({ selector, message: ownerTransactionFix })),
+      ],
+    },
   },
   {
     files: [
