@@ -16,7 +16,6 @@ import type { DataSyncTransport } from './transport';
 import {
   MemoryStorage,
   attempt,
-  backend,
   card,
   deferred,
   input,
@@ -376,7 +375,6 @@ function open(world: World) {
   const repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
     localJournal: new LocalJournalRepository(owner, journal),

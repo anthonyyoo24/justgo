@@ -1,12 +1,5 @@
-import type {
-  Attempt,
-  ChallengeCard,
-  CreateAttempt,
-  PatchAttemptResponse,
-} from '@justgo/contracts';
-import { ApiError } from '../src/lib/network/http';
+import type { Attempt, ChallengeCard, CreateAttempt } from '@justgo/contracts';
 import type { JournalStorage } from '../src/data/activity/model';
-import type { JournalTransport } from '../src/data/activity/sync/transport';
 export const owner = '10000000-0000-4000-8000-000000000001';
 export const otherOwner = '10000000-0000-4000-8000-000000000002';
 export const today = '2026-10-05';
@@ -70,54 +63,4 @@ export class MemoryStorage implements JournalStorage {
   async removeItem(key: string) {
     this.values.delete(key);
   }
-}
-export function backend(): JournalTransport & {
-  records: Map<string, Attempt>;
-  calls: string[];
-} {
-  const records = new Map<string, Attempt>();
-  const receipts = new Map<string, PatchAttemptResponse>();
-  const calls: string[] = [];
-  return {
-    records,
-    calls,
-    create: async (body) => {
-      calls.push(`create:${body.id}`);
-      if (!records.has(body.id))
-        records.set(body.id, { ...attempt(), ...body });
-      return structuredClone(records.get(body.id)!);
-    },
-    patch: async (id, body) => {
-      calls.push(`patch:${body.submissionId}`);
-      const old = records.get(id);
-      if (!old) throw new ApiError('NOT_FOUND');
-      if (receipts.has(body.submissionId))
-        return structuredClone(receipts.get(body.submissionId)!);
-      if ((old.reflection?.revision ?? 0) !== body.expectedReflectionRevision)
-        throw new ApiError(
-          'REFLECTION_CONFLICT',
-          'fixture',
-          structuredClone(old),
-        );
-      const reflection = {
-        feeling: body.reflection.feeling ?? old.reflection?.feeling ?? null,
-        text:
-          body.reflection.text === undefined
-            ? (old.reflection?.text ?? null)
-            : body.reflection.text,
-        revision: body.expectedReflectionRevision + 1,
-      };
-      const canonical = { ...old, reflection };
-      records.set(id, canonical);
-      const result = {
-        attempt: canonical,
-        acknowledgement: {
-          submissionId: body.submissionId,
-          appliedRevision: reflection.revision,
-        },
-      };
-      receipts.set(body.submissionId, structuredClone(result));
-      return structuredClone(result);
-    },
-  };
 }

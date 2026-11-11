@@ -6,7 +6,6 @@ import {
 } from '../../../test-support/local-journal';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   deferred,
@@ -20,15 +19,12 @@ let controller: ReflectionController;
 let storage: MemoryStorage;
 let finished: jest.Mock;
 let current: boolean;
-let transport: ReturnType<typeof backend>;
 beforeEach(async () => {
   storage = new MemoryStorage();
-  transport = backend();
   repository = new AccountRepository({
     accountId: owner,
     storage,
     localJournal: memoryLocalJournal(owner, storage),
-    transport,
     today,
     timeZone: zone,
   });
@@ -68,7 +64,6 @@ it.each([false, true])(
       accountId: owner,
       storage,
       localJournal: memoryLocalJournal(owner, storage),
-      transport,
       today,
       timeZone: zone,
     });
@@ -106,7 +101,6 @@ it('reconciles saved local writing when hydration finishes before subscription',
     accountId: owner,
     storage,
     localJournal: memoryLocalJournal(owner, storage),
-    transport,
     today,
     timeZone: zone,
   });
@@ -251,8 +245,7 @@ it('retains input after a refused submission and allows a corrected retry', asyn
   expect(submit).toHaveBeenCalledTimes(2);
   expect(finished).toHaveBeenCalledTimes(1);
 });
-it('retains input on phone-full failure, then retries locally without sending a private request', async () => {
-  const patch = jest.spyOn(transport, 'patch');
+it('retains input on phone-full failure, then retries locally', async () => {
   const database = memoryJournalBackend(storage);
   database.failCommit = true;
   controller.setFeeling('a_lot_better');
@@ -269,7 +262,6 @@ it('retains input on phone-full failure, then retries locally without sending a 
   repository.setEnvironment({ active: true, online: true });
   await repository.synchronize();
   expect(finished).toHaveBeenCalledTimes(1);
-  expect(patch).not.toHaveBeenCalled();
   expect(repository.getAttempt(uuid(1))?.reflection).toMatchObject({
     text: 'Retained writing',
     feeling: 'a_lot_better',

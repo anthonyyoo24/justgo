@@ -213,7 +213,6 @@ export type JournalState = {
   active: boolean;
   warning: WarningEpisode | null;
   recoverySequence: number;
-  remoteRefreshSequence: number;
   flowAttemptId: string | null;
   period: { today: string; timeZone: string };
 };

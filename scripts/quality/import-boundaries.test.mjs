@@ -255,13 +255,6 @@ const cases = [
     fix: 'AccountRepository or ActivityRuntime',
   },
   {
-    name: 'features cannot import the activity sync sender',
-    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
-    source: "import '../../data/activity/sync/sender';",
-    restricted: true,
-    fix: 'AccountRepository or ActivityRuntime',
-  },
-  {
     name: 'features cannot re-export the cloud coordinator',
     file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
     source: "export * from '../../data/cloud/coordinator';",

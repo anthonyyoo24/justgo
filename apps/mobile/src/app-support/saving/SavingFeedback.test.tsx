@@ -19,7 +19,6 @@ import { contactFailureMessage, supportContact } from '../contact';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -75,7 +74,6 @@ beforeEach(async () => {
   mockRepository = new AccountRepository({
     accountId: owner,
     storage: new MemoryStorage(),
-    transport: backend(),
     today,
     timeZone: zone,
   });
@@ -293,7 +291,6 @@ it('floats above content for risk, allows manual dismissal, and announces exactl
     screen.getByRole('button', { name: 'Close saving warning' }),
   );
   expect(screen.queryByTestId('saving-risk-banner')).toBeNull();
-  await act(() => mockRepository.store.setState({ remoteRefreshSequence: 1 }));
   expect(showRecoveryToast).not.toHaveBeenCalled();
   await act(() =>
     mockRepository.store.setState({ warning: null, recoverySequence: 1 }),
@@ -401,7 +398,6 @@ it('clears stale account feedback without treating switching accounts as recover
   mockRepository = new AccountRepository({
     accountId: otherOwner,
     storage: new MemoryStorage(),
-    transport: backend(),
     today,
     timeZone: zone,
   });

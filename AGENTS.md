@@ -118,8 +118,7 @@ these rules:
   `apps/mobile/src/app-support/identity`, `auth/` owns sign-in, provider
   switching and logout, and `deletion/` owns account deletion.
   `apps/api/src/identity` owns the server side. In
-  `apps/mobile/src/data`, `activity/` owns completion history, and its `sync/`
-  folder sends completion uploads with their retry and transport. `journal/` owns
+  `apps/mobile/src/data`, `activity/` owns completion history. `journal/` owns
   private writing. `cloud/` owns the cloud download, journal sync, delete-all and
   guest adoption, and the iCloud copy. `backup/` owns the file formats. Their tests
   sit beside them.

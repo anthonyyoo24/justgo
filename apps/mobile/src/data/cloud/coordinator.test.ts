@@ -11,7 +11,6 @@ import type { DataSyncTransport } from './transport';
 import { ApiError } from '../../lib/network/http';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -32,7 +31,6 @@ function setup(storage = new MemoryStorage(), remote = server()) {
   const repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
     localJournal: memoryLocalJournal(owner, storage),
