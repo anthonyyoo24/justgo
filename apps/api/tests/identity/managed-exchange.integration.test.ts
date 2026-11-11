@@ -1,13 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import type { SQL } from 'drizzle-orm';
+import { sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
-import { IdentityService } from '../../src/identity/service.js';
+import { IdentityService, digest } from '../../src/identity/service.js';
 import type { VerifiedManagedIdentity } from '../../src/identity/managed-verifier.js';
 import { ApiError } from '../../src/http/api-error.js';
 
@@ -44,11 +44,14 @@ function pooledDatabase(
                 return Reflect.get(transaction, method, txReceiver);
               return async (statement: SQL) => {
                 const query = dialect.sqlToQuery(statement);
-                if (query.sql.includes('pg_advisory'))
-                  throw new Error(
-                    'Advisory locks are not supported by the pooled transport',
-                  );
                 const result = await transaction.execute(statement);
+                const advisory = await transaction.execute(
+                  sql`select 1 from pg_locks where locktype='advisory' and pid=pg_backend_pid()`,
+                );
+                if (advisory.rows.length)
+                  throw new Error(
+                    `Advisory locks are not supported by the pooled transport: ${query.sql}`,
+                  );
                 if (
                   afterMappingConflict &&
                   query.sql.startsWith(
@@ -313,11 +316,31 @@ describe('managed exchange on a transaction-pooled connection', () => {
       false,
     );
     expect(recovered.userId).toBe(previous.userId);
+    const unknown = randomBytes(32).toString('hex');
     await expect(
-      identity.bootstrap(
-        { ...proof, credential: randomBytes(32).toString('hex') },
-        false,
-      ),
+      identity.bootstrap({ ...proof, credential: unknown }, false),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    expect(
+      (
+        await admin.query(
+          'select digest from justgo.recovery_credentials where user_id=$1 or digest=$2',
+          [previous.userId, digest(unknown)],
+        )
+      ).rows,
+    ).toEqual([{ digest: digest(proof.credential) }]);
+  });
+
+  it('serves managed session requests without advisory locks', async () => {
+    const { token } = provider();
+    const identity = service();
+    const session = await identity.exchangeManaged(token, {
+      deviceId: randomUUID(),
+    });
+    expect(
+      await identity.withSession(token, async (_tx, current) => current.userId),
+    ).toBe(session.userId);
+    await expect(identity.managed!.logout(token, 'session')).resolves.toEqual({
+      ok: true,
+    });
   });
 });
