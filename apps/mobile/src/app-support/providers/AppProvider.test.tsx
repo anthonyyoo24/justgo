@@ -423,6 +423,20 @@ it('coordinates simultaneous expired requests through the real identity session 
   unsubscribe();
 });
 
+it('connects to identity that hydrated after runtime construction, then follows later changes', async () => {
+  runtime = createAppRuntime(controller, 'http://localhost:3000');
+  await controller.initialize();
+  expect(controller.getSnapshot().account?.userId).toBe(userId);
+  const unsubscribe = runtime.subscribe();
+  const repository = runtime.activity.getRepository();
+  expect(repository?.accountId).toBe(userId);
+  expect(repository?.store.getState().dataMode).toBe('cloud');
+  expect(runtime.client.ownsAccount(userId)).toBe(true);
+  await controller.signOut();
+  expect(repository?.store.getState().dataMode).toBe('local');
+  unsubscribe();
+});
+
 it('pauses provider refresh on background, refreshes on foreground and releases listeners on unmount', async () => {
   const screen = await mount();
   const active = jest.mocked(auth.setActive);
