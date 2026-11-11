@@ -75,7 +75,7 @@ process.exit(19);
   assert.equal(result.status, 19, result.stderr);
   assert.deepEqual(JSON.parse(readFileSync(fixture.record)), {
     args: [],
-    env: { EXPO_NO_CACHE: '1' },
+    env: { EXPO_NO_CACHE: '1', EXPO_NO_DOTENV: '1' },
   });
   assert.equal(
     mobilePackage.expo?.doctor,
