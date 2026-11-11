@@ -1403,3 +1403,25 @@ test('a stopped removal git cannot read the status of is kept', (t) => {
   repo.run();
   assert.equal(readFileSync(path.join(aside, 'b.txt'), 'utf8'), 'b\n');
 });
+
+test('after the root .gitignore went, a file that main tracks keeps the box, even when its rules match it', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  repo.add('older', '--detach');
+  writeFileSync(path.join(repo.main, 'kept.log'), 'tracked\n');
+  git(repo.main, 'add', '-f', 'kept.log');
+  git(repo.main, 'commit', '-q', '-m', 'track kept.log');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  let aside;
+  const stoppedWithoutIgnore = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stoppedWithoutIgnore }), {
+    older: stoppedVerdict,
+  });
+  writeFileSync(path.join(aside, 'kept.log'), 'mine\n');
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'kept.log'), 'utf8'), 'mine\n');
+});
