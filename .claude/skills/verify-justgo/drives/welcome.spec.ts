@@ -73,3 +73,61 @@ test('welcome-guest: Welcome and Terms lead a guest to the deck without creating
     [...apiRequests].filter((url) => !url.startsWith(`${journeyApiUrl}/v1/`)),
   ).toEqual([]);
 });
+
+test('welcome-small-failure: Continue stays in view on small screens when challenges fail to load', async ({
+  page,
+}) => {
+  await page.goto('/welcome');
+  const continueButton = page.getByRole('button', {
+    name: 'Continue',
+    exact: true,
+  });
+  await expect(continueButton).toBeEnabled();
+  for (let step = 0; step < 3; step++) await page.keyboard.press('Tab');
+  await expect(continueButton).toBeFocused();
+
+  await page.route(`${journeyApiUrl}/v1/challenges`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 'UNAVAILABLE', requestId: 'drive-fixture' }),
+    }),
+  );
+  await page
+    .getByRole('button', { name: 'Sign in with Google', exact: true })
+    .click();
+  const retry = page.getByRole('button', {
+    name: 'Retry connection',
+    exact: true,
+  });
+  const google = page.getByRole('button', {
+    name: 'Sign in with Google',
+    exact: true,
+  });
+  await expect(retry).toBeEnabled();
+  const placement: Record<string, object> = {};
+  for (const viewport of [
+    { width: 320, height: 611 },
+    { width: 375, height: 667 },
+  ]) {
+    const size = `${viewport.width}x${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await expect(continueButton).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('alert')).toBeInViewport({ ratio: 1 });
+    await expect(retry).toBeInViewport({ ratio: 1 });
+    await capture(page, 'welcome', `04-failure-${size}`);
+    await google.evaluate((button) =>
+      button.scrollIntoView({ block: 'center' }),
+    );
+    // The last row meets the scroll edge, where a subpixel can stay clipped.
+    await expect(google).toBeInViewport({ ratio: 0.99 });
+    await expect(continueButton).toBeInViewport({ ratio: 1 });
+    await capture(page, 'welcome', `05-failure-${size}-scrolled`);
+    placement[size] = {
+      continue: await continueButton.boundingBox(),
+      google: await google.boundingBox(),
+    };
+  }
+  await page.unroute(`${journeyApiUrl}/v1/challenges`);
+  await writeProof('welcome-small-failure', { viewport: placement });
+});
