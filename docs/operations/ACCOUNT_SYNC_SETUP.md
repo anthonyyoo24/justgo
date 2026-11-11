@@ -2,7 +2,8 @@
 
 This document records the outside-service settings for Apple, Google, Supabase
 Auth and CloudKit, the private Auth-session helper, and the Auth erasure runbook.
-[IDENTITY.md](../architecture/IDENTITY.md) owns the account safety invariants.
+The [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them) owns the
+account safety invariants and what enforces them.
 [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) own
 acceptance status.
 
@@ -33,17 +34,20 @@ wrapper does not expose the nonce that Google's SDK generates, so Supabase canno
 compare one. Supabase's iOS guide uses this setting for that case.
 Supabase still verifies the token signature and the allowed audiences.
 
-Never turn on Skip nonce checks for Apple. Apple nonce validation stays on.
+Never turn on Skip nonce checks for Apple. Apple nonce validation stays on. The
+app sends Apple the SHA-256 of a fresh random nonce and sends Auth the original
+(`provider-token.test.ts`). Never invent a nonce for Google.
 
 The owner approved migration 0020 as a narrow reset. It clears only old server
 inline reflection fields and patch receipts. It keeps accounts, completed reps,
 frozen context and all writing on the phone. No reset of users, challenge history,
 entitlements or phone databases is approved.
 
-Keep legacy-proof compatibility until supported installations have migrated, or
-until the owner approves ending that support.
-[Internal legacy migration compatibility](../architecture/IDENTITY.md#internal-legacy-migration-compatibility)
-lists what it covers.
+Keep legacy-proof compatibility until every supported old installation has
+linked its owner or finished its pending deletion, or until the owner approves
+ending that support. The legacy-mode row in the
+[AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them) lists what
+it covers.
 
 ## Configure Apple sign-in
 
@@ -79,6 +83,10 @@ Keep provider secrets in provider and server configuration, never in an
 Manual identity linking serves the explicit link action of a signed-in user. Do not
 add custom linking by email. An identity that already belongs to another Auth user
 must fail. See [Supabase identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking).
+
+On November 2, 2026, Anthony chose Account's Apple and Google switches to show
+the active sign-in provider, not the linked identities. The switches never link
+or unlink identities (`ManagedAccountScreen.test.tsx`).
 
 Real web Auth uses PKCE and `/auth/callback`. In Supabase, allowlist only approved
 browser origins and callback URLs, and set the API's `CORS_ORIGINS` to match.

@@ -325,7 +325,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Delete `.github/workflows/staging-api.yml`. P15-8 adds the Supabase workflow.
 - [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-api-deployment.mjs`, `scripts/release/staging-api-runner.mjs`, `scripts/release/staging-public-probes.mjs`, `scripts/release/staging-local.mjs`, `apps/api/scripts/local-staging-release.ts`, `apps/api/tests/http/routing.test.ts` and every other caller that the deletions break.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml`, `scripts/quality/ci-workflow.test.mjs`, `scripts/quality/staging-api-workflow.test.mjs` and delete `scripts/quality/cloudflare-config.test.mjs`.
-- [ ] Edit `AGENTS.md`, `docs/architecture/IDENTITY.md` and `docs/operations/SERVER_RELEASES.md`.
+- [ ] Edit `AGENTS.md` and `docs/operations/SERVER_RELEASES.md`.
 
 **Build.**
 
@@ -385,7 +385,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Create `apps/api/scripts/edge-build.mjs` and `apps/api/scripts/edge-smoke.ts`.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml` and `scripts/quality/ci-workflow.test.mjs`.
 - [ ] Edit `apps/api/src/db/client.ts`, `apps/api/src/identity/managed-verifier.ts`, `apps/api/src/progress/service.ts` and `apps/api/src/http/server-error-reporter.ts` only where P15-1 or P15-2 recorded a failure.
-- [ ] Edit `docs/architecture/IDENTITY.md`.
+- [ ] Edit each `AGENTS.md` rule that names Workers, such as `test:workers` in the `outboundFetch()` row.
 
 **Build.**
 
@@ -727,7 +727,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 ## Close the program
 
 - [ ] Every box above is checked with its evidence.
-- [ ] `IDENTITY.md`, `SERVER_RELEASES.md`, the root `README.md` and the implementation plan index describe the implemented state.
+- [ ] The `AGENTS.md` rules list, `SERVER_RELEASES.md`, the root `README.md` and the implementation plan index describe the implemented state.
 - [ ] Every gate issue that names Workers, Hyperdrive or the Vercel API is closed with its evidence or retargeted.
 - [ ] Reply to Anthony with the report that `playbooks/autopilot-full.md` names.
 
@@ -864,7 +864,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 ## Appendix D. Links and reading list
 
 - Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
-- Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md) and the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). They own the invariants this plan must keep.
+- Before you edit, read the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). It owns the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
 - History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
 - Run pstack's `how` skill before P15-6 and P15-8.
