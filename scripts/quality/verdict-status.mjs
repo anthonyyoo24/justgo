@@ -85,10 +85,11 @@ export function verdictStatus(comments, pr, check) {
   return { ok: false, message: `${report}\nverdict-patch failed.` };
 }
 
-export function runVerdictPatch(refs, cwd) {
+export function runVerdictPatch(refs, cwd, timeout) {
   return spawnSync(process.execPath, [verdictPatch, 'check', ...refs], {
     cwd,
     encoding: 'utf8',
+    timeout,
   });
 }
 
