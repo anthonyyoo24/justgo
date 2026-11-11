@@ -293,11 +293,11 @@ it('does not retry a write after an uncertain failure', async () => {
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it('replays a write after session renewal with the body as first sent', async () => {
-  const input = { answer: 'original' };
+  const input = { answer: { text: 'original' } };
   const fetcher = jest
     .fn()
     .mockImplementationOnce(async () => {
-      input.answer = 'changed';
+      input.answer.text = 'changed';
       return failure('SESSION_EXPIRED');
     })
     .mockResolvedValue(ok());
@@ -305,7 +305,7 @@ it('replays a write after session renewal with the body as first sent', async ()
   await client.request('/v1/test', okSchema, { body: input });
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({
-    answer: 'original',
+    answer: { text: 'original' },
   });
 });
 it('cancels and clears account data immediately; late responses cannot populate the next account', async () => {

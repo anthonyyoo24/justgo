@@ -129,7 +129,7 @@ export class AccountClient {
       check();
       return result;
     };
-    // A session-renewal replay must send the body the caller passed, even if it changed since.
+    // A replay with a rotated or renewed token must send the body the caller passed, even if it changed since.
     if (options.body !== undefined)
       options = {
         ...options,
