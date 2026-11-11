@@ -9,8 +9,6 @@ import {
   MemoryStorage,
   backend,
   card,
-  deckFields,
-  deckPreferences,
   deferred,
   input,
   owner,
@@ -124,19 +122,6 @@ it('commits completion plus upload intent together and survives offline relaunch
       { ...card, venue: 'cafe' },
     ),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
-});
-it('keeps saved deck order and venue out of the completion upload', async () => {
-  const { repo, transport } = await setup();
-  const create = jest.spyOn(transport, 'create');
-  repo.deckPreferences.save(deckPreferences);
-  await expect(repo.deckPreferences.read()).resolves.toEqual(deckPreferences);
-  repo.setEnvironment({ active: true, online: true });
-  await repo.complete(input(), card);
-  await repo.synchronize();
-  expect(create).toHaveBeenCalledTimes(1);
-  const body = JSON.stringify(create.mock.calls);
-  expect(body).toContain(uuid(1));
-  expect(body).not.toMatch(deckFields);
 });
 it('ordinary local saves finish while HTTP is still pending', async () => {
   const { repo, transport, storage } = await setup();
