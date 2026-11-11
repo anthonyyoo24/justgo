@@ -58,9 +58,11 @@ const newBranchFlags = new Set(['-b', '-B', '-c', '-C']);
 const heredocOpener = /<<-?[ \t]*(['"]?)(\w+)\1/g;
 
 // Each heredoc becomes the rest of its opener line, so its body is gone. A
-// body ends at the first later line that holds only its whole tag, as in the
-// shell. An opener with no closing line stays text. One pass lists the tag
-// lines and each tag's list is read forward, so the time is linear (#405).
+// body ends at the first line after the opener's line that holds only its
+// whole tag, as in the shell. That can be the very next line, which leaves the
+// body empty (#421). An opener with no closing line stays text. One pass lists
+// the tag lines and each tag's list is read forward, so the time is linear
+// (#405).
 function withoutHeredocs(text) {
   const tagLines = new Map();
   for (let start = text.indexOf('\n'); start !== -1;) {
@@ -83,7 +85,9 @@ function withoutHeredocs(text) {
     if (newline < match.index) newline = text.indexOf('\n', match.index);
     if (newline === -1) break;
     const closings = tagLines.get(match[2]);
-    while (closings?.lines[closings.next]?.start <= newline) closings.next += 1;
+    // A tag line's start is the newline before it, so the line right after
+    // the opener starts at the opener's own newline and can close it.
+    while (closings?.lines[closings.next]?.start < newline) closings.next += 1;
     const closing = closings?.lines[closings.next];
     if (!closing) {
       heredocOpener.lastIndex = match.index + 1;
