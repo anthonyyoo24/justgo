@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { ProgressEntry } from '../../types';
 import { DayEntryList } from './DayEntryList';
 
@@ -142,4 +142,26 @@ it('reveals a new page after scrolling without mounting the rest or requesting i
   await screen.rerender(<DayEntryList {...props} entries={entries(41)} />);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
   expect(props.onScroll).toHaveBeenCalledTimes(1);
+});
+
+it('keeps trailing padding at zero, so the last row meets the viewport and the safe area stays outside', async () => {
+  const screen = await render(
+    <DayEntryList
+      entries={entries(2)}
+      renderEntry={renderEntry}
+      onScroll={jest.fn()}
+      footer={null}
+    />,
+  );
+  const style = StyleSheet.flatten(
+    screen.getByTestId('day-sheet-entry-list').props.contentContainerStyle,
+  );
+  expect(
+    style.paddingBottom ??
+      style.paddingBlockEnd ??
+      style.paddingVertical ??
+      style.paddingBlock ??
+      style.padding ??
+      0,
+  ).toBe(0);
 });
