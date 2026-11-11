@@ -16,9 +16,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\" --detach",
             "async": true,
-            "timeout": 3600
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sweep-worktrees.mjs\" --detach",
+            "timeout": 5
           }
         ]
       }
