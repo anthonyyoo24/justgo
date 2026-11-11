@@ -1,5 +1,6 @@
 import { ApiError } from '../http/api-error.js';
 import { setTransactionContext } from '../db/transaction-context.js';
+import { ownerTransactions } from '../db/owner-transaction.js';
 import {
   createHash,
   createHmac,
@@ -93,16 +94,18 @@ export class IdentityService {
   readonly managedAuthDeletion: ManagedAuthDeletion | undefined;
   private readonly sessionHours: number;
   private readonly transferMinutes: number;
+  readonly db: NodePgDatabase;
   constructor(
-    readonly db: NodePgDatabase,
+    db: NodePgDatabase,
     private readonly options: IdentityOptions,
   ) {
+    this.db = ownerTransactions(db);
     this.sessionHours = options.sessionHours ?? 168;
     this.transferMinutes = options.transferMinutes ?? 10;
     this.managedAuthDeletion = options.managedAuthDeletion;
     if (options.managedAuthVerifier)
       this.managed = new ManagedIdentityService(
-        db,
+        this.db,
         options.managedAuthVerifier,
         async (tx, token, linkedOwner) => {
           const row = await this.findSession(tx, token);
