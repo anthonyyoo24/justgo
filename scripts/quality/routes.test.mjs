@@ -133,6 +133,12 @@ test('the installation preference providers wrap the account and access provider
       join('app', '_layout.tsx'),
       `${render.tag} renders only in the root layout, once per installation`,
     );
+  for (const tag of preferences)
+    assert.equal(
+      renders.filter((render) => render.tag === tag).length,
+      1,
+      `${tag} renders only in the root layout, once per installation`,
+    );
   for (const render of appProviders)
     for (const tag of preferences)
       assert.ok(
