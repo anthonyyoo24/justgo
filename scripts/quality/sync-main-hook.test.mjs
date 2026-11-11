@@ -336,6 +336,15 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     'git worktree add ../w -b w origin/main',
     'cd /repo && git fetch -q && git -C /repo worktree add .claude/worktrees/a -b a origin/main',
     'GIT_DIR=x git -c core.x=1 worktree add w',
+    // #345 item 3
+    'if true; then git worktree add w; fi',
+    'for b in a; do git worktree add "$b"; done',
+    'env GIT_DIR=x git worktree add w',
+    'time git worktree add w',
+    '/usr/bin/git worktree add w',
+    'echo $(git -C /repo worktree add w)',
+    'git --work-tree /repo worktree add w',
+    '(git worktree add w)',
   ])
     assert.deepEqual(triggerOf(beforeBash(command)), beforeTool, command);
   for (const command of [
@@ -344,6 +353,8 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     "grep -n 'git worktree add' AGENTS.md",
     'echo "git worktree add w"',
     'git commit -m "git worktree add"',
+    'git --work-tree /repo worktree list',
+    'legit worktree add w',
   ])
     assert.equal(triggerOf(beforeBash(command)), undefined, command);
   assert.equal(
