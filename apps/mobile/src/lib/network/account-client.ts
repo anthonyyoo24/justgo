@@ -129,7 +129,7 @@ export class AccountClient {
       check();
       return result;
     };
-    // Freeze an action's serialized input across authentication replay/manual retry.
+    // A replay with a rotated or renewed token must send the body the caller passed, even if it changed since.
     if (options.body !== undefined)
       options = {
         ...options,
@@ -212,17 +212,4 @@ export class AccountClient {
       this.inflight.delete(controller);
     }
   }
-}
-
-// Caller creates once per user intent, retains this object for an uncertain retry.
-// Consuming feature endpoints must enforce ownership + matching-input idempotency.
-export function stableAction<T extends object>(
-  id: string,
-  input: T,
-): Readonly<T & { actionId: string }> {
-  return Object.freeze(
-    JSON.parse(JSON.stringify({ ...input, actionId: id })) as T & {
-      actionId: string;
-    },
-  );
 }
