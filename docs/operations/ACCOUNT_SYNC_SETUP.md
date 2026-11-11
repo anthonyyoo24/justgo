@@ -81,7 +81,10 @@ Keep provider secrets in provider and server configuration, never in an
 ## Link identities and allow browser origins
 
 Manual identity linking serves the explicit link action of a signed-in user. Do not
-add custom linking by email. An identity that already belongs to another Auth user
+add custom linking by email. Only a verified Apple or Google Auth subject, mapped
+through `managed_auth_accounts`, establishes ownership. A purchase receipt, email
+address, decoded JWT claim, editable metadata, downloaded file or request field
+never does. An identity that already belongs to another Auth user
 must fail. See [Supabase identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking).
 
 On November 2, 2026, Anthony chose Account's Apple and Google switches to show
