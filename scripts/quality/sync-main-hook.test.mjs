@@ -184,7 +184,12 @@ test('untracked files alone do not stop the fast-forward and are kept', (t) => {
 test('a fast-forward that outlasts its wait finishes in the background', async (t) => {
   const repo = fixture(t);
   const tip = repo.push('.claude/settings.json', '{}\n');
-  await sync(repo.checkout, 0, { mergeWait: 1 });
+  const result = await sync(repo.checkout, 0, { mergeWait: 1 });
+  assert.equal(result.action, 'updating');
+  assert.equal(
+    report(result),
+    `Updating main to ${tip.slice(0, 7)} in the background; restart this session once it finishes to load the new hooks and settings.`,
+  );
   const deadline = Date.now() + 5000;
   while (head(repo.checkout) !== tip && Date.now() < deadline) await sleep(50);
   assert.equal(head(repo.checkout), tip);

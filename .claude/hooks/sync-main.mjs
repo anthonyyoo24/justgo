@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,10 @@ import { shellText } from './push-after-pass-guard.mjs';
 // session starts.
 // It never resets, stashes, rebases or touches untracked files, and it must
 // never block a session or a tool call: every error ends it silently with
-// exit 0, and it never returns a permission decision.
+// exit 0, and it never returns a permission decision. A fast-forward killed
+// partway leaves the files it wrote as untracked files that stop every later
+// one, so the merge runs in its own process, and one that outlasts the wait
+// finishes after the hook exits.
 
 const fetchTimeout = 6000;
 const gitTimeout = 2000;
@@ -77,6 +80,8 @@ export function report(result) {
     return `This folder is ${plural(result.behind, 'commit')} behind origin/main; not updated because ${result.reason}.`;
   if (result.action === 'updated' && touchesSessionConfig(result.paths))
     return `Updated main to ${result.sha}; restart this session to load the new hooks and settings.`;
+  if (result.action === 'updating' && touchesSessionConfig(result.paths))
+    return `Updating main to ${result.sha} in the background; restart this session once it finishes to load the new hooks and settings.`;
   return undefined;
 }
 
@@ -95,6 +100,29 @@ function git(cwd, args, timeout = gitTimeout) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
+}
+
+// Resolves 'done', 'failed', or 'running' when git outlasts `wait`. A running
+// git is left to finish on its own, even after this process exits.
+function background(cwd, args, wait) {
+  return new Promise((resolve) => {
+    const child = spawn('git', args, {
+      cwd,
+      env,
+      detached: true,
+      stdio: 'ignore',
+    });
+    const timer = setTimeout(() => {
+      child.unref();
+      resolve('running');
+    }, wait);
+    const end = (outcome) => {
+      clearTimeout(timer);
+      resolve(outcome);
+    };
+    child.on('error', () => end('failed'));
+    child.on('exit', (code) => end(code === 0 ? 'done' : 'failed'));
+  });
 }
 
 function attempt(fn) {
@@ -150,36 +178,42 @@ function inspect(dir, fetchEvery) {
   return { linkedWorktree: false, fetched, branch, ahead, behind, dirty };
 }
 
-export function sync(dir, fetchEvery = 0, { mergeWait = gitTimeout } = {}) {
+export async function sync(
+  dir,
+  fetchEvery = 0,
+  { mergeWait = gitTimeout } = {},
+) {
   const state = inspect(dir, fetchEvery);
   const next = plan(state);
   if (next.action !== 'ff') return next;
   const before = git(dir, ['rev-parse', 'HEAD']);
-  if (
-    !attempt(() =>
-      git(dir, ['merge', '--ff-only', '--quiet', 'origin/main'], mergeWait),
-    )
-  )
+  const after = git(dir, ['rev-parse', 'origin/main']);
+  const paths = changedPaths(`${before}..${after}`, dir);
+  const merge = await background(
+    dir,
+    ['merge', '--ff-only', '--quiet', after],
+    mergeWait,
+  );
+  if (merge === 'failed')
     return {
       action: 'warn',
       behind: state.behind,
       reason: 'the fast-forward failed',
     };
-  const after = git(dir, ['rev-parse', 'HEAD']);
   return {
-    action: 'updated',
+    action: merge === 'done' ? 'updated' : 'updating',
     sha: after.slice(0, 7),
-    paths: changedPaths(`${before}..${after}`, dir),
+    paths,
   };
 }
 
-function main() {
+async function main() {
   let line;
   let trigger;
   try {
     trigger = triggerOf(JSON.parse(readFileSync(0, 'utf8')));
     if (!trigger) return;
-    const result = sync(
+    const result = await sync(
       process.env.CLAUDE_PROJECT_DIR || process.cwd(),
       trigger.fetchEvery,
     );
@@ -204,4 +238,4 @@ function main() {
 
 const self = fileURLToPath(import.meta.url);
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(self))
-  main();
+  await main();
