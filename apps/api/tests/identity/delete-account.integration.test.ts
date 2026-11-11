@@ -3,6 +3,9 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { accountDeletionResponseSchema } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
@@ -36,6 +39,7 @@ const app = buildApp({
   logger: false,
 });
 const owners: string[] = [];
+const dialect = new PgDialect();
 const secret = () => randomBytes(32).toString('hex');
 const proposal = () => ({
   deviceId: randomUUID(),
@@ -335,6 +339,58 @@ describe('permanent owner-only deletion on the restricted database role', () => 
     await expect(
       identity.bootstrap({ ...proposal(), credential: b.credential }, false),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+  });
+  // #313: the session read then finds no row, so only the replay sets app.user_id.
+  it('replays a deletion that commits after the receipt read and before the session read', async () => {
+    const a = await account();
+    let first: Awaited<ReturnType<typeof remove>> | undefined;
+    const paused = new Proxy(database.db, {
+      get(target, key, receiver) {
+        if (key !== 'transaction') return Reflect.get(target, key, receiver);
+        return <T>(operation: Parameters<NodePgDatabase['transaction']>[0]) =>
+          target.transaction(async (tx) => {
+            const gated = new Proxy(tx, {
+              get(transaction, method, txReceiver) {
+                if (method !== 'execute')
+                  return Reflect.get(transaction, method, txReceiver);
+                return async (statement: SQL) => {
+                  const result = await transaction.execute(statement);
+                  if (
+                    !first &&
+                    dialect
+                      .sqlToQuery(statement)
+                      .sql.includes('where deletion_session_digest=')
+                  )
+                    first = await remove(a.sessionToken);
+                  return result;
+                };
+              },
+            });
+            return operation(gated) as Promise<T>;
+          });
+      },
+    });
+    const replay = await apiRequest(
+      buildApp({
+        identity: new IdentityService(paused, {
+          rateKey: `delete-replay-${randomUUID()}`,
+        }),
+        checkDatabase: async () => {},
+        logger: false,
+      }),
+      {
+        method: 'DELETE',
+        url: '/v1/account',
+        payload: { confirmation: 'delete-account' },
+        headers: { authorization: `Bearer ${a.sessionToken}` },
+      },
+    );
+    expect(first?.statusCode).toBe(200);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toEqual(first!.json());
+    expect(
+      accountDeletionResponseSchema.parse(replay.json()).credentialDigests,
+    ).toContain(digest(a.credential));
   });
 });
 
