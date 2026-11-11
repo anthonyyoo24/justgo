@@ -4,17 +4,11 @@ import {
   catalogSchema,
   createAttemptSchema,
   patchAttemptSchema,
-  progressSummarySchema,
-  progressCalendarSchema,
-  progressDayResponseSchema,
   type Attempt,
   type Catalog,
   type ChallengeCard,
   type CreateAttempt,
   type PatchAttempt,
-  type ProgressSummary,
-  type ProgressCalendar,
-  type ProgressDayResponse,
   challengeCardSchema,
   normalizeReflectionText,
   sameHistoricalContext,
@@ -34,7 +28,6 @@ import {
   catalogEnvelopeSchema,
   periodSchema,
 } from './model';
-import { JournalSender } from './sync/sender';
 import { JournalPersistence } from './persistence/persistence';
 import { DeckPreferencesStorage } from './persistence/deck-preferences';
 import { addCompletion } from './submissions';
@@ -51,17 +44,13 @@ import {
   journalEntry,
   preserveActivityJournal,
 } from './private-journal';
-import type { JournalTransport } from './sync/transport';
-import { preserveNewerReflection } from './progress/progress';
 
 export type AccountRepositoryOptions = {
   accountId: string;
   storage: JournalStorage;
-  transport: JournalTransport;
   today: string;
   timeZone: string;
   clock?: JournalClock;
-  random?: () => number;
   localJournal?: LocalJournalRepository;
   dataMode?: DataMode;
 };
@@ -72,7 +61,6 @@ export class AccountRepository {
   readonly deckPreferences: DeckPreferencesStorage;
   private readonly key: string;
   private readonly clock: JournalClock;
-  private readonly sender: JournalSender;
   private readonly persistence: JournalPersistence;
   private disposed = false;
   private accountCurrent = true;
@@ -122,7 +110,6 @@ export class AccountRepository {
       active: true,
       warning: null,
       recoverySequence: 0,
-      remoteRefreshSequence: 0,
       coordinatorError: null,
       flowAttemptId: null,
       period: { today: options.today, timeZone: options.timeZone },
@@ -132,24 +119,6 @@ export class AccountRepository {
       options.storage,
       this.store,
       () => this.updateWarning(),
-    );
-    this.sender = new JournalSender(
-      {
-        read: () => this.store.getState(),
-        update: (work) => this.update(work),
-        persist: () => this.persist(),
-        needsPersistence: () => this.persistence.dirty,
-        failed: () => this.store.setState({ coordinatorError: 'UNAVAILABLE' }),
-        settled: () => {
-          this.store.setState((state) => ({
-            remoteRefreshSequence: state.remoteRefreshSequence + 1,
-          }));
-          this.updateWarning();
-        },
-      },
-      options.transport,
-      this.clock,
-      options.random ?? Math.random,
     );
   }
   hydrate(): Promise<void> {
@@ -363,7 +332,6 @@ export class AccountRepository {
   }
   setDataMode(mode: DataMode) {
     if (this.store.getState().dataMode === mode) return;
-    this.sender.stop();
     this.store.setState({ dataMode: mode });
     this.kickSync();
   }
@@ -646,7 +614,6 @@ export class AccountRepository {
     await this.hydrate();
     this.checkActiveAccount();
     this.clearing = true;
-    this.sender.stop();
     try {
       await Promise.allSettled([
         ...this.saving.values(),
@@ -755,24 +722,8 @@ export class AccountRepository {
   }
   setEnvironment(environment: { online: boolean; active: boolean }): void {
     if (this.disposed) return;
-    const previous = this.store.getState();
     this.store.setState(environment);
-
-    if (
-      (previous.active && !environment.active) ||
-      (previous.online && !environment.online)
-    ) {
-      this.sender.stop();
-    }
     this.updateWarningCause();
-    this.kickSync();
-  }
-  resumeAuthentication(): void {
-    this.checkActiveAccount();
-    this.update((journal) => {
-      for (const operation of journal.operations)
-        if (operation.state === 'auth') operation.state = 'pending';
-    });
     this.kickSync();
   }
   dismissWarning(): void {
@@ -785,7 +736,6 @@ export class AccountRepository {
   dispose(): void {
     this.disposed = true;
     this.store.setState({ active: false });
-    this.sender.stop();
     this.localJournal.stop();
   }
   async erase(): Promise<void> {
@@ -813,140 +763,6 @@ export class AccountRepository {
       warning: null,
       flowAttemptId: null,
     });
-  }
-  captureAggregateFence(): number | null {
-    const journal = this.store.getState().journal;
-    return journal.operations.some(
-      (operation) =>
-        operation.kind === 'create' &&
-        operation.state !== 'acknowledged' &&
-        !journal.records[operation.attemptId]?.rejected,
-    )
-      ? null
-      : journal.generation;
-  }
-  async acceptSummary(data: ProgressSummary, fence: number): Promise<boolean> {
-    const parsed = progressSummarySchema.parse(data);
-    if (
-      this.disposed ||
-      !this.store.getState().active ||
-      this.captureAggregateFence() !== fence ||
-      parsed.today !== this.store.getState().period.today ||
-      parsed.timeZone !== this.store.getState().period.timeZone
-    )
-      return false;
-    this.update((journal) => {
-      journal.summary = parsed;
-      journal.summaryAdditions = [];
-      journal.calendarAdditions = journal.calendarAdditions.filter(
-        (id) =>
-          journal.records[id]!.attempt.activityDate.slice(0, 7) ===
-          this.store.getState().period.today.slice(0, 7),
-      );
-    });
-    await this.persist();
-    return true;
-  }
-  async acceptCalendar(
-    data: ProgressCalendar,
-    timeZone: string,
-    fence: number,
-  ): Promise<boolean> {
-    const parsed = progressCalendarSchema.parse(data);
-    if (
-      this.disposed ||
-      !this.store.getState().active ||
-      this.captureAggregateFence() !== fence
-    )
-      return false;
-    const period = this.store.getState().period;
-    if (
-      parsed.month !== period.today.slice(0, 7) ||
-      timeZone !== period.timeZone
-    )
-      return true;
-    this.update((journal) => {
-      journal.calendar = { data: parsed, timeZone };
-      journal.calendarBaseline = journal.calendar;
-      journal.calendarAdditions = journal.calendarAdditions.filter(
-        (id) =>
-          journal.records[id]!.attempt.activityDate.slice(0, 7) !==
-          parsed.month,
-      );
-    });
-    await this.persist();
-    return true;
-  }
-  async acceptTodayPage(
-    data: ProgressDayResponse,
-    timeZone: string,
-    append = false,
-  ): Promise<void> {
-    let parsed = progressDayResponseSchema.parse(data);
-    const period = this.store.getState().period;
-    if (
-      this.disposed ||
-      !this.store.getState().active ||
-      parsed.date !== period.today ||
-      timeZone !== period.timeZone
-    )
-      return;
-    const privateEntries = parsed.entries.filter((entry) => entry.reflection);
-    if (privateEntries.length) {
-      await this.localJournal.mergeLegacy(
-        privateEntries.map((entry) => journalEntry(this.accountId, entry)),
-      );
-      this.checkActiveAccount();
-      await this.refreshLocalJournal();
-    }
-    parsed = {
-      ...parsed,
-      entries: parsed.entries.map((entry) => ({ ...entry, reflection: null })),
-    };
-    this.update((journal) => {
-      const previous =
-        append &&
-        journal.today?.data.date === parsed.date &&
-        journal.today.timeZone === timeZone
-          ? journal.today.data.entries
-          : [];
-      const entries = new Map(previous.map((entry) => [entry.id, entry]));
-      for (const entry of parsed.entries) {
-        entries.set(
-          entry.id,
-          preserveNewerReflection(entry, entries.get(entry.id)),
-        );
-      }
-      // A first-page refresh must retain downloaded later pages and newer
-      // reflection revisions. Local pending versions are overlaid by selectors.
-      const cached = journal.today;
-      if (cached?.data.date === parsed.date && cached.timeZone === timeZone)
-        for (const entry of cached.data.entries) {
-          const fresh = entries.get(entry.id);
-          entries.set(
-            entry.id,
-            fresh ? preserveNewerReflection(fresh, entry) : entry,
-          );
-        }
-      journal.today = {
-        timeZone,
-        data: {
-          ...parsed,
-          entries: [...entries.values()].sort(
-            (a, b) =>
-              a.startedAt.localeCompare(b.startedAt) ||
-              a.id.localeCompare(b.id),
-          ),
-          nextCursor:
-            !append &&
-            cached?.data.entries.length &&
-            cached.data.entries.length > parsed.entries.length
-              ? cached.data.nextCursor
-              : parsed.nextCursor,
-        },
-      };
-    });
-    await this.persist();
   }
   async rollover(today: string, timeZone: string): Promise<void> {
     periodSchema.parse({ today, timeZone });

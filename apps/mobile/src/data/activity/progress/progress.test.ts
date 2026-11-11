@@ -3,7 +3,6 @@ import { AccountRepository } from '../repository';
 import { journalEntry } from '../private-journal';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -17,7 +16,6 @@ async function setup(storage = new MemoryStorage()) {
   const repo = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
   });

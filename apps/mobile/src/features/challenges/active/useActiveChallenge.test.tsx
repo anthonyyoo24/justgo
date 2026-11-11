@@ -5,7 +5,6 @@ import { AccountRepository } from '../../../data/activity/repository';
 import { catalog } from '../../../../test-support/challenge-catalog';
 import {
   MemoryStorage,
-  backend,
   deferred,
   owner,
   today,
@@ -31,7 +30,6 @@ beforeEach(async () => {
   repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
   });
