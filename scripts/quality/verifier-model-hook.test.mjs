@@ -1,14 +1,22 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   decide,
+  filesOf,
   isVerifier,
   kindOf,
+  maxFiles,
   output,
   prOf,
 } from '../../.claude/hooks/verifier-model.mjs';
@@ -101,6 +109,111 @@ test('the diff comes from the one PR the brief names', () => {
   );
   assert.equal(prOf({ prompt: 'PR #1 and PR #2' }), undefined);
   assert.equal(prOf({ prompt: 'the current branch' }), undefined);
+  // A link to this repository is the same PR as its number.
+  assert.equal(
+    prOf({
+      prompt: 'PR #224 at https://github.com/AnthonyYoo24/JustGO/pull/224',
+    }),
+    '224',
+  );
+  // Another repository's PR is not JustGO's PR with the same number.
+  assert.equal(
+    prOf({ prompt: 'Like https://github.com/cursor/plugins/pull/224.' }),
+    undefined,
+  );
+  assert.equal(
+    prOf({ prompt: 'PR #224, ported from https://github.com/o/r/pull/224' }),
+    undefined,
+  );
+});
+
+test('verifiers are named by any form of verify or re-check, in any case', () => {
+  for (const description of [
+    'Verifying PR #7',
+    'Verified fix check for PR #7',
+    'Verifies the batch',
+    'Verifiers for PR #7',
+    'Re-checking PR #7',
+    'Rechecked docs on PR #7',
+  ])
+    assert.equal(isVerifier({ description, prompt: '' }), true, description);
+  assert.equal(
+    isVerifier({
+      description: 'Look',
+      prompt: 'End with a VERIFIER VERDICT: line.',
+    }),
+    true,
+  );
+  const checking = { ...recheck, description: 'Re-checking PR 223' };
+  assert.equal(decide(checking, ['AGENTS.md'], rules).model, 'sonnet');
+});
+
+test('a rename counts its old path, and a list that may be cut keeps Opus', () => {
+  const moved = filesOf([
+    {
+      filename: 'docs/a.md',
+      previous_filename: 'apps/api/src/identity/a.ts',
+    },
+    { filename: 'AGENTS.md' },
+  ]);
+  assert.deepEqual(moved, [
+    'docs/a.md',
+    'apps/api/src/identity/a.ts',
+    'AGENTS.md',
+  ]);
+  assert.equal(decide(recheck, moved, rules).model, 'opus');
+  const docs = Array.from({ length: maxFiles - 1 }, (_, i) => ({
+    filename: `docs/${i}.md`,
+  }));
+  assert.equal(decide(recheck, filesOf(docs), rules).model, 'sonnet');
+  docs.push({ filename: 'docs/last.md' });
+  assert.equal(filesOf(docs), undefined);
+  assert.equal(decide(recheck, filesOf(docs), rules).model, 'opus');
+  assert.equal(filesOf([]), undefined);
+});
+
+test('the hook reads every page of the PR files, renames included', () => {
+  const bin = mkdtempSync(path.join(tmpdir(), 'fake-gh-'));
+  writeFileSync(
+    path.join(bin, 'gh'),
+    '#!/bin/sh\nprintf "%s\\n" "$*" > "$GH_ARGS"\ncat "$GH_PAGES"\n',
+  );
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const run = (pages) => {
+    writeFileSync(path.join(bin, 'pages.json'), JSON.stringify(pages));
+    const result = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({
+        tool_name: 'Agent',
+        tool_input: { ...recheck, model: 'sonnet' },
+      }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${bin}:/bin:/usr/bin`,
+        GH_ARGS: path.join(bin, 'args'),
+        GH_PAGES: path.join(bin, 'pages.json'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout
+      ? JSON.parse(result.stdout).hookSpecificOutput.updatedInput.model
+      : 'sonnet';
+  };
+  assert.equal(
+    run([[{ filename: 'AGENTS.md' }], [{ filename: 'docs/b.md' }]]),
+    'sonnet',
+  );
+  assert.equal(
+    readFileSync(path.join(bin, 'args'), 'utf8').trim(),
+    'api --paginate --slurp repos/anthonyyoo24/justgo/pulls/223/files?per_page=100',
+  );
+  assert.equal(
+    run([
+      [{ filename: 'AGENTS.md' }],
+      [{ filename: 'docs/b.md', previous_filename: 'apps/api/src/b.ts' }],
+    ]),
+    'opus',
+  );
 });
 
 test('settings block the Agent call when the hook fails', () => {
