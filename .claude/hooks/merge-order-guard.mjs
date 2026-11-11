@@ -18,7 +18,7 @@ const apiMerge = /\bpulls\/[^\s/]+\/merge\b/;
 
 const reason =
   'merge-order-guard: merge only through `pnpm run merge:pr <n> --head <sha> [--auto]` ' +
-  '(or `-- <n> --disable-auto` to disarm), which checks the merge order first. ' +
+  '(or `pnpm run merge:pr <n> --disable-auto` to disarm), which checks the merge order first. ' +
   'This hook denies any Bash command whose text contains `gh pr merge` or a ' +
   '`pulls/<n>/merge` API path, including harmless mentions such as a grep or ' +
   'a commit message. For a search, leave out `gh` (for example ' +

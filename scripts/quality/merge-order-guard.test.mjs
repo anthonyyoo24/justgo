@@ -31,6 +31,8 @@ test('raw merges are denied in every shape and point at the script', () => {
     const decision = decide(command);
     assert.equal(decision?.permissionDecision, 'deny', command);
     assert.match(decision.reason, /pnpm run merge:pr <n> --head <sha>/);
+    assert.match(decision.reason, /pnpm run merge:pr <n> --disable-auto/);
+    assert.doesNotMatch(decision.reason, /`--\s/);
     assert.match(decision.reason, /harmless mentions/);
   }
 });

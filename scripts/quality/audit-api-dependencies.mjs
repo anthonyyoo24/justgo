@@ -152,6 +152,11 @@ export async function auditApiDependencies(root, audit = pnpmAudit) {
     await readFile(path.join(root, 'pnpm-lock.yaml'), 'utf8'),
   );
   const projected = apiProductionLock(lock);
+  const { packageManager } = JSON.parse(
+    await readFile(path.join(root, 'package.json'), 'utf8'),
+  );
+  if (!/^pnpm@\d+\.\d+\.\d+$/.test(packageManager ?? ''))
+    throw new Error('The root package.json must pin pnpm in packageManager');
   const workspaces = Object.keys(projected.importers).filter((w) => w !== '.');
   const temporary = await mkdtemp(path.join(tmpdir(), 'justgo-api-audit-'));
   try {
@@ -188,7 +193,12 @@ export async function auditApiDependencies(root, audit = pnpmAudit) {
     }
     await writeFile(
       path.join(temporary, 'package.json'),
-      JSON.stringify({ name: 'justgo-api-production-audit', private: true }),
+      // Outside the repository Corepack would otherwise fetch the newest pnpm.
+      JSON.stringify({
+        name: 'justgo-api-production-audit',
+        private: true,
+        packageManager,
+      }),
     );
     await writeFile(
       path.join(temporary, 'pnpm-workspace.yaml'),

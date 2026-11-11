@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // Dependabot cannot read Expo's version list, so it would bump packages the
 // Expo SDK pins, or that ship native code, one at a time. Those move together
-// in an Expo SDK upgrade instead (`npx expo install expo@<sdk> --fix`, a new
+// in an Expo SDK upgrade instead (`pnpm exec expo install expo@<sdk> --fix`, a new
 // development build and a device check). This script writes them into the
 // `ignore` list of .github/dependabot.yml, and its test fails when the list
 // drifts from the installed SDK.

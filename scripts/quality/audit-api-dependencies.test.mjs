@@ -234,9 +234,16 @@ function manifests() {
   };
 }
 
-async function sourceFixture(manifest = manifests()) {
+async function sourceFixture(
+  manifest = manifests(),
+  rootManifest = { name: 'repo', packageManager: 'pnpm@11.28.9' },
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'justgo-audit-source-test-'));
   await writeFile(path.join(root, 'pnpm-lock.yaml'), yaml.dump(fixture()));
+  await writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify(rootManifest),
+  );
   for (const [location, content] of Object.entries(manifest)) {
     await mkdir(path.join(root, location), { recursive: true });
     await writeFile(
@@ -262,6 +269,11 @@ test('keeps exact metadata on disk, propagates audit failures and always cleans 
           'exact-alias-integrity',
         );
         assert.equal(projected.packages['expo-sqlite@1.0.0'], undefined);
+        assert.equal(
+          JSON.parse(await readFile(path.join(folder, 'package.json'), 'utf8'))
+            .packageManager,
+          'pnpm@11.28.9',
+        );
         assert.deepEqual(
           yaml.load(
             await readFile(path.join(folder, 'pnpm-workspace.yaml'), 'utf8'),
@@ -284,6 +296,26 @@ test('keeps exact metadata on disk, propagates audit failures and always cleans 
     }
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('refuses to audit without the repository pnpm pin', async () => {
+  for (const rootManifest of [
+    { name: 'repo' },
+    { name: 'repo', packageManager: 'npm@11.16.0' },
+    { name: 'repo', packageManager: 'pnpm@latest' },
+  ]) {
+    const root = await sourceFixture(manifests(), rootManifest);
+    try {
+      await assert.rejects(
+        auditApiDependencies(root, () => {
+          throw new Error('must not audit');
+        }),
+        /must pin pnpm/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   }
 });
 
