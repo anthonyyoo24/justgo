@@ -63,6 +63,7 @@ const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
 const codeChange = {
   changes: { result: 'success', outputs: { app: 'true' } },
   static: { result: 'success' },
+  dependencies: { result: 'success' },
   ...Object.fromEntries(appJobs.map((name) => [name, { result: 'success' }])),
 };
 const markdownOnly = {
@@ -119,6 +120,44 @@ test('a code change outside the iCloud module may skip only the native iCloud jo
         ),
       new RegExp(name),
     );
+});
+
+test('a change outside dependency files may skip the dependency checks, and only that change', () => {
+  const noDependencies = {
+    ...codeChange,
+    changes: {
+      result: 'success',
+      outputs: { app: 'true', dependencies: 'false' },
+    },
+    dependencies: { result: 'skipped' },
+  };
+  requireSuccessfulJobs(JSON.stringify(noDependencies));
+  for (const result of ['failure', 'cancelled', undefined])
+    assert.throws(
+      () =>
+        requireSuccessfulJobs(
+          JSON.stringify({ ...noDependencies, dependencies: { result } }),
+        ),
+      /dependencies/,
+    );
+  // A skipped app job does not let the dependency checks skip, nor the reverse.
+  assert.throws(
+    () =>
+      requireSuccessfulJobs(
+        JSON.stringify({
+          ...markdownOnly,
+          dependencies: { result: 'skipped' },
+        }),
+      ),
+    /dependencies/,
+  );
+  assert.throws(
+    () =>
+      requireSuccessfulJobs(
+        JSON.stringify({ ...noDependencies, unit: { result: 'skipped' } }),
+      ),
+    /unit/,
+  );
 });
 
 test('a Markdown-only change passes with skipped app jobs and still fails on anything else', () => {

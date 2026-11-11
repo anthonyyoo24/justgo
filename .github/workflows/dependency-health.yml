@@ -1,0 +1,43 @@
+name: Daily dependency health
+
+# Live Expo Doctor and the API dependency audit answer from today's Expo and
+# npm data, so a new release can turn them red with no commit. Pull requests
+# run them only when they change what the checks read (the `dependencies` job
+# in ci.yml). This run checks main every day and keeps one open issue while
+# either check fails, so drift turns into one bump PR instead of a red PR queue.
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - name: Run live Expo Doctor
+        run: pnpm --filter @justgo/mobile run doctor
+      - name: Audit API production dependencies
+        if: ${{ !cancelled() }}
+        run: pnpm run audit:api
+      - name: Open or update the dependency health issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/quality/dependency-health-issue.mjs

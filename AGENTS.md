@@ -62,8 +62,12 @@ Classify the behavior and boundary that changed, not the directory.
 Before pushing, run the checks for the touched paths on the committed head. CI
 runs the full set on every pull request that changes more than Markdown and
 agent tooling. A PR made only of Markdown, `.claude/hooks/`,
-`.claude/settings.json` and `scripts/quality/` files (except the three that app
-jobs run, listed in `ci-changes.mjs`) runs only `static`. A local
+`.claude/settings.json` and `scripts/quality/` files (except the ones that app
+jobs run, listed in `ci-changes.mjs`) runs only `static`. Live Expo Doctor and
+the API dependency audit run in the `dependencies` job only when a PR changes a
+manifest, the lockfile, pnpm or Node settings, mobile root config, plugins or
+native code, or the CI pieces that run them. The daily `dependency-health.yml`
+runs both on `main` and keeps one issue open while either fails. A local
 pass does not prove a hosted pass, so read each stacked branch's own CI run. Expand
 the local checks for a concrete failure or an explicit owner request, and state
 the trigger.
@@ -266,7 +270,7 @@ highest level that works and updates this list.
   - Enforced by (test): `scripts/quality/doc-links.test.mjs`, with `outsideRepoPrefixes` for pstack and `.local/` paths that name no tracked folder
 - CI keeps its job shape, SHA pins and prerequisites, and no job relies on ignored `.env` files.
   - Enforced by (test, CI): `scripts/quality/ci-workflow.test.mjs` and actionlint in the CI `static` job
-- Each external action's SHA pin is followed by its release version, as in `# v7.0.1`. Expo Doctor runs live in `pnpm run check` and the CI `static` job, so no offline mode, skipped check or exclusion hides a metadata finding.
+- Each external action's SHA pin is followed by its release version, as in `# v7.0.1`. Expo Doctor runs live in `pnpm run check`, the CI `dependencies` job and the daily `dependency-health.yml`, so no offline mode, skipped check or exclusion hides a metadata finding.
   - Enforced by (test, written): The pin case in `scripts/quality/ci-workflow.test.mjs` reads every `.yml` or `.yaml` workflow and every composite action and fails on a pin with no `# vX.Y.Z` comment. The same file fails on an entry in `.github/actions` that is not a folder with an `action.yml`. Its Expo Doctor case fails when a workflow or action key or value, not a YAML comment, names `EXPO_OFFLINE`, `EXPO_NO_DEPENDENCY_VALIDATION` or an `EXPO_DOCTOR_*` variable other than the opt-in `EXPO_DOCTOR_ENABLE_DIRECTORY_CHECK`. The `doctor` script sets `EXPO_NO_DOTENV=1`, so an ignored local `apps/mobile/.env` cannot skip a check. The doctor case in `scripts/quality/mobile-verification.test.mjs` runs that script against a fake `expo-doctor` and fails on any argument or `EXPO_*` variable besides `EXPO_NO_CACHE=1` and `EXPO_NO_DOTENV=1`, and on `expo.doctor` or `expo.install.exclude` in `apps/mobile/package.json`. Only review catches a version comment that names the wrong release for its SHA and an `EXPO_DOCTOR_*` variable exported in a local shell.
 - Deletion receipts, subject tombstones, deleted IDs and revoked proof digests survive the identity purge and a restore. Every schema table, and every column of a ledger table, is either replayed by the recovery ledger or listed as dump-only.
   - Enforced by (test): `scripts/backups/ledger-coverage.test.mjs` checks `ledgerTables`, `dumpOnlyTables` and `dumpOnlyLedgerColumns` in `scripts/backups/snapshot.mjs` against `schema.ts`. `apps/api/tests/db/recovery-ledger.integration.test.ts` runs one tombstone per ledger table through the purge and `reconcileLedger`.
@@ -297,7 +301,7 @@ highest level that works and updates this list.
 - Prove a user-facing change on the running app. Interactive checks use the built-in browser pane, not an outside Chrome window.
   - Enforced by (skill): [`verify-justgo`](.claude/skills/verify-justgo/SKILL.md) drives and its doctor
 - Use current Expo and library APIs.
-  - Enforced by (lint, type, CI, test, written): `@typescript-eslint/no-deprecated` in `pnpm run lint`, `pnpm run typecheck` against the installed packages, Expo Doctor in `pnpm run check` and the CI `static` job, and the saved journeys. `eslint-suppressions.json` lists the deprecated calls that predate the rule, and lint fails on a new call or a stale entry. The Expo docs bullet in the [repository map](#repository-map-and-common-commands) covers the judgment calls.
+  - Enforced by (lint, type, CI, test, written): `@typescript-eslint/no-deprecated` in `pnpm run lint`, `pnpm run typecheck` against the installed packages, Expo Doctor in `pnpm run check`, the CI `dependencies` job and the daily `dependency-health.yml`, and the saved journeys. `eslint-suppressions.json` lists the deprecated calls that predate the rule, and lint fails on a new call or a stale entry. The Expo docs bullet in the [repository map](#repository-map-and-common-commands) covers the judgment calls.
 - Diagnostics carry no private text.
   - Enforced by (test, written): The Sentry payload tests in `apps/mobile/src/app-support/diagnostics/event.test.ts`. [Security and privacy](#security-and-privacy) covers the rest.
 - Identity, writing, recovery and deletion never depend on diagnostics delivery. An error reaches the route fallback, which reports it, and a reporting failure never replaces the original error or blocks the work.

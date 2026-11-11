@@ -16,6 +16,7 @@ jobs:
     outputs:
       app: ${{ steps.classify.outputs.app }}
       icloud: ${{ steps.classify.outputs.icloud }}
+      dependencies: ${{ steps.classify.outputs.dependencies }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,10 +44,23 @@ jobs:
           # Validate GitHub syntax/contexts without adding separate shell/Python linters.
           "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes=
       - uses: ./.github/actions/setup-node
-      - run: pnpm --filter @justgo/mobile run doctor
       # Mobile typechecking generates and verifies fresh Expo route declarations
       # without starting Metro, including on clean CI runners.
       - run: pnpm run check:static
+  # Live Expo Doctor and the dependency audit answer from today's registry, so
+  # a new release can turn them red without a commit. They run here only when a
+  # PR changes what they read, and every day on main in dependency-health.yml.
+  dependencies:
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.dependencies == 'true'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - run: pnpm --filter @justgo/mobile run doctor
       - name: Audit API production dependencies
         run: pnpm run audit:api
   unit:
@@ -206,7 +220,17 @@ jobs:
   checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    needs: [changes, static, unit, database, journeys, exports, native-icloud]
+    needs:
+      [
+        changes,
+        static,
+        dependencies,
+        unit,
+        database,
+        journeys,
+        exports,
+        native-icloud,
+      ]
     if: always()
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
