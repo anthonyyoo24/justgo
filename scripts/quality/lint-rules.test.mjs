@@ -424,6 +424,15 @@ const cases = [
     source,
     'apps/api/src/data-sync/journal.ts',
   ]),
+  ...[
+    'export const owner = (claims: { email?: string }) => claims.email;',
+    "export const owner = (claims: Record<string, unknown>) => claims['email'];",
+    "import { sql } from 'drizzle-orm'; export const find = (address: string) => sql`select id from justgo.users where email = ${address}`;",
+  ].map((source) => [
+    'no-restricted-syntax',
+    source,
+    'apps/api/src/identity/managed-service.ts',
+  ]),
 ];
 
 // The typed rules' project service lints only files on disk, and no source
