@@ -138,8 +138,9 @@ these rules:
 - Each operations doc owns the local rehearsals for its area.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
   a `gate` issue for each deferred device, hosted or staging check. File an issue
-  for each approved deferral of a review finding. Close each with a link to its
-  evidence.
+  for each deferral Anthony approves of a `FAIL` that shows a failure. A note in
+  a `PASS+NOTES` verdict stays in that comment. Close each issue with a link to
+  its evidence.
 - File a bug you find outside your task as an issue with its reproduction. Label
   it `bug` and exactly one of these:
   - `agent-fix`: a failing test reproduces the bug and the fix needs no product
@@ -465,7 +466,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   whose head has a `PASS`. It cannot check a push in the same command as a
   commit, merge or rebase, so it denies that too: run them as separate
   commands. Put
-  optional notes and later additions in a follow-up PR or issue. If a push after
+  later additions in a follow-up PR. If a push after
   a `PASS` cannot be avoided, run `pnpm run merge:pr <n> --disable-auto` first,
   prefix the push with `PUSH_AFTER_PASS=1`, and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
   push keeps `verdict` green without a review. Also disarm with
@@ -510,7 +511,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 - Hooks are frozen to cut usage (Anthony, 2026-11-11). Change a hook in
   `.claude/hooks/` only when it blocks or misfires in real use, shown by the
-  command it got wrong, or when Anthony asks. A shell form agents do not write,
+  command it got wrong, or when Anthony asks. This holds for `/pstack:correct`
+  too: it fixes a repeated mistake with a written rule, not a new hook check,
+  unless Anthony asks for one. A shell form agents do not write,
   such as unusual quoting, expansions or heredocs, stays caught only in review.
   Open no issue or PR for one.
 - Start a session on the Mac mini (the `Mac mini` SSH connection) with `cwd`
