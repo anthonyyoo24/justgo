@@ -70,7 +70,7 @@ test('the PRs under review come from the description, else the prompt', () => {
   assert.deepEqual(
     prsOf({
       description: 'Verify PR #7',
-      prompt: 'Also https://github.com/o/r/pull/12 and pr#7.',
+      prompt: 'Also https://github.com/anthonyyoo24/justgo/pull/12 and pr#7.',
     }).numbers,
     ['7'],
   );
@@ -78,9 +78,25 @@ test('the PRs under review come from the description, else the prompt', () => {
     prsOf({
       description: 'Verify the batch',
       prompt:
-        'Also https://github.com/o/r/pull/12 and pr#7. Issue #9 is not a PR.',
+        'Also https://github.com/AnthonyYoo24/JustGO/pull/12 and pr#7. Issue #9 is not a PR.',
     }),
     { numbers: ['12', '7'], from: 'prompt' },
+  );
+  // #361: a link to another repository names that repository's PR, and so do
+  // the numbers listed after it. Digits in a repository name are not a PR.
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify the batch',
+      prompt:
+        'PR #7, ported from https://github.com/cursor/plugins/pull/12 and https://github.com/o/justgo/pull/13, #14 and #15.',
+    }),
+    { numbers: ['7'], from: 'prompt' },
+  );
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify https://github.com/anthonyyoo24/justgo/pull/12, #13',
+    }).numbers,
+    ['12', '13'],
   );
   // A batch description lists its PRs. A bare number is not a PR.
   for (const description of [
@@ -137,6 +153,33 @@ test('a PR the brief only mentions is not checked', () => {
     ),
     undefined,
   );
+});
+
+// #361
+test('a link to another repository is not a JustGO PR', () => {
+  const io = fakeIo({ 9: { comments: [verdict('PASS')] } });
+  assert.equal(
+    evaluate(
+      verifier(
+        'Port https://github.com/cursor/plugins/pull/9 here.',
+        'Verify the port',
+      ),
+      '/r',
+      io,
+    ),
+    undefined,
+  );
+  // A link to this repository still counts, in any case.
+  const decision = evaluate(
+    verifier(
+      'Review https://github.com/AnthonyYoo24/JustGO/pull/9.',
+      'Verify the port',
+    ),
+    '/r',
+    io,
+  );
+  assert.equal(decision?.permissionDecision, 'deny');
+  assert.match(decision.reason, /PR #9 already has a passing verdict/);
 });
 
 test('a verifier on a PR whose PASS still covers its head is denied', () => {
