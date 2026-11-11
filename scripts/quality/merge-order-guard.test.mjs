@@ -93,6 +93,26 @@ test('parameter expansion, repeated flags and the merge queue are denied', () =>
     'gh pr ${#x}merge 1',
     'gh pr --repo=a/b -R c/d --repo e/f merge 1',
     `gh pr ${'-R a/b '.repeat(16)}merge 1`,
+    // A command inside any expansion operator still runs, and an unset
+    // variable expands to nothing.
+    'echo ${HOME#$(gh pr "merge" 1)}',
+    'echo ${HOME##$(gh pr "merge" 1)}',
+    'echo ${HOME%$(gh pr "merge" 1)}',
+    'echo ${HOME%%$(gh pr "merge" 1)}',
+    'echo ${HOME/a/$(gh pr "merge" 1)}',
+    'echo ${HOME//a/$(gh pr "merge" 1)}',
+    'echo ${HOME^$(gh pr "merge" 1)}',
+    'echo ${HOME,$(gh pr "merge" 1)}',
+    'echo ${#$(gh pr "merge" 1)}',
+    'echo ${HOME#$(gh pr -R a/b "merge" 1)}',
+    'echo ${x:-$(gh pr "merge" 1)}',
+    'gh pr m$x"erge" 1',
+    'gh pr m$@erge 1',
+    'gh pr $x"merge" 1',
+    'gh pr m${x}$y"erge" 1',
+    // Main denies this too. Only the unquoted copy that keeps `$n` sees a
+    // path segment between `pulls/` and `/merge`.
+    'gh api -X PUT repos/o/r/pul"ls/$n/merge"',
     `gh api graphql -f query='mutation { enqueuePullRequest(input: {pullRequestId: "X"}) { clientMutationId } }'`,
   ]) {
     const decision = decide(command);
@@ -102,6 +122,8 @@ test('parameter expansion, repeated flags and the merge queue are denied', () =>
   }
   for (const command of [
     'gh pr view ${n} --json state',
+    'gh pr view $n --json state',
+    'echo ${HOME#$(gh pr view 1)}',
     'echo ${HOME} && gh pr list',
     'gh pr -R a/b -R a/b view 1',
     // Branch merges, not PR merges: branch protection guards `main`.
@@ -124,6 +146,8 @@ test('120k-character lines take well under a second, far below the 10 s timeout'
     fill('${x:-'),
     `gh pr ${fill('${x}')}`,
     fill('gh "pr" ${x} '),
+    `gh pr ${fill('$x$@')}`,
+    fill('gh pr $x"m" '),
   ]) {
     const started = performance.now();
     decide(text);

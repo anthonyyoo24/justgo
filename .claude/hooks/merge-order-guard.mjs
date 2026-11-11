@@ -11,10 +11,12 @@ import { fileURLToPath } from 'node:url';
 // `enqueuePullRequest` mutation. Shell quotes and backslashes only group
 // words, so it also checks the text with them removed, which catches
 // `gh pr "merge"`, `gh pr $'merge'` and a backslash-newline inside the word.
-// That copy also replaces each `${…}` expansion with its default or
-// alternate word, or with nothing, which catches `gh pr ${x:-merge}` and
-// `gh pr m${x}erge`. GraphQL `mergeBranch` and the REST `merges` endpoint
-// merge branches, not PRs. Branch protection blocks them on `main`, and on a
+// Two more unquoted copies drop each `$name` variable, and the last of them
+// also replaces each `${…}` expansion with its default or alternate word, or
+// with nothing. They catch `gh pr m$x"erge"`, `gh pr ${x:-merge}` and
+// `gh pr m${x}erge`, while the first unquoted copy keeps any command inside
+// an expansion, such as `${HOME#$(gh pr "merge" 1)}`. GraphQL `mergeBranch`
+// and the REST `merges` endpoint merge branches, not PRs. Branch protection blocks them on `main`, and on a
 // PR branch they do what `update-branch` does, so they pass. It reads text
 // and does not parse shell, so a harmless mention such as a grep is denied
 // too, and the message says how to get around that. A command that builds
@@ -48,6 +50,9 @@ const expansion = /\$\{([^{}]*)\}/g;
 // `${x:-w}`, `${x-w}`, `${x:=w}`, `${x:+w}` and the like keep `w`. `${x}`,
 // `${#x}` and zsh's `${}` keep nothing.
 const expanded = (body) => body.replace(/^[^:=+?-]*:?[-=+?]?/, '');
+// `$name`, `$1` and the special parameters `$@`, `$*`, `$#`, `$?`, `$$`,
+// `$!` and `$-`. Not `${`, `$(` or `$'`.
+const variable = /\$(?:[A-Za-z_]\w*|[@*#?$!0-9-])/g;
 
 const reason =
   'merge-order-guard: merge only through `pnpm run merge:pr <n> --head <sha> [--auto]` ' +
@@ -63,13 +68,20 @@ const reason =
 export function decide(command) {
   const joined = command.replace(/\\\r?\n/g, ' ');
   // The shell drops a backslash-newline inside a word (`mer\<newline>ge`) and
-  // the `$` of `$'…'` and `$"…"`, so the unquoted copy does too.
-  const unquoted = command
-    .replace(/\\\r?\n/g, '')
-    .replace(/\$(?=["'])/g, '')
-    .replace(/["'\\]/g, '')
-    .replace(expansion, (_, body) => expanded(body));
-  const denied = [joined, unquoted].some(
+  // the `$` of `$'…'` and `$"…"`, so the unquoted copies do too.
+  const spliced = command.replace(/\\\r?\n/g, '').replace(/\$(?=["'])/g, '');
+  const unquote = (text) => text.replace(/["'\\]/g, '');
+  // An unset variable expands to nothing, so `m$x"erge"` and `m$@erge` run
+  // `merge`. Variables go before the quotes, which end their names.
+  const bare = spliced.replace(variable, '');
+  // Each copy only adds matches: the expanded copy drops the text inside an
+  // expansion, so the other two keep it, as in `${HOME#$(gh pr "merge" 1)}`.
+  const denied = [
+    joined,
+    unquote(spliced),
+    unquote(bare),
+    unquote(bare.replace(expansion, (_, body) => expanded(body))),
+  ].some(
     (text) => ghPrMerge(text) || apiMerge.test(text) || graphqlMerge.test(text),
   );
   return denied ? { permissionDecision: 'deny', reason } : undefined;
