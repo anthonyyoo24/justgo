@@ -28,9 +28,8 @@ function commandFixture(t, executable, source) {
     PATH: `${directory}:${process.env.PATH}`,
     JUSTGO_VERIFICATION_RECORD: record,
   };
-  delete env.EXPO_NO_CACHE;
-  delete env.EXPO_OFFLINE;
-  delete env.EXPO_NO_DEPENDENCY_VALIDATION;
+  for (const name of Object.keys(env))
+    if (name.startsWith('EXPO_')) delete env[name];
   return { directory, record, env };
 }
 
@@ -58,13 +57,13 @@ process.exit(args.includes('doctor') ? 17 : 0);
   ]);
 });
 
-test('mobile doctor refreshes version metadata and preserves a failed validation result', (t) => {
+test('mobile doctor runs every live check, refreshes version metadata and preserves a failed validation result', (t) => {
   const fixture = commandFixture(
     t,
     'expo-doctor',
     `require('node:fs').writeFileSync(process.env.JUSTGO_VERIFICATION_RECORD,
-  JSON.stringify({ noCache: process.env.EXPO_NO_CACHE,
-    offline: process.env.EXPO_OFFLINE, skip: process.env.EXPO_NO_DEPENDENCY_VALIDATION }));
+  JSON.stringify({ args: process.argv.slice(2), env: Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name.startsWith('EXPO_'))) }));
 process.exit(19);
 `,
   );
@@ -74,7 +73,20 @@ process.exit(19);
     encoding: 'utf8',
   });
   assert.equal(result.status, 19, result.stderr);
-  assert.deepEqual(JSON.parse(readFileSync(fixture.record)), { noCache: '1' });
+  assert.deepEqual(JSON.parse(readFileSync(fixture.record)), {
+    args: [],
+    env: { EXPO_NO_CACHE: '1' },
+  });
+  assert.equal(
+    mobilePackage.expo?.doctor,
+    undefined,
+    'Fix the Expo Doctor finding instead of adding expo.doctor exclusions',
+  );
+  assert.equal(
+    mobilePackage.expo?.install?.exclude,
+    undefined,
+    'Align the dependency instead of adding expo.install.exclude',
+  );
 });
 
 test('mobile singleton overrides and the lockfile agree with declared versions', () => {
