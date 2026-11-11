@@ -62,9 +62,9 @@ export const thisRepo = 'anthonyyoo24/justgo';
 const prReference =
   /(?:\bPR\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)(\d+)\b/gi;
 // Each PR a text names, as lowercase `owner/repo#N`. A link names its
-// repository. `PR #N` means this one. review-rounds-guard.mjs reads PRs the
-// same way.
-export const prKeysIn = (text) =>
+// repository. `PR #N` means this one. review-rounds-guard.mjs reads links the
+// same way and also reads lists such as `PRs #7, #8`.
+const prKeysIn = (text) =>
   [...(text ?? '').matchAll(prReference)].map(
     ([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`,
   );

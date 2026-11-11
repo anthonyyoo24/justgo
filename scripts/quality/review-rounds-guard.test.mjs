@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  budgetMs,
   evaluate,
   output,
+  processIo,
   prsOf,
+  timeLeft,
 } from '../../.claude/hooks/review-rounds-guard.mjs';
 
 const hook = fileURLToPath(
@@ -66,7 +71,7 @@ test('the PRs under review come from the description, else the prompt', () => {
     prsOf({
       description: 'Verify PR #7',
       prompt: 'Also https://github.com/anthonyyoo24/justgo/pull/12 and pr#7.',
-    }),
+    }).numbers,
     ['7'],
   );
   assert.deepEqual(
@@ -75,17 +80,61 @@ test('the PRs under review come from the description, else the prompt', () => {
       prompt:
         'Also https://github.com/AnthonyYoo24/JustGO/pull/12 and pr#7. Issue #9 is not a PR.',
     }),
-    ['12', '7'],
+    { numbers: ['12', '7'], from: 'prompt' },
   );
-  // #361: a link to another repository names that repository's PR.
+  // #361: a link to another repository names that repository's PR, and so do
+  // the numbers listed after it. Digits in a repository name are not a PR.
   assert.deepEqual(
     prsOf({
       description: 'Verify the batch',
       prompt:
-        'PR #7, ported from https://github.com/cursor/plugins/pull/12 and https://github.com/o/justgo/pull/13.',
+        'PR #7, ported from https://github.com/cursor/plugins/pull/12 and https://github.com/o/justgo/pull/13, #14 and #15.',
     }),
-    ['7'],
+    { numbers: ['7'], from: 'prompt' },
   );
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify https://github.com/anthonyyoo24/justgo/pull/12, #13',
+    }).numbers,
+    ['12', '13'],
+  );
+  // A batch description lists its PRs. A bare number is not a PR.
+  for (const description of [
+    'Verify PRs #7, #8 and #12',
+    'Verify PRs #7, #8, and #12',
+    'Verify PR #7, PR #8 & #12',
+  ])
+    assert.deepEqual(
+      prsOf({ description, prompt: 'PR #9 is their parent.' }),
+      { numbers: ['7', '8', '12'], from: 'description' },
+      description,
+    );
+  assert.deepEqual(prsOf({ description: 'Verify PR #7, 2 files' }).numbers, [
+    '7',
+  ]);
+});
+
+test('a batch verifier that names its PRs is not denied for a parent its prompt mentions', () => {
+  const prs = {
+    7: { comments: [] },
+    8: { comments: [] },
+    9: { comments: [verdict('PASS')] },
+  };
+  const prompt = 'PR #7 and PR #8 stack on PR #9, which already passed.';
+  assert.equal(
+    evaluate(verifier(prompt, 'Verify PRs #7, #8'), '/r', fakeIo(prs)),
+    undefined,
+  );
+  // With no PR in the description every PR the prompt mentions is checked,
+  // and the denial says how to scope the batch.
+  const decision = evaluate(
+    verifier(prompt, 'Verify the batch'),
+    '/r',
+    fakeIo(prs),
+  );
+  assert.equal(decision?.permissionDecision, 'deny');
+  assert.match(decision.reason, /PR #9 already has a passing verdict/);
+  assert.match(decision.reason, /name the PRs under review in the description/);
 });
 
 test('a PR the brief only mentions is not checked', () => {
@@ -168,7 +217,13 @@ test('the fourth verifier after three FAIL verdicts is denied, the third is not'
     evaluate(verifier(''), '/r', fakeIo({ 7: { comments: two } })),
     undefined,
   );
-  const three = [...two, verdict('FAIL', 'eeeeeee')];
+  // A FAIL with no `Failure shown:` line shows no defect and uses no round.
+  const unshown = [...two, verdict('FAIL', 'eeeeeee')];
+  assert.equal(
+    evaluate(verifier(''), '/r', fakeIo({ 7: { comments: unshown } })),
+    undefined,
+  );
+  const three = [...unshown, verdict('FAIL', 'fffffff', shown)];
   const decision = evaluate(
     verifier(''),
     '/r',
@@ -177,7 +232,7 @@ test('the fourth verifier after three FAIL verdicts is denied, the third is not'
   assert.equal(decision?.permissionDecision, 'deny');
   assert.match(
     decision.reason,
-    /PR #7 has 3 FAIL verdicts, and the limit is 3/,
+    /PR #7 has 3 FAIL verdicts that show a failure, and the limit is 3/,
   );
   assert.match(decision.reason, /bring it to Anthony/);
   // Only owner comments count, as in the verdict check.
@@ -236,6 +291,44 @@ test('Anthony can ask for another round, and errors let the call through', () =>
   );
 });
 
+test('every call shares one time budget, and a spent budget lets the verifier start', () => {
+  assert.equal(
+    timeLeft(1000, () => 0),
+    1000,
+  );
+  assert.equal(
+    timeLeft(10 ** 9, () => 0),
+    15000,
+    'one call waits at most 15 s',
+  );
+  assert.throws(() => timeLeft(1000, () => 1000), /time budget spent/);
+  // Out of time, the hook runs nothing more and lets the call through.
+  assert.equal(
+    evaluate(verifier(''), process.cwd(), processIo(Date.now() - 1)),
+    undefined,
+  );
+  // A slow gh is stopped when the budget runs out, not after it.
+  const bin = mkdtempSync(path.join(tmpdir(), 'slow-gh-'));
+  writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\nexec sleep 30\n');
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const script = `
+    import { processIo } from ${JSON.stringify(pathToFileURL(hook).href)};
+    const started = Date.now();
+    try { processIo(started + 500).gh(['pr', 'view', '7'], '.'); }
+    catch { console.log(Date.now() - started); }`;
+  const run = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    },
+  );
+  assert.equal(run.status, 0, run.stderr);
+  const waited = Number(run.stdout.trim());
+  assert.ok(waited >= 400 && waited < 5000, `waited ${run.stdout}`);
+});
+
 test('the hook denies through PreToolUse output and is registered on Agent', () => {
   assert.deepEqual(output({ permissionDecision: 'deny', reason: 'x' }), {
     hookSpecificOutput: {
@@ -263,4 +356,6 @@ test('the hook denies through PreToolUse output and is registered on Agent', () 
   assert.ok(entry, 'review-rounds-guard runs before every Agent call');
   // A guard that saves review rounds fails open, so no onFailure block.
   assert.equal(entry.onFailure, undefined);
+  // The budget ends well before the hook timeout, so the hook decides.
+  assert.ok(budgetMs + 10000 <= entry.timeout * 1000);
 });
