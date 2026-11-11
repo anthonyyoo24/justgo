@@ -395,6 +395,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] The handler builds the app and a one-connection pool once per worker, and passes `clientAddress` from the header that P15-2 recorded.
 - [ ] A startup failure returns the same safe body and `x-justgo-startup-stage` header as `worker.ts:102-126` at `ce611dd`.
 - [ ] Server error reports flush through `EdgeRuntime.waitUntil`.
+- [ ] The Edge smoke drives managed sign-in and account deletion, and runs `checkWorkerOutboundAdapters()` from `apps/api/scripts/workers-outbound-smoke.ts`, so it proves that `outboundFetch()` is refused inside an `IdentityService` transaction and sends after it on Deno. If P15-2 falls back to `drizzle-orm/postgres-js`, retype `ownerTransactions()` for that database.
 - [ ] `supabase/config.toml` sets `verify_jwt = false` for `api`.
 - [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB. Port the input and output checks of `validateWorkerBundle` (`scripts/release/staging-worker-build.mjs:15-74` at `ce611dd`), which reject untracked, ignored, non-production and secret-like inputs and unexpected output files.
 - [ ] `pnpm run test:edge` runs the smoke route sequence against the bundle in the pinned Edge runtime image and `justgo_test`. CI runs it where the Workers step was.
