@@ -52,15 +52,25 @@ const dayEntryListFix =
   "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.";
 const accountKeyFix =
   "Build query keys with accountKey() from apps/mobile/src/lib/network/account-client.ts, or a variable that holds one, so each key starts with ['account', userId]. An unscoped key serves one account's cached data to another.";
+// An identifier, a string or a template with no expressions can name a key or method.
+const namedBy = (path, pattern) =>
+  [
+    `[${path}.name=${pattern}]`,
+    `[${path}.value=${pattern}]`,
+    `[${path}.expressions.length=0][${path}.quasis.0.value.cooked=${pattern}]`,
+  ].join(', ');
+const scopedKey = (path) =>
+  `:not([${path}.type='Identifier'], [${path}.callee.name='accountKey'], [${path}.elements.0.argument.callee.name='accountKey'])`;
 const mobileSyntaxBans = [
   {
-    selector:
-      "Property:matches([key.name='queryKey'], [key.value='queryKey']):not([value.type='Identifier'], [value.callee.name='accountKey'])",
+    selector: `Property:matches(${namedBy('key', "'queryKey'")})${scopedKey('value')}`,
     message: accountKeyFix,
   },
   {
-    selector:
-      "CallExpression[callee.property.name=/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/]:not([arguments.0.type='Identifier'], [arguments.0.callee.name='accountKey'])",
+    selector: `CallExpression:matches(${namedBy(
+      'callee.property',
+      '/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/',
+    )})${scopedKey('arguments.0')}`,
     message: accountKeyFix,
   },
   {
@@ -75,8 +85,9 @@ const routeAndFeatureSyntaxBans = [
   ...mobileSyntaxBans,
   ...[
     `MemberExpression[property.name=${coordinatedDataOperations}]`,
-    `MemberExpression[property.value=${coordinatedDataOperations}]`,
     `ObjectPattern > Property[key.name=${coordinatedDataOperations}]`,
+    `Literal[value=${coordinatedDataOperations}]:not(TSLiteralType > Literal)`,
+    `TemplateLiteral[expressions.length=0][quasis.0.value.cooked=${coordinatedDataOperations}]`,
   ].map((selector) => ({
     selector,
     message:
