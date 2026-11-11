@@ -133,12 +133,53 @@ test('an empty heredoc does not hide the commands after it', () => {
   );
 });
 
-// #422: cases for withoutHeredocs() that #420's verifier found missing.
-test('a closing tag line may end in blanks', () => {
+// #422, changed by #424 to match bash: only a line that is exactly the tag
+// closes a heredoc, and `<<-` strips leading tabs only.
+test('a closing tag line is exactly the tag', () => {
   assert.equal(
     shellText('cat <<EOF\ngit push\nEOF \t\necho y'),
+    'cat <<EOF\ngit push\nEOF \t\necho y',
+  );
+  assert.equal(
+    shellText('cat <<-EOF\n\tgit push\n\t\tEOF\necho y'),
     'cat  \necho y',
   );
+  assert.equal(
+    shellText('cat <<-EOF\n git push\n EOF\necho y'),
+    'cat <<-EOF\n git push\n EOF\necho y',
+  );
+  assert.equal(
+    shellText('cat <<EOF\n\tEOF\ngit push\nEOF\necho y'),
+    'cat  \necho y',
+  );
+});
+
+// #424: shellText keeps every line bash runs as a command
+test('heredoc parsing hides no line bash runs', () => {
+  for (const script of [
+    ': <<A\nx\nA \n: <<B\nA\necho M1\nB',
+    ': <<A\nA \n: <<B\nA\necho M1\nB',
+    "echo '<<A'\necho M1\nA",
+    '# <<A\necho M1\nA',
+    ': <<<A\necho M1\nA',
+    ': <<A <<B\nx\nA\n: <<A <<B\nB\necho M1\nA',
+  ]) {
+    assert.match(shellText(script), /echo M1/, script);
+  }
+});
+
+test('heredocs read as bash reads them', () => {
+  for (const [script, expected] of [
+    // Several heredocs on one line take their bodies in order.
+    [': <<A <<B\na\nA\nb\nB\necho y', ':    \necho y'],
+    // Quoted and escaped delimiters lose their quotes.
+    [': <<\'A\' <<"B" <<\\C\na\nA\nb\nB\nc\nC\necho y', ':      \necho y'],
+    // A shift in arithmetic is no heredoc.
+    ['echo $((1<<2))\necho y\n2', 'echo $((1<<2))\necho y\n2'],
+    // `$#` starts no comment.
+    ['echo $# <<A\nx\nA\necho y', 'echo $#  \necho y'],
+  ])
+    assert.equal(shellText(script), expected, script);
 });
 
 test('an opener inside a heredoc body is data, not a second heredoc', () => {

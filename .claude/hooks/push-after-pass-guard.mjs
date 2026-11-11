@@ -55,62 +55,177 @@ const commitMakers = new Set([
 ]);
 const newBranchFlags = new Set(['-b', '-B', '-c', '-C']);
 
-const heredocOpener = /<<-?[ \t]*(['"]?)(\w+)\1/g;
+// A character that ends an unquoted shell word.
+const wordEnd = /[\s;&|()<>]/;
+const plainWord = /^[\w./:@~+^-]+$/;
 
-// Each heredoc becomes the rest of its opener line, so its body is gone. A
-// body ends at the first line after the opener's line that holds only its
-// whole tag, as in the shell. That can be the very next line, which leaves the
-// body empty (#421). An opener with no closing line stays text. One pass lists
-// the tag lines and each tag's list is read forward, so the time is linear
-// (#405).
-function withoutHeredocs(text) {
-  const tagLines = new Map();
-  for (let start = text.indexOf('\n'); start !== -1;) {
-    const next = text.indexOf('\n', start + 1);
-    const end = next === -1 ? text.length : next;
-    const tag = /^[ \t]*(\w+)[ \t]*$/.exec(text.slice(start + 1, end))?.[1];
-    if (tag) {
-      if (!tagLines.has(tag)) tagLines.set(tag, { lines: [], next: 0 });
-      tagLines.get(tag).lines.push({ start, end });
-    }
-    start = next;
+// The index of the double quote that closes the one at `start`, or -1.
+function doubleQuoteEnd(text, start) {
+  for (let i = start + 1; i < text.length; i += 1) {
+    if (text[i] === '\\') i += 1;
+    else if (text[i] === '"') return i;
   }
-  let out = '';
-  let kept = 0;
-  let newline = -1;
-  heredocOpener.lastIndex = 0;
-  for (let match; (match = heredocOpener.exec(text));) {
-    // Openers come in order, so the newline after the last one is reused
-    // until an opener passes it. With no newline left, no body can start.
-    if (newline < match.index) newline = text.indexOf('\n', match.index);
-    if (newline === -1) break;
-    const closings = tagLines.get(match[2]);
-    // A tag line's start is the newline before it, so the line right after
-    // the opener starts at the opener's own newline and can close it.
-    while (closings?.lines[closings.next]?.start < newline) closings.next += 1;
-    const closing = closings?.lines[closings.next];
-    if (!closing) {
-      heredocOpener.lastIndex = match.index + 1;
-      continue;
-    }
-    out += `${text.slice(kept, match.index)} ${text.slice(heredocOpener.lastIndex, newline)}`;
-    kept = closing.end;
-    heredocOpener.lastIndex = closing.end;
+  return -1;
+}
+
+// The index just past the `))` that closes the `((` at `start`, or -1.
+function arithmeticEnd(text, start) {
+  let depth = 0;
+  for (let i = start; i < text.length; i += 1) {
+    if (text[i] === '(') depth += 1;
+    else if (text[i] === ')' && --depth === 0) return i + 1;
   }
-  return out + text.slice(kept);
+  return -1;
+}
+
+// A heredoc delimiter word after `<<` or `<<-`: its text after quote removal
+// and the index just past it. A quote that does not close on the same line
+// makes it no delimiter.
+function delimiterAt(text, start) {
+  let tag = '';
+  let i = start;
+  while (i < text.length && !wordEnd.test(text[i])) {
+    const end =
+      text[i] === "'"
+        ? text.indexOf("'", i + 1)
+        : text[i] === '"'
+          ? doubleQuoteEnd(text, i)
+          : i + (text[i] === '\\' ? 1 : 0);
+    if (end === -1 || text.slice(i, end).includes('\n')) return undefined;
+    const part = text.slice(i, end + 1);
+    tag +=
+      part.length === 1
+        ? part
+        : part[0] === '\\'
+          ? part[1]
+          : part[0] === "'"
+            ? part.slice(1, -1)
+            : part.slice(1, -1).replace(/\\([$`"\\])/g, '$1');
+    i = end + 1;
+  }
+  return tag ? { tag, end: i } : undefined;
+}
+
+// Each line's end, and the lines that hold each possible tag: exactly, and
+// with leading tabs stripped for `<<-`.
+function tagLinesOf(text) {
+  const ends = [];
+  const exact = new Map();
+  const tabbed = new Map();
+  let offset = 0;
+  text.split('\n').forEach((line, n) => {
+    offset += line.length;
+    ends.push(offset);
+    offset += 1;
+    for (const [lines, key] of [
+      [exact, line],
+      [tabbed, line.replace(/^\t+/, '')],
+    ]) {
+      if (!lines.has(key)) lines.set(key, []);
+      lines.get(key).push(n);
+    }
+  });
+  return { ends, exact, tabbed };
+}
+
+// The index of the first number in a sorted list above `after`, or the
+// list's length when there is none.
+function firstAbove(list, after) {
+  let low = 0;
+  let high = list.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (list[middle] > after) high = middle;
+    else low = middle + 1;
+  }
+  return low;
 }
 
 // Heredoc bodies and quoted strings are data, so separators and words inside
 // them never start a command. A quoted plain word, such as "fix", keeps its
-// text.
+// text, and any other quoted string reads `__quoted__`.
+//
+// Heredocs are read as bash reads them (#424). An opener counts only outside
+// quotes, comments and `((...))`, and `<<<` is a here-string. At the end of the
+// opener's line, each heredoc on it takes the lines up to one that is exactly
+// its tag, in order, and leading tabs are stripped only for `<<-`. That line
+// can be the next one, which leaves the body empty (#421). Bash reads a
+// heredoc with no closing line to the end of the text, but here the text after
+// the bodies that did close stays text, so the guards still read it. Each
+// closing line is found by a binary search over an index built in one pass,
+// so the time stays near linear (#405).
 export function shellText(command) {
-  return withoutHeredocs(command.replace(/\\\r?\n/g, ' ')).replace(
-    /'[^']*'|"(?:[^"\\]|\\.)*"/g,
-    (match) => {
-      const inner = match.slice(1, -1);
-      return /^[\w./:@~+^-]+$/.test(inner) ? inner : '__quoted__';
-    },
-  );
+  const text = command.replace(/\\\r?\n/g, ' ');
+  const pieces = [];
+  let pending = [];
+  let lines;
+  // After a quote or `((` that never closes, later ones are read as text, so
+  // no search runs to the end of the text twice.
+  let doubleOpen = true;
+  let arithmeticOpen = true;
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    if (char === '\\') {
+      pieces.push(text.slice(i, i + 2));
+      i += 2;
+    } else if (char === "'" || (char === '"' && doubleOpen)) {
+      const end =
+        char === "'" ? text.indexOf("'", i + 1) : doubleQuoteEnd(text, i);
+      if (end === -1) {
+        if (char === '"') doubleOpen = false;
+        pieces.push(char);
+        i += 1;
+      } else {
+        const inner = text.slice(i + 1, end);
+        pieces.push(plainWord.test(inner) ? inner : '__quoted__');
+        i = end + 1;
+      }
+    } else if (char === '#' && (i === 0 || wordEnd.test(text[i - 1]))) {
+      const end = text.indexOf('\n', i);
+      pieces.push(text.slice(i, end === -1 ? text.length : end));
+      i = end === -1 ? text.length : end;
+    } else if (text.startsWith('((', i) && arithmeticOpen) {
+      const end = arithmeticEnd(text, i);
+      if (end === -1) arithmeticOpen = false;
+      else {
+        pieces.push(text.slice(i, end));
+        i = end;
+      }
+    } else if (text.startsWith('<<', i)) {
+      // In a here-string, `<<<`, the third `<` ends the word, so it has no
+      // delimiter and opens nothing.
+      const dash = text[i + 2] === '-';
+      let start = i + (dash ? 3 : 2);
+      while (text[start] === ' ' || text[start] === '\t') start += 1;
+      const delimiter = delimiterAt(text, start);
+      const end = delimiter?.end ?? i + 2;
+      pieces.push(text.slice(i, end));
+      if (delimiter)
+        pending.push({ tag: delimiter.tag, dash, piece: pieces.length - 1 });
+      i = end;
+    } else if (char === '\n' && pending.length) {
+      lines ??= tagLinesOf(text);
+      const line = firstAbove(lines.ends, i - 1);
+      let last = line;
+      for (const { tag, dash, piece } of pending) {
+        const tagLines = (dash ? lines.tabbed : lines.exact).get(tag) ?? [];
+        const closing = tagLines[firstAbove(tagLines, last)];
+        if (closing === undefined) break;
+        pieces[piece] = ' ';
+        last = closing;
+      }
+      pending = [];
+      if (last === line) {
+        pieces.push(char);
+        i += 1;
+      } else i = lines.ends[last];
+    } else {
+      pieces.push(char);
+      i += 1;
+    }
+  }
+  return pieces.join('');
 }
 
 function resolveDir(base, target) {
