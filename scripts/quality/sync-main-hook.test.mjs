@@ -353,6 +353,23 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     'a&git worktree add w',
     'git --attr-source HEAD worktree add w',
     'git --no-pager worktree add w',
+    'git --version;git worktree add w',
+    'echo `git worktree add w`',
+    '{ git worktree add w; }',
+    '! git worktree add w',
+    // A value option takes the next word whole, so a $(...) or ${...} with no
+    // space inside, a ! or a brace stays part of it.
+    'git -C $(pwd) worktree add w',
+    'git -C ${REPO} worktree add w',
+    'git --git-dir=$(pwd)/.git worktree add w',
+    'git --git-dir=${D} worktree add w',
+    'git --work-tree=${W} worktree add w',
+    'git -C a!b worktree add w',
+    'git -C {a} worktree add w',
+    'git -c alias.w=!f worktree add w',
+    'git --git-dir /repo/.git worktree add w',
+    'git --namespace n worktree add w',
+    'git --config-env a=B worktree add w',
   ])
     assert.deepEqual(triggerOf(beforeBash(command)), beforeTool, command);
   for (const command of [
@@ -381,6 +398,9 @@ test('a long Bash command is read without backtracking', () => {
     `git${' --work-tree -a'.repeat(25)} worktree list`,
     `git${' --work-tree -a'.repeat(40_000)} worktree add w`,
     `git${' -C -a'.repeat(40_000)} worktree list`,
+    '${a'.repeat(50_000),
+    '$(a'.repeat(50_000),
+    `git -C ${'$(a'.repeat(50_000)} worktree list`,
     '('.repeat(100_000),
     '/git'.repeat(50_000),
     'git '.repeat(50_000),
