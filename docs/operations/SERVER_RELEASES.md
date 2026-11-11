@@ -49,6 +49,10 @@ These platform limits shape the lane:
 - Workers' [native TLS options](https://github.com/cloudflare/workerd/blob/main/src/workerd/api/sockets.h)
   have no custom CA trust store, so a Worker does not trust a CA just because it
   receives `DATABASE_CA_CERT`. Hyperdrive owns the verified origin connection.
+  Hosted managed requests and existing-proof recovery therefore stay on
+  Hyperdrive. The legacy session and transfer paths that take advisory locks use
+  a direct connection only with `MANAGED_AUTH_ENABLED` false against loopback
+  `justgo_test` (`apps/api/tests/db/worker-database.test.ts`).
 - Hosted Hyperdrive URLs carry opaque proxy usernames and database names, on
   `*.workers.alt:5432` with `sslmode=disable`, or `*.hyperdrive.local` under
   Miniflare. Those placeholders are not origin identity, and `sslmode=disable`
