@@ -79,13 +79,57 @@ test('the merge script and other commands pass', () => {
 });
 
 // #348
-test.todo('parameter expansion and repeated flags are denied', () => {
+test('parameter expansion, repeated flags and the merge queue are denied', () => {
   for (const command of [
     'gh pr ${x:-merge} 1',
     'gh pr m${x}erge 1',
     'gh pr -R a/b -R a/b merge 1',
+    'gh pr m${}erge 1',
+    'gh pr ${x-merge} 1',
+    'gh pr ${x:=merge} 1',
+    'gh pr ${x:+merge} 1',
+    'gh pr "${x:-merge}" 1',
+    'gh pr ${x:-"merge"} 1',
+    'gh pr ${#x}merge 1',
+    'gh pr --repo=a/b -R c/d --repo e/f merge 1',
+    `gh pr ${'-R a/b '.repeat(16)}merge 1`,
+    `gh api graphql -f query='mutation { enqueuePullRequest(input: {pullRequestId: "X"}) { clientMutationId } }'`,
+  ]) {
+    const decision = decide(command);
+    assert.equal(decision?.permissionDecision, 'deny', command);
+    assert.match(decision.reason, /expansions/);
+    assert.match(decision.reason, /enqueuePullRequest/);
+  }
+  for (const command of [
+    'gh pr view ${n} --json state',
+    'echo ${HOME} && gh pr list',
+    'gh pr -R a/b -R a/b view 1',
+    // Branch merges, not PR merges: branch protection guards `main`.
+    'gh api -X POST repos/o/r/merges -f base=feature -f head=main',
+    `gh api graphql -f query='mutation { mergeBranch(input: {repositoryId: "X", base: "feature", head: "main"}) { clientMutationId } }'`,
   ])
-    assert.equal(decide(command)?.permissionDecision, 'deny', command);
+    assert.equal(decide(command), undefined, command);
+});
+
+test('120k-character lines take well under a second, far below the 10 s timeout', () => {
+  const size = 120_000;
+  const fill = (unit) => unit.repeat(Math.ceil(size / unit.length));
+  for (const text of [
+    fill('gh pr '),
+    fill('gh pr -R a/b '),
+    fill('-R pr '),
+    `gh ${fill('-R pr ')}`,
+    `gh pr ${fill('-R=a ')}`,
+    fill('${'),
+    fill('${x:-'),
+    `gh pr ${fill('${x}')}`,
+    fill('gh "pr" ${x} '),
+  ]) {
+    const started = performance.now();
+    decide(text);
+    const elapsed = performance.now() - started;
+    assert.ok(elapsed < 1000, `${text.slice(0, 20)}… took ${elapsed} ms`);
+  }
 });
 
 test('output wraps a denial for Claude Code', () => {
