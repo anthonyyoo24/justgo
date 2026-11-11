@@ -63,7 +63,7 @@
     "test": "jest",
     "export:web": "expo export --platform web",
     "export:ios": "expo export --platform ios",
-    "doctor": "EXPO_NO_CACHE=1 expo-doctor",
+    "doctor": "EXPO_NO_CACHE=1 EXPO_NO_DOTENV=1 expo-doctor",
     "test:coverage": "jest --coverage"
   },
   "private": true
