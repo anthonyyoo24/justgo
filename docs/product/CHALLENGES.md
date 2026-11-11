@@ -11,12 +11,10 @@ conflict.
 
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
 - **Subtext:** The line below the challenge text. You can adapt the example wording naturally. Bracketed words such as `[item]` or `[name]` are conversational placeholders.
-- **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts start in Streets, and so does a missing or unknown saved venue value. Skip, completion and give-up move the matching front placement to the back of its venue's stack. A shared challenge's card in another venue stays in place. [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) keeps these preferences on the phone.
+- **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts start in Streets, and so does a missing or unknown saved venue value. Skip, completion and give-up move the matching front placement to the back of its venue's stack. A shared challenge's card in another venue stays in place. `DeckPreferencesStorage` in `apps/mobile/src/data/activity/persistence` keeps these preferences on the phone.
 - **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling. Character count alone cannot reliably predict wrapping.
 
 ## Challenge loop and content
-
-[ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) owns the local-save protocol.
 
 Venue pills filter manually and scroll horizontally when needed. There is no
 GPS selection and no additional Anywhere or All venue. No server preferences,

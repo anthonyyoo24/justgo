@@ -111,13 +111,16 @@ these rules:
   and sequencing. When a task names a phase, read that phase before you edit.
   Change the plan only when scope or a decision changes. Keep a task's scope
   bounded, and preserve existing behavior unless the task changes it.
-- The domain safety invariants have three owners. Read the owner before you
+- The domain safety invariants have two owner docs. Read the owner before you
   change that behavior. [IDENTITY.md](docs/architecture/IDENTITY.md) owns account
   transitions, account deletion and credential preservation.
-  [ACTIVITY_DATA.md](docs/architecture/ACTIVITY_DATA.md) owns saving, sync and
-  deletion epochs. [APP_SHELL.md](docs/architecture/APP_SHELL.md) owns runtime
-  hydration and effect restarts, guest adoption stages, and native modal and list
-  behavior.
+  [APP_SHELL.md](docs/architecture/APP_SHELL.md) owns runtime hydration and
+  effect restarts, guest adoption stages, and native modal and list behavior.
+- No doc owns saving, sync or deletion epochs. Their rules are in
+  [Rules and what enforces them](#rules-and-what-enforces-them). In
+  `apps/mobile/src/data`, `activity/` owns completion history, `journal/` private
+  writing, `cloud/` JustGO sync and the iCloud copy, and `backup/` the file
+  formats. Their tests sit beside them.
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
   boundaries and local midnight through the injected `JournalClock`.
@@ -206,7 +209,7 @@ highest level that works and updates this list.
 - Import contracts through `@justgo/contracts`, not a subpath. The API's `@justgo/contracts/openapi` import is the one exception.
   - Enforced by (lint): `justgo/import-boundaries`
 - Features import only the public data modules (the progress reads and the backup formats) and only the `AccountRepository` and `DeckPreferences` types, not storage, sync or cloud internals. Provider modules and the modules `AppProvider` imports never import `AppProvider`. Each lint error names the fix.
-  - Enforced by (lint, written): `justgo/import-boundaries`, with the allowed modules in `scripts/quality/import-boundaries.mjs` and cases in `import-boundaries.test.mjs` and `lint-rules.test.mjs`. Only review catches a feature that writes around the data owners through `lib/network/account-client`, `platform/icloud` or a storage package such as AsyncStorage, and a cycle back to `AppProvider` through a middle module.
+  - Enforced by (lint, written): `justgo/import-boundaries`, with the allowed modules in `scripts/quality/import-boundaries.mjs` and cases in `import-boundaries.test.mjs` and `lint-rules.test.mjs`. It reads only the imports each file writes itself, and only in TypeScript files. Only review catches a feature that writes around the data owners through `lib/network/account-client`, `platform/icloud` or a storage package such as AsyncStorage, a feature that reaches a data internal through an `app-support` module that re-exports it, a cycle back to `AppProvider` through a middle module, and any of these imports in a JavaScript file.
 - No `justgo` schema, table, column or routine grants anything to `anon`, `authenticated`, `PUBLIC` or any role but its owner and `justgo_runtime`. Every `justgo` table forces RLS. The Auth-session helper is the only `SECURITY DEFINER` routine, and no view runs with definer rights. The helper stays `STABLE` and returns one boolean.
   - Enforced by (test): The private-schema sweep in `apps/api/tests/db/managed-session-check.integration.test.ts` runs in `pnpm run test:db` after every migration and the helper script. The same file pins `/ready` to the helper body, volatility, boolean result and `justgo_runtime`-only access. Gate #212 covers hosted catalogs.
 - TypeScript is strict.
@@ -276,7 +279,7 @@ highest level that works and updates this list.
 - Product analytics stays uninstalled. No workspace declares, resolves or loads an analytics SDK until Phase 17 reviews the real permission and collection design.
   - Enforced by (test, lint, written): `scripts/quality/analytics-packages.mjs` holds the one list of analytics packages. `scripts/quality/analytics-packages.test.mjs` fails when a tracked `package.json` declares one or `pnpm-lock.yaml` resolves one, directly or transitively. `justgo/import-boundaries` fails on an import, re-export, `import()` or `require()` of one anywhere in `apps` and `packages/contracts`, tests included, with cases in `import-boundaries.test.mjs`. Each error names the Phase 17 review. Only review catches an SDK missing from the list, a hand-written event client over `fetch`, and a native SDK added outside npm, such as a CocoaPod from a config plugin.
 - Mobile query keys come from `accountKey()`, so one account's cached data never serves another. Mobile code never calls `import()`, so opening saved data never waits on a development split-bundle request. Features and routes never clear or replace local data themselves. Only `ActivityRuntime.deleteAllData()` and `importData()` do.
-  - Enforced by (lint, written): `no-restricted-syntax` in `apps/mobile`, tests exempt, flags `import()` and a `queryKey` property or a positional `QueryClient` key (`getQueryData`, `setQueryData`, `getQueryState`, `getQueryDefaults`, `setQueryDefaults`) that is not an `accountKey()` call, an array that starts by spreading one, or a variable. A key or method named by an identifier, a string or a template with no expressions counts. In `features` and `app` it also flags `clearData`, `erase`, `restoreJournal`, `mergeCompletions`, `mergeSyncedJournal`, `observeDataEpoch` and `withDataMigration` as a member, a destructured key, or any string or plain template with that exact text, which covers `Reflect.get`. The route and feature block repeats the shared mobile list in `eslint.config.mjs`. Cases are in `lint-rules.test.mjs`. Only review catches a variable that holds an unscoped key, a name built at runtime such as `'clear' + 'Data'`, `Reflect.get`, `Reflect.apply`, `.call`, `.apply` or `.bind` on a `QueryClient` method, `import()` through `eval` or `new Function`, and these data calls in `app-support`.
+  - Enforced by (lint, written): `no-restricted-syntax` in `apps/mobile`, tests exempt, flags `import()` and a `queryKey` property or a positional `QueryClient` key (`getQueryData`, `setQueryData`, `getQueryState`, `getQueryDefaults`, `setQueryDefaults`) that is not an `accountKey()` call, an array that starts by spreading one, or a variable. A key or method written as a plain name, a string or a template with no expressions counts. In `features` and `app` it also flags `clearData`, `erase`, `restoreJournal`, `mergeCompletions`, `mergeSyncedJournal`, `observeDataEpoch` and `withDataMigration` as a member, a destructured key, or any string or plain template with that exact text, which covers `Reflect.get`. The route and feature block repeats the shared mobile list in `eslint.config.mjs`. Cases are in `lint-rules.test.mjs`. Only review catches a variable that holds an unscoped key, a `queryKey` or `QueryClient` method named through a variable such as `queries[method](key)` or `{ [name]: key }`, a name built at runtime such as `'clear' + 'Data'`, `Reflect.get`, `Reflect.apply`, `.call`, `.apply` or `.bind` on a `QueryClient` method, `import()` through `eval` or `new Function`, these data calls in `app-support` and `dev`, and all of these in a JavaScript file.
 - Screens stay accessible.
   - Enforced by (test, written): Role and accessible-name queries in component tests, journeys and drives fail when a queried label goes missing. [Accessibility](#accessibility) covers the rest.
 - A bug found outside the task is filed with `bug` and one of `agent-fix`, `needs-decision` or `blocked`. Each known-bug test (Jest `.failing` or Vitest `.fails`) names its issue as `#NNN` or the issue URL. A decision trail records each filed bug in a `bug` row.

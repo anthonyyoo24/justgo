@@ -3,7 +3,8 @@
 This guide keeps the mobile shell's rules that no check enforces, the reasons code
 cannot show, and the owner's acceptances. Code, tests and lint own the rest,
 including what each screen shows. [IDENTITY.md](IDENTITY.md) owns account access,
-[ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns activity data, and
+the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them) owns
+the activity data rules, and
 [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) track
 open release gates.
 
@@ -41,8 +42,9 @@ retires the source. Each stage survives a restart.
   their earlier epoch metadata would clear newly accepted account writing.
 - The destination reconciles its cloud history and deletion epoch first. Adoption
   uses ordinary tombstone protection, so deleted IDs stay deleted.
-- [ACTIVITY_DATA.md](ACTIVITY_DATA.md#guest-source-handover) has the iCloud
-  handover rules.
+- `ICloudDataCoordinator.handoverGuest` in `apps/mobile/src/data/cloud` runs the
+  iCloud handover, and the handover cases in `icloud-coordinator.test.ts` pin
+  its rules.
 
 ## Navigation keeps protected history private
 

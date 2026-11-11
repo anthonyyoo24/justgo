@@ -8,7 +8,7 @@ Optional iCloud Sync and the complete Download and Import controls are separate.
 ## Documentation
 
 - [Agent instructions](AGENTS.md) and the directory `AGENTS.md` files: the repository map, the rules and what enforces them, and owner permissions. Read them before changing code.
-- Architecture: [app shell](docs/architecture/APP_SHELL.md), [activity data](docs/architecture/ACTIVITY_DATA.md) and [identity](docs/architecture/IDENTITY.md).
+- Architecture: [app shell](docs/architecture/APP_SHELL.md) and [identity](docs/architecture/IDENTITY.md). The [rules list](AGENTS.md#rules-and-what-enforces-them) owns the activity data rules.
 - Product: the [PRD](docs/product/PRD.md) and the [challenge catalog](docs/product/CHALLENGES.md).
 - Operations: [Apple setup](docs/operations/APPLE_SETUP.md), [server releases](docs/operations/SERVER_RELEASES.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
 - Legal: the [Terms and Privacy drafts, approvals and data inventory](docs/legal/).
