@@ -102,6 +102,29 @@ test('push text inside messages, heredocs and PR bodies is not a push', () => {
   );
 });
 
+// #405: each `<<` once scanned to the end of the text for its closing tag.
+test('shellText reads many heredoc openers in linear time', () => {
+  for (const text of [
+    '<<EOF\n'.repeat(40_000),
+    Array.from({ length: 40_000 }, (_, n) => `<<T${n}\n`).join(''),
+    '<<EOF'.repeat(40_000),
+    'A\n<<A\n'.repeat(40_000),
+    `${'<<EOF '.repeat(200_000)}\n`,
+  ]) {
+    const start = performance.now();
+    shellText(text);
+    assert.ok(performance.now() - start < 250, text.slice(0, 12));
+  }
+});
+
+test('a heredoc ends only at a line with its whole tag', () => {
+  assert.equal(
+    shellText('cat <<EOFX\nx\nEOF\ncat <<A\ngit push\nA\necho y'),
+    'cat <<EOFX\nx\nEOF\ncat  \necho y',
+  );
+  assert.equal(shellText('cat <<A <<B\na\nB\nA\nnext'), 'cat   <<B\nnext');
+});
+
 test('dry runs, deletes, tag pushes and other commands are ignored', () => {
   for (const command of [
     'git push --dry-run',
