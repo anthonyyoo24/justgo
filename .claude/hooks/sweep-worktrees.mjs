@@ -613,8 +613,9 @@ function boxes(trash) {
 // moved there, so what is left of it is deleted, unless a process is inside,
 // it is locked (a worktree git refused to remove that could not move back),
 // or git status shows anything but deleted files, which means someone changed
-// it after its check. A box that holds no worktree git knows is deleted only
-// when it holds no files.
+// it after its check. A box that holds no worktree git knows, or whose
+// worktree folder is gone, is deleted only when it holds no files. A box that
+// cannot be deleted is kept, and the sweep goes on.
 function finish(main, leftovers, all, deps) {
   if (leftovers.length === 0) return;
   const busy = deps.busyPaths();
@@ -622,8 +623,15 @@ function finish(main, leftovers, all, deps) {
     const inside = all.filter((entry) => within(box, entry.path));
     if (!busy || busy.some((file) => within(box, file))) continue;
     if (inside.some((entry) => entry.locked)) continue;
-    if (inside.length === 0 ? !empty(box) : inside.some(changedSince)) continue;
-    rmSync(box, { recursive: true, force: true });
+    if (
+      inside.length === 0 ? !empty(box) : !inside.every(finishable(main, box))
+    )
+      continue;
+    try {
+      rmSync(box, { recursive: true, force: true });
+    } catch {
+      continue;
+    }
     for (const entry of inside)
       if (succeeds(main, ['worktree', 'remove', entry.path]))
         deps.log(`finished removing ${entry.path}`);
@@ -641,13 +649,21 @@ function empty(dir) {
 }
 
 // What git status shows for a worktree a removal stopped partway: 'deleted'
-// when only deleted files show, 'gone' when its .git file is gone with them,
-// 'whole' when nothing shows, and 'changed' for anything else or no answer.
-function leftover(worktree) {
+// when only deleted files show, 'whole' when nothing shows, 'gone' when the
+// folder is gone, and 'changed' for anything else or no answer. git deletes
+// the worktree's .git file early and its record in the main repository last,
+// so status runs through that record. A plain status in the folder would find
+// the main checkout instead.
+function leftover(main, worktree) {
   if (!existsSync(worktree)) return 'gone';
-  if (!existsSync(path.join(worktree, '.git'))) return 'gone';
+  const record = recordOf(main, worktree);
+  if (!record) return 'changed';
   try {
-    const lines = git(worktree, [
+    const lines = git(main, [
+      '--git-dir',
+      record,
+      '--work-tree',
+      worktree,
       'status',
       '--porcelain',
       '--untracked-files=all',
@@ -662,7 +678,34 @@ function leftover(worktree) {
   }
 }
 
-const changedSince = (entry) => leftover(entry.path) === 'changed';
+// The folder under .git/worktrees/ whose gitdir names this worktree.
+function recordOf(main, worktree) {
+  try {
+    const records = path.join(
+      git(main, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
+      'worktrees',
+    );
+    const gitFile = path.join(worktree, '.git');
+    return readdirSync(records)
+      .map((name) => path.join(records, name))
+      .find((record) => {
+        try {
+          return (
+            readFileSync(path.join(record, 'gitdir'), 'utf8').trim() === gitFile
+          );
+        } catch {
+          return false;
+        }
+      });
+  } catch {
+    return undefined;
+  }
+}
+
+const finishable = (main, box) => (entry) => {
+  const state = leftover(main, entry.path);
+  return state === 'gone' ? empty(box) : state !== 'changed';
+};
 
 // 'removed', 'stopped' when a signal ended git (the time limit sends one), or
 // 'refused' when git exited on its own.
@@ -756,7 +799,7 @@ function removeAside(main, trash, entry, ref, remove, deps) {
     return 'remove';
   }
   // A worktree changed since its check goes back even when git was stopped.
-  const state = leftover(aside);
+  const state = leftover(main, aside);
   if (
     state === 'deleted' ||
     state === 'gone' ||

@@ -932,6 +932,46 @@ test('a stopped removal that lost its .git file is finished when nothing was add
   assert.deepEqual(listed(repo.main), ['main']);
 });
 
+test('a stopped removal whose folder is gone is finished, unless its box holds a file', (t) => {
+  const repo = fixture(t);
+  repo.add('emptied', '--detach');
+  repo.add('crowded', '--detach');
+  const asides = {};
+  const deletesFolder = (worktree) => {
+    asides[path.basename(worktree)] = worktree;
+    rmSync(worktree, { recursive: true, force: true });
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: deletesFolder }), {
+    emptied: stoppedVerdict,
+    crowded: stoppedVerdict,
+  });
+  const notes = path.join(path.dirname(asides.crowded), 'notes.md');
+  writeFileSync(notes, 'mine\n');
+  repo.run();
+  assert.equal(existsSync(path.dirname(asides.emptied)), false);
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n');
+});
+
+test('a stopped removal that git holds no record of is never deleted', (t) => {
+  const repo = fixture(t);
+  repo.add('unknown', '--detach');
+  let aside;
+  const dropsRecord = (worktree) => {
+    aside = worktree;
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    rmSync(path.join(repo.main, '.git', 'worktrees', 'unknown'), {
+      recursive: true,
+    });
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: dropsRecord }), {
+    unknown: 'keep: git refused the removal',
+  });
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+});
+
 test('a locked worktree in the trash is kept even when nothing in it changed', (t) => {
   const repo = fixture(t);
   const refused = repo.add('refused', '--detach');
