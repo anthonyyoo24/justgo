@@ -222,9 +222,21 @@ test('Welcome retries failed challenge preparation without repeating provider au
       page.getByRole('button', { name, exact: true }),
     ).toBeDisabled();
   }
-  await expect(
-    page.getByRole('button', { name: 'Continue', exact: true }),
-  ).toBeDisabled();
+  const continueButton = page.getByRole('button', {
+    name: 'Continue',
+    exact: true,
+  });
+  await expect(continueButton).toBeDisabled();
+  for (const viewport of [
+    { width: 320, height: 611 },
+    { width: 375, height: 667 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(continueButton).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('alert')).toBeInViewport({ ratio: 1 });
+    await expect(retry).toBeInViewport({ ratio: 1 });
+  }
   await page.unroute(`${journeyApiUrl}/v1/challenges`);
   await retry.click();
   await expect(
