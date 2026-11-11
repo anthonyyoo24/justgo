@@ -1283,3 +1283,123 @@ test('a chat that starts or ends in the main checkout starts a detached sweep', 
   assert.deepEqual(sweeps('SessionStart'), ['startup']);
   assert.deepEqual(sweeps('SessionEnd'), ['any']);
 });
+
+// #412: git removes in readdir order, and in a JustGO worktree the root
+// .gitignore goes before packages/ and apps/, whose node_modules and dist only
+// it ignores.
+const builtWorktree = (repo) => {
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const built = repo.add('built', '--detach');
+  mkdirSync(path.join(built, 'pkg', 'node_modules'), { recursive: true });
+  writeFileSync(path.join(built, 'pkg', 'node_modules', 'dep.js'), 'x\n');
+  return built;
+};
+
+test('a removal the time limit stopped after the root .gitignore went is finished', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  const stopped = (worktree) => {
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  const first = repo.run({ remove: stopped });
+  const later = repo.run();
+  assert.deepEqual(
+    { first, later },
+    { first: { built: stoppedVerdict }, later: {} },
+  );
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a killed sweep stopped after the root .gitignore went is finished', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  const kill = (worktree) => {
+    rmSync(path.join(worktree, '.gitignore'));
+    throw new Error('killed');
+  };
+  assert.throws(() => repo.run({ remove: kill }), /killed/);
+  repo.run();
+  repo.run();
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('after the root .gitignore went, a file the main checkout does not ignore keeps the box', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { built: stoppedVerdict });
+  writeFileSync(path.join(aside, 'pkg', 'notes.md'), 'mine\n');
+  repo.run();
+  repo.run();
+  assert.equal(
+    readFileSync(path.join(aside, 'pkg', 'notes.md'), 'utf8'),
+    'mine\n',
+  );
+});
+
+test('a stopped removal whose tracked file was edited in the trash is kept', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('edited', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { edited: stoppedVerdict });
+  writeFileSync(path.join(aside, 'b.txt'), 'edited\n');
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'b.txt'), 'utf8'), 'edited\n');
+});
+
+test('each stopped removal is checked through its own record', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'x.txt', 'x\n');
+  repo.add('first', '--detach');
+  git(repo.main, 'rm', '-q', 'x.txt');
+  commit(repo.main, 'y.txt', 'y\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('second', '--detach');
+  const stopped = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), {
+    first: stoppedVerdict,
+    second: stoppedVerdict,
+  });
+  assert.deepEqual(repo.run(), {});
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a stopped removal git cannot read the status of is kept', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('unread', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { unread: stoppedVerdict });
+  writeFileSync(
+    path.join(repo.main, '.git', 'worktrees', 'unread', 'index'),
+    'not an index\n',
+  );
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'b.txt'), 'utf8'), 'b\n');
+});
