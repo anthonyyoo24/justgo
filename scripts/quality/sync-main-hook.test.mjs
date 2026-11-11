@@ -345,6 +345,14 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     'echo $(git -C /repo worktree add w)',
     'git --work-tree /repo worktree add w',
     '(git worktree add w)',
+    // An operator with no space around it still starts a command.
+    'cd /repo&&git worktree add w',
+    'a||git worktree add w',
+    'cd /repo;git worktree add w',
+    'a|git worktree add w',
+    'a&git worktree add w',
+    'git --attr-source HEAD worktree add w',
+    'git --no-pager worktree add w',
   ])
     assert.deepEqual(triggerOf(beforeBash(command)), beforeTool, command);
   for (const command of [
@@ -355,6 +363,8 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     'git commit -m "git worktree add"',
     'git --work-tree /repo worktree list',
     'legit worktree add w',
+    'git worktree addx w',
+    'git --attr-source HEAD worktree list',
   ])
     assert.equal(triggerOf(beforeBash(command)), undefined, command);
   assert.equal(
@@ -362,6 +372,24 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     undefined,
   );
   assert.equal(triggerOf({ hook_event_name: 'Stop' }), undefined);
+});
+
+// Each option has one reading, so a run of options that two readings share
+// (` --work-tree -a`) does not double the work per option.
+test('a long Bash command is read without backtracking', () => {
+  for (const command of [
+    `git${' --work-tree -a'.repeat(25)} worktree list`,
+    `git${' --work-tree -a'.repeat(40_000)} worktree add w`,
+    `git${' -C -a'.repeat(40_000)} worktree list`,
+    '('.repeat(100_000),
+    '/git'.repeat(50_000),
+    'git '.repeat(50_000),
+  ]) {
+    const start = performance.now();
+    triggerOf(beforeBash(command));
+    const took = performance.now() - start;
+    assert.ok(took < 250, `${command.slice(0, 30)}... took ${took} ms`);
+  }
 });
 
 test('the plan acts only on a clean main checkout that is behind', () => {
