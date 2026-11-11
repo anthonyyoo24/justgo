@@ -150,13 +150,15 @@ function inspect(dir, fetchEvery) {
   return { linkedWorktree: false, fetched, branch, ahead, behind, dirty };
 }
 
-export function sync(dir, fetchEvery = 0) {
+export function sync(dir, fetchEvery = 0, { mergeWait = gitTimeout } = {}) {
   const state = inspect(dir, fetchEvery);
   const next = plan(state);
   if (next.action !== 'ff') return next;
   const before = git(dir, ['rev-parse', 'HEAD']);
   if (
-    !attempt(() => git(dir, ['merge', '--ff-only', '--quiet', 'origin/main']))
+    !attempt(() =>
+      git(dir, ['merge', '--ff-only', '--quiet', 'origin/main'], mergeWait),
+    )
   )
     return {
       action: 'warn',

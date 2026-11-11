@@ -11,11 +11,13 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   plan,
   report,
+  sync,
   touchesSessionConfig,
   triggerOf,
 } from '../../.claude/hooks/sync-main.mjs';
@@ -176,6 +178,17 @@ test('untracked files alone do not stop the fast-forward and are kept', (t) => {
     readFileSync(path.join(repo.checkout, 'scratch.txt'), 'utf8'),
     'mine\n',
   );
+});
+
+// #344
+test('a fast-forward that outlasts its wait finishes in the background', async (t) => {
+  const repo = fixture(t);
+  const tip = repo.push('.claude/settings.json', '{}\n');
+  await sync(repo.checkout, 0, { mergeWait: 1 });
+  const deadline = Date.now() + 5000;
+  while (head(repo.checkout) !== tip && Date.now() < deadline) await sleep(50);
+  assert.equal(head(repo.checkout), tip);
+  assert.equal(git(repo.checkout, 'status', '--porcelain'), '');
 });
 
 test('a linked worktree is left alone and prints nothing', (t) => {
