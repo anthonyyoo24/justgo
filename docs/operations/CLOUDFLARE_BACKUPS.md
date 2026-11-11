@@ -509,9 +509,9 @@ Node API. Install the session helper described below inside your own
 `beforeReconcile`, after the restore, and then await the acceptance's
 `beforeReconcile`. The helper needs the restored `auth.sessions`.
 `scripts/backups/recovery-target-access.sql` reads object owners, ACLs, RLS flags,
-RLS policies and `justgo` trigger definitions and states, so you can compare the
-source and the target. Run both captures with an empty `search_path`, because the
-policy and trigger text depend on it. The
+RLS policies, and `justgo` trigger definitions, states and trigger function
+definitions, so you can compare the source and the target. Run both captures with
+an empty `search_path`, because the policy and trigger text depend on it. The
 [rollout review](../checks/phase-15-rollout-review.md#coordinated-real-recovery-procedure)
 holds the reviewed procedure. The complete coordinated run is still unverified.
 
@@ -681,9 +681,19 @@ existing isolated PostgreSQL environment, including PostgreSQL 17 client tools,
 pnpm run test:backup:recovery
 ```
 
+`apps/api/tests/db/recovery-rehearsal.integration.test.ts` runs the same
+rehearsal after a killed run's leftovers, so it needs the same tools. CI runs it
+in the database job, and `pnpm run test:db` leaves it out.
+
 The rehearsal validates the loopback `justgo_test` administrator and runtime
 credentials before it creates two run-owned disposable databases and a temporary
-backup reader. It refuses an existing `justgo_backup` role. It applies the current
+backup reader. It marks each database it creates with the comment
+`justgo recovery rehearsal`, because a manual restore uses the same name pattern.
+Before setup it takes a session advisory lock on the administrator connection and
+refuses to start while another rehearsal holds it. A killed run's lock ends with
+its session, so the rehearsal then drops the `justgo_backup` role and the marked
+`justgo_restore_*` databases that the killed run left. It never drops an unmarked
+database. It applies the current
 migration registry, seeds synthetic app and Auth state, and verifies rejection of
 an extra MAINTAIN grant and inherited ownership. It then takes a real encrypted
 `pg_dump`, makes later account and data deletions and revocations, captures the
@@ -692,9 +702,9 @@ owners. Before the ledger replay, it checks those owners and the runtime grants,
 and it confirms that the restored database holds the synthetic writing that the
 replay must delete. It also requires the same `recovery-target-access.sql`
 output from the source and the target, and checks that a weakened policy, a
-policy granted to PUBLIC, an extra grant, and a dropped, disabled or
-`when (false)` replacement of the `data_epoch_never_decreases` trigger each change
-that output. A failing
+policy granted to PUBLIC, an extra grant, and a dropped, disabled, `when (false)`,
+`before update` or `after insert` replacement of the `data_epoch_never_decreases`
+trigger each change that output. So does a no-op body for its function. A failing
 hook must not leak its message to the console or the rejected error. Actual
 `IdentityService`
 calls reject old recovery and session proofs. SQL assertions check missing private
