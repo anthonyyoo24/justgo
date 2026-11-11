@@ -125,6 +125,26 @@ test('a heredoc ends only at a line with its whole tag', () => {
   assert.equal(shellText('cat <<A <<B\na\nB\nA\nnext'), 'cat   <<B\nnext');
 });
 
+// #421: an empty heredoc closes on the next line
+test('an empty heredoc does not hide the commands after it', () => {
+  assert.match(
+    shellText('cat <<EOF\nEOF\ngit commit -am x && git push\nEOF'),
+    /git push/,
+  );
+});
+
+// #422: cases for withoutHeredocs() that #420's verifier found missing.
+test('a closing tag line may end in blanks', () => {
+  assert.equal(
+    shellText('cat <<EOF\ngit push\nEOF \t\necho y'),
+    'cat  \necho y',
+  );
+});
+
+test('an opener inside a heredoc body is data, not a second heredoc', () => {
+  assert.equal(shellText('cat <<A\n<<B\nA\ngit push\nB'), 'cat  \ngit push\nB');
+});
+
 test('dry runs, deletes, tag pushes and other commands are ignored', () => {
   for (const command of [
     'git push --dry-run',
