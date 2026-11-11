@@ -8,6 +8,7 @@ import { AccountRepositories } from '../../data/activity/accounts';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   systemClock,
+  type DataMode,
   type JournalClock,
   type JournalStorage,
 } from '../../data/activity/model';
@@ -43,7 +44,7 @@ export class ActivityRuntime {
   private disposed = false;
   private readonly cloud = new Map<string, CloudDataCoordinator>();
   private readonly apple = new Map<string, ICloudDataCoordinator>();
-  private mode: 'legacy' | 'local' | 'cloud' = 'legacy';
+  private mode: DataMode = 'local';
   private collectionKind: 'guest' | 'account' = 'account';
   private adopting = false;
   private pendingGuestId: string | null = null;
@@ -56,7 +57,6 @@ export class ActivityRuntime {
     private readonly options: {
       clock?: JournalClock;
       timeZone?: () => string;
-      managed?: boolean;
       url?: string | undefined;
     } = {},
   ) {
@@ -77,7 +77,6 @@ export class ActivityRuntime {
           transport: createJournalTransport(client, accountId),
           ...this.currentPeriod(),
           clock: this.clock,
-          dataMode: options.managed ? 'local' : 'legacy',
         }),
     );
   }
@@ -115,7 +114,7 @@ export class ActivityRuntime {
           return;
         this.periodTimer = undefined;
         this.refreshPeriod(repository);
-        if (this.options.managed && this.environment.online)
+        if (this.environment.online)
           void repository.synchronize().catch(() => {});
       },
       60_000 - (this.clock.now() % 60_000),
@@ -124,7 +123,7 @@ export class ActivityRuntime {
   }
   changeAccount(
     accountId: string | null,
-    mode: 'legacy' | 'local' | 'cloud' = 'legacy',
+    mode: DataMode = 'local',
     kind: 'guest' | 'account' = 'account',
   ) {
     if (this.disposed) return;
@@ -135,7 +134,7 @@ export class ActivityRuntime {
     this.mode = mode;
     this.collectionKind = kind;
     const repository = this.accounts.activate(accountId, this.environment);
-    if (repository && this.options.managed) {
+    if (repository) {
       const cloud =
         this.cloud.get(repository.accountId) ??
         new CloudDataCoordinator(

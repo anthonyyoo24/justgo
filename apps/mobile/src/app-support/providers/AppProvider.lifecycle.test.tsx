@@ -32,7 +32,6 @@ jest.mock('../../data/activity/persistence/storage', () => ({
 jest.mock('../identity/auth/create-managed-identity', () => ({
   createManagedIdentityController: jest.fn(),
 }));
-jest.mock('./ProgressRefresh', () => ({ ProgressRefresh: () => null }));
 
 const session: SessionResponse = {
   userId: '00000000-0000-4000-8000-000000000001',

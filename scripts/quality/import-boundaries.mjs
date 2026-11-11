@@ -21,7 +21,6 @@ const setsRlsContext = (target) =>
   target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
 const featureData = [
   'activity/progress/progress',
-  'activity/progress/useProgressReads',
   'backup/data-backup',
   'backup/journal-backup',
 ];

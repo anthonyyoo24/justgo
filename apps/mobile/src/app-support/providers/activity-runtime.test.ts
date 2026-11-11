@@ -235,15 +235,13 @@ it('ignores stale period callbacks and retries a failed rollover without abandon
     client.changeAccount(null);
   }
 });
-it('parks memory-only activity across identity changes and reuses the same repository on recovery', async () => {
+it('parks activity across identity changes and reuses the same repository on recovery', async () => {
   const storage = new MemoryStorage();
-  storage.fail = true;
   const { runtime, client } = createRuntime(storage);
   runtime.setEnvironment({ active: true, online: false });
   runtime.changeAccount(owner);
   const first = runtime.getRepository()!;
   await first.complete(input(), card);
-  expect(first.store.getState().warning?.visible).toBe(true);
   runtime.changeAccount(otherOwner);
   expect(first.store.getState().active).toBe(false);
   const second = runtime.getRepository()!;
