@@ -24,6 +24,24 @@ test('raw merges are denied in every shape and point at the script', () => {
     'cat <<EOF | bash\ngh pr merge 207\nEOF',
     'gh api -X PUT repos/o/r/pulls/207/merge',
     'curl -X PUT https://api.github.com/repos/o/r/pulls/207/merge',
+    // #312: quotes and backslashes only group words, so these run the same
+    // subcommand, and gh reads a flag before the subcommand.
+    'gh pr "merge" 207',
+    "gh pr 'merge' 207 --squash",
+    'gh "pr" merge 207',
+    'gh pr m"erge" 207',
+    'gh pr ""merge 207',
+    'gh pr \\merge 207',
+    'gh pulls/"207"/merge',
+    'gh pr -R a/b merge 207',
+    'gh pr -Ra/b merge 207',
+    'gh pr --repo a/b merge 207',
+    'gh pr --repo=a/b "merge" 207',
+    // #312: the GraphQL mutations merge or arm a PR without the REST path.
+    `gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: "X"}) { clientMutationId } }'`,
+    `gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {pullRequestId: "X", mergeMethod: SQUASH}) { clientMutationId } }'`,
+    "gh api graphql -F query=@- <<< 'mutation { mergePullRequest(input: {}) { clientMutationId } }'",
+    `curl -X POST https://api.github.com/graphql -d '{"query":"mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }"}'`,
     // Harmless mentions are denied too; the message says how to avoid them.
     "grep -n 'gh pr merge' AGENTS.md",
     'git commit -m "docs: say gh pr merge goes through merge:pr"',
@@ -48,6 +66,10 @@ test('the merge script and other commands pass', () => {
     'gh pr list --json number',
     'git merge-tree --write-tree origin/main HEAD',
     'gh pr view 3\ngit log --grep="pr merge"',
+    'gh pr view 3 --json mergeable,mergeStateStatus',
+    'gh pr list --search "is:merged" --json number',
+    'gh pr -R a/b view 3',
+    `gh api graphql -f query='query { repository(owner: "o", name: "r") { pullRequest(number: 3) { mergeable autoMergeRequest { enabledAt } } } }'`,
   ])
     assert.equal(decide(command), undefined, command);
 });
