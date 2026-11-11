@@ -97,6 +97,22 @@ test('a PR the brief only mentions is not checked', () => {
   );
 });
 
+// #361
+test.todo('a link to another repository is not a JustGO PR', () => {
+  const io = fakeIo({ 9: { comments: [verdict('PASS')] } });
+  assert.equal(
+    evaluate(
+      verifier(
+        'Port https://github.com/cursor/plugins/pull/9 here.',
+        'Verify the port',
+      ),
+      '/r',
+      io,
+    ),
+    undefined,
+  );
+});
+
 test('a verifier on a PR whose PASS still covers its head is denied', () => {
   for (const word of ['PASS', 'PASS+NOTES']) {
     const io = fakeIo({ 7: { comments: [verdict(word)] } });
