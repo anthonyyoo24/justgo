@@ -85,17 +85,16 @@ export function report(result) {
   return undefined;
 }
 
-const env = {
+const env = () => ({
   ...process.env,
   GIT_TERMINAL_PROMPT: '0',
   GCM_INTERACTIVE: 'never',
-  GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? 'ssh -o BatchMode=yes',
-};
+});
 
 function git(cwd, args, timeout = gitTimeout) {
   return execFileSync('git', args, {
     cwd,
-    env,
+    env: env(),
     timeout,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
@@ -103,18 +102,21 @@ function git(cwd, args, timeout = gitTimeout) {
 }
 
 // Resolves 'done', 'failed', or 'running' when git outlasts `wait`. A running
-// git is left to finish on its own, even after this process exits.
-function background(cwd, args, wait) {
+// git is left to finish on its own, even after this process exits. With
+// `stop`, it resolves 'stopped' instead and git is stopped with every helper
+// it started, such as ssh, since they share its process group.
+function background(cwd, args, wait, { stop = false } = {}) {
   return new Promise((resolve) => {
     const child = spawn('git', args, {
       cwd,
-      env,
+      env: env(),
       detached: true,
       stdio: 'ignore',
     });
     const timer = setTimeout(() => {
+      if (stop) attempt(() => process.kill(-child.pid, 'SIGTERM'));
       child.unref();
-      resolve('running');
+      resolve(stop ? 'stopped' : 'running');
     }, wait);
     const end = (outcome) => {
       clearTimeout(timer);
@@ -134,11 +136,20 @@ function attempt(fn) {
   }
 }
 
+// git takes GIT_SSH_COMMAND, then core.sshCommand, then GIT_SSH, so batch-mode
+// ssh goes in only when none is set and never replaces one Anthony chose.
+function sshDefault(dir) {
+  if (process.env.GIT_SSH_COMMAND || process.env.GIT_SSH) return [];
+  return attempt(() => git(dir, ['config', 'core.sshCommand']))
+    ? []
+    : ['-c', 'core.sshCommand=ssh -o BatchMode=yes'];
+}
+
 // Before a tool call, a fetch within a minute of the last attempt is skipped
 // and the last fetched origin/main stands in, so a fan-out of agents fetches
 // once. The stamp is written before the fetch, so an offline fetch is not
 // retried before every tool call either.
-function fetchMain(dir, gitDir, fetchEvery) {
+async function fetchMain(dir, gitDir, fetchEvery, fetchWait) {
   const stamp = path.join(gitDir, stampName);
   let last = 0;
   attempt(() => {
@@ -146,12 +157,60 @@ function fetchMain(dir, gitDir, fetchEvery) {
   });
   if (Date.now() - last < fetchEvery) return true;
   attempt(() => writeFileSync(stamp, ''));
-  return attempt(() =>
-    git(dir, ['fetch', '--quiet', '--no-tags', 'origin', 'main'], fetchTimeout),
+  const fetch = await background(
+    dir,
+    [...sshDefault(dir), 'fetch', '--quiet', '--no-tags', 'origin', 'main'],
+    fetchWait,
+    { stop: true },
   );
+  return fetch === 'done';
 }
 
-function inspect(dir, fetchEvery) {
+const foldersOf = (file) =>
+  file
+    .split('/')
+    .slice(0, -1)
+    .map((_, i, parts) => parts.slice(0, i + 1).join('/'));
+
+// Untracked files that make git refuse a fast-forward: one at a path it
+// writes, one where it needs a folder, or one inside a folder it turns into a
+// file.
+function inTheWay(dir, paths) {
+  const changed = new Set(paths);
+  const folders = new Set(paths.flatMap(foldersOf));
+  return execFileSync(
+    'git',
+    ['ls-files', '-z', '--others', '--exclude-standard'],
+    {
+      cwd: dir,
+      env: env(),
+      timeout: gitTimeout,
+      encoding: 'utf8',
+      maxBuffer: Infinity,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
+  )
+    .split('\0')
+    .filter(
+      (file) =>
+        changed.has(file) ||
+        folders.has(file) ||
+        foldersOf(file).some((folder) => changed.has(folder)),
+    );
+}
+
+function failure(dir, paths) {
+  let clash = [];
+  attempt(() => {
+    clash = inTheWay(dir, paths);
+  });
+  if (clash.length === 0) return 'the fast-forward failed';
+  if (clash.length === 1)
+    return `the untracked file ${clash[0]} would be overwritten`;
+  return `${clash.length} untracked files would be overwritten, such as ${clash[0]}`;
+}
+
+async function inspect(dir, fetchEvery, fetchWait) {
   const gitDir = git(dir, ['rev-parse', '--path-format=absolute', '--git-dir']);
   const common = git(dir, [
     'rev-parse',
@@ -159,7 +218,7 @@ function inspect(dir, fetchEvery) {
     '--git-common-dir',
   ]);
   if (gitDir !== common) return { linkedWorktree: true };
-  const fetched = fetchMain(dir, gitDir, fetchEvery);
+  const fetched = await fetchMain(dir, gitDir, fetchEvery, fetchWait);
   if (!fetched) return { fetched };
   let branch = '';
   attempt(() => {
@@ -181,9 +240,9 @@ function inspect(dir, fetchEvery) {
 export async function sync(
   dir,
   fetchEvery = 0,
-  { mergeWait = gitTimeout } = {},
+  { mergeWait = gitTimeout, fetchWait = fetchTimeout } = {},
 ) {
-  const state = inspect(dir, fetchEvery);
+  const state = await inspect(dir, fetchEvery, fetchWait);
   const next = plan(state);
   if (next.action !== 'ff') return next;
   const before = git(dir, ['rev-parse', 'HEAD']);
@@ -198,7 +257,7 @@ export async function sync(
     return {
       action: 'warn',
       behind: state.behind,
-      reason: 'the fast-forward failed',
+      reason: failure(dir, paths),
     };
   return {
     action: merge === 'done' ? 'updated' : 'updating',
