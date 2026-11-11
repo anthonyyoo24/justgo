@@ -5,6 +5,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  utimesSync,
   writeFileSync,
   mkdirSync,
 } from 'node:fs';
@@ -16,6 +17,7 @@ import {
   plan,
   report,
   touchesSessionConfig,
+  triggerOf,
 } from '../../.claude/hooks/sync-main.mjs';
 
 const hook = fileURLToPath(
@@ -73,10 +75,23 @@ function fixture(t) {
   };
 }
 
-function runHook(dir) {
+const sessionStart = { hook_event_name: 'SessionStart', source: 'startup' };
+const beforeAgent = {
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Agent',
+  tool_input: { description: 'Build it', prompt: 'Build it.' },
+};
+const beforeBash = (command) => ({
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_input: { command },
+});
+
+function runHook(dir, event = sessionStart) {
   const result = spawnSync(process.execPath, [hook], {
     cwd: dir,
     env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    input: JSON.stringify(event),
     encoding: 'utf8',
     timeout: 20_000,
   });
@@ -84,13 +99,20 @@ function runHook(dir) {
   assert.equal(result.stderr, '');
   if (result.stdout === '') return undefined;
   const parsed = JSON.parse(result.stdout);
-  assert.equal(parsed.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.equal(parsed.hookSpecificOutput.hookEventName, event.hook_event_name);
+  assert.equal(parsed.hookSpecificOutput.permissionDecision, undefined);
   assert.equal(
     parsed.hookSpecificOutput.additionalContext,
     parsed.systemMessage,
   );
   return parsed.systemMessage;
 }
+
+const ageStamp = (repo, seconds) => {
+  const stamp = path.join(repo.checkout, '.git', 'sync-main-fetched');
+  const then = new Date(Date.now() - seconds * 1000);
+  utimesSync(stamp, then, then);
+};
 
 const head = (dir) => git(dir, 'rev-parse', 'HEAD');
 
@@ -214,6 +236,123 @@ test('a folder outside git prints nothing', (t) => {
   assert.equal(runHook(root), undefined);
 });
 
+test('before an Agent call a clean main checkout fast-forwards and asks for a restart when .claude changed', (t) => {
+  const repo = fixture(t);
+  repo.push('README.md', 'two\n');
+  const tip = repo.push('.claude/hooks/new.mjs', 'export {};\n');
+  assert.match(runHook(repo.checkout, beforeAgent), restart);
+  assert.equal(head(repo.checkout), tip);
+});
+
+test('before an Agent call an up-to-date or offline checkout prints nothing', (t) => {
+  const repo = fixture(t);
+  const before = head(repo.checkout);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  repo.push('.claude/settings.json', '{}\n');
+  git(
+    repo.checkout,
+    'remote',
+    'set-url',
+    'origin',
+    path.join(repo.root, 'missing.git'),
+  );
+  ageStamp(repo, 61);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  assert.equal(head(repo.checkout), before);
+});
+
+test('before an Agent call a dirty or non-main checkout is left alone without a warning', (t) => {
+  const repo = fixture(t);
+  repo.push('.claude/settings.json', '{}\n');
+  const before = head(repo.checkout);
+  writeFileSync(path.join(repo.checkout, 'README.md'), 'local edit\n');
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  assert.equal(head(repo.checkout), before);
+  assert.equal(
+    readFileSync(path.join(repo.checkout, 'README.md'), 'utf8'),
+    'local edit\n',
+  );
+  git(repo.checkout, 'checkout', '-q', 'README.md');
+  git(repo.checkout, 'checkout', '-q', '-b', 'feature');
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  assert.equal(head(repo.checkout), before);
+  assert.equal(git(repo.checkout, 'branch', '--show-current'), 'feature');
+});
+
+test('a second tool call within a minute skips the fetch but still fast-forwards to what was fetched', (t) => {
+  const repo = fixture(t);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  const unfetched = repo.push('.claude/settings.json', '{}\n');
+  const before = head(repo.checkout);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  assert.equal(head(repo.checkout), before, 'second call did not fetch');
+  git(repo.checkout, 'fetch', '-q', 'origin');
+  assert.match(runHook(repo.checkout, beforeAgent), restart);
+  assert.equal(head(repo.checkout), unfetched);
+  const later = repo.push('apps/mobile/app.ts', 'export {};\n');
+  ageStamp(repo, 61);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  assert.equal(head(repo.checkout), later, 'fetches again after a minute');
+});
+
+test('session start always fetches, even right after a tool call did', (t) => {
+  const repo = fixture(t);
+  assert.equal(runHook(repo.checkout, beforeAgent), undefined);
+  const tip = repo.push('AGENTS.md', 'rules\n');
+  assert.match(runHook(repo.checkout), restart);
+  assert.equal(head(repo.checkout), tip);
+});
+
+test('a Bash git worktree add syncs first, and other Bash commands do not', (t) => {
+  const repo = fixture(t);
+  const tip = repo.push('.claude/settings.json', '{}\n');
+  const before = head(repo.checkout);
+  assert.equal(
+    runHook(repo.checkout, beforeBash('git fetch -q && git status')),
+    undefined,
+  );
+  assert.equal(head(repo.checkout), before);
+  assert.match(
+    runHook(
+      repo.checkout,
+      beforeBash(
+        'git -C "$HOME/justgo" worktree add .claude/worktrees/x -b x origin/main',
+      ),
+    ),
+    restart,
+  );
+  assert.equal(head(repo.checkout), tip);
+});
+
+test('the trigger is session start, an Agent call or a worktree add', () => {
+  assert.deepEqual(triggerOf(sessionStart), {
+    event: 'SessionStart',
+    fetchEvery: 0,
+    warns: true,
+  });
+  const beforeTool = { event: 'PreToolUse', fetchEvery: 60_000, warns: false };
+  assert.deepEqual(triggerOf(beforeAgent), beforeTool);
+  for (const command of [
+    'git worktree add ../w -b w origin/main',
+    'cd /repo && git fetch -q && git -C /repo worktree add .claude/worktrees/a -b a origin/main',
+    'GIT_DIR=x git -c core.x=1 worktree add w',
+  ])
+    assert.deepEqual(triggerOf(beforeBash(command)), beforeTool, command);
+  for (const command of [
+    'git worktree list',
+    'git worktree remove w',
+    "grep -n 'git worktree add' AGENTS.md",
+    'echo "git worktree add w"',
+    'git commit -m "git worktree add"',
+  ])
+    assert.equal(triggerOf(beforeBash(command)), undefined, command);
+  assert.equal(
+    triggerOf({ hook_event_name: 'PreToolUse', tool_name: 'Read' }),
+    undefined,
+  );
+  assert.equal(triggerOf({ hook_event_name: 'Stop' }), undefined);
+});
+
 test('the plan acts only on a clean main checkout that is behind', () => {
   const base = {
     linkedWorktree: false,
@@ -280,4 +419,19 @@ test('settings run the hook at session start without blocking it', () => {
   assert.equal(entry.type, 'command');
   assert.ok(entry.timeout > 0 && entry.timeout <= 10, 'short timeout');
   assert.equal(entry.onFailure, undefined, 'never blocks a session');
+});
+
+test('settings run the hook before Agent and Bash calls without blocking them', () => {
+  const settings = JSON.parse(
+    readFileSync(new URL('../../.claude/settings.json', import.meta.url)),
+  );
+  for (const tool of ['Agent', 'Bash']) {
+    const hooks = settings.hooks.PreToolUse.filter((entry) =>
+      new RegExp(`^(?:${entry.matcher})$`).test(tool),
+    ).flatMap((entry) => entry.hooks);
+    const entry = hooks.find((h) => h.command.includes('sync-main.mjs'));
+    assert.ok(entry, `PreToolUse ${tool} runs sync-main.mjs`);
+    assert.ok(entry.timeout > 0 && entry.timeout <= 10, 'short timeout');
+    assert.equal(entry.onFailure, undefined, 'never blocks a tool call');
+  }
 });
