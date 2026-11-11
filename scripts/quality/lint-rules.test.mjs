@@ -169,6 +169,20 @@ const cases = [
       "const { VirtualizedList } = require('react-native'); export const List = VirtualizedList;",
       filePath,
     ],
+    ...[
+      "import { Animated } from 'react-native'; export const List = () => <Animated.SectionList sections={[]} renderItem={() => null} />;",
+      "import Animated from 'react-native-reanimated'; export const List = () => <Animated.FlatList data={[]} renderItem={() => null} />;",
+      "import * as RN from 'react-native'; export const List = () => <RN.VirtualizedList data={[]} renderItem={() => null} />;",
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
+    ...[
+      "import { VirtualizedList } from '@react-native/virtualized-lists'; export const List = VirtualizedList;",
+      "import FlatList from 'react-native/Libraries/Lists/FlatList'; export const List = FlatList;",
+    ].map((source) => ['no-restricted-imports', source, filePath]),
+    // The JSX list ban replaces the route and feature syntax bans unless it repeats them.
+    ...[
+      "import { useQuery } from '@tanstack/react-query'; export const useRead = () => useQuery({ queryKey: ['progress'], queryFn: () => 1 });",
+      'export const reset = (repository: { clearData(): void }) => repository.clearData();',
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
     // The FlatList property ban replaces the mobile block's crypto property bans unless it repeats them.
     [
       'no-restricted-properties',

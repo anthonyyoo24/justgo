@@ -276,7 +276,28 @@ export default tseslint.config(
               importNames: virtualizedLists,
               message: dayEntryListFix,
             })),
+            {
+              name: '@react-native/virtualized-lists',
+              message: dayEntryListFix,
+            },
           ],
+          patterns: [
+            {
+              group: [
+                '@react-native/virtualized-lists/*',
+                'react-native/Libraries/Lists/*',
+              ],
+              message: dayEntryListFix,
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...routeAndFeatureSyntaxBans,
+        {
+          selector: `JSXMemberExpression[property.name=/^(${virtualizedLists.join('|')})$/]`,
+          message: dayEntryListFix,
         },
       ],
       // Reanimated and react-native also expose lists as Animated.FlatList and Animated.SectionList.
