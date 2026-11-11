@@ -15,7 +15,7 @@ const read = (file) => readFileSync(path.join(root, file), 'utf8');
 const refuse = (found) =>
   assert.deepEqual(found, [], `${found.join('\n')}\n${analyticsFix}`);
 
-test('no tracked package.json declares an analytics package', () => {
+test('no tracked package.json declares an analytics or tracking package', () => {
   const manifests = execFileSync('git', ['ls-files', '-z'], {
     cwd: root,
     encoding: 'utf8',
@@ -40,7 +40,7 @@ test('no tracked package.json declares an analytics package', () => {
   );
 });
 
-test('the lockfile resolves no analytics package, direct or transitive', () => {
+test('the lockfile resolves no analytics or tracking package, direct or transitive', () => {
   const lock = yaml.load(read('pnpm-lock.yaml'));
   const names = Object.keys(lock.packages).map(
     (key) => key.match(/^@?[^@]+/)[0],
