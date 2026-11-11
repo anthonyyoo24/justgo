@@ -605,6 +605,18 @@ const cases = [
       'packages/contracts/src/BoundaryFixture.ts',
       "export type { Event } from '@amplitude/analytics-types';",
     ],
+    ...[
+      'react-native-fbsdk-next',
+      '@microsoft/react-native-clarity',
+      '@fullstory/react-native',
+      '@logrocket/react-native',
+      '@newrelic/react-native-agent',
+      '@braze/react-native-sdk',
+    ].map((sdk) => [
+      `mobile code with ${sdk}`,
+      'apps/mobile/src/app-support/BoundaryFixture.ts',
+      `import Sdk from '${sdk}';`,
+    ]),
   ].map(([where, file, source]) => ({
     name: `${where} cannot load an analytics SDK`,
     file,
