@@ -28,7 +28,7 @@ Supabase Free plan until an upgrade trigger below is reached.
   migrations, Zod contracts, domain services, `pg_cron`, Sentry projects and the
   mobile app apart from its API and legal-page addresses.
 - Preserve the [identity boundary](../architecture/IDENTITY.md),
-  [activity architecture](../architecture/ACTIVITY_DATA.md),
+  [activity data rules](../../AGENTS.md#rules-and-what-enforces-them),
   [server release safeguards](../operations/SERVER_RELEASES.md) and the
   [restore checklist](../operations/CLOUDFLARE_BACKUPS.md#restore-checklist).
 - Cost: start on Workers Free. Workers Paid (US$5/month) is expected if measured
