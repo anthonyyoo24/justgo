@@ -11,7 +11,12 @@ import { newestVerdictOf } from './merge-order.mjs';
 // separate verdict comment on each PR, because the `verdict` check reads each
 // PR's own comments.
 //
-// Usage: node scripts/quality/verify-batch.mjs [--json]
+// `--brief <n>...` prints the brief to start one verifier on those PRs. It
+// carries the verifier rules from AGENTS.md (read CI, check only what the
+// change touches, no fuzzers, notes stay in the verdict) so a coordinator
+// does not have to remember them. Add one or two lines on what the PRs do.
+//
+// Usage: node scripts/quality/verify-batch.mjs [--json | --brief <n>...]
 
 export const maxLines = 150;
 export const maxBatchPulls = 4;
@@ -131,7 +136,39 @@ export function format({ batches, alone }) {
     for (const pull of alone)
       out.push(`  #${pull.number} ${pull.title}: ${pull.reason}`);
   }
+  out.push(
+    'Start each verifier with: node scripts/quality/verify-batch.mjs --brief <n>...',
+  );
   return out.join('\n');
+}
+
+const repo = 'https://github.com/anthonyyoo24/justgo';
+
+export function brief(numbers) {
+  const many = numbers.length > 1;
+  const names = numbers.map((n) => `#${n}`).join(', ');
+  const links = numbers.map((n) => `PR #${n} (${repo}/pull/${n})`).join(', ');
+  return [
+    `Agent description: Verify PR${many ? 's' : ''} ${names}`,
+    '',
+    `You are the independent verifier for JustGO ${links}. You did not write ${many ? 'them' : 'it'}.`,
+    '',
+    'Rules (AGENTS.md, "Git and autonomy"):',
+    '- Read the full suites from CI with `gh pr checks <n>`, and wait with `--watch` while they run. Do not rerun install, typechecks, lint, architecture, workspace tests, `test:db`, journeys or exports locally.',
+    '- Check only what the change touches: read `gh pr diff <n>`, run the focused tests for the changed behavior, and drive a user-facing change with `verify-justgo`.',
+    '- Write no fuzzer or broad sweep unless a concrete failure needs one. A probe that runs generated shell text uses stub commands, never real programs such as `say` or `open`.',
+    '- Only a check that broke on the head is a FAIL. Anything else is a note.',
+    '- Notes stay in the verdict comment. File no issues, and push or merge nothing.',
+    '',
+    `Post one verdict comment on ${many ? 'each PR' : 'the PR'} with \`gh pr comment <n> --body-file <file>\`, starting exactly:`,
+    '',
+    'Verifier verdict: <PASS|PASS+NOTES|FAIL> on base `<base-sha>`, head `<head-sha>`',
+    'Sensitive: <yes|no>',
+    '',
+    'A FAIL adds a line `Failure shown: <command or test> on the head prints <what broke>`. Write `Sensitive: yes` when the PR touches a path in `scripts/quality/sensitive-paths.mjs` or affects sign-in, account data, migrations or release. Say you are a separate Claude agent (Opus), not a different model family. Report each verdict and its comment URL.',
+    '',
+    'What the change is for: <one or two lines from the coordinator>',
+  ].join('\n');
 }
 
 const fields = [
@@ -145,6 +182,17 @@ const fields = [
 ].join(',');
 
 function main() {
+  const at = process.argv.indexOf('--brief');
+  if (at !== -1) {
+    const numbers = process.argv.slice(at + 1).map(Number);
+    if (
+      numbers.length === 0 ||
+      numbers.some((n) => !Number.isInteger(n) || n < 1)
+    )
+      throw new Error('verify-batch: --brief takes one or more PR numbers');
+    console.info(brief(numbers));
+    return;
+  }
   const pulls = JSON.parse(
     execFileSync(
       'gh',

@@ -324,8 +324,8 @@ highest level that works and updates this list.
   - Enforced by (written): Nothing. It is a judgment call.
 - Verifiers run on Opus. Only a re-check of one named, docs- or tests-only, non-sensitive PR runs on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
-- Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself.
-  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes) and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`
+- Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself. A session on the Mac mini starts inside its JustGO checkout, `/Users/anthony/Documents/apps/justgo`, so JustGO's settings, hooks and compaction window load.
+  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes), a call with `target: "ssh"` or a `host` whose `cwd` is missing or outside that checkout, and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`. A preset that carries a host is caught only in review.
 - A session started in the main checkout runs the current hooks and settings, and its checkout stays current during the session. On `main` with no tracked changes, the checkout fast-forwards to `origin/main` at session start and before each `Agent` call or Bash `git worktree add`, and asks for a restart when the update changed `.claude/` or the root agent instructions. At session start it otherwise says how far behind it is and why it was not updated. Before a tool call it fetches at most once a minute and warns about nothing. It never resets, stashes or touches untracked files, never blocks a session or a tool call, and leaves linked worktrees alone.
   - Enforced by (hook, test): The `SessionStart` and `PreToolUse` (`Agent|Bash`) hook `.claude/hooks/sync-main.mjs`, which stays silent when offline or up to date and returns no permission decision, with cases against temporary repositories in `scripts/quality/sync-main-hook.test.mjs`. It finds `git worktree add` in Bash text with `shellText()` from `push-after-pass-guard.mjs`, so a worktree that a script creates is not preceded by a sync.
 - When a chat starts or ends in the main checkout, a detached process removes each worktree under `.claude/worktrees/` that nobody needs: unlocked, with no changes or untracked files, no unique ignored files outside `.local/` (such as a key), its HEAD on a remote branch or its PR (the branch's, or the one a `ver-<n>` or `adv-<n>` name gives) merged or closed, no open PR on its branch or HEAD, no process inside, and no file outside `node_modules` changed for 2 hours. Before each removal, `refs/archive/worktrees/<name>` keeps its HEAD and its `.local/` is copied to `.local/archived-worktrees/<name>/`. It then moves the worktree to `.local/worktree-trash/` with `git worktree move` and removes it there, so the next sweep deletes what a removal killed or timed out partway left in that folder, unless `git status`, run through git's record of that worktree, shows more than deleted files. An untracked path counts as deleted when the main checkout ignores it, since a removal can delete a `.gitignore` before the files it ignores. It keeps a leftover git has no record of, a box that holds a file when its worktree folder is gone, and a box it cannot delete. A worktree git refuses to remove, or one changed since its check, moves back, or is locked in the trash when it cannot. When GitHub cannot be read, it keeps everything. It never forces a removal, never deletes a branch, and logs each removal with its commit to `.local/worktree-sweep.log`.
@@ -448,7 +448,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   outside tests. Give each batch one Opus verifier whose description
   starts with Verify and names every PR in it, as in `Verify PRs #7, #8`. It posts a separate
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
-  keeps its own verifier.
+  keeps its own verifier. Start every verifier, batched or not, with the brief
+  that `node scripts/quality/verify-batch.mjs --brief <n>...` prints, and add
+  only a line or two on what the change is for.
 - **Arm auto-merge when you open a PR.** Run
   `pnpm run merge:pr <n> --head <head-sha> --auto` right after
   opening the PR, and again after each push, pinned to the new head. A stacked
@@ -461,8 +463,11 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `main` in and checks the verdict as above, then arms on the new head without
   waiting for CI. Branch protection requires up-to-date branches, so on each
   push to `main` the `Update behind PRs` workflow
-  (`.github/workflows/update-behind-prs.yml`) merges `main` into every armed PR
-  that is behind, and rerunning the script does the same by hand. After a
+  (`.github/workflows/update-behind-prs.yml`) merges `main` into one armed PR
+  at a time: the lowest-numbered behind PR whose head has a passing verdict,
+  once no up-to-date armed PR is still on its way to merging. It also runs
+  after each CI and PR description run, and rerunning the script does the
+  same by hand. After a
   `PASS`, push nothing more to the PR. Those `main` merges are the one
   exception, and the `push-after-pass-guard` hook denies a code push to a PR
   whose head has a `PASS`. It cannot check a push in the same command as a
