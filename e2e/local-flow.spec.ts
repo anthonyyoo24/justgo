@@ -8,6 +8,7 @@ import {
   continueAsGuest,
   completeChallenge,
 } from './support/managed-account';
+import { openSettingsLink } from './support/screens';
 const openAccount = (page: Page, catalogReady = true) =>
   signInFixture(page, { catalogReady });
 
@@ -327,18 +328,14 @@ test('active challenges hide all page navigation and reset after reload while th
   await expect(
     page.getByRole('heading', { name: 'Active challenge', exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Open Settings', exact: true }),
-  ).toHaveCount(0);
+  await expect(openSettingsLink(page)).toHaveCount(0);
   await expect(page.getByRole('tab')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(
     page.getByRole('button', { name: 'Completed', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Give up', exact: true }).click();
-  await expect(
-    page.getByRole('link', { name: 'Open Settings', exact: true }),
-  ).toBeVisible();
+  await expect(openSettingsLink(page)).toBeVisible();
   await expect(
     page.getByRole('tab', { name: 'Gym', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');
