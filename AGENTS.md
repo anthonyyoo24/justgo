@@ -325,7 +325,7 @@ highest level that works and updates this list.
   - Enforced by (hook, written): The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)
 - Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files.
   - Enforced by (written): Nothing. It is a judgment call.
-- Verifiers run on Opus. Only a re-check of one named, docs- or tests-only, non-sensitive PR runs on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
+- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
 - Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself. A session on the Mac mini starts inside its JustGO checkout, `/Users/anthony/Documents/apps/justgo`, so JustGO's settings, hooks and compaction window load.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes), a call with `target: "ssh"` or a `host` whose `cwd` is missing or outside that checkout, and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`. A preset that carries a host is caught only in review.
@@ -341,7 +341,7 @@ highest level that works and updates this list.
   - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
 - Review rounds end. A `FAIL` must show a failure on a `Failure shown:` line, or it is a note and the verdict is `PASS+NOTES`. No verifier starts on an open PR whose `PASS` or `PASS+NOTES` still covers its head, or that already has 3 `FAIL` verdicts that show a failure. Anthony can ask for another round.
   - Enforced by (CI, hook, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. The `PreToolUse` Agent hook `.claude/hooks/review-rounds-guard.mjs` denies a verifier on such a PR unless its brief has an `Another round:` line, with cases in `scripts/quality/review-rounds-guard.test.mjs`. It checks the PRs the description names, or every PR the prompt mentions when the description names none. It lets the call through when `gh`, git or the network fails, or when its 45 s budget runs out. Whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony, are caught only in review.
-- Small non-sensitive PRs share one verifier, at most 4 PRs and 300 lines a batch, with a verdict comment on each PR.
+- Small non-sensitive PRs share one Sonnet verifier, at most 4 PRs and 300 lines a batch, with a verdict comment on each PR.
   - Enforced by (test, written): `scripts/quality/verify-batch.mjs` lists the batches, with cases in `scripts/quality/verify-batch.test.mjs`. Starting one verifier per batch is a judgment call.
 - Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.
   - Enforced by (written): Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.
@@ -373,6 +373,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   from `main`. Stack one on another only when it needs that PR's change, and then
   it targets that PR's branch. A phase is several small PRs, not one consolidated PR.
   Parallel agents each get their own worktree and branch, with one owner per branch.
+- **One PR carries a change, its tests and its docs.** Put the tests that prove
+  a change and the doc updates it makes necessary in the same PR as the code.
+  Open a docs-only or tests-only PR only when Anthony asks for one, or when a
+  wrong doc or a broken test blocks work. Add a test a verifier's note asks for
+  to the same PR before it merges, since a tests-only push keeps the verdict.
+  Attach a known-bug test to its issue rather than opening a PR for it alone.
+  Keep other doc tweaks for a PR that already touches that doc.
 - **PR descriptions use pstack sections**: Why, What changed, Scope,
   Tradeoffs, Blast Radius and Verification, in that order. The
   `pr-description-check` hook and the required `description` check enforce them.
@@ -420,8 +427,10 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `description` and `verdict` on the new head, and merges pinned to that head. On `re-verify`
   it stops, and a fresh verifier reviews the new head.
 - **One verifier per PR, sensitive or not.** This replaces the full swarm in
-  step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one Opus
+  step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one
   verifier that did not write the PR proves the behavior and posts the verdict.
+  It runs on Sonnet when the PR is small and on Opus otherwise, as the
+  verifier hook in [Agent effort](#agent-effort) decides.
   Each fix round gets a fresh verifier, as [Agent effort](#agent-effort) says.
   Sensitive PRs get the same one verifier. Run a swarm or `/pstack:interrogate`
   only when Anthony asks for one on that PR. The verifier reads the PR's CI for
@@ -447,8 +456,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   verdict and groups the small ones, at most 4 PRs and 300 changed lines a
   batch. A small PR is not a draft, touches no sensitive path and no contracts,
   database, CI, dependency, `.claude` hook, skill or settings file, lint config
-  or `scripts/quality` script outside its tests, and changes at most 150 lines
-  outside tests. Give each batch one Opus verifier whose description
+  or `scripts/quality` script outside its tests, and changes at most 150
+  counted lines. Tests and Markdown do not count, except `AGENTS.md` and
+  `docs/operations/`. Give each batch one verifier whose description
   starts with Verify and names every PR in it, as in `Verify PRs #7, #8`. It posts a separate
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
   keeps its own verifier. Start every verifier, batched or not, with the brief
@@ -540,11 +550,15 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. It re-reads the
   whole PR, not only the change since the last verdict.
-- Verifiers run on Opus. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
+- Verifiers run on Opus, except small PRs. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
   sets the model of every verifier `Agent` call: one whose description starts
   with a form of Verify, Verifier, Re-verify or Re-check, such as Verifying,
   or whose prompt asks for a `Verifier verdict:` line in any case. It picks
-  Sonnet only for a re-check (description starting with a form of Re-verify
+  Sonnet when the brief names 1 to 4 JustGO PRs, as `PR #<n>`, a list such as
+  `PRs #7, #8` or a PR URL, names no PR in another repository, has no
+  `Sensitive: yes` line, and every named PR is small by `sizeExclusion()` in
+  `scripts/quality/verify-batch.mjs`, with the old path of each rename checked
+  too. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
