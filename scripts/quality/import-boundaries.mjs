@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { analyticsFix, analyticsPackageOf } from './analytics-packages.mjs';
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -76,6 +77,7 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     !apiOpenApi
   )
     return 'Import shared contracts through @justgo/contracts.';
+  if (analyticsPackageOf(specifier)) return analyticsFix;
   const apiSource = under(file, 'apps/api/src');
   if (apiSource && under(target, 'apps/api/tests'))
     return 'API source cannot import test code from apps/api/tests.';
