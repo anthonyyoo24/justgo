@@ -322,6 +322,31 @@ it('lets an incomplete web callback restart provider sign-in after a consumed or
   expect(mockRouter.replace).toHaveBeenCalledWith('/account/sign-in');
 });
 
+it.each([
+  [true, '/recovery'],
+  [false, '/access'],
+])(
+  'sends a signed-in web callback with switchCancelled=%s to %s without an alert',
+  async (switchCancelled, destination) => {
+    await setup();
+    jest.spyOn(mockController, 'getSnapshot').mockReturnValue({
+      ...mockController.getSnapshot(),
+      account: {
+        userId: '10000000-0000-4000-8000-000000000050',
+        authUserId: '10000000-0000-4000-8000-000000000040',
+        deviceId: '10000000-0000-4000-8000-000000000002',
+        sessionId: '10000000-0000-4000-8000-000000000060',
+        expiresAt: '2030-01-01T00:00:00.000Z',
+        dataEpoch: 0,
+      },
+      switchCancelled,
+    });
+    const screen = await render(<AuthCallbackRoute />);
+    expect(screen.getByText(`Redirect: ${destination}`)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  },
+);
+
 it('shows the redacted Dev reference when retrying a saved web sign-in fails', async () => {
   const { auth } = await setup(undefined, true);
   jest.spyOn(auth, 'signIn').mockResolvedValueOnce('redirecting');
