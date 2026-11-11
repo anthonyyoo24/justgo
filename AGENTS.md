@@ -286,6 +286,8 @@ highest level that works and updates this list.
   - Enforced by (hook, test): The `PreToolUse` Bash hook `.claude/hooks/merge-order-guard.mjs` denies any command whose text contains `gh pr merge` or a `pulls/<n>/merge` API path, harmless mentions included. `scripts/quality/merge-pr.mjs` checks with `git merge-tree` and `verdict-patch.mjs`, fails closed when `gh`, git or the network fails, and pins each step to its head. Cases beside it in `merge-pr.test.mjs` and `merge-order-guard.test.mjs`
 - After a `PASS`, agents push nothing more to that PR but docs, tests and merges from `main`. A push that cannot wait disarms auto-merge first and carries `PUSH_AFTER_PASS=1`.
   - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
+- Review rounds end. A `FAIL` must show a failure on a `Failure shown:` line, or it is a note and the verdict is `PASS+NOTES`. No verifier starts on an open PR whose `PASS` or `PASS+NOTES` still covers its head, or that already has 3 `FAIL` verdicts. Anthony can ask for another round.
+  - Enforced by (CI, hook, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. The `PreToolUse` Agent hook `.claude/hooks/review-rounds-guard.mjs` denies a verifier on such a PR unless its brief has an `Another round:` line, with cases in `scripts/quality/review-rounds-guard.test.mjs`. It lets the call through when `gh`, git or the network fails. Whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony, are caught only in review.
 - Small non-sensitive PRs share one verifier, at most 4 PRs and 300 lines a batch, with a verdict comment on each PR.
   - Enforced by (test, written): `scripts/quality/verify-batch.mjs` lists the batches, with cases in `scripts/quality/verify-batch.test.mjs`. Starting one verifier per batch is a judgment call.
 - Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.
@@ -365,8 +367,16 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one Opus
   verifier that did not write the PR proves the behavior and posts the verdict.
   Each fix round gets a fresh verifier, as [Agent effort](#agent-effort) says.
-  A PR in the sensitive areas then stops at merge-ready for Anthony. Run a swarm
-  or `/pstack:interrogate` only when Anthony asks for one on that PR.
+  Sensitive PRs get the same one verifier. Run a swarm or `/pstack:interrogate`
+  only when Anthony asks for one on that PR.
+- **Review rounds end.** Only a shown defect blocks a PR: a `FAIL` names, on a
+  `Failure shown:` line, the command or test that broke on the head and what it
+  printed. A risk, a wording gap or a missing case with no failure shown is a
+  note, so the verdict is `PASS+NOTES`. Notes never start another round. The
+  PR merges, and each note goes in an issue or a follow-up PR. A PR gets at most
+  two fix rounds. After a third `FAIL`, stop and bring it to Anthony with what
+  still fails. Another round past these limits runs only when Anthony asks, and
+  its brief carries a line `Another round: <his words>`.
 - **Batch small PRs under one verifier.** Before you start verifiers, run
   `node scripts/quality/verify-batch.mjs`. It lists the open PRs that need a
   verdict and groups the small ones, at most 4 PRs and 300 changed lines a
@@ -377,7 +387,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   starts with Verify and whose brief names every PR in it. It posts a separate
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
   keeps its own verifier.
-- **Arm auto-merge when you open a PR.** Outside the sensitive areas below, run
+- **Arm auto-merge when you open a PR.** Run
   `npm run merge:pr -- <n> --head <head-sha> --auto` right after
   opening the PR, and again after each push, pinned to the new head. The
   required `verdict` check stays red until a readable `PASS` covers that head,
@@ -397,20 +407,19 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   a `PASS` cannot be avoided, run `npm run merge:pr -- <n> --disable-auto` first,
   prefix the push with `PUSH_AFTER_PASS=1`, and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
   push keeps `verdict` green without a review. Also disarm with
-  `--disable-auto` when a PR comes to touch a sensitive area, and on Anthony's
-  hold.
-- **Anthony merges the sensitive areas.** PRs that touch the paths in
-  [Agent effort](#agent-effort) (sign-in and identity, account data and
-  deletion, migrations, release and backup scripts) stop at merge-ready for
-  Anthony. He can also hold any PR, and a hold stops every merge until he lifts it.
+  `--disable-auto` on Anthony's hold.
+- **Sensitive PRs merge like any other.** Green CI and a `PASS` or `PASS+NOTES`
+  that covers the head are enough, with no wait for Anthony. He can hold any
+  PR, and a hold stops every merge until he lifts it.
 - **A verdict covers a patch, not a commit.** Each verdict comment names the base
   and head it ran on, and whether the change is sensitive, in two lines of this
   form. The verdict is `PASS`, `PASS+NOTES` or `FAIL`, and either line may be
-  bold:
+  bold. A `FAIL` adds a third line with the failure it shows:
 
   ```text
-  Verifier verdict: PASS on base `<base-sha>`, head `<head-sha>`
+  Verifier verdict: FAIL on base `<base-sha>`, head `<head-sha>`
   Sensitive: no
+  Failure shown: `<command or test>` on the head prints `<what broke>`
   ```
 
   Write `Sensitive: yes` when the change touches a path in
@@ -420,7 +429,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   reads the newest comment from Anthony's account that mentions a verdict. It
   fails when there is none, when that comment lacks either line (a heading
   such as `## Verdict: PASS`, prose, or a verdict with no `Sensitive` line is
-  unreadable), on `FAIL`, or when
+  unreadable), on `FAIL` (and says to post `PASS+NOTES` when the `FAIL` has
+  no `Failure shown:` line), or when
   that verdict no longer covers the PR head. So every PR shows `verdict` red
   until a readable `PASS` or `PASS+NOTES` covers its head. Posting
   a fresh verdict reruns it. If that rerun does not start, run
