@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 // allowed between `pr` and `merge`), a `pulls/<n>/merge` API path, or the
 // GraphQL `mergePullRequest` or `enablePullRequestAutoMerge` mutation. Shell
 // quotes and backslashes only group words, so it also checks the text with
-// them removed, which catches `gh pr "merge"`. It reads text and does not
+// them removed, which catches `gh pr "merge"`, `gh pr $'merge'` and a
+// backslash-newline inside the word. It reads text and does not
 // parse shell, so a harmless mention such as a grep is denied too, and the
 // message says how to get around that. A command that builds the words at
 // runtime, or reads a GraphQL query from a file, is caught only in review.
@@ -35,7 +36,12 @@ const reason =
 
 export function decide(command) {
   const joined = command.replace(/\\\r?\n/g, ' ');
-  const unquoted = joined.replace(/["'\\]/g, '');
+  // The shell drops a backslash-newline inside a word (`mer\<newline>ge`) and
+  // the `$` of `$'…'` and `$"…"`, so the unquoted copy does too.
+  const unquoted = command
+    .replace(/\\\r?\n/g, '')
+    .replace(/\$(?=["'])/g, '')
+    .replace(/["'\\]/g, '');
   const denied = [joined, unquoted].some(
     (text) =>
       ghPrMerge.test(text) || apiMerge.test(text) || graphqlMerge.test(text),
