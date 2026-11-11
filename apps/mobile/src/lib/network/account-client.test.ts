@@ -1,10 +1,5 @@
 import { okSchema } from '@justgo/contracts';
-import {
-  AccountClient,
-  accountKey,
-  createQueryClient,
-  stableAction,
-} from './account-client';
+import { AccountClient, accountKey, createQueryClient } from './account-client';
 import { ApiError, createHttpClient } from './http';
 
 const clients: AccountClient[] = [];
@@ -286,25 +281,16 @@ it('retries a transient read only once and disables nested query/mutation retrie
     mutations: { retry: false },
   });
 });
-it('retains action IDs and input after an uncertain write; no implicit write retry', async () => {
+it('does not retry a write after an uncertain failure', async () => {
   const fetcher = jest
     .fn()
     .mockRejectedValueOnce(new Error('lost response'))
     .mockResolvedValue(ok());
   const { client } = setup(fetcher);
-  const input = { answer: 'original' };
-  const action = stableAction('stable-id', input);
-  input.answer = 'changed';
   await expect(
-    client.request('/v1/test', okSchema, { body: action }),
+    client.request('/v1/test', okSchema, { body: { answer: 'original' } }),
   ).rejects.toBeInstanceOf(ApiError);
   expect(fetcher).toHaveBeenCalledTimes(1);
-  await client.request('/v1/test', okSchema, { body: action });
-  expect(fetcher.mock.calls[0]![1].body).toBe(fetcher.mock.calls[1]![1].body);
-  expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({
-    answer: 'original',
-    actionId: 'stable-id',
-  });
 });
 it('cancels and clears account data immediately; late responses cannot populate the next account', async () => {
   let resolve!: (value: ReturnType<typeof ok>) => void;

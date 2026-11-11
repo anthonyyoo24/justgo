@@ -213,16 +213,3 @@ export class AccountClient {
     }
   }
 }
-
-// Caller creates once per user intent, retains this object for an uncertain retry.
-// Consuming feature endpoints must enforce ownership + matching-input idempotency.
-export function stableAction<T extends object>(
-  id: string,
-  input: T,
-): Readonly<T & { actionId: string }> {
-  return Object.freeze(
-    JSON.parse(JSON.stringify({ ...input, actionId: id })) as T & {
-      actionId: string;
-    },
-  );
-}
