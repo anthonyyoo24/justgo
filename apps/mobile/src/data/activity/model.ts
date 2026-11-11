@@ -194,8 +194,10 @@ export type WarningEpisode = {
   storageFull: boolean;
   online: boolean;
 };
+/** Local keeps history on this device. Cloud also syncs it by data epoch. */
+export type DataMode = 'local' | 'cloud';
 export type JournalState = {
-  dataMode?: 'legacy' | 'local' | 'cloud';
+  dataMode: DataMode;
   syncStatus?: 'idle' | 'syncing' | 'error';
   dataEpoch?: number | null;
   dataDeletionPending?: boolean;

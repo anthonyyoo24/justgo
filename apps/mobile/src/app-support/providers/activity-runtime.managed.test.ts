@@ -260,7 +260,6 @@ function setup(storage = new MemoryStorage()) {
     },
   );
   const runtime = new ActivityRuntime(client, storage, {
-    managed: true,
     timeZone: () => zone,
   });
   runtime.setEnvironment({ active: true, online: false });

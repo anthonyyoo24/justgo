@@ -63,16 +63,12 @@ afterEach(async () => {
   jest.useRealTimers();
 });
 
-it('commits private saves independently, with completion-only wire and cache data', async () => {
-  const { repository, transport, storage } = setup();
+it('commits private saves independently, with completion-only cache data', async () => {
+  const { repository, storage } = setup();
   await repository.complete(input(), card);
   await repository.submitReflection(uuid(1), uuid(2), {
     text: 'Private synthetic writing',
   });
-  repository.setEnvironment({ online: true, active: true });
-  await repository.synchronize();
-  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
-  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
   expect(storage.values.get(key)).not.toContain('Private synthetic writing');
   expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Private synthetic writing',
@@ -369,12 +365,13 @@ it('preserves cached-only legacy writing when failed migration rolls over before
   expect(repository.store.getState().journal.today).toBeNull();
   expect(repository.store.getState().localJournalReady).toBe(false);
   expect(storage.values.get(key)).toBe(bytes);
-  await repository.complete(input(), card);
+  await expect(repository.complete(input(), card)).rejects.toMatchObject({
+    code: 'STORAGE',
+  });
   database.failCommit = false;
   expect((await repository.snapshotJournal()).entries).toEqual([
     journalEntry(owner, historical),
   ]);
-  expect(repository.store.getState().journal.records[uuid(1)]).toBeDefined();
   expect(storage.values.get(key)).not.toContain(historical.reflection.text);
   repository.dispose();
   const reopened = setup(storage).repository;
@@ -429,8 +426,8 @@ it('keeps local writing through rollover, relaunch and newer empty server reads'
   ).toBe('Local historical entry');
 });
 
-it('synchronizes completions without reading a retired cloud journal or its migration marker', async () => {
-  const { repository, transport, storage } = setup();
+it('synchronizes without reading a retired cloud journal or its migration marker', async () => {
+  const { repository, storage } = setup();
   const read = jest.spyOn(storage, 'getItem');
   await repository.complete(input(), card);
   await repository.submitReflection(uuid(1), uuid(2), {
@@ -438,7 +435,6 @@ it('synchronizes completions without reading a retired cloud journal or its migr
   });
   repository.setEnvironment({ online: true, active: true });
   await repository.synchronize();
-  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
   expect(
     read.mock.calls.every(
       ([path]) => !path.includes('legacy-journal-migrated'),

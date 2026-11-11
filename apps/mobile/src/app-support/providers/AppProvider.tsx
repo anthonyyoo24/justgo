@@ -12,7 +12,6 @@ import { listenToConnectivity } from '../../platform/connectivity/connectivity';
 import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import type { JournalStorage } from '../../data/activity/model';
 import { ActivityRuntime } from './activity-runtime';
-import { ProgressRefresh } from './ProgressRefresh';
 import { useActivityStore } from './activity-hooks';
 import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
@@ -42,8 +41,7 @@ export function createAppRuntime<
   });
   const telemetry = createTelemetry();
   const access = new AccessStore(apiOrigin(url), storage);
-  const managed = identity instanceof ManagedIdentityController;
-  const activity = new ActivityRuntime(client, storage, { managed, url });
+  const activity = new ActivityRuntime(client, storage, { url });
   identity.setAccountDataRemover(async (owner) => {
     if (access.getSnapshot().owner?.id === owner) access.changeOwner(null);
     // Permission metadata shares the erased namespace. Finish its pending writes
@@ -101,7 +99,7 @@ export function createAppRuntime<
     );
     activity.changeAccount(
       collection,
-      managed ? (next ? 'cloud' : 'local') : 'legacy',
+      next ? 'cloud' : 'local',
       'collectionKind' in snapshot && snapshot.collectionKind === 'guest'
         ? 'guest'
         : 'account',
@@ -191,7 +189,6 @@ export function AppProvider({ children }: PropsWithChildren) {
   return (
     <Context.Provider value={runtime}>
       <QueryClientProvider client={runtime.client.queries}>
-        <ProgressRefresh client={runtime.client} activity={runtime.activity} />
         {children}
       </QueryClientProvider>
     </Context.Provider>

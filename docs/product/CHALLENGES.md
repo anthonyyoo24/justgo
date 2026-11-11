@@ -67,9 +67,9 @@ queued content.
 
 Gesture Handler, Reanimated and Worklets own the existing native implementation.
 No additional deck library is needed. The X and heart buttons use the same
-animation controller, and duplicate input cannot advance twice. Completion uses
-the serialized account journal and ordered sender. Slow phone writes get delayed
-accessible feedback, and ordinary uploads do not gate navigation. Preserve
+animation controller, and duplicate input cannot advance twice. Completion saves
+through the serialized account journal on the phone. Slow phone writes get
+delayed accessible feedback, and cloud sync does not gate navigation. Preserve
 accessible button alternatives and Reduce Motion. Native touch feel on a physical
 device and release accessibility acceptance stay explicit in gates
 [#86](https://github.com/anthonyyoo24/justgo/issues/86) and

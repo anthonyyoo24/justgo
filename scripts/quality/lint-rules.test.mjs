@@ -346,7 +346,7 @@ const cases = [
   [
     'justgo/import-boundaries',
     "import { useRuntime } from './AppProvider'; export const read = useRuntime;",
-    'apps/mobile/src/app-support/providers/ProgressRefresh.tsx',
+    'apps/mobile/src/app-support/providers/activity-runtime.ts',
   ],
   [
     '@typescript-eslint/no-floating-promises',

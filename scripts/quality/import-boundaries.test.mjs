@@ -278,7 +278,7 @@ const cases = [
   {
     name: 'features may read progress',
     file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
-    source: "import '../../data/activity/progress/useProgressReads';",
+    source: "import '../../data/activity/progress/progress';",
     restricted: false,
   },
   {
@@ -294,8 +294,8 @@ const cases = [
     restricted: false,
   },
   {
-    name: 'ProgressRefresh cannot import AppProvider',
-    file: 'apps/mobile/src/app-support/providers/ProgressRefresh.tsx',
+    name: 'the activity runtime cannot import AppProvider',
+    file: 'apps/mobile/src/app-support/providers/activity-runtime.ts',
     source: "import './AppProvider';",
     restricted: true,
     fix: 'Pass the runtime as a prop',
