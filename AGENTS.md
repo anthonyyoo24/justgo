@@ -119,9 +119,11 @@ these rules:
   switching and logout, and `deletion/` owns account deletion.
   `apps/api/src/identity` owns the server side. In
   `apps/mobile/src/data`, `activity/` owns completion history, and its `sync/`
-  folder sends completion uploads with their retry and transport. `journal/` owns
-  private writing. `cloud/` owns the cloud download, journal sync, delete-all and
-  guest adoption, and the iCloud copy. `backup/` owns the file formats. Their tests
+  folder sends each new completion's upload with its retry and transport.
+  `journal/` owns private writing. `cloud/` owns the cloud download, journal sync,
+  delete-all and guest adoption, and the iCloud copy. Its coordinator also uploads
+  completions through `/v1/completion-restores` in ordinary sync, adoption and
+  import. `backup/` owns the file formats. Their tests
   sit beside them.
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
@@ -240,10 +242,14 @@ highest level that works and updates this list.
   - Enforced by (lint): `testing-library/await-async-queries`, `await-async-utils`, `no-await-sync-queries` and `no-promise-in-fire-event`, with cases in `lint-rules.test.mjs`
 - Native SQLite journal files run in WAL mode. Web IndexedDB writes both journal stores in one `readwrite` transaction with `{ durability: 'strict' }`, so a committed save survives power loss.
   - Enforced by (test): `apps/mobile/src/data/journal/storage.test.ts` reads `PRAGMA journal_mode` from the saved file, and `storage.web.test.ts` checks the transaction IndexedDB receives. Each write opens a new connection that keeps the compiled FULL `synchronous` default, and `app.config.test.ts` fails when an `expo-sqlite` plugin entry sets `customBuildFlags`.
+- React can restart an effect and keep the state-owned runtime. Cleanup parks activity and client work without erasing recoverable input, and foregrounding reconnects the current runtime.
+  - Enforced by (test, written): `parks memory-only activity across identity changes and reuses the same repository on recovery` in `apps/mobile/src/app-support/providers/activity-runtime.test.ts`, the effect-replay cases in `AppProvider.lifecycle.test.tsx` and `pauses provider refresh on background, refreshes on foreground and releases listeners on unmount` in `AppProvider.test.tsx` cover parking and foreground refresh. A restarted effect whose foreground reconnect is missed is caught only in review, because a test that reproduces it needs fragile timing (#342).
+- Native full-screen content uses safe areas measured above the stack on the first frame and never adds the same inset twice. Web uses the root measurements with the inner inset edges off, and Android keeps dialog-owned measurement because its window bounds can exclude system bars. `DayEntryList` keeps zero trailing padding, so the last row meets the viewport and the bottom safe area stays outside the list.
+  - Enforced by (test): In `apps/mobile/src/features/challenges/ChallengeScreen.test.tsx`, `keeps navigation mounted behind an opaque full-screen active view and refuses implicit dismissal` runs on web and fails when the inner surface keeps an inset edge, and `keeps Android modal-owned safe areas when its bounds exclude system bars` covers Android. `keeps trailing padding at zero` in `apps/mobile/src/features/progress/day-details/entries/DayEntryList.test.tsx` fails on any bottom, vertical or block-end padding.
 - The route tree matches the root stack.
   - Enforced by (test): `scripts/quality/routes.test.mjs`
 - The Motion and Haptics providers render only in the root layout, above `AppProvider`, because both preferences belong to the installation, not to an account. Navigation keeps protected history private. The root keeps its explicit `access` anchor, the `access` gate stays first and unguarded, an unknown link's Go home enters `/access`, the challenge routes share a group with no nested layout, and every `app/account/` route but `sign-in` only redirects to `/recovery`.
-  - Enforced by (test, written): `scripts/quality/routes.test.mjs` checks the provider nesting across mobile source, the gate's position and the missing `(challenge)` layout. `apps/mobile/src/app-support/AccountToolRedirects.test.tsx` opens each old account route and expects `/recovery`. `NavigationRoutes.test.tsx` fails without the anchor or with `access` under a guard, and it and `fallbacks/RouteFallbacks.test.tsx` fail when Go home leaves `/access`. Only review catches key, code or transfer UI added outside `app/account/`.
+  - Enforced by (test, written): `scripts/quality/routes.test.mjs` checks the provider nesting across mobile source, that each preference provider renders exactly once, the gate's position and the missing `(challenge)` layout. `apps/mobile/src/app-support/AccountToolRedirects.test.tsx` opens each old account route and expects `/recovery`. `NavigationRoutes.test.tsx` fails without the anchor or with `access` under a guard, and it and `fallbacks/RouteFallbacks.test.tsx` fail when Go home leaves `/access`. The nesting check matches the literal JSX tag, so only review catches a provider rendered under an import alias, a namespace or a renamed re-export, and key, code or transfer UI added outside `app/account/`.
 - Applied migrations stay immutable. `apps/api/tests/db/fixtures/applied-migration-hashes.json` lists every `apps/api/drizzle/meta/_journal.json` entry in order. An entry sits under `unapplied` until a hosted database runs it, then under `applied` with its SHA-256 and journal `when`.
   - Enforced by (test, written): `apps/api/tests/db/migration-metadata.test.ts`. Only review catches an entry left under `unapplied` after a hosted run, one moved back to `unapplied`, or a migration edited together with its pin. `apps/api/scripts/staging-release-guard.ts` still refuses a changed applied migration at deploy.
 - New code goes with the owner of its responsibility.
@@ -270,6 +276,10 @@ highest level that works and updates this list.
   - Enforced by (test): Cases in `apps/api/tests/data-sync/sync.integration.test.ts`. The devices case fails when delete-all revokes another legacy session. The access case fails when delete-all ends the account or when `/v1/access` or upload eligibility depends on cleared data. The legacy case fails when managed mode rejects renewal, renewal replay or legacy deletion, or loses the original-proof receipt.
 - Until issue #293 retires legacy mode, the API defaults to it. Managed mode refuses exactly the legacy key, code, device and transfer administration routes and new bootstrap or transfer sessions, and keeps `GET /v1/sessions/current`, `POST /v1/sessions` and `DELETE /v1/account`. Mobile keeps finishing a saved legacy deletion, renewing the exact legacy proof, reusing a frozen exchange proof and honoring linked-owner markers.
   - Enforced by (test, written): `apps/api/tests/http/routing.test.ts` fails when the routes only legacy mode registers differ from the retired list, so a re-enabled or new legacy-only route fails, and when bootstrap or transfer sessions stop getting 410 in managed mode only. `apps/api/tests/build-app.test.ts` fails when the default config, or the runtime wiring of `MANAGED_AUTH_ENABLED`, serves the managed contract. The legacy case in `sync.integration.test.ts` covers recovery, renewal and replay. On mobile, `apps/mobile/src/app-support/identity/auth/managed-controller.test.ts` fails without the saved-deletion, frozen-proof or linked-owner path, and `auth/legacy-link-proof.test.ts` without renewal. Only review catches a legacy administration route added to both modes, the native Swift Keychain module (device acceptance), and dropping recovery items or device-only session proposals before linking or deletion reconciles them.
+- Guest adoption, iCloud adoption, backups and imports never copy admission metadata. iCloud consent belongs to one route visit, one collection and one Apple account through the final preference write.
+  - Enforced by (test, written): `never copies guest admission metadata into the adopting account` in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts` seeds a guest approval, runs the real adoption with its iCloud handover and fails when any non-guest key holds an access entry or the approval, or the account upload carries it. The backup formats in `apps/mobile/src/data/backup/` are strict schemas with no admission field, so only review catches one added to them. In `apps/mobile/src/features/settings/data/SettingsICloudRow.test.tsx`, `keeps consent and an activation to the route visit that started them` fails when consent survives a blur or an activation commits after one, and the collection and Apple-account cases cover the rest.
+- The legal reader records no agreement, and no route rebuilds a completion from its URL. Success and Reflection show only the local record their `attemptId` names.
+  - Enforced by (test, written): `shows direct document links without mutations and enters guest mode only after Continue` in `apps/mobile/src/app-support/acceptance/AcceptanceScreen.test.tsx` fails when reading Terms or Privacy enters the app, and the `without legal confirmation` cases in `NavigationRoutes.test.tsx` open every product and account route with no confirmation. `does not show a different attempt or the old account result` in `apps/mobile/src/features/challenges/success/SuccessScreen.test.tsx` fails when an `attemptId` with no local record shows a result. Only review catches a legal screen that stores an agreement, and a route parameter that carries completion fields.
 - Guest adoption copies the source only after its accepted completions and reflections save and every stopped source or target sync settles. A completion still saving reaches the account, and its caller sees success. A reflection that fails to save fails the adoption and keeps the source for a retry. An accepted sync clear delays the copy.
   - Enforced by (test): Cases in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`. One fails for each await removed from `AccountRepository.withDataMigration` (accepted completions, accepted reflections) or from the `settled()` calls in `mergeGuestData` (source iCloud, target cloud and target iCloud coordinators).
 - A runtime built before hydration finishes reads the current snapshot when it connects, then subscribes. Hydration or accepted input that lands between construction and connection still reaches it. Today that covers the app runtime from `createAppRuntime()`, which connects identity to the activity runtime, client and access, and the reflection controller.
@@ -491,12 +501,14 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   whole PR, not only the change since the last verdict.
 - Verifiers run on Opus. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
   sets the model of every verifier `Agent` call: one whose description starts
-  with Verify, Verifier, Re-verify or Re-check, or whose prompt asks for a
-  `Verifier verdict:` line. It picks Sonnet only for a re-check (description
-  starting with Re-verify or Re-check) whose brief names exactly one PR, as
-  `PR #<n>` or a PR URL, whose files on GitHub are all docs or tests by the
-  `verdict-patch.mjs` rule, none on the sensitive list, and whose brief has no
-  `Sensitive: yes` line. Anything else gets Opus. The hook sets the model only,
+  with a form of Verify, Verifier, Re-verify or Re-check, such as Verifying,
+  or whose prompt asks for a `Verifier verdict:` line in any case. It picks
+  Sonnet only for a re-check (description starting with a form of Re-verify
+  or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
+  URL, whose files on GitHub, with the old path of each rename, are all docs
+  or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
+  whose brief has no `Sensitive: yes` line. A PR with 3000 or more files gets
+  Opus, because GitHub may not list them all. Anything else gets Opus. The hook sets the model only,
   so pass `effort: "high"` yourself. A hook that cannot run blocks the call.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.

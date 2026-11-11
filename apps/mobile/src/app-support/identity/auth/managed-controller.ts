@@ -41,6 +41,8 @@ export type ManagedIdentitySnapshot = Omit<LegacySnapshot, 'account'> & {
   pendingGuestId: string | null;
   connectionReference: string | null;
   directSignInFailure: boolean;
+  /** This attempt restored the source login after a provider switch was abandoned. */
+  switchCancelled: boolean;
 };
 type Options = {
   auth: ManagedAuth;
@@ -54,11 +56,12 @@ type Options = {
 type ConnectionTrace = { phase: ConnectionPhase | null; direct?: boolean };
 type ConnectionFeedback = Pick<
   ManagedIdentitySnapshot,
-  'connectionReference' | 'directSignInFailure'
+  'connectionReference' | 'directSignInFailure' | 'switchCancelled'
 >;
 const emptyConnectionFeedback: ConnectionFeedback = {
   connectionReference: null,
   directSignInFailure: false,
+  switchCancelled: false,
 };
 const deletionProofKey = 'justgo.auth.deletion-proof.v1';
 const legacyProofKey = 'justgo.auth.legacy-link-proof.v1';
@@ -335,6 +338,7 @@ export class ManagedIdentityController {
               ? connectionReference(connection.phase, error)
               : null,
           directSignInFailure: connection?.direct === true,
+          switchCancelled: false,
         };
         if (
           error instanceof ApiError &&
@@ -740,8 +744,15 @@ export class ManagedIdentityController {
                 unreachable = true;
               },
             ))
-          )
+          ) {
+            // A cancel at the provider reloads the app on its callback. Say so,
+            // so the callback can return to the Account page without a notice.
+            this.reconcile('', {
+              ...emptyConnectionFeedback,
+              switchCancelled: true,
+            });
             return;
+          }
           // An interrupted SDK exchange cannot prove which provider completed.
           // Retain the old journal and revocation proof for an explicit sign-in.
           // Offline, the online retry restores the source with no prompt.

@@ -175,12 +175,22 @@ export function createManagedAuth(): ManagedAuth {
               callback.searchParams.has('error'))
           ) {
             const code = callback.searchParams.get('code');
-            const failed = callback.searchParams.has('error');
+            const error = callback.searchParams.get('error');
             window.history.replaceState(null, '', '/auth/callback');
-            if (failed || !code) throw new ProviderAuthError('AUTH');
-            const result = await auth.exchangeCodeForSession(code);
-            if (result.error) throw new ProviderAuthError('AUTH');
-            freshSignIn = true;
+            // Supabase Auth relays a provider's own error with no error_code and
+            // sets error_code on every error it raises itself, including its own
+            // access_denied. So only a relayed denial is the user cancelling, and
+            // the SDK still holds whatever session it had before the redirect.
+            const cancelled =
+              !callback.searchParams.has('error_code') &&
+              (error === 'access_denied' ||
+                error === 'user_cancelled_authorize');
+            if (!cancelled) {
+              if (error !== null || !code) throw new ProviderAuthError('AUTH');
+              const result = await auth.exchangeCodeForSession(code);
+              if (result.error) throw new ProviderAuthError('AUTH');
+              freshSignIn = true;
+            }
           }
         }
         if (active) await auth.startAutoRefresh();
