@@ -63,6 +63,15 @@ it('stores only a keyed verifier, replays the same digits and fails safely after
   expect(records.rows[0].verification).toMatch(/^[a-f0-9]{64}$/);
   expect(records.rows[0].verification).not.toBe(t.result.verification);
   expect(records.rows[0].verification).not.toBe(digest(t.result.verification));
+  await expect(
+    admin.query(
+      'update justgo.device_transfers set verification=$2 where id=$1',
+      [t.input.id, t.result.verification],
+    ),
+  ).rejects.toMatchObject({
+    code: '23514',
+    constraint: 'transfers_verification_hmac',
+  });
   expect(await service.startTransfer(t.input)).toEqual(t.result);
   const rotated = new IdentityService(db.db, {
     rateKey: 'a-different-isolated-test-server-key',
@@ -161,8 +170,10 @@ it('re-reads the credential under the owner lock, so a revocation that commits w
     }
     await holder.query('commit');
     expect(await recovery).toMatchObject({ code: 'CREDENTIAL_REJECTED' });
-  } finally {
+  } catch (error) {
     await holder.query('rollback');
+    throw error;
+  } finally {
     holder.release();
   }
 });

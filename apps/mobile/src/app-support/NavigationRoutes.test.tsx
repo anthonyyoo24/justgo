@@ -79,6 +79,8 @@ jest.mock('../platform/haptics/HapticsPreferencesProvider', () => ({
 }));
 
 const routes = {
+  // Without the `access` anchor, SDK 58 resolves a protected cold link to an
+  // alphabetical supporting route instead of through hydration and admission.
   _layout: { default: RootLayout, unstable_settings },
   access: AccessRoute,
   acceptance: () => <Text>Acceptance ready</Text>,

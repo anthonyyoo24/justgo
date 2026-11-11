@@ -7,10 +7,24 @@ import { deferred } from '../../../../test-support/journal';
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
 }));
+// Lets a case end and restart the route visit without unmounting the row.
+const mockFocus = { blur: () => {}, focus: () => {} };
 jest.mock('expo-router', () => {
   const { useEffect } = require('react') as typeof import('react');
   return {
-    useFocusEffect: (effect: () => () => void) => useEffect(effect, [effect]),
+    useFocusEffect: (effect: () => () => void) =>
+      useEffect(() => {
+        let cleanup: (() => void) | undefined = effect();
+        mockFocus.blur = () => {
+          cleanup?.();
+          cleanup = undefined;
+        };
+        mockFocus.focus = () => {
+          cleanup?.();
+          cleanup = effect();
+        };
+        return () => cleanup?.();
+      }, [effect]),
   };
 });
 const owner = '10000000-0000-4000-8000-000000000001';
@@ -423,6 +437,38 @@ it('dismisses consent when the selected collection changes', async () => {
   expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
   expect(mockToggle).not.toHaveBeenCalled();
   expect(mockCoordinator.synchronize).not.toHaveBeenCalled();
+});
+it('keeps consent and an activation to the route visit that started them', async () => {
+  const screen = await render(
+    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
+  );
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  await fireEvent.press(screen.getByRole('switch'));
+  expect(screen.getByTestId('icloud-sync-sheet')).toBeTruthy();
+  await act(async () => mockFocus.blur());
+  await act(async () => mockFocus.focus());
+  expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
+  expect(mockToggle).not.toHaveBeenCalled();
+
+  let finish!: () => void;
+  mockCoordinator.synchronize.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+  await waitFor(() =>
+    expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(1),
+  );
+  // Same collection and Apple account, but a new visit.
+  await act(async () => mockFocus.blur());
+  await act(async () => mockFocus.focus());
+  await act(async () => finish());
+  expect(mockStatus.enabled).toBe(false);
+  expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 it('does not commit an activation that finishes after the selected collection changes', async () => {
   let finish!: () => void;

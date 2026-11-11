@@ -71,7 +71,8 @@ with scoped_schemas as (
 ), triggers as (
   select jsonb_build_object('kind', 'trigger', 'schema', n.nspname,
     'relation', c.relname, 'name', t.tgname,
-    'function', jsonb_build_object('schema', fn.nspname, 'name', f.proname),
+    'function', jsonb_build_object('schema', fn.nspname, 'name', f.proname,
+      'definition', pg_catalog.pg_get_functiondef(f.oid)),
     'enabled', t.tgenabled::text,
     'definition', pg_catalog.pg_get_triggerdef(t.oid)) as object
   from pg_catalog.pg_trigger t
@@ -108,7 +109,7 @@ select jsonb_build_object(
   'observedAt', pg_catalog.statement_timestamp(),
   'database', pg_catalog.current_database(),
   'metadata', jsonb_build_object(
-    'format', 'justgo-reviewed-access', 'version', 4,
+    'format', 'justgo-reviewed-access', 'version', 5,
     'schemas', jsonb_build_array('auth', 'drizzle', 'justgo'),
     'searchPath', pg_catalog.current_setting('search_path'),
     'relationKinds', jsonb_build_array('S', 'f', 'm', 'p', 'r', 'v'),
@@ -119,9 +120,9 @@ select jsonb_build_object(
       'Auth enum labels included; indexes/TOAST/default ACLs/global memberships excluded.',
       'RLS policies: command, permissive flag, sorted roles and USING/WITH CHECK text.',
       'Policy text depends on search_path; capture source and target with an empty one.',
-      'Non-internal justgo triggers: table, function, tgenabled and full definition.',
+      'Non-internal justgo triggers: table, tgenabled, full definition and function definition.',
       'justgo_auth_private is excluded: archives omit it; API readiness checks the helper.',
-      'No function bodies, settings, keys, tokens, identity rows or writing.'
+      'No other function bodies, settings, keys, tokens, identity rows or writing.'
     ),
     'objects', coalesce(jsonb_agg(object order by descriptor::text collate "C"), '[]'::jsonb)
   )
