@@ -161,6 +161,23 @@ const cases = [
     source: "import '../../app/settings';",
     restricted: true,
   },
+  ...[
+    'apps/mobile/src/app-support/identity/auth/BoundaryFixture.ts',
+    'apps/mobile/src/data/journal/BoundaryFixture.ts',
+    'apps/mobile/src/features/reflections/BoundaryFixture.ts',
+  ].map((file) => ({
+    name: `${file.split('/').slice(3, -1).join('/')} cannot depend on diagnostics delivery`,
+    file,
+    source: `import { errorReporter } from '${path.posix.relative(path.posix.dirname(file), 'apps/mobile/src/app-support/diagnostics/start')}';`,
+    restricted: true,
+    fix: 'never depend on diagnostics delivery',
+  })),
+  {
+    name: 'the route fallback may report errors',
+    file: 'apps/mobile/src/app-support/fallbacks/BoundaryFixture.tsx',
+    source: "import { errorReporter } from '../diagnostics/start';",
+    restricted: false,
+  },
   {
     name: 'production feature cannot import developer previews',
     file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
