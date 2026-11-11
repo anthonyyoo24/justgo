@@ -23,14 +23,14 @@ const fetchTimeout = 6000;
 const gitTimeout = 2000;
 const stampName = 'sync-main-fetched';
 
-const createsWorktree = (command) =>
-  shellText(command)
-    .split(/&&|\|\||[;|&\n]/)
-    .some((part) =>
-      /^\s*(?:[A-Za-z_]\w*=\S*\s+)*git(?:\s+-[Cc]\s+\S+|\s+-\S+)*\s+worktree\s+add\b/.test(
-        part,
-      ),
-    );
+// A git command anywhere in the text outside quotes, so one after `then`,
+// `env`, `time`, `$(` or a path such as /usr/bin/git counts too. A miss only
+// skips a sync, since every Agent call also syncs, and a false match only
+// costs one.
+const worktreeAdd =
+  /(?:^|[\s(`{!]|\$\()(?:\S*\/)?git(?:\s+-[Cc]\s+\S+|\s+--(?:git-dir|work-tree|namespace|config-env)\s+\S+|\s+-\S+)*\s+worktree\s+add\b/;
+
+const createsWorktree = (command) => worktreeAdd.test(shellText(command));
 
 export function triggerOf(event) {
   if (event.hook_event_name === 'SessionStart')
