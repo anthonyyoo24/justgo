@@ -80,6 +80,8 @@ function git(cwd, args, timeout = gitTimeout, input) {
     timeout,
     input,
     encoding: 'utf8',
+    // A half-deleted worktree can list tens of thousands of untracked paths.
+    maxBuffer: 256 * 1024 * 1024,
     stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'ignore'],
   }).trim();
 }
@@ -653,7 +655,10 @@ function empty(dir) {
 // folder is gone, and 'changed' for anything else or no answer. git deletes
 // the worktree's .git file early and its record in the main repository last,
 // so status runs through that record. A plain status in the folder would find
-// the main checkout instead.
+// the main checkout instead. Once git has deleted a .gitignore, the paths only
+// it ignored, such as node_modules, show as untracked (#412). An untracked
+// path counts as deleted only when the main checkout's rules ignore it, so a
+// file they do not ignore still keeps the box.
 function leftover(main, worktree) {
   if (!existsSync(worktree)) return 'gone';
   const record = recordOf(main, worktree);
@@ -671,11 +676,38 @@ function leftover(main, worktree) {
       .split('\n')
       .filter(Boolean);
     if (lines.length === 0) return 'whole';
+    const untracked = lines
+      .filter((line) => line.startsWith('?? '))
+      .map((line) => line.slice(3));
     // The output is trimmed, so the first line lost its leading space.
-    return lines.every((line) => /^ ?D /.test(line)) ? 'deleted' : 'changed';
+    const deleted = lines.every(
+      (line) => line.startsWith('?? ') || /^ ?D /.test(line),
+    );
+    return deleted && ignoredByMain(main, untracked) ? 'deleted' : 'changed';
   } catch {
     return 'changed';
   }
+}
+
+// Whether the main checkout's ignore rules ignore every path. A quoted or
+// trimmed path matches nothing there, so it keeps the box. check-ignore exits
+// 1 when it ignores none of them, and a path tracked in main is never ignored.
+function ignoredByMain(main, paths) {
+  if (paths.length === 0) return true;
+  let ignored;
+  try {
+    ignored = git(
+      main,
+      ['check-ignore', '-z', '--stdin'],
+      gitTimeout,
+      `${paths.join('\0')}\0`,
+    );
+  } catch (error) {
+    if (error.status !== 1) throw error;
+    return false;
+  }
+  const found = new Set(ignored.split('\0'));
+  return paths.every((file) => found.has(file));
 }
 
 // The folder under .git/worktrees/ whose gitdir names this worktree.
