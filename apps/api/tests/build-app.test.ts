@@ -5,6 +5,11 @@ import { buildApp } from '../src/build-app.js';
 import { readConfig } from '../src/config.js';
 import { createLogger, loggerOptions } from '../src/http/diagnostics.js';
 import { poolOptions } from '../src/db/client.js';
+import { buildRuntimeApp } from '../src/runtime-app.js';
+import {
+  managedOpenApiDocument,
+  openApiDocument,
+} from '@justgo/contracts/openapi';
 
 describe('health and readiness', () => {
   it('stays live when the database is unavailable and never exposes the error', async () => {
@@ -92,7 +97,7 @@ describe('health and readiness', () => {
 });
 
 describe('safe operational configuration', () => {
-  it('keeps managed Auth disabled until explicitly enabled with matching public configuration', () => {
+  it('keeps managed Auth disabled until explicitly enabled with matching public configuration', async () => {
     expect(readConfig({}).MANAGED_AUTH_ENABLED).toBe(false);
     expect(() => readConfig({ MANAGED_AUTH_ENABLED: 'true' })).toThrow(
       'Managed Auth requires',
@@ -100,15 +105,19 @@ describe('safe operational configuration', () => {
     expect(() =>
       readConfig({ SUPABASE_URL: 'https://example.supabase.co' }),
     ).toThrow('must include');
-    expect(
-      readConfig({
-        MANAGED_AUTH_ENABLED: 'true',
-        SUPABASE_URL: 'https://example.supabase.co',
-        SUPABASE_PUBLISHABLE_KEY: 'public',
-        SUPABASE_AUTH_SECRET_KEY:
-          'server-only-fixture-secret-key-32-characters',
-      }).MANAGED_AUTH_ENABLED,
-    ).toBe(true);
+    const managed = readConfig({
+      MANAGED_AUTH_ENABLED: 'true',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'public',
+      SUPABASE_AUTH_SECRET_KEY: 'server-only-fixture-secret-key-32-characters',
+    });
+    expect(managed.MANAGED_AUTH_ENABLED).toBe(true);
+    const served = async (config: typeof managed) =>
+      (
+        await apiRequest(buildRuntimeApp(config, undefined), '/openapi.json')
+      ).json();
+    expect(await served(readConfig({}))).toEqual(openApiDocument);
+    expect(await served(managed)).toEqual(managedOpenApiDocument);
   });
   it('rejects production without a database and remote plaintext connections', () => {
     expect(() => readConfig({ NODE_ENV: 'production' })).toThrow();

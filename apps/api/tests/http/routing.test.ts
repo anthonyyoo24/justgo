@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
@@ -8,7 +9,7 @@ import { apiRequest } from '../request.js';
 describe.each(['default', 'worker'] as const)(
   'HTTP router compatibility (%s)',
   (router) => {
-    function setup() {
+    function setup(legacyIdentityEnabled = true) {
       const identity = new IdentityService(drizzle.mock(), {
         rateKey: 'routing-fixture',
       });
@@ -17,6 +18,7 @@ describe.each(['default', 'worker'] as const)(
         logger: false,
         checkDatabase: async () => {},
         identity,
+        legacyIdentityEnabled,
         ...(router === 'worker' ? { router: new WorkerRouter() } : {}),
       });
       return { app, rate, identity };
@@ -147,6 +149,65 @@ describe.each(['default', 'worker'] as const)(
         'managed-auth',
         120,
       );
+    });
+    it('managed mode refuses exactly legacy key, code, device and transfer administration and new bootstrap or transfer sessions', async () => {
+      const legacy = setup().app;
+      const managed = setup(false).app;
+      const routes = (app: typeof legacy) => [
+        ...new Set(
+          app.routes
+            .filter(
+              (route) =>
+                route.path.startsWith('/v1/') &&
+                !['ALL', 'HEAD', 'OPTIONS'].includes(route.method),
+            )
+            .map((route) => `${route.method} ${route.path}`),
+        ),
+      ];
+      const managedRoutes = routes(managed);
+      const legacyRoutes = routes(legacy);
+      expect(
+        legacyRoutes.filter((route) => !managedRoutes.includes(route)).sort(),
+      ).toEqual([
+        'DELETE /v1/credentials/:id',
+        'DELETE /v1/devices/:id',
+        'DELETE /v1/transfers/:id',
+        'GET /v1/credentials',
+        'GET /v1/devices',
+        'POST /v1/credentials',
+        'POST /v1/transfer-approvals',
+        'POST /v1/transfer-inspections',
+        'POST /v1/transfers',
+      ]);
+      expect(
+        managedRoutes.filter((route) => !legacyRoutes.includes(route)),
+      ).toEqual([]);
+      expect(managedRoutes).toEqual(
+        expect.arrayContaining([
+          'GET /v1/sessions/current',
+          'POST /v1/sessions',
+          'DELETE /v1/account',
+        ]),
+      );
+      for (const payload of [
+        {
+          kind: 'bootstrap',
+          deviceId: randomUUID(),
+          sessionId: randomUUID(),
+          sessionToken: 'a'.repeat(64),
+          credential: 'b'.repeat(64),
+        },
+        {
+          kind: 'transfer',
+          code: 'ABCDEF0123456789',
+          claimSecret: 'c'.repeat(64),
+        },
+      ]) {
+        const create = (app: typeof legacy) =>
+          apiRequest(app, { url: '/v1/sessions', method: 'POST', payload });
+        expect((await create(managed)).statusCode).toBe(410);
+        expect((await create(legacy)).statusCode).not.toBe(410);
+      }
     });
   },
 );
