@@ -111,16 +111,15 @@ these rules:
   and sequencing. When a task names a phase, read that phase before you edit.
   Change the plan only when scope or a decision changes. Keep a task's scope
   bounded, and preserve existing behavior unless the task changes it.
-- The domain safety invariants have two owner docs. Read the owner before you
-  change that behavior. [IDENTITY.md](docs/architecture/IDENTITY.md) owns account
-  transitions, account deletion and credential preservation.
-  [APP_SHELL.md](docs/architecture/APP_SHELL.md) owns runtime hydration and
-  effect restarts, guest adoption stages, and native modal and list behavior.
-- No doc owns saving, sync or deletion epochs. Their rules are in
+- [IDENTITY.md](docs/architecture/IDENTITY.md) owns account transitions, account
+  deletion and credential preservation. Read it before you change that behavior.
+- No doc owns the app shell, saving, sync or deletion epochs. Their rules are in
   [Rules and what enforces them](#rules-and-what-enforces-them). In
-  `apps/mobile/src/data`, `activity/` owns completion history, `journal/` private
-  writing, `cloud/` JustGO sync and the iCloud copy, and `backup/` the file
-  formats. Their tests sit beside them.
+  `apps/mobile/src/data`, `activity/` owns completion history, and its `sync/`
+  folder sends completion uploads with their retry and transport. `journal/` owns
+  private writing. `cloud/` owns the cloud download, journal sync, delete-all and
+  guest adoption, and the iCloud copy. `backup/` owns the file formats. Their tests
+  sit beside them.
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
   boundaries and local midnight through the injected `JournalClock`.

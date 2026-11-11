@@ -672,7 +672,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Edit `apps/mobile/eas.json`, `scripts/release/check-beta.mjs`, `scripts/release/check-beta.test.mjs`, `.github/workflows/testflight-beta.yml` and `scripts/quality/testflight-workflow.test.mjs`.
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
-- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md` and `docs/architecture/APP_SHELL.md`.
+- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md` and `docs/operations/DEVELOPMENT_BUILDS.md`.
 - [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The backup copy, rotation and scope receipts go to `docs/operations/CLOUDFLARE_BACKUPS.md`. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
 - [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
 - [ ] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/operations/TESTFLIGHT_BETA.md`, `docs/legal/APPROVALS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
@@ -682,7 +682,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Point the Dev and beta profiles at `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`.
 - [ ] Let `check-beta.mjs` accept that base path in place of its `pathname === '/'` rule.
 - [ ] Point `staging-health.yml` at the function's `/ready`. Anthony points the Sentry uptime monitor there too.
-- [ ] Anthony ships a TestFlight build from the beta profile and retires build 5.
+- [ ] Anthony ships a TestFlight build from the beta profile and retires build 5. Installed builds reach the function only through this separately approved build. A redirect from Vercel would not prove that private request payloads stopped reaching Vercel.
 - [ ] After the new build passes, Anthony deletes the `justgo-api-staging` Worker and its Hyperdrive configuration, and turns off the Vercel API project.
 - [ ] Keep the backup clock Worker, R2 and the Cloudflare account.
 
@@ -864,7 +864,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 ## Appendix D. Links and reading list
 
 - Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
-- Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [APP_SHELL.md](../architecture/APP_SHELL.md) and the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). They own the invariants this plan must keep.
+- Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md) and the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). They own the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
 - History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
 - Run pstack's `how` skill before P15-6 and P15-8.
