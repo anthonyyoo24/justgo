@@ -433,17 +433,26 @@ test('an --auto arm that would break an earlier PR is refused', (t) => {
   assert.equal(result.merged, '');
 });
 
-test('a merge into another branch and disarming skip the check', (t) => {
+// #392: GitHub merges a PR into an unprotected branch at once, even with --auto.
+test('a stacked PR is refused until its parent merges, direct or --auto', (t) => {
   const { heads, pull, run } = fixture(t);
-  const stacked = run(
-    ['2', '--head', heads.second],
-    [
-      pull(1, 'first', { autoMergeRequest: {} }),
-      pull(2, 'second', { baseRefName: 'first' }),
-    ],
-  );
-  assert.equal(stacked.status, 0, stacked.stderr);
-  assert.match(stacked.merged, /^pr merge 2 --squash/);
+  for (const extra of [[], ['--auto']]) {
+    const stacked = run(
+      ['2', '--head', heads.second, ...extra],
+      [
+        pull(1, 'first', { autoMergeRequest: {} }),
+        pull(2, 'second', { baseRefName: 'first' }),
+      ],
+    );
+    assert.equal(stacked.status, 1, extra.join(' '));
+    assert.match(stacked.stderr, /#2 targets `first`, not main/);
+    assert.match(stacked.stderr, /waits until its parent merges/);
+    assert.equal(stacked.merged, '');
+  }
+});
+
+test('disarming skips the check', (t) => {
+  const { run } = fixture(t);
   const disarm = run(['2', '--disable-auto'], []);
   assert.equal(disarm.status, 0, disarm.stderr);
   assert.equal(disarm.merged, 'pr merge 2 --disable-auto');
