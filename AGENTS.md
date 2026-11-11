@@ -439,7 +439,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   outside tests. Give each batch one Opus verifier whose description
   starts with Verify and names every PR in it, as in `Verify PRs #7, #8`. It posts a separate
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
-  keeps its own verifier.
+  keeps its own verifier. Start every verifier, batched or not, with the brief
+  that `node scripts/quality/verify-batch.mjs --brief <n>...` prints, and add
+  only a line or two on what the change is for.
 - **Arm auto-merge when you open a PR.** Run
   `pnpm run merge:pr <n> --head <head-sha> --auto` right after
   opening the PR, and again after each push, pinned to the new head. The
