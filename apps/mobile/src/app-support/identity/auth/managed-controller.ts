@@ -41,6 +41,8 @@ export type ManagedIdentitySnapshot = Omit<LegacySnapshot, 'account'> & {
   pendingGuestId: string | null;
   connectionReference: string | null;
   directSignInFailure: boolean;
+  /** This attempt restored the source login after a provider switch was abandoned. */
+  switchCancelled: boolean;
 };
 type Options = {
   auth: ManagedAuth;
@@ -54,11 +56,12 @@ type Options = {
 type ConnectionTrace = { phase: ConnectionPhase | null; direct?: boolean };
 type ConnectionFeedback = Pick<
   ManagedIdentitySnapshot,
-  'connectionReference' | 'directSignInFailure'
+  'connectionReference' | 'directSignInFailure' | 'switchCancelled'
 >;
 const emptyConnectionFeedback: ConnectionFeedback = {
   connectionReference: null,
   directSignInFailure: false,
+  switchCancelled: false,
 };
 const deletionProofKey = 'justgo.auth.deletion-proof.v1';
 const legacyProofKey = 'justgo.auth.legacy-link-proof.v1';
@@ -335,6 +338,7 @@ export class ManagedIdentityController {
               ? connectionReference(connection.phase, error)
               : null,
           directSignInFailure: connection?.direct === true,
+          switchCancelled: false,
         };
         if (
           error instanceof ApiError &&
@@ -595,11 +599,16 @@ export class ManagedIdentityController {
       connection,
     );
   };
-  /** Restore a cancelled/interrupted switch only to its original live app session. */
+  /**
+   * Restore a cancelled/interrupted switch only to its original live app session.
+   * `onUnreachable` hears when a check could not reach the server, so the
+   * failure is retryable online rather than a rejected login.
+   */
   private async restoreSwitchSource(
     candidate: ProviderSession | null,
     original: ManagedSessionResponse,
     unchangedToken?: string,
+    onUnreachable?: () => void,
   ) {
     // A plain cancel leaves the SDK on the verified source, so its login stays
     // published: unpublishing it would read as an owner change downstream.
@@ -658,7 +667,12 @@ export class ManagedIdentityController {
           verified.authUserId === original.authUserId &&
           verified.sessionId === original.sessionId
         );
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof ApiError &&
+          (error.code === 'NETWORK' || error.code === 'UNAVAILABLE')
+        )
+          onUnreachable?.();
         return false;
       }
     };
@@ -719,16 +733,36 @@ export class ManagedIdentityController {
           });
         } else {
           const original = this.state().account;
+          let unreachable = false;
           if (
             original &&
-            (await this.restoreSwitchSource(session, original, source?.token))
-          )
+            (await this.restoreSwitchSource(
+              session,
+              original,
+              source?.token,
+              () => {
+                unreachable = true;
+              },
+            ))
+          ) {
+            // A cancel at the provider reloads the app on its callback. Say so,
+            // so the callback can return to the Account page without a notice.
+            this.reconcile('', {
+              ...emptyConnectionFeedback,
+              switchCancelled: true,
+            });
             return;
+          }
           // An interrupted SDK exchange cannot prove which provider completed.
           // Retain the old journal and revocation proof for an explicit sign-in.
+          // Offline, the online retry restores the source with no prompt.
           this.networkBlocked = true;
           this.verifiedOwner = false;
-          this.reconcile('Please sign in again. Your saved data was kept.');
+          this.reconcile(
+            unreachable
+              ? 'Couldn’t reach JustGO. Your account will reconnect when you’re online. Your saved data was kept.'
+              : 'Please sign in again. Your saved data was kept.',
+          );
           return;
         }
       }

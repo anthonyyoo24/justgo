@@ -7,6 +7,7 @@ A first-time user sees Welcome with Apple and Google sign-in above `Continue`. `
 - `welcome-actions` shows `Sign in with Apple`, `Sign in with Google` and `Continue`.
 - `welcome-terms` shows the `Terms & Privacy` heading with links to the fixture API's legal documents.
 - `welcome-guest` opens the deck as a guest collection and creates no `justgo.users` row.
+- `welcome-small-failure` keeps `Continue` in view at 320x611 and 375x667 when challenges fail to load after sign-in. The content above it scrolls.
 
 ## How to get to it (user POV)
 

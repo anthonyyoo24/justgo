@@ -1379,6 +1379,86 @@ it('does not adopt or relabel an unchanged SDK session after interrupted browser
   ctx.controller.dispose();
 });
 
+it.each([
+  [
+    'NETWORK',
+    'Couldn’t reach JustGO. Your account will reconnect when you’re online. Your saved data was kept.',
+  ],
+  [
+    'UNAVAILABLE',
+    'Couldn’t reach JustGO. Your account will reconnect when you’re online. Your saved data was kept.',
+  ],
+  ['UNAUTHORIZED', 'Please sign in again. Your saved data was kept.'],
+] as const)(
+  'stays fenced after a switch killed mid-sheet restarts with %s, and says why',
+  async (code, message) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+    await ctx.controller.signIn('google');
+    ctx.setVerifiedAccount(session.accessToken, new ApiError(code));
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.currentSession()).toBeNull();
+    expect(restarted.getSnapshot()).toMatchObject({ account: null, message });
+    expect(ctx.saved()?.pendingSignIn).toMatchObject({
+      switching: true,
+      authenticated: false,
+    });
+    expect(ctx.stored.size).toBe(1);
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('restores the source with no prompt once a switch killed while offline can reach the server', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  ctx.setVerifiedAccount(session.accessToken, new ApiError('NETWORK'));
+  const restarted = ctx.create();
+  await restarted.initialize();
+  ctx.setVerifiedAccount(session.accessToken, account);
+  await restarted.retry({ background: true });
+  expect(restarted.getSnapshot()).toMatchObject({
+    account: { userId: account.userId },
+    provider: 'apple',
+    message: '',
+  });
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('restores the source quietly and marks the switch cancelled after a provider cancel callback', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  expect(ctx.controller.getSnapshot().switchCancelled).toBe(false);
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  // The cancel callback leaves the SDK on the source session it already held.
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account,
+    provider: 'apple',
+    message: '',
+    hasPending: false,
+    switchCancelled: true,
+  });
+  await restarted.retry();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account,
+    switchCancelled: false,
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
 it('resumes confirmed callback switching with the old bearer only in secure storage', async () => {
   const ctx = setup();
   await ctx.controller.initialize();

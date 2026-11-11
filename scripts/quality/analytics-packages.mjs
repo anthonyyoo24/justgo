@@ -1,9 +1,10 @@
-export const analyticsPackages = [
+export const analyticsAndTrackingPackages = [
   '@adjustcom/*',
   '@amplitude/*',
   'amplitude-js',
   '@aptabase/*',
   'branch-sdk',
+  '@braze/*',
   '@datadog/browser-rum*',
   '@datadog/mobile-react-native*',
   'expo-firebase-analytics',
@@ -11,8 +12,12 @@ export const analyticsPackages = [
   'expo-tracking-transparency',
   '@firebase/analytics*',
   'firebase/analytics',
+  '@fullstory/*',
   '@heap/*',
+  '@logrocket/react-native',
+  '@microsoft/react-native-clarity',
   'mixpanel*',
+  '@newrelic/*',
   '@posthog/*',
   'posthog-*',
   'react-ga',
@@ -20,6 +25,7 @@ export const analyticsPackages = [
   'react-native-adjust',
   'react-native-appsflyer',
   'react-native-branch',
+  'react-native-fbsdk-next',
   '@react-native-firebase/analytics',
   'react-native-tracking-transparency',
   '@rudderstack/*',
@@ -31,10 +37,10 @@ export const analyticsPackages = [
 ];
 
 export const analyticsFix =
-  'Product analytics stays uninstalled through beta and paid launch. Phase 17 in docs/implementation-plan/README.md must first review the real permission and collection design, and identity, writing, recovery and deletion never depend on analytics. Remove it. Activating analytics needs that review first, then a change to scripts/quality/analytics-packages.mjs.';
+  'Product analytics and tracking SDKs stay uninstalled through beta and paid launch. Phase 17 in docs/implementation-plan/README.md must first review the real permission and collection design, and identity, writing, recovery and deletion never depend on them. Remove it. Activating analytics or tracking needs that review first, then a change to scripts/quality/analytics-packages.mjs.';
 
 export const analyticsPackageOf = (specifier) =>
-  analyticsPackages.find((entry) =>
+  analyticsAndTrackingPackages.find((entry) =>
     entry.endsWith('*')
       ? specifier.startsWith(entry.slice(0, -1))
       : specifier === entry || specifier.startsWith(`${entry}/`),
