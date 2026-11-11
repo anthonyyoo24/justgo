@@ -59,7 +59,7 @@ it.each([true, false])(
 type Parameter = { name: string; in: string };
 type Operation = {
   parameters?: Parameter[];
-  responses: Record<string, { content?: unknown }>;
+  responses: Record<string, { description?: string; content?: unknown }>;
 };
 type PathItem = { parameters?: Parameter[] } & Partial<
   Record<(typeof documentedMethods)[number], Operation>
@@ -86,6 +86,9 @@ const restoredCompletion = {
   activityDate: '2026-09-18',
 };
 const validInput: Record<string, { query?: string; payload?: unknown }> = {
+  'post /v1/auth/session': { payload: { deviceId: id } },
+  'post /v1/auth/logout': { payload: { scope: 'session' } },
+  'delete /v1/account': { payload: { confirmation: 'delete-account' } },
   'get /v1/attempts': { query: 'date=2026-10-01' },
   'post /v1/attempts': {
     payload: {
@@ -118,9 +121,11 @@ const validInput: Record<string, { query?: string; payload?: unknown }> = {
   'get /v1/progress/calendar': { query: 'month=2026-10' },
 };
 
+type Dependency = 'managed verifier' | 'guest' | 'entitlement' | 'upload';
 type Probe = {
   status: string;
   rateLimit: 'open' | 'down';
+  reaches?: Dependency[];
   request: (
     key: string,
     method: string,
@@ -129,6 +134,18 @@ type Probe = {
   ) => { url: string; contentType?: string; payload?: string } | undefined;
 };
 const fill = (path: string, value: string) => path.replace(/\{[^}]+\}/g, value);
+function validRequest(key: string, path: string) {
+  const input = validInput[key];
+  return {
+    url: `${fill(path, id)}${input?.query ? `?${input.query}` : ''}`,
+    ...(input?.payload === undefined
+      ? {}
+      : {
+          contentType: 'application/json',
+          payload: JSON.stringify(input.payload),
+        }),
+  };
+}
 const probes: Record<string, Probe> = {
   'invalid input': {
     status: '400',
@@ -170,36 +187,36 @@ const probes: Record<string, Probe> = {
             payload: '<request/>',
           },
   },
-  'every dependency down': {
+  'rate limit down': {
     status: '503',
     rateLimit: 'down',
-    request: (key, _method, path) => {
-      const input = validInput[key];
-      return {
-        url: `${fill(path, id)}${input?.query ? `?${input.query}` : ''}`,
-        ...(input?.payload === undefined
-          ? {}
-          : {
-              contentType: 'application/json',
-              payload: JSON.stringify(input.payload),
-            }),
-      };
-    },
+    request: (key, _method, path) => validRequest(key, path),
+  },
+  'database and providers down': {
+    status: '503',
+    rateLimit: 'open',
+    reaches: ['managed verifier', 'guest'],
+    request: (key, method, path) =>
+      method === 'get' || validInput[key] ? validRequest(key, path) : undefined,
   },
 };
 
 function probeApp(
   legacyIdentityEnabled: boolean,
   rateLimit: Probe['rateLimit'],
+  reached = new Set<Dependency>(),
 ) {
   const database = drizzle.mock();
   vi.spyOn(database, 'transaction').mockRejectedValue(
     new Error('database offline'),
   );
-  const offline = () => Promise.reject(new Error('provider offline'));
+  const offline = (dependency: Dependency) => () => {
+    reached.add(dependency);
+    return Promise.reject(new Error('provider offline'));
+  };
   const identity = new IdentityService(database, {
     rateKey: 'status-contract',
-    managedAuthVerifier: offline,
+    managedAuthVerifier: offline('managed verifier'),
   });
   if (rateLimit === 'open') vi.spyOn(identity, 'rateLimit').mockResolvedValue();
   return buildApp({
@@ -207,9 +224,9 @@ function probeApp(
     identity,
     checkDatabase: async () => {},
     legacyIdentityEnabled,
-    guestAccessReader: offline,
-    entitlementReader: offline,
-    uploadEligibilityReader: offline,
+    guestAccessReader: offline('guest'),
+    entitlementReader: offline('entitlement'),
+    uploadEligibilityReader: offline('upload'),
   });
 }
 
@@ -243,12 +260,13 @@ describe.each([true, false])(
       'returns the documented status and code for %s',
       async (_name, probe) => {
         const mismatches: string[] = [];
+        const reached = new Set<Dependency>();
         let exercised = 0;
         for (const { key, method, path, operation, parameters } of operations) {
           const request = probe.request(key, method, path, parameters);
           if (!request) continue;
           const response = await apiRequest(
-            probeApp(legacyIdentityEnabled, probe.rateLimit),
+            probeApp(legacyIdentityEnabled, probe.rateLimit, reached),
             {
               method: method.toUpperCase(),
               url: request.url,
@@ -282,7 +300,60 @@ describe.each([true, false])(
         }
         expect(mismatches).toEqual([]);
         expect(exercised).toBeGreaterThan(0);
+        expect([...reached]).toEqual(
+          expect.arrayContaining(probe.reaches ?? []),
+        );
       },
     );
+
+    it('rejects a body only past the limit each operation documents', async () => {
+      const units = { KiB: 1024, MiB: 1024 * 1024 };
+      const limits = operations.flatMap(({ key, method, path, operation }) => {
+        const match = /body exceeds (\d+) (KiB|MiB)/.exec(
+          operation.responses['413']?.description ?? '',
+        );
+        return match
+          ? [
+              {
+                key,
+                method,
+                path,
+                bytes: Number(match[1]) * units[match[2] as keyof typeof units],
+              },
+            ]
+          : [];
+      });
+      const statuses = await Promise.all(
+        limits.flatMap(({ key, method, path, bytes }) =>
+          [bytes, bytes + 1].map(async (size) => {
+            const response = await apiRequest(
+              probeApp(legacyIdentityEnabled, 'open'),
+              {
+                method: method.toUpperCase(),
+                url: fill(path, id),
+                headers: {
+                  authorization: `Bearer ${'a'.repeat(64)}`,
+                  'content-type': 'application/json',
+                },
+                payload: 'x'.repeat(size),
+              },
+            );
+            return `${key} ${size - bytes} past ${bytes}: ${response.statusCode === 413 ? 'too large' : 'within limit'}`;
+          }),
+        ),
+      );
+      expect(limits).toHaveLength(
+        operations.filter(({ operation }) => operation.responses['413']).length,
+      );
+      expect(limits.map(({ bytes }) => bytes)).toEqual(
+        expect.arrayContaining([32 * 1024, 4 * 1024 * 1024]),
+      );
+      expect(statuses).toEqual(
+        limits.flatMap(({ key, bytes }) => [
+          `${key} 0 past ${bytes}: within limit`,
+          `${key} 1 past ${bytes}: too large`,
+        ]),
+      );
+    });
   },
 );
