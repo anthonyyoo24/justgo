@@ -78,6 +78,102 @@ test('the merge script and other commands pass', () => {
     assert.equal(decide(command), undefined, command);
 });
 
+// #348
+test('parameter expansion, repeated flags and the merge queue are denied', () => {
+  for (const command of [
+    'gh pr ${x:-merge} 1',
+    'gh pr m${x}erge 1',
+    'gh pr -R a/b -R a/b merge 1',
+    'gh pr m${}erge 1',
+    'gh pr ${x-merge} 1',
+    'gh pr ${x:=merge} 1',
+    'gh pr ${x:+merge} 1',
+    'gh pr "${x:-merge}" 1',
+    'gh pr ${x:-"merge"} 1',
+    'gh pr ${#x}merge 1',
+    'gh pr --repo=a/b -R c/d --repo e/f merge 1',
+    `gh pr ${'-R a/b '.repeat(16)}merge 1`,
+    // A command inside any expansion operator still runs, and an unset
+    // variable expands to nothing.
+    'echo ${HOME#$(gh pr "merge" 1)}',
+    'echo ${HOME##$(gh pr "merge" 1)}',
+    'echo ${HOME%$(gh pr "merge" 1)}',
+    'echo ${HOME%%$(gh pr "merge" 1)}',
+    'echo ${HOME/a/$(gh pr "merge" 1)}',
+    'echo ${HOME//a/$(gh pr "merge" 1)}',
+    'echo ${HOME^$(gh pr "merge" 1)}',
+    'echo ${HOME,$(gh pr "merge" 1)}',
+    'echo ${#$(gh pr "merge" 1)}',
+    'echo ${HOME#$(gh pr -R a/b "merge" 1)}',
+    'echo ${x:-$(gh pr "merge" 1)}',
+    'gh pr m$x"erge" 1',
+    'gh pr m$@erge 1',
+    'gh pr $x"merge" 1',
+    'gh pr m${x}$y"erge" 1',
+    // Only the unquoted copy that drops unset `$name` variables and keeps
+    // `${…}` whole sees this one.
+    'echo ${HOME#$(gh pr m$x"erge" 1)}',
+    // gh reads an empty `--repo=` as no override, so these still merge.
+    'gh pr --repo= merge 1',
+    'gh pr -R a/b --repo= merge 1',
+    'gh pr --repo= "merge" 1',
+    'gh pr --repo=\tmerge 1',
+    'gh pr --repo= --repo= -R= merge 1',
+    // Alternate, substring and subscript expansions can expand to nothing
+    // or to a single letter.
+    'gh pr m${x:+zz}erge 1',
+    'gh pr m${x+zz}erge 1',
+    'gh pr m${x:0:1}erge 1',
+    'gh pr m${x[-1]}erge 1',
+    // Main denies this too. Only the unquoted copy that keeps `$n` sees a
+    // path segment between `pulls/` and `/merge`.
+    'gh api -X PUT repos/o/r/pul"ls/$n/merge"',
+    `gh api graphql -f query='mutation { enqueuePullRequest(input: {pullRequestId: "X"}) { clientMutationId } }'`,
+  ]) {
+    const decision = decide(command);
+    assert.equal(decision?.permissionDecision, 'deny', command);
+    assert.match(decision.reason, /expansions/);
+    assert.match(decision.reason, /enqueuePullRequest/);
+  }
+  for (const command of [
+    'gh pr view ${n} --json state',
+    'gh pr view $n --json state',
+    'echo ${HOME#$(gh pr view 1)}',
+    'echo ${HOME} && gh pr list',
+    'gh pr -R a/b -R a/b view 1',
+    // Branch merges, not PR merges: branch protection guards `main`.
+    'gh api -X POST repos/o/r/merges -f base=feature -f head=main',
+    `gh api graphql -f query='mutation { mergeBranch(input: {repositoryId: "X", base: "feature", head: "main"}) { clientMutationId } }'`,
+  ])
+    assert.equal(decide(command), undefined, command);
+});
+
+test('120k-character lines take well under a second, far below the 10 s timeout', () => {
+  const size = 120_000;
+  const fill = (unit) => unit.repeat(Math.ceil(size / unit.length));
+  for (const text of [
+    fill('gh pr '),
+    fill('gh pr -R a/b '),
+    fill('-R pr '),
+    `gh ${fill('-R pr ')}`,
+    `gh pr ${fill('-R=a ')}`,
+    `gh pr ${fill('--repo= ')}`,
+    `gh pr ${fill('-R a -Rb --repo= ')}`,
+    `gh pr ${fill('m${x:+zz}')}`,
+    fill('${'),
+    fill('${x:-'),
+    `gh pr ${fill('${x}')}`,
+    fill('gh "pr" ${x} '),
+    `gh pr ${fill('$x$@')}`,
+    fill('gh pr $x"m" '),
+  ]) {
+    const started = performance.now();
+    decide(text);
+    const elapsed = performance.now() - started;
+    assert.ok(elapsed < 1000, `${text.slice(0, 20)}… took ${elapsed} ms`);
+  }
+});
+
 test('output wraps a denial for Claude Code', () => {
   assert.deepEqual(output(decide('gh pr merge 1')), {
     hookSpecificOutput: {
