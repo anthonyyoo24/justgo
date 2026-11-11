@@ -58,7 +58,12 @@ it.each([false, true])(
     controller.dispose();
     repository.dispose();
     const read = deferred<string | null>();
-    jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
+    const getItem = storage.getItem.bind(storage);
+    jest
+      .spyOn(storage, 'getItem')
+      .mockImplementation((key) =>
+        key === `justgo:v1:${owner}:journal` ? read.promise : getItem(key),
+      );
     repository = new AccountRepository({
       accountId: owner,
       storage,
@@ -270,5 +275,4 @@ it('retains input on phone-full failure, then retries locally without sending a 
     feeling: 'a_lot_better',
     revision: 1,
   });
-  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
 });

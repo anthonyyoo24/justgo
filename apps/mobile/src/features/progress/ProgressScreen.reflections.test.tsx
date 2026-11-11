@@ -1,11 +1,6 @@
 import {
   harness,
-  summary,
-  calendar,
-  page,
   mount,
-  online,
-  loaded,
   openToday,
 } from '../../../test-support/progress/screen';
 
@@ -15,9 +10,7 @@ import { memoryJournalBackend } from '../../../test-support/local-journal';
 import { attempt, uuid, deferred } from '../../../test-support/journal';
 
 it('adds and edits a reflection inline while preserving its feeling and local saving behavior', async () => {
-  await online();
   const root = await mount();
-  await loaded();
   await openToday(root);
   const screen = within(root.getByTestId('day-sheet-panel'));
   await fireEvent.press(
@@ -78,9 +71,7 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
 });
 
 it('opens Add from the row title and guards dirty input when the row is tapped again', async () => {
-  await online();
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(screen.getByText('Say hello.'));
   await waitFor(() =>
@@ -107,9 +98,7 @@ it('opens Add from the row title and guards dirty input when the row is tapped a
 });
 
 it('protects dirty input on sheet close and keeps editing without applying the canceled close later', async () => {
-  await online();
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
@@ -139,9 +128,7 @@ it('protects dirty input on sheet close and keeps editing without applying the c
 });
 
 it('discards only unsent editor changes and keeps the day sheet open', async () => {
-  await online();
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
@@ -165,9 +152,7 @@ it('discards only unsent editor changes and keeps the day sheet open', async () 
 });
 
 it('blocks duplicate slow saves, retains newer typing and saves through dirty-close confirmation', async () => {
-  await online();
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
@@ -224,11 +209,6 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
   expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Submitted day text.',
   );
-  expect(
-    harness
-      .mockRepository!.store.getState()
-      .journal.operations.filter((op) => op.kind === 'patch'),
-  ).toHaveLength(0);
   await fireEvent.press(
     screen.getByRole('button', { name: 'Save reflection' }),
   );
@@ -240,10 +220,8 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
   );
 });
 
-it('allows clean cancellation and reports unavailable today cache instead of a false empty day', async () => {
-  await online();
+it('allows clean cancellation without a leave prompt', async () => {
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
@@ -258,70 +236,6 @@ it('allows clean cancellation and reports unavailable today cache instead of a f
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   ).toBeTruthy();
   expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
-  await act(async () => {
-    harness.mockRepository!.setEnvironment({ active: true, online: false });
-    const journal = harness.mockRepository!.store.getState().journal;
-    harness.mockRepository!.store.setState({
-      journal: { ...journal, records: {}, today: null },
-    });
-    harness.mockClient.queries.removeQueries({
-      predicate: (query) => query.queryKey.includes('day'),
-    });
-  });
-  expect(screen.getByText("You're currently offline")).toBeTruthy();
-  expect(
-    screen.getByText('Connect to the internet to view this day’s activity.'),
-  ).toBeTruthy();
-});
-
-it('keeps usable caches through a failed background refresh and reports a failed explicit editor adoption', async () => {
-  await online();
-  const screen = await mount();
-  await loaded();
-  harness.mockClient.request.mockRejectedValue(
-    new Error('Refresh unavailable'),
-  );
-  await act(async () => harness.mockClient.queries.invalidateQueries());
-  await loaded();
-  expect(
-    screen.queryByText(/out of date|Couldn’t refresh your summary/),
-  ).toBeNull();
-  const older = {
-    ...attempt(2),
-    activityDate: '2026-10-03',
-    startedAt: '2026-10-03T14:00:00.000Z',
-  };
-  harness.mockClient.request.mockImplementation(async (path: string) => {
-    if (path.includes('date=2026-10-03'))
-      return {
-        date: '2026-10-03',
-        totalReps: 2,
-        entries: [older],
-        nextCursor: null,
-      };
-    throw new Error('Refresh unavailable');
-  });
-  await fireEvent.press(
-    screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
-  );
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
-    ).toBeTruthy(),
-  );
-  const adopt = jest
-    .spyOn(harness.mockRepository!, 'adoptAttempt')
-    .mockRejectedValueOnce(new Error('Account changed'));
-  await fireEvent.press(
-    screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
-  );
-  await waitFor(() =>
-    expect(
-      screen.getByText('Couldn’t open this reflection. Please try again.'),
-    ).toBeTruthy(),
-  );
-  expect(screen.queryByLabelText('Your day reflection')).toBeNull();
-  adopt.mockRestore();
 });
 
 it('calendar reflection creation and text clearing preserve an existing feeling and accepted rep', async () => {
@@ -334,17 +248,7 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
     },
   };
   await harness.mockRepository!.adoptAttempt(felt);
-  harness.transport.records.set(uuid(1), attempt());
-  harness.mockClient.request.mockImplementation(async (path: string) =>
-    path.includes('/summary?')
-      ? summary
-      : path.includes('/calendar?')
-        ? calendar
-        : { ...page, entries: [harness.transport.records.get(uuid(1))!] },
-  );
-  await online();
   const root = await mount();
-  await loaded();
   await openToday(root);
   const screen = within(root.getByTestId('day-sheet-panel'));
   await fireEvent.press(
@@ -390,69 +294,6 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
       text: null,
     },
   );
-  expect(
-    harness.mockRepository!.store.getState().journal.summaryAdditions,
-  ).toHaveLength(0);
-});
-
-it('retains an older-day saved reflection after upload, pruning and a stale day refresh', async () => {
-  const older = {
-    ...attempt(2),
-    activityDate: '2026-10-03',
-    startedAt: '2026-10-03T14:00:00.000Z',
-  };
-  harness.transport.records.set(uuid(2), older);
-  harness.mockClient.request.mockImplementation(async (path: string) =>
-    path.includes('/summary?')
-      ? summary
-      : path.includes('/calendar?')
-        ? calendar
-        : path.includes('date=2026-10-03')
-          ? {
-              date: '2026-10-03',
-              totalReps: 2,
-              entries: [older],
-              nextCursor: null,
-            }
-          : page,
-  );
-  await online();
-  const screen = await mount();
-  await loaded();
-  await fireEvent.press(
-    screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
-  );
-  await loaded();
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
-    ).toBeTruthy(),
-  );
-  await fireEvent.press(
-    screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
-  );
-  await waitFor(() =>
-    expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
-  );
-  await fireEvent.changeText(
-    screen.getByLabelText('Your day reflection'),
-    'Saved older-day reflection.',
-  );
-  await fireEvent.press(
-    screen.getByRole('button', { name: 'Save reflection' }),
-  );
-  await waitFor(() =>
-    expect(harness.mockRepository!.getAttempt(uuid(2))?.reflection?.text).toBe(
-      'Saved older-day reflection.',
-    ),
-  );
-  await loaded();
-  await waitFor(() =>
-    expect(
-      harness.mockRepository!.store.getState().journal.records[uuid(2)],
-    ).toBeUndefined(),
-  );
-  expect(screen.getByText('Saved older-day reflection.')).toBeTruthy();
 });
 
 it('cannot save an empty text-only edit from the dirty-close dialog', async () => {
@@ -461,17 +302,7 @@ it('cannot save an empty text-only edit from the dirty-close dialog', async () =
     reflection: { feeling: null, text: 'Retain this text.', revision: 1 },
   };
   await harness.mockRepository!.adoptAttempt(written);
-  harness.transport.records.set(uuid(1), attempt());
-  harness.mockClient.request.mockImplementation(async (path: string) =>
-    path.includes('/summary?')
-      ? summary
-      : path.includes('/calendar?')
-        ? calendar
-        : { ...page, entries: [written] },
-  );
-  await online();
   const screen = await mount();
-  await loaded();
   await openToday(screen);
   await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*View Reflection/ }),

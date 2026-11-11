@@ -26,6 +26,7 @@ import {
   endangered,
   journalSchema,
   systemClock,
+  type DataMode,
   type Journal,
   type JournalClock,
   type JournalState,
@@ -62,7 +63,7 @@ export type AccountRepositoryOptions = {
   clock?: JournalClock;
   random?: () => number;
   localJournal?: LocalJournalRepository;
-  dataMode?: 'legacy' | 'local' | 'cloud';
+  dataMode?: DataMode;
 };
 
 export class AccountRepository {
@@ -107,7 +108,7 @@ export class AccountRepository {
     );
     this.clock = options.clock ?? systemClock;
     this.store = createStore<JournalState>(() => ({
-      dataMode: options.dataMode ?? 'legacy',
+      dataMode: options.dataMode ?? 'local',
       syncStatus: 'idle',
       dataEpoch: null,
       ready: false,
@@ -169,17 +170,15 @@ export class AccountRepository {
   }
   private async readStored() {
     try {
-      if (this.store.getState().dataMode !== 'legacy')
-        this.store.setState({
-          dataDeletionPending:
-            (await this.options.storage.getItem(
-              `${this.key}:delete-all-pending`,
-            )) !== null,
-        });
-      const epoch =
-        this.store.getState().dataMode === 'legacy'
-          ? null
-          : await this.options.storage.getItem(`${this.key}:data-epoch`);
+      this.store.setState({
+        dataDeletionPending:
+          (await this.options.storage.getItem(
+            `${this.key}:delete-all-pending`,
+          )) !== null,
+      });
+      const epoch = await this.options.storage.getItem(
+        `${this.key}:data-epoch`,
+      );
       if (epoch !== null) {
         const value: unknown = JSON.parse(epoch);
         if (
@@ -360,10 +359,9 @@ export class AccountRepository {
   }
   async synchronize(): Promise<void> {
     await this.hydrate();
-    if (this.store.getState().dataMode === 'legacy') await this.sender.flush();
-    else await this.syncData?.();
+    await this.syncData?.();
   }
-  setDataMode(mode: 'legacy' | 'local' | 'cloud') {
+  setDataMode(mode: DataMode) {
     if (this.store.getState().dataMode === mode) return;
     this.sender.stop();
     this.store.setState({ dataMode: mode });
@@ -383,8 +381,7 @@ export class AccountRepository {
       !state.online
     )
       return;
-    if (state.dataMode === 'legacy') this.sender.kick();
-    else if (this.syncData)
+    if (this.syncData)
       // The coordinator retains durable work and exposes its retry state.
       void this.syncData().catch(() => {});
   }
@@ -684,13 +681,7 @@ export class AccountRepository {
     const work = (async () => {
       const saved = await this.persist();
       this.checkActiveAccount();
-      if (!saved) {
-        if (this.store.getState().dataMode !== 'legacy')
-          throw new ApiError('STORAGE');
-        // Exceptional path uses the same ordered sender and stable identities.
-        await this.sender.flush(attemptId);
-        this.updateWarning();
-      }
+      if (!saved) throw new ApiError('STORAGE');
       this.kickSync();
       this.checkActiveAccount();
       return this.getAttempt(attemptId)!;
@@ -854,7 +845,6 @@ export class AccountRepository {
       );
     });
     await this.persist();
-    await this.prune();
     return true;
   }
   async acceptCalendar(
@@ -885,7 +875,6 @@ export class AccountRepository {
       );
     });
     await this.persist();
-    await this.prune();
     return true;
   }
   async acceptTodayPage(
@@ -993,38 +982,9 @@ export class AccountRepository {
       });
       await this.persist();
     }
-    await this.prune();
   }
   async setFlowAttempt(id: string | null): Promise<void> {
     this.store.setState({ flowAttemptId: id });
-    await this.prune();
-  }
-  private async prune() {
-    const state = this.store.getState();
-    if (state.dataMode !== 'legacy') return;
-    const ids = Object.entries(state.journal.records)
-      .filter(
-        ([id, record]) =>
-          record.created &&
-          !record.rejected &&
-          record.serverVersion === record.version &&
-          record.phoneVersion === record.version &&
-          record.attempt.activityDate !== state.period.today &&
-          id !== state.flowAttemptId &&
-          !state.journal.operations.some(
-            (operation) => operation.attemptId === id,
-          ) &&
-          !state.journal.summaryAdditions.includes(id) &&
-          !state.journal.calendarAdditions.includes(id),
-      )
-      .map(([id]) => id);
-    if (!ids.length) return;
-    this.update((journal) => {
-      for (const id of ids) delete journal.records[id];
-      for (const [id, receipt] of Object.entries(journal.submissions))
-        if (ids.includes(receipt.attemptId)) delete journal.submissions[id];
-    });
-    await this.persist();
   }
   private update(work: (journal: Journal) => void): void {
     const journal = cloneJournal(this.store.getState().journal);
