@@ -60,7 +60,10 @@ Classify the behavior and boundary that changed, not the directory.
 | Release build                                | Full `pnpm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
 
 Before pushing, run the checks for the touched paths on the committed head. CI
-runs the full set on every pull request that changes more than Markdown. A local
+runs the full set on every pull request that changes more than Markdown and
+agent tooling. A PR made only of Markdown, `.claude/hooks/`,
+`.claude/settings.json` and `scripts/quality/` files (except the three that app
+jobs run, listed in `ci-changes.mjs`) runs only `static`. A local
 pass does not prove a hosted pass, so read each stacked branch's own CI run. Expand
 the local checks for a concrete failure or an explicit owner request, and state
 the trigger.
