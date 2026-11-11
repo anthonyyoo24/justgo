@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  chmodSync,
+  existsSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -11,11 +13,13 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   plan,
   report,
+  sync,
   touchesSessionConfig,
   triggerOf,
 } from '../../.claude/hooks/sync-main.mjs';
@@ -87,10 +91,10 @@ const beforeBash = (command) => ({
   tool_input: { command },
 });
 
-function runHook(dir, event = sessionStart) {
+function runHook(dir, event = sessionStart, env = process.env) {
   const result = spawnSync(process.execPath, [hook], {
     cwd: dir,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    env: { ...env, CLAUDE_PROJECT_DIR: dir },
     input: JSON.stringify(event),
     encoding: 'utf8',
     timeout: 20_000,
@@ -176,6 +180,138 @@ test('untracked files alone do not stop the fast-forward and are kept', (t) => {
     readFileSync(path.join(repo.checkout, 'scratch.txt'), 'utf8'),
     'mine\n',
   );
+});
+
+// #344
+test('a fast-forward that outlasts its wait finishes in the background', async (t) => {
+  const repo = fixture(t);
+  const tip = repo.push('.claude/settings.json', '{}\n');
+  const result = await sync(repo.checkout, 0, { mergeWait: 1 });
+  assert.equal(result.action, 'updating');
+  assert.equal(
+    report(result),
+    `Updating main to ${tip.slice(0, 7)} in the background; restart this session once it finishes to load the new hooks and settings.`,
+  );
+  const deadline = Date.now() + 5000;
+  while (head(repo.checkout) !== tip && Date.now() < deadline) await sleep(50);
+  assert.equal(head(repo.checkout), tip);
+  assert.equal(git(repo.checkout, 'status', '--porcelain'), '');
+});
+
+test('a fast-forward whose list of changed paths passes 1 MiB still updates', async (t) => {
+  const repo = fixture(t);
+  const dir = path.join(repo.author, '.claude', 'many');
+  mkdirSync(dir, { recursive: true });
+  for (let i = 0; i < 4500; i += 1)
+    writeFileSync(path.join(dir, `${String(i).padStart(240, 'x')}.md`), '');
+  git(repo.author, 'add', '.claude');
+  git(repo.author, 'commit', '-q', '-m', 'many');
+  git(repo.author, 'push', '-q', 'origin', 'main');
+  const result = await sync(repo.checkout, 0, { mergeWait: 20_000 });
+  assert.equal(result.action, 'updated');
+  assert.equal(result.paths.length, 4500);
+  assert.equal(head(repo.checkout), head(repo.author));
+});
+
+// #235 item 5
+test('an untracked file in the way is named in the warning and kept', (t) => {
+  const repo = fixture(t);
+  repo.push('.claude/settings.json', '{}\n');
+  repo.push('notes/plan.md', 'theirs\n');
+  const before = head(repo.checkout);
+  mkdirSync(path.join(repo.checkout, 'notes'));
+  writeFileSync(path.join(repo.checkout, 'notes', 'plan.md'), 'mine\n');
+  assert.equal(
+    runHook(repo.checkout),
+    'This folder is 2 commits behind origin/main; not updated because the untracked file notes/plan.md would be overwritten.',
+  );
+  assert.equal(head(repo.checkout), before);
+  assert.equal(
+    readFileSync(path.join(repo.checkout, 'notes', 'plan.md'), 'utf8'),
+    'mine\n',
+  );
+});
+
+// A shell script git can run as its ssh command, for an origin it cannot reach.
+function sshScript(dir, name, body) {
+  const file = path.join(dir, name);
+  writeFileSync(file, `#!/bin/sh\n${body}\n`);
+  chmodSync(file, 0o755);
+  return file;
+}
+
+const withoutSsh = () => {
+  const env = { ...process.env };
+  delete env.GIT_SSH_COMMAND;
+  delete env.GIT_SSH;
+  return env;
+};
+
+// #235 item 3
+test('the fetch uses a configured core.sshCommand and otherwise ssh in batch mode', (t) => {
+  const repo = fixture(t);
+  const bin = path.join(repo.root, 'bin');
+  mkdirSync(bin);
+  const used = path.join(repo.root, 'used');
+  sshScript(bin, 'ssh', `echo "default $*" > ${used}; exit 1`);
+  const env = { ...withoutSsh(), PATH: `${bin}:${process.env.PATH}` };
+  git(
+    repo.checkout,
+    'remote',
+    'set-url',
+    'origin',
+    'ssh://sync.invalid/origin.git',
+  );
+  assert.equal(runHook(repo.checkout, sessionStart, env), undefined);
+  assert.match(readFileSync(used, 'utf8'), /^default -o BatchMode=yes /);
+  const own = sshScript(repo.root, 'own-ssh', `echo own > ${used}; exit 1`);
+  git(repo.checkout, 'config', 'core.sshCommand', own);
+  assert.equal(runHook(repo.checkout, sessionStart, env), undefined);
+  assert.equal(readFileSync(used, 'utf8'), 'own\n');
+});
+
+// #235 items 4 and 6
+test('a fetch that outlasts its wait is stopped with the helper it started', async (t) => {
+  const repo = fixture(t);
+  const pidFile = path.join(repo.root, 'ssh.pid');
+  const slow = sshScript(
+    repo.root,
+    'slow-ssh',
+    `echo $$ > ${pidFile}; exec sleep 30`,
+  );
+  git(
+    repo.checkout,
+    'remote',
+    'set-url',
+    'origin',
+    'ssh://sync.invalid/origin.git',
+  );
+  git(repo.checkout, 'config', 'core.sshCommand', slow);
+  const saved = { cmd: process.env.GIT_SSH_COMMAND, ssh: process.env.GIT_SSH };
+  delete process.env.GIT_SSH_COMMAND;
+  delete process.env.GIT_SSH;
+  t.after(() => {
+    if (saved.cmd !== undefined) process.env.GIT_SSH_COMMAND = saved.cmd;
+    if (saved.ssh !== undefined) process.env.GIT_SSH = saved.ssh;
+  });
+  const started = Date.now();
+  const result = await sync(repo.checkout, 0, { fetchWait: 500 });
+  assert.equal(result.action, 'none');
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+  assert.ok(existsSync(pidFile), 'the ssh helper started');
+  const pid = Number(readFileSync(pidFile, 'utf8'));
+  const alive = () => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const deadline = Date.now() + 2000;
+  while (alive() && Date.now() < deadline) await sleep(50);
+  if (alive()) process.kill(pid, 'SIGKILL');
+  assert.equal(alive(), false, 'the ssh helper was left running');
 });
 
 test('a linked worktree is left alone and prints nothing', (t) => {
