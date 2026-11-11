@@ -59,14 +59,41 @@ const verifier = (prompt, description = 'Verify PR #7') => ({
   prompt,
 });
 
-test('the PRs a brief names are found by PR # or URL', () => {
+test('the PRs under review come from the description, else the prompt', () => {
+  // A description that names a PR scopes the check to it, so a stacked
+  // parent or a PR the prompt only mentions is never checked.
   assert.deepEqual(
     prsOf({
       description: 'Verify PR #7',
+      prompt: 'Also https://github.com/o/r/pull/12 and pr#7.',
+    }),
+    ['7'],
+  );
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify the batch',
       prompt:
         'Also https://github.com/o/r/pull/12 and pr#7. Issue #9 is not a PR.',
     }),
-    ['7', '12'],
+    ['12', '7'],
+  );
+});
+
+test('a PR the brief only mentions is not checked', () => {
+  const io = fakeIo({
+    309: { comments: [verdict('PASS')] },
+    310: { comments: [] },
+  });
+  assert.equal(
+    evaluate(
+      verifier(
+        'PR #310 stacks on PR #309, which already passed.',
+        'Verify PR #310',
+      ),
+      '/r',
+      io,
+    ),
+    undefined,
   );
 });
 
@@ -112,7 +139,10 @@ test('the fourth verifier after three FAIL verdicts is denied, the third is not'
     fakeIo({ 7: { comments: three } }),
   );
   assert.equal(decision?.permissionDecision, 'deny');
-  assert.match(decision.reason, /PR #7 has 3 FAIL verdicts, and the limit is 3/);
+  assert.match(
+    decision.reason,
+    /PR #7 has 3 FAIL verdicts, and the limit is 3/,
+  );
   assert.match(decision.reason, /bring it to Anthony/);
   // Only owner comments count, as in the verdict check.
   const others = three.map((c) => ({ ...c, authorAssociation: 'NONE' }));

@@ -22,16 +22,16 @@ const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
 const anotherRound = /^[ \t]*\**Another round:\**[ \t]*\S/im;
 const maxFails = 3;
 
+const numbersIn = (text) => [
+  ...new Set([...(text ?? '').matchAll(prReference)].map(([, n]) => n)),
+];
+
+// The PRs under review: those the description names, or else those the
+// prompt names, as for a batch verifier. A prompt that only mentions a PR,
+// such as a stacked parent, never blocks a verifier of another PR.
 export function prsOf(input) {
-  return [
-    ...new Set(
-      [
-        ...`${input.description ?? ''}\n${input.prompt ?? ''}`.matchAll(
-          prReference,
-        ),
-      ].map(([, number]) => number),
-    ),
-  ];
+  const named = numbersIn(input.description);
+  return named.length ? named : numbersIn(input.prompt);
 }
 
 function passCovers(number, pr, verdict, cwd, io) {
