@@ -557,6 +557,50 @@ const cases = [
     source: "import { createClient } from '@supabase/supabase-js';",
     restricted: false,
   },
+  ...[
+    [
+      'mobile code',
+      'apps/mobile/src/app-support/providers/BoundaryFixture.tsx',
+      "import { PostHogProvider } from 'posthog-react-native';",
+    ],
+    [
+      'a mobile test',
+      'apps/mobile/src/features/challenges/BoundaryFixture.test.tsx',
+      "import PostHog from 'posthog-react-native';",
+    ],
+    [
+      'a literal require',
+      'apps/mobile/src/lib/BoundaryFixture.ts',
+      "const ATT = require('expo-tracking-transparency');",
+    ],
+    [
+      'a subpath',
+      'apps/mobile/src/platform/BoundaryFixture.ts',
+      "import { getAnalytics } from 'firebase/analytics';",
+    ],
+    [
+      'API code',
+      'apps/api/src/http/BoundaryFixture.ts',
+      "import { Analytics } from '@segment/analytics-node';",
+    ],
+    [
+      'a contracts re-export',
+      'packages/contracts/src/BoundaryFixture.ts',
+      "export type { Event } from '@amplitude/analytics-types';",
+    ],
+  ].map(([where, file, source]) => ({
+    name: `${where} cannot load an analytics SDK`,
+    file,
+    source,
+    restricted: true,
+    fix: 'Phase 17',
+  })),
+  {
+    name: 'a non-analytics package subpath is not an analytics SDK',
+    file: 'apps/mobile/src/platform/BoundaryFixture.ts',
+    source: "import { initializeApp } from 'firebase/app';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {
