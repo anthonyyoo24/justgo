@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   decide,
   output,
+  remoteRepo,
   sessionTool,
   setModelTool,
 } from '../../.claude/hooks/session-model-guard.mjs';
@@ -44,6 +45,39 @@ test('starting a proposal card by proposal_id alone is allowed', () => {
     decide(sessionTool, { proposal_id: 'task_05e66814' }),
     undefined,
   );
+});
+
+test('an SSH session start must name cwd inside the JustGO checkout', () => {
+  const ssh = { ...card, target: 'ssh', host: 'Mac mini' };
+  for (const cwd of [
+    remoteRepo,
+    `${remoteRepo}/`,
+    `${remoteRepo}/.claude/worktrees/fix-1`,
+  ])
+    assert.equal(decide(sessionTool, { ...ssh, cwd }), undefined, cwd);
+  for (const cwd of [
+    undefined,
+    '~',
+    '/Users/anthony',
+    `${remoteRepo}-old`,
+    `${remoteRepo}/../other`,
+    'Documents/apps/justgo',
+    '',
+  ]) {
+    const decision = decide(sessionTool, { ...ssh, cwd });
+    assert.equal(decision?.permissionDecision, 'deny', String(cwd));
+    assert.match(decision.reason, /JustGO checkout/);
+  }
+  assert.equal(
+    decide(sessionTool, { ...card, host: 'Mac mini', cwd: '~' })
+      ?.permissionDecision,
+    'deny',
+  );
+});
+
+test('a local or cloud session start needs no cwd', () => {
+  assert.equal(decide(sessionTool, { ...card, target: 'cloud' }), undefined);
+  assert.equal(decide(sessionTool, { ...card, cwd: '/tmp/other' }), undefined);
 });
 
 test('every set_session_model call is denied', () => {
