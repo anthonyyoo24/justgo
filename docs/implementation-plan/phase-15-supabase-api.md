@@ -74,16 +74,16 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] One verifier runs at the code-ready head, per [Git and autonomy](../../AGENTS.md#git-and-autonomy). It re-runs the gates, runs the live lanes from the PR's **Verify, live** block and the perf lane from its **Verify, perf** block, then reads the diff and the receipts and distrusts the PR body. Each fix round gets a fresh verifier at the new head. A rebase or merge-conflict resolution gets one unless its verdict carries under the rule below, and a wording-only change gets none. A full swarm, per pstack's `skills/swarm/SKILL.md`, runs only when Anthony asks for one. The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the execution playbook's blocking rule. The verdict is clean when none blocks. A failure on trunk behavior in a lane marked `Regression lane against trunk.` is recorded against trunk and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in pstack's `playbooks/shipping.md`.
 - [ ] Post each verdict as a PR comment whose verdict line has the form that [AGENTS.md](../../AGENTS.md#git-and-autonomy) gives, with each SHA in backticks. The `verdict` check parses only that form. The verifier is a separate Claude agent that did not write the PR, and the comment says so.
-- [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent merges its own PR through `npm run merge:pr`, Agent-effort paths included.
+- [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent merges its own PR through `pnpm run merge:pr`, Agent-effort paths included.
 
 ### Boot recipe, for every live lane
 
 Each live lane runs at the PR head in its own worktree. Lanes run one at a time against one local stack. Edge runtime lanes run in GitHub Actions, as Anthony decided on November 6, 2026.
 
 - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
-- [ ] Start the database with `npm run db:local`, then run `npm run db:migrate`.
-- [ ] For an app lane, run `.claude/skills/verify-justgo/bin/verify serve`, then wait for `.claude/skills/verify-justgo/bin/verify doctor` to report `"state": "serving"`. For a function lane, start the bundle on the Edge runtime (the P15-1 trial script, or `npm run test:edge -- --serve` after P15-6) and wait for `/ready` to return 200.
-- [ ] Deliver input only through `curl`, the `verify-justgo` drives or the built-in browser pane. The read-only diagnostics are `verify doctor`, `/health`, `/ready` and SQL readback through `npm run test:db:file -w @justgo/api`.
+- [ ] Start the database with `pnpm run db:local`, then run `pnpm run db:migrate`.
+- [ ] For an app lane, run `.claude/skills/verify-justgo/bin/verify serve`, then wait for `.claude/skills/verify-justgo/bin/verify doctor` to report `"state": "serving"`. For a function lane, start the bundle on the Edge runtime (the P15-1 trial script, or `pnpm run test:edge --serve` after P15-6) and wait for `/ready` to return 200.
+- [ ] Deliver input only through `curl`, the `verify-justgo` drives or the built-in browser pane. The read-only diagnostics are `verify doctor`, `/health`, `/ready` and SQL readback through `pnpm --filter @justgo/api run test:db:file`.
 - [ ] Run a hosted lane only after Anthony's go for that PR. Never send a fixture proof to a hosted API.
 - [ ] Save every receipt to `.local/swarm/<pr-id>/lane-<n>/<slug>` and return the paths with the report. Mask tokens and private text before you save.
 - [ ] Stop the stack with `.claude/skills/verify-justgo/bin/verify stop`, and compare doctor counts before and after.
@@ -171,7 +171,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `npm run test -w @justgo/api` still passes on the trial branch after the hosted changes.
+- [ ] `pnpm --filter @justgo/api run test` still passes on the trial branch after the hosted changes.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes call the hosted `justgo-trial` function from the Mac.
 
@@ -226,8 +226,8 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `apps/api/tests/identity/identity.test.ts` keys a managed-auth rate bucket by the supplied client address and ignores `x-vercel-forwarded-for`. Run `npm run test -w @justgo/api -- tests/identity/identity.test.ts`.
-- [ ] Run `npm run typecheck -w @justgo/api`, `npm run lint` and `npm run test:architecture`.
+- [ ] `apps/api/tests/identity/identity.test.ts` keys a managed-auth rate bucket by the supplied client address and ignores `x-vercel-forwarded-for`. Run `pnpm --filter @justgo/api run test tests/identity/identity.test.ts`.
+- [ ] Run `pnpm --filter @justgo/api run typecheck`, `pnpm run lint` and `pnpm run test:architecture`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes drive the Node fixture API and Expo web.
 
@@ -238,8 +238,8 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Lane 5. Request `/health` and `/ready` on the Node entry with `JUSTGO_SOURCE_SHA` set. Save `node-ready.json`. Pass when both return 200 with the release identity headers.
 - [ ] Lane 6. Accept a challenge as a guest in the built-in browser pane. Save `guest.png`. Pass when the deck shows `Accept challenge` and the attempt saves.
 - [ ] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
-- [ ] Lane 8. Run `npm run test:journey -- e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
-- [ ] Lane 9. Run `npm run export:web -w @justgo/mobile`, then `npm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
+- [ ] Lane 8. Run `pnpm run test:journey e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
+- [ ] Lane 9. Run `pnpm --filter @justgo/mobile run export:web`, then `pnpm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
 - [ ] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when nothing matches, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
@@ -256,7 +256,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Land the parked recovery checks (P15-4)
 
@@ -278,7 +278,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **You see.**
 
-- [ ] `npm run test:backup:recovery` reports the restored-writing check before the deletion acceptance, and passes.
+- [ ] `pnpm run test:backup:recovery` reports the restored-writing check before the deletion acceptance, and passes.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -286,7 +286,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes run the local recovery rehearsal against loopback databases only.
 
-- [ ] Lane 1. Regression lane against trunk. Run `npm run test:backup:recovery` at trunk and at head. Save `rehearsal.txt`. Pass when both pass and head adds the restored-writing and owner checks.
+- [ ] Lane 1. Regression lane against trunk. Run `pnpm run test:backup:recovery` at trunk and at head. Save `rehearsal.txt`. Pass when both pass and head adds the restored-writing and owner checks.
 - [ ] Lane 2. Restore a local dump and list object owners. Save `owners.txt`. Pass when every restored object keeps its original owner role.
 - [ ] Lane 3. Run the Auth and API recovery acceptance against the restored loopback target. Save `auth-acceptance.json`. Pass when sign-in, read and deletion succeed through the Node app.
 - [ ] Lane 4. Write a journal entry, back up, then restore. Save `restored-writing.json`. Pass when the restored database holds the entry before deletion acceptance starts.
@@ -299,7 +299,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Wall time of `npm run test:backup:recovery`.
+- [ ] Metric. Wall time of `pnpm run test:backup:recovery`.
 - [ ] Probe. Run it three times at trunk and three times at head, alternating.
 - [ ] Baseline. Record trunk first.
 - [ ] Rule. Trunk lacks the new checks. Head fails if they add more than 5 minutes to the median on the Mac.
@@ -311,7 +311,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Remove the API Worker and its release lane (P15-5)
 
@@ -342,19 +342,19 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Run `npm run test -w @justgo/api`, `npm run test:architecture` and `node --test scripts/release/*.test.mjs scripts/backups/clock/worker.test.mjs`.
-- [ ] Run the full `npm run check`, because a dependency moved.
+- [ ] Run `pnpm --filter @justgo/api run test`, `pnpm run test:architecture` and `node --test scripts/release/*.test.mjs scripts/backups/clock/worker.test.mjs`.
+- [ ] Run the full `pnpm run check`, because a dependency moved.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes drive the Node fixture API, Expo web and the backup clock build.
 
 - [ ] Lane 1. Regression lane against trunk. Run `verify drive welcome challenge progress account data` at trunk and at head. Save `drive-summary.json`. Pass when the same drives pass on both.
-- [ ] Lane 2. Run `npm run test:journey -- e2e/local-sync.spec.ts`. Save `local-sync.txt`. Pass when the journey passes.
-- [ ] Lane 3. Run `npm run test:journey -- e2e/account-deletion.spec.ts`. Save `account-deletion.txt`. Pass when the journey passes.
-- [ ] Lane 4. Run `npm run test:journey -- e2e/identity-catalog.spec.ts`. Save `identity-catalog.txt`. Pass when the journey passes.
+- [ ] Lane 2. Run `pnpm run test:journey e2e/local-sync.spec.ts`. Save `local-sync.txt`. Pass when the journey passes.
+- [ ] Lane 3. Run `pnpm run test:journey e2e/account-deletion.spec.ts`. Save `account-deletion.txt`. Pass when the journey passes.
+- [ ] Lane 4. Run `pnpm run test:journey e2e/identity-catalog.spec.ts`. Save `identity-catalog.txt`. Pass when the journey passes.
 - [ ] Lane 5. Request `/ready` on the Node fixture API. Save `node-ready.json`. Pass when it returns 200.
-- [ ] Lane 6. Run `npx wrangler deploy --dry-run --config scripts/backups/clock/wrangler.json`. Save `clock-dry-run.txt`. Pass when the clock still builds with the moved dependency and nothing deploys.
-- [ ] Lane 7. Run `npm run test:backup:recovery`. Save `recovery.txt`. Pass when the rehearsal passes through the Node app.
-- [ ] Lane 8. Run `npm run` to list the root scripts. Save `staging-lane.txt`. Pass when `release:staging:local` is absent.
+- [ ] Lane 6. Run `pnpm exec wrangler deploy --dry-run --config scripts/backups/clock/wrangler.json`. Save `clock-dry-run.txt`. Pass when the clock still builds with the moved dependency and nothing deploys.
+- [ ] Lane 7. Run `pnpm run test:backup:recovery`. Save `recovery.txt`. Pass when the rehearsal passes through the Node app.
+- [ ] Lane 8. Run `pnpm run` to list the root scripts. Save `staging-lane.txt`. Pass when `release:staging:local` is absent.
 - [ ] Lane 9. Search the code for imports of every deleted module. Save `removed-imports.txt`. Pass when nothing imports a deleted module.
 - [ ] Lane 10. Read `AGENTS.md` and `SERVER_RELEASES.md` at head. Save `docs-audit.txt`. Pass when neither tells an agent to deploy a Worker.
 
@@ -372,7 +372,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Add the Edge Functions entry and its CI smoke (P15-6)
 
@@ -397,16 +397,16 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Server error reports flush through `EdgeRuntime.waitUntil`.
 - [ ] `supabase/config.toml` sets `verify_jwt = false` for `api`.
 - [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB. Port the input and output checks of `validateWorkerBundle` (`scripts/release/staging-worker-build.mjs:15-74` at `ce611dd`), which reject untracked, ignored, non-production and secret-like inputs and unexpected output files.
-- [ ] `npm run test:edge` runs the smoke route sequence against the bundle in the pinned Edge runtime image and `justgo_test`. CI runs it where the Workers step was.
+- [ ] `pnpm run test:edge` runs the smoke route sequence against the bundle in the pinned Edge runtime image and `justgo_test`. CI runs it where the Workers step was.
 
 **You see.**
 
-- [ ] The CI log of `npm run test:edge` lists each route with its status and ends with `edge smoke passed`.
+- [ ] The CI log of `pnpm run test:edge` lists each route with its status and ends with `edge smoke passed`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `apps/api/tests/http/edge.test.ts` covers the prefix strip, the secret mapping, the client address, a forged `x-forwarded-for` and the safe startup failure. Run `npm run test -w @justgo/api -- tests/http/edge.test.ts`.
-- [ ] Run `npm run typecheck -w @justgo/api`, `npm run lint`, `npm run test:architecture` and `npm run test:db`.
+- [ ] `apps/api/tests/http/edge.test.ts` covers the prefix strip, the secret mapping, the client address, a forged `x-forwarded-for` and the safe startup failure. Run `pnpm --filter @justgo/api run test tests/http/edge.test.ts`.
+- [ ] Run `pnpm --filter @justgo/api run typecheck`, `pnpm run lint`, `pnpm run test:architecture` and `pnpm run test:db`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes run the bundle in the pinned Edge runtime image against `justgo_test`.
 
@@ -435,7 +435,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Support a base path in the mobile API client (P15-7)
 
@@ -460,8 +460,8 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `http-protocol.test.ts` covers an empty prefix, `/functions/v1/api`, a trailing slash, `..` traversal, another origin, a query string that contains `/v1/`, and cancellation. Run `npm run test -w @justgo/mobile -- --runTestsByPath src/lib/network/http-protocol.test.ts`.
-- [ ] Run `npm run typecheck -w @justgo/mobile` and `npm run lint`.
+- [ ] `http-protocol.test.ts` covers an empty prefix, `/functions/v1/api`, a trailing slash, `..` traversal, another origin, a query string that contains `/v1/`, and cancellation. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/lib/network/http-protocol.test.ts`.
+- [ ] Run `pnpm --filter @justgo/mobile run typecheck` and `pnpm run lint`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes drive Expo web in the built-in browser pane against the fixture API at the root and under the prefix.
 
@@ -474,7 +474,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Lane 7. Download the complete data export with the prefix. Save `export-prefix.png`. Pass when the export finishes.
 - [ ] Lane 8. Delete all data with the prefix. Save `delete-prefix.png`. Pass when local and server data clear and doctor counts return to the baseline.
 - [ ] Lane 9. Set the base URL with a trailing slash. Save `trailing-slash.json`. Pass when no request path contains `//`.
-- [ ] Lane 10. Run `npm run export:web -w @justgo/mobile`, then `npm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
+- [ ] Lane 10. Run `pnpm --filter @justgo/mobile run export:web`, then `pnpm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -490,7 +490,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Release staging through Supabase Edge Functions (P15-8)
 
@@ -523,7 +523,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `staging-supabase.test.mjs` covers an unchanged serving SHA, a failed candidate probe, a lost deploy response, a secret change without a deploy, and a rollback to the previous tag. Run `node --test scripts/release/staging-supabase.test.mjs`.
-- [ ] Run `node --test scripts/quality/ci-workflow.test.mjs scripts/quality/staging-api-workflow.test.mjs` and `npm run test:architecture`, because the workflow changed.
+- [ ] Run `node --test scripts/quality/ci-workflow.test.mjs scripts/quality/staging-api-workflow.test.mjs` and `pnpm run test:architecture`, because the workflow changed.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. Lanes 1 to 3 are local dry runs. Lanes 4 to 10 deploy to the JustGo project and run only after Anthony's go.
 
@@ -552,7 +552,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Record hosted staging acceptance (P15-9)
 
@@ -624,7 +624,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **You see.**
 
-- [ ] `npm run build:legal` builds the candidate pages with the new wording.
+- [ ] `pnpm run build:legal` builds the candidate pages with the new wording.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -637,7 +637,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Lane 3. Open the Privacy page at 200 percent text zoom. Save `privacy-zoom.png`. Pass when no text is clipped.
 - [ ] Lane 4. Move through the Privacy page with the keyboard. Save `privacy-keyboard.png`. Pass when every link is reachable and focus is visible.
 - [ ] Lane 5. Open the Terms page. Save `terms.png`. Pass when it is unchanged apart from date metadata.
-- [ ] Lane 6. Run `npm run build:legal -- --production` without approval metadata. Save `production-refusal.txt`. Pass when the build refuses.
+- [ ] Lane 6. Run `pnpm run build:legal --production` without approval metadata. Save `production-refusal.txt`. Pass when the build refuses.
 - [ ] Lane 7. Open the legal links from Expo web. Save `in-app-legal.png`. Pass when each link opens the built page.
 - [ ] Lane 8. Search the built pages for Workers and Hyperdrive. Save `stale-terms.txt`. Pass when neither word appears.
 - [ ] Lane 9. Search the built pages for R2. Save `r2-wording.txt`. Pass when the approved R2 backup wording remains.
@@ -645,7 +645,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Wall time of `npm run build:legal`.
+- [ ] Metric. Wall time of `pnpm run build:legal`.
 - [ ] Probe. Run it three times at trunk and three times at head, alternating.
 - [ ] Baseline. Record trunk first.
 - [ ] Rule. Head fails if its median exceeds trunk's by more than 20 percent.
@@ -693,12 +693,12 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `check-beta.test.mjs` accepts the function URL and rejects the Worker URL, another project and any other path. Run `node --test scripts/release/check-beta.test.mjs`.
-- [ ] Run `npm run test:architecture` and the full `npm run check`, because the Expo configuration changed.
+- [ ] Run `pnpm run test:architecture` and the full `pnpm run check`, because the Expo configuration changed.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. Lanes 1 to 3 run locally. Lanes 4 to 10 run on the iPhone or against hosted services after Anthony's go.
 
 - [ ] Lane 1. Regression lane against trunk. Run `node scripts/release/check-beta.mjs` on the trunk and head configurations. Save `check-beta.txt`. Pass when trunk accepts the Worker URL and head accepts only the function URL.
-- [ ] Lane 2. Run `npm run export:ios -w @justgo/mobile` and search the bundle for API URLs. Save `bundle-url.txt`. Pass when only the function URL appears.
+- [ ] Lane 2. Run `pnpm --filter @justgo/mobile run export:ios` and search the bundle for API URLs. Save `bundle-url.txt`. Pass when only the function URL appears.
 - [ ] Lane 3. Run the `staging-health.yml` check logic locally against the function. Save `health-check.json`. Pass when it reports ready.
 - [ ] Lane 4. Sign in with Apple on the new TestFlight build. Save `tf-apple.png`. Pass when the journal loads.
 - [ ] Lane 5. Save writing on the new build and load it on a second device. Save `tf-sync.png`. Pass when both show the entry.
@@ -722,7 +722,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Clean verdict at the exact head SHA.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `npm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Close the program
 

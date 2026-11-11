@@ -164,7 +164,7 @@ jobs:
           }
           NODE
           fi
-          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-api-staging.anthonyyoo24.workers.dev EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS RELEASE_DIAGNOSTICS=$RELEASE_DIAGNOSTICS RELEASE_OPERATION=$RELEASE_OPERATION npm --prefix ../.. run release:beta:check" --non-interactive
+          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-api-staging.anthonyyoo24.workers.dev EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS RELEASE_DIAGNOSTICS=$RELEASE_DIAGNOSTICS RELEASE_OPERATION=$RELEASE_OPERATION pnpm --dir ../.. run release:beta:check" --non-interactive
       - name: Check native build tools
         if: inputs.operation == 'build'
         shell: bash
@@ -173,7 +173,7 @@ jobs:
           [[ "$(pod --version)" == '1.17.0' ]]
           fastlane --version
           node --version
-          npm --version
+          pnpm --version
           df -h "$RUNNER_TEMP"
       - name: Require clean reviewed source
         shell: bash

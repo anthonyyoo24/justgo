@@ -12,45 +12,52 @@ each fact lives, the rules and what enforces them, and the owner's permissions.
   `e2e/`: saved Playwright journeys. `scripts/quality` and `scripts/journeys`:
   architecture, coverage and journey tooling. `.claude/skills/verify-justgo`: the
   skill that starts, drives and checks the running app.
-- Use the pinned Node and npm versions from the root manifests and `.nvmrc`.
+- Use the pinned Node and pnpm versions from the root manifests and `.nvmrc`.
+  Corepack provides pnpm (`corepack enable pnpm` once per machine). Install a
+  checkout or worktree with `pnpm install --frozen-lockfile`. Every worktree
+  then links its `node_modules` from the one shared pnpm store, so a new
+  worktree adds almost no disk.
+- pnpm passes the words after a script name straight to the script, so leave
+  out the `--` that npm needed. `pnpm run build:legal --production` is right.
+  `pnpm run build:legal -- --production` hands the script a literal `--`.
 - Before you change Expo, React Native or native code, read the docs for the
   `expo` version in `apps/mobile/package.json` at
   `docs.expo.dev/versions/v<major>.0.0/`. Your training data may describe an older
   SDK. A native module or configuration change needs a new binary, and a
   JavaScript export does not prove native modules, Keychain behavior or device
   acceptance.
-- To run one test file, pass `-- --runTestsByPath src/<path>.test.tsx` to the
-  mobile `test` script, or `-- <path>` to the API and contracts scripts.
+- To run one test file, pass `--runTestsByPath src/<path>.test.tsx` to the
+  mobile `test` script, or `<path>` to the API and contracts scripts.
 
-| Command                                | Purpose                                                                                                                                                             |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run test -w <workspace>`          | Workspace unit, component and contract tests. The API default skips database cases.                                                                                 |
-| `npm run typecheck -w <workspace>`     | Focused TypeScript. Mobile regenerates its Expo route types first.                                                                                                  |
-| `npm run lint`                         | Repository lint and dependency-direction rules                                                                                                                      |
-| `npm run test:architecture`            | Tooling, boundary, fixture, legal-reader and quality regressions                                                                                                    |
-| `npm run check`                        | Online Expo Doctor, contracts build, all typechecks, lint, format, architecture and workspace tests                                                                 |
-| `npm run db:local`                     | Prepare the isolated loopback PostgreSQL roles and database                                                                                                         |
-| `npm run db:migrate`                   | Apply registered migrations through the migrator connection                                                                                                         |
-| `npm run test:db`                      | Real database services and policies, plus the migration rehearsal                                                                                                   |
-| `npm run test:db:file -w @justgo/api`  | One database test file: `-- tests/<area>/<file>.integration.test.ts`, optional `-t '<name>'`. First run `db:local` (keeps an existing `.env`), then `db:migrate`.   |
-| `npm run test:journey`                 | Saved Playwright journeys against the real app, the fixture API and the disposable database                                                                         |
-| `npm run test:coverage`                | Optional report with no threshold. It includes the database suites, so prepare the local database first. Output goes to ignored `coverage/{mobile,api,contracts}/`. |
-| `npm run export:web -w @justgo/mobile` | Cold web export. `export:ios` is the iOS one.                                                                                                                       |
-| `npm run test:exported-web`            | Smoke the existing web export with no API or database traffic                                                                                                       |
-| `npm run build:legal`                  | Build the local legal pages, then check their reading and navigation in the built-in browser pane. `-- --production` refuses unapproved source or date metadata.    |
+| Command                                       | Purpose                                                                                                                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter <workspace> run test`          | Workspace unit, component and contract tests. The API default skips database cases.                                                                                 |
+| `pnpm --filter <workspace> run typecheck`     | Focused TypeScript. Mobile regenerates its Expo route types first.                                                                                                  |
+| `pnpm run lint`                               | Repository lint and dependency-direction rules                                                                                                                      |
+| `pnpm run test:architecture`                  | Tooling, boundary, fixture, legal-reader and quality regressions                                                                                                    |
+| `pnpm run check`                              | Online Expo Doctor, contracts build, all typechecks, lint, format, architecture and workspace tests                                                                 |
+| `pnpm run db:local`                           | Prepare the isolated loopback PostgreSQL roles and database                                                                                                         |
+| `pnpm run db:migrate`                         | Apply registered migrations through the migrator connection                                                                                                         |
+| `pnpm run test:db`                            | Real database services and policies, plus the migration rehearsal                                                                                                   |
+| `pnpm --filter @justgo/api run test:db:file`  | One database test file: `tests/<area>/<file>.integration.test.ts`, optional `-t '<name>'`. First run `db:local` (keeps an existing `.env`), then `db:migrate`.      |
+| `pnpm run test:journey`                       | Saved Playwright journeys against the real app, the fixture API and the disposable database                                                                         |
+| `pnpm run test:coverage`                      | Optional report with no threshold. It includes the database suites, so prepare the local database first. Output goes to ignored `coverage/{mobile,api,contracts}/`. |
+| `pnpm --filter @justgo/mobile run export:web` | Cold web export. `export:ios` is the iOS one.                                                                                                                       |
+| `pnpm run test:exported-web`                  | Smoke the existing web export with no API or database traffic                                                                                                       |
+| `pnpm run build:legal`                        | Build the local legal pages, then check their reading and navigation in the built-in browser pane. `--production` refuses unapproved source or date metadata.       |
 
 ### Choosing checks
 
 Classify the behavior and boundary that changed, not the directory.
 
-| Change                                       | Checks                                                                                                                                                                                                              |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Documentation only                           | Changed-file formatting and `node --test scripts/quality/doc-links.test.mjs`. No app tests, builds or UI checks.                                                                                                    |
-| Contained code change                        | Focused tests for the changed behavior and its consumers, affected workspace typechecks, `npm run lint` and changed-file formatting. Affected saved journeys, and a `verify-justgo` drive for a user-facing change. |
-| Contracts, tsconfig, ESLint or `e2e/support` | Also `npm run build:contracts && npm run typecheck` from the root, which covers every workspace and the journeys.                                                                                                   |
-| API, shared protocol or data                 | Also `npm run test:db` against loopback `justgo_test`, with ownership, replay, failure and migration cases. A mobile UI or navigation change alone does not cross this boundary.                                    |
-| Dependencies, Expo or native                 | Full `npm run check` with its online Expo Doctor, plus the native build and device acceptance the change affects.                                                                                                   |
-| Release build                                | Full `npm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
+| Change                                       | Checks                                                                                                                                                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Documentation only                           | Changed-file formatting and `node --test scripts/quality/doc-links.test.mjs`. No app tests, builds or UI checks.                                                                                                     |
+| Contained code change                        | Focused tests for the changed behavior and its consumers, affected workspace typechecks, `pnpm run lint` and changed-file formatting. Affected saved journeys, and a `verify-justgo` drive for a user-facing change. |
+| Contracts, tsconfig, ESLint or `e2e/support` | Also `pnpm run build:contracts && pnpm run typecheck` from the root, which covers every workspace and the journeys.                                                                                                  |
+| API, shared protocol or data                 | Also `pnpm run test:db` against loopback `justgo_test`, with ownership, replay, failure and migration cases. A mobile UI or navigation change alone does not cross this boundary.                                    |
+| Dependencies, Expo or native                 | Full `pnpm run check` with its online Expo Doctor, plus the native build and device acceptance the change affects.                                                                                                   |
+| Release build                                | Full `pnpm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
 
 Before pushing, run the checks for the touched paths on the committed head. CI
 runs the full set on every pull request that changes more than Markdown. A local
@@ -201,9 +208,9 @@ highest level that works and updates this list.
 - Features import only the public data modules (the progress reads and the backup formats) and only the `AccountRepository` and `DeckPreferences` types, not storage, sync or cloud internals. Provider modules and the modules `AppProvider` imports never import `AppProvider`. Each lint error names the fix.
   - Enforced by (lint, written): `justgo/import-boundaries`, with the allowed modules in `scripts/quality/import-boundaries.mjs` and cases in `import-boundaries.test.mjs` and `lint-rules.test.mjs`. Only review catches a feature that writes around the data owners through `lib/network/account-client`, `platform/icloud` or a storage package such as AsyncStorage, and a cycle back to `AppProvider` through a middle module.
 - No `justgo` schema, table, column or routine grants anything to `anon`, `authenticated`, `PUBLIC` or any role but its owner and `justgo_runtime`. Every `justgo` table forces RLS. The Auth-session helper is the only `SECURITY DEFINER` routine, and no view runs with definer rights. The helper stays `STABLE` and returns one boolean.
-  - Enforced by (test): The private-schema sweep in `apps/api/tests/db/managed-session-check.integration.test.ts` runs in `npm run test:db` after every migration and the helper script. The same file pins `/ready` to the helper body, volatility, boolean result and `justgo_runtime`-only access. Gate #212 covers hosted catalogs.
+  - Enforced by (test): The private-schema sweep in `apps/api/tests/db/managed-session-check.integration.test.ts` runs in `pnpm run test:db` after every migration and the helper script. The same file pins `/ready` to the helper body, volatility, boolean result and `justgo_runtime`-only access. Gate #212 covers hosted catalogs.
 - TypeScript is strict.
-  - Enforced by (type): `strict` in `tsconfig.base.json` and `apps/mobile/tsconfig.json`, checked by `npm run typecheck`
+  - Enforced by (type): `strict` in `tsconfig.base.json` and `apps/mobile/tsconfig.json`, checked by `pnpm run typecheck`
 - No update lowers an account's `data_epoch` or changes its id, so a stale device cannot re-upload data that delete-all removed.
   - Enforced by (database, test, written): The `data_epoch_never_decreases` trigger from `apps/api/drizzle/0024_data_epoch_never_decreases.sql` and the `users_id_immutable` trigger from `apps/api/drizzle/0025_users_id_immutable.sql`, which refuses any change to a user id, with their cases in `apps/api/tests/data-sync/sync.integration.test.ts`. A migration that disables or replaces a trigger, or deletes and re-inserts a user row, is caught only in review
 - Await each promise or handle its failure. Use `void` only for background work whose failure is already handled.
@@ -251,7 +258,7 @@ highest level that works and updates this list.
 - Prove a user-facing change on the running app. Interactive checks use the built-in browser pane, not an outside Chrome window.
   - Enforced by (skill): [`verify-justgo`](.claude/skills/verify-justgo/SKILL.md) drives and its doctor
 - Use current Expo and library APIs.
-  - Enforced by (lint, type, CI, test, written): `@typescript-eslint/no-deprecated` in `npm run lint`, `npm run typecheck` against the installed packages, Expo Doctor in `npm run check` and the CI `static` job, and the saved journeys. `eslint-suppressions.json` lists the deprecated calls that predate the rule, and lint fails on a new call or a stale entry. The Expo docs bullet in the [repository map](#repository-map-and-common-commands) covers the judgment calls.
+  - Enforced by (lint, type, CI, test, written): `@typescript-eslint/no-deprecated` in `pnpm run lint`, `pnpm run typecheck` against the installed packages, Expo Doctor in `pnpm run check` and the CI `static` job, and the saved journeys. `eslint-suppressions.json` lists the deprecated calls that predate the rule, and lint fails on a new call or a stale entry. The Expo docs bullet in the [repository map](#repository-map-and-common-commands) covers the judgment calls.
 - Diagnostics carry no private text.
   - Enforced by (test, written): The Sentry payload tests in `apps/mobile/src/app-support/diagnostics/event.test.ts`. [Security and privacy](#security-and-privacy) covers the rest.
 - Session tokens, Supabase refresh tokens, the Apple ID token and nonce, and legacy credential secrets never reach AsyncStorage, the journal, exports or diagnostics.
@@ -282,7 +289,7 @@ highest level that works and updates this list.
   - Enforced by (hook, test): The `SessionStart` (`startup`) and `SessionEnd` hooks start `.claude/hooks/sweep-worktrees.mjs --detach`, with cases against temporary repositories in `scripts/quality/sweep-worktrees-hook.test.mjs`. `--dry-run` lists what it would remove.
 - Changes reach `main` only through a PR that passes `checks`, `description` and `verdict`.
   - Enforced by (GitHub): Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion. The old `sections` job in `pr-description.yml` passes only when `description` and `verdict` pass, and stays until no open PR needs it
-- Agents merge only through `npm run merge:pr -- <n> --head <sha> [--auto]`. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.
+- Agents merge only through `pnpm run merge:pr <n> --head <sha> [--auto]`. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.
   - Enforced by (hook, test): The `PreToolUse` Bash hook `.claude/hooks/merge-order-guard.mjs` denies any command whose text contains `gh pr merge` or a `pulls/<n>/merge` API path, harmless mentions included. `scripts/quality/merge-pr.mjs` checks with `git merge-tree` and `verdict-patch.mjs`, fails closed when `gh`, git or the network fails, and pins each step to its head. Cases beside it in `merge-pr.test.mjs` and `merge-order-guard.test.mjs`
 - After a `PASS`, agents push nothing more to that PR but docs, tests and merges from `main`. A push that cannot wait disarms auto-merge first and carries `PUSH_AFTER_PASS=1`.
   - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
@@ -332,7 +339,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   any database other than the local `justgo_test`, production releases, TestFlight
   or App Store submissions, and settings changes in outside services (Supabase,
   Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging
-  test may deploy a committed branch through `npm run release:staging:local`.
+  test may deploy a committed branch through `pnpm run release:staging:local`.
   That go does not cover migrations, production releases or merges. Until P15-8
   of the [Phase 15 plan](docs/implementation-plan/phase-15-supabase-api.md) moves
   that command to Supabase, it deploys the retired Worker. Run it only when
@@ -354,7 +361,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   alone is not a verdict. Land
   stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
   (pstack's Shipping playbook). Pin every merge to the head that a verdict
-  covers, fresh or carried, with `npm run merge:pr -- <n> --head <head-sha>`,
+  covers, fresh or carried, with `pnpm run merge:pr <n> --head <head-sha>`,
   both direct and `--auto`. It passes `--match-head-commit`, so GitHub refuses
   a head no verdict covers. Agents merge only through that script. When the PR
   is behind `main`, the script first asks GitHub to merge `main` into its branch.
@@ -388,7 +395,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
   keeps its own verifier.
 - **Arm auto-merge when you open a PR.** Run
-  `npm run merge:pr -- <n> --head <head-sha> --auto` right after
+  `pnpm run merge:pr <n> --head <head-sha> --auto` right after
   opening the PR, and again after each push, pinned to the new head. The
   required `verdict` check stays red until a readable `PASS` covers that head,
   so GitHub merges on its own once the verdict and CI are green. The agent does
@@ -404,7 +411,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   commit, merge or rebase, so it denies that too: run them as separate
   commands. Put
   optional notes and later additions in a follow-up PR or issue. If a push after
-  a `PASS` cannot be avoided, run `npm run merge:pr -- <n> --disable-auto` first,
+  a `PASS` cannot be avoided, run `pnpm run merge:pr <n> --disable-auto` first,
   prefix the push with `PUSH_AFTER_PASS=1`, and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
   push keeps `verdict` green without a review. Also disarm with
   `--disable-auto` on Anthony's hold.

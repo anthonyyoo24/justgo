@@ -242,9 +242,9 @@ test('publication gates use isolated DB credentials and stop at the first failed
     'selected-journeys',
   ]);
   assert.deepEqual(calls.slice(0, 3), [
-    ['npm', ['run', 'doctor', '-w', '@justgo/mobile']],
-    ['npm', ['run', 'check:static']],
-    ['npm', ['run', 'test:coverage']],
+    ['pnpm', ['--filter', '@justgo/mobile', 'run', 'doctor']],
+    ['pnpm', ['run', 'check:static']],
+    ['pnpm', ['run', 'test:coverage']],
   ]);
   assert.equal(calls.length, 5);
   calls = [];

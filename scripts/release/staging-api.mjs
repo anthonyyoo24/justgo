@@ -208,7 +208,8 @@ export function productionPath(path) {
   return (
     [
       'package.json',
-      'package-lock.json',
+      'pnpm-lock.yaml',
+      'pnpm-workspace.yaml',
       '.npmrc',
       'tsconfig.base.json',
       'apps/api/package.json',

@@ -31,17 +31,18 @@ test('journey command checks ports and prerequisites before services and preserv
         'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/4512279181459456',
       );
       calls.push([command, ...args]);
-      return command === 'npx' ? 23 : 0;
+      return command === 'pnpm' && args[0] === 'exec' ? 23 : 0;
     },
   });
   assert.equal(result, 23);
   assert.deepEqual(calls, [
     ['ports'],
-    ['npm', 'run', 'build:contracts'],
-    ['npm', 'run', 'db:migrate'],
+    ['pnpm', 'run', 'build:contracts'],
+    ['pnpm', 'run', 'db:migrate'],
     ['node', 'scripts/journeys/build-journey-repository.mjs'],
     [
-      'npx',
+      'pnpm',
+      'exec',
       'playwright',
       'test',
       '--config=e2e/playwright.config.ts',
@@ -64,8 +65,8 @@ test('failed prerequisites stop before starting services or later commands', asy
     });
     assert.equal(result, 23);
     assert.deepEqual(calls, [
-      ['npm', 'run', 'build:contracts'],
-      ...(failedStep === 'db:migrate' ? [['npm', 'run', 'db:migrate']] : []),
+      ['pnpm', 'run', 'build:contracts'],
+      ...(failedStep === 'db:migrate' ? [['pnpm', 'run', 'db:migrate']] : []),
     ]);
   }
 });
@@ -124,12 +125,15 @@ test('required CI runs every saved journey using its provisioned test database a
       jobs.journeys,
       new RegExp(`uses: \\.\\/\\.github\\/actions\\/${name}`),
     );
-  assert.match(action('setup-node'), /npm ci/);
+  assert.match(action('setup-node'), /pnpm install --frozen-lockfile/);
   assert.match(
     action('setup-playwright'),
-    /npx playwright install-deps chromium/,
+    /pnpm exec playwright install-deps chromium/,
   );
-  assert.match(action('setup-playwright'), /npx playwright install chromium/);
+  assert.match(
+    action('setup-playwright'),
+    /pnpm exec playwright install chromium/,
+  );
   assert.match(action('setup-database'), /apps\/api\/scripts\/provision\.sql/);
   assert.match(workflow, /env: &database-test-env/);
   assert.match(
@@ -145,7 +149,7 @@ test('required CI runs every saved journey using its provisioned test database a
   assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);
   assert.match(
     jobs.journeys,
-    /name: Verify app\/API\/database journeys\n\s+run: \|\n\s+npm run test:journey\n\s+test -s \.local\/journey-report\/index\.html/,
+    /name: Verify app\/API\/database journeys\n\s+run: \|\n\s+pnpm run test:journey\n\s+test -s \.local\/journey-report\/index\.html/,
   );
   assert.doesNotMatch(workflow, /continue-on-error:/);
 });

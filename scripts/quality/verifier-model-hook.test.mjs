@@ -79,7 +79,7 @@ test('sensitive tests, a Sensitive flag or unknown files keep Opus', () => {
 test('only agents named as verifiers or asked for a verdict are touched', () => {
   for (const description of [
     'Inventory routes and verdict-recheck.yml',
-    'Fix lint, then verify with npm run lint',
+    'Fix lint, then verify with pnpm run lint',
     'Recheck nothing',
   ])
     assert.equal(

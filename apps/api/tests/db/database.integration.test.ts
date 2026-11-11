@@ -20,7 +20,7 @@ if (
   !['localhost', '127.0.0.1'].includes(new URL(migrationUrl).hostname)
 ) {
   throw new Error(
-    'Database integration tests require the dedicated local test database. Run npm run db:local first.',
+    'Database integration tests require the dedicated local test database. Run pnpm run db:local first.',
   );
 }
 const runtime = createDatabase(config);

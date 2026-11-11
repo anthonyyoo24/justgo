@@ -22,7 +22,7 @@ import { runVerdictPatch } from '../../scripts/quality/verdict-status.mjs';
 // run as separate commands.
 //
 // When the push cannot wait (Anthony asked for it, or hosted CI failed after
-// the PASS), disarm auto-merge with `npm run merge:pr -- <n> --disable-auto`
+// the PASS), disarm auto-merge with `pnpm run merge:pr <n> --disable-auto`
 // and prefix the push with PUSH_AFTER_PASS=1.
 //
 // The hook reads shell text. It treats heredoc bodies and quoted strings as
@@ -171,7 +171,7 @@ const covers = (check) =>
 
 const wayOut = (number) =>
   'If it cannot wait (Anthony asked for it, or CI failed after the PASS), run ' +
-  `\`npm run merge:pr -- ${number} --disable-auto\`, then rerun the push as ` +
+  `\`pnpm run merge:pr ${number} --disable-auto\`, then rerun the push as ` +
   '`PUSH_AFTER_PASS=1 git push …` and get a fresh verdict before you re-arm.';
 
 // The files that make this push need a verifier: code files whose patch the

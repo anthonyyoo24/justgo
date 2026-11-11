@@ -17,7 +17,7 @@ new binary. Metro reloads and JavaScript exports do not validate it. See the
 To rebuild locally with an existing `apps/mobile/ios/` directory, use the intended
 variant and public build environment for every step:
 
-1. From `apps/mobile`, run `npx expo prebuild --platform ios`. Omit `--clean` to
+1. From `apps/mobile`, run `pnpm exec expo prebuild --platform ios`. Omit `--clean` to
    update the generated files in place.
 2. From `apps/mobile/ios`, run `pod install`. Run this CocoaPods step even when
    package dependencies are unchanged.
@@ -141,14 +141,14 @@ EXPO_NO_DOTENV=1 eas env:pull development --path .env.development.local --non-in
 From the repository root, run:
 
 ```sh
-npm run dev:mobile -- --clear
+pnpm run dev:mobile --clear
 ```
 
 For an owner-only synthetic test of the Cloudflare staging API, select it
 explicitly:
 
 ```sh
-npm run dev:mobile -- --cloudflare --clear
+pnpm run dev:mobile --cloudflare --clear
 ```
 
 The launcher consumes the option before Expo starts. It first validates the
@@ -180,7 +180,7 @@ are rejected. Ordinary release and guarded journey resolution stay unchanged.
 After you change this resolver, restart with `--clear` and verify the actual
 served consumers, not only the launcher's process values. It never falls back to
 the release `.env.local`. Metro uses one worker, LAN port 8081 and the explicit
-scheme `justgo-dev`. Add `--web` for a browser preview. `npm run dev:web` is
+scheme `justgo-dev`. Add `--web` for a browser preview. `pnpm run dev:web` is
 unchanged.
 
 Put the phone and the Mac on the same Wi-Fi, and scan the current **server** QR
@@ -250,9 +250,9 @@ native files. `scripts/quality/dependabot-skip.test.mjs` fails when it drifts.
 Those packages move together, as one scoped task per SDK:
 
 1. Read the Expo upgrade guide for the target SDK.
-2. From `apps/mobile`, run `npx expo install expo@~<sdk>.0.0 --fix`. Update
+2. From `apps/mobile`, run `pnpm exec expo install expo@~<sdk>.0.0 --fix`. Update
    native packages outside Expo's list, such as Google sign-in and
    `react-native-pulsar`, by hand.
 3. Run `node scripts/quality/dependabot-skip.mjs --write` from the root.
-4. Run the full `npm run check`, then build Dev and repeat the physical-phone
+4. Run the full `pnpm run check`, then build Dev and repeat the physical-phone
    acceptance above. A JavaScript export does not prove a native upgrade.

@@ -15,7 +15,7 @@ crash cache. Terms retain `2026-10-25-beta` and their October 25 effective date.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
 
-Run `npm run build:legal` from the repository root. The ignored output lives in
+Run `pnpm run build:legal` from the repository root. The ignored output lives in
 `sites/legal/dist/`, with `/privacy/` and `/terms/` document pages. The base address
 renders the same Privacy Policy. There is no separate Legal landing page or top
 tab bar. Pages show the document text with cross-document links in the footer.
@@ -66,7 +66,7 @@ content supports headings, paragraphs, flat lists, bold text and links to HTTPS,
 email, or the two legal routes. Unsupported links or review placeholders fail the
 build. Raw HTML is escaped.
 
-`npm run build:legal -- --production` (also `NODE_ENV=production`) refuses to build
+`pnpm run build:legal --production` (also `NODE_ENV=production`) refuses to build
 until both sources explicitly record `publication-status: owner-approved` and a
 valid ISO effective date. Record approval only when the owner actually approves
 the text. Set the effective date when publication is ready and the checklist in

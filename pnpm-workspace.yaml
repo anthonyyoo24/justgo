@@ -1,0 +1,25 @@
+packages:
+  - apps/*
+  - packages/*
+
+nodeLinker: hoisted
+saveExact: true
+workspaceConcurrency: 1
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@sentry/cli': true
+  esbuild: true
+  fsevents: true
+  unrs-resolver: true
+  workerd: true
+
+overrides:
+  react: 19.3.0
+  react-dom: 19.3.0
+  test-renderer: 1.3.1
+  react-native: 0.88.1
+  glob: 14.0.4
+  minimatch: 11.0.5
+  test-exclude@6>glob: 7.2.3
+  test-exclude@6>minimatch: 3.1.5

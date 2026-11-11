@@ -184,21 +184,20 @@ export async function runLocalPublicationChecks(
 ) {
   const childEnvironment = localPublicationEnvironment(root, env);
   const commands = [
-    ['run', 'doctor', '-w', '@justgo/mobile'],
+    ['--filter', '@justgo/mobile', 'run', 'doctor'],
     ['run', 'check:static'],
     ['run', 'test:coverage'],
     ['run', 'test:workers'],
     [
       'run',
       'test:journey',
-      '--',
       'e2e/provider-sign-in.spec.ts',
       'e2e/local-sync.spec.ts',
       'e2e/account-deletion.spec.ts',
     ],
   ];
   for (const args of commands)
-    await run('npm', args, { cwd: root, env: childEnvironment });
+    await run('pnpm', args, { cwd: root, env: childEnvironment });
   return [
     'doctor',
     'check:static',

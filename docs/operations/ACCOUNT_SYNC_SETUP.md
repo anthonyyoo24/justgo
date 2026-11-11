@@ -181,7 +181,7 @@ When the original phone never returns, run the operator command. It retries up
 to 50 pending deletions:
 
 ```sh
-npm run auth:cleanup -w @justgo/api
+pnpm --filter @justgo/api run auth:cleanup
 ```
 
 Run it only in an authorized operator environment with:

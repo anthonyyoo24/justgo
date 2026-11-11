@@ -54,15 +54,23 @@ test('the Worker build CLI is lockfile pinned and has no provider credential dur
   const manifest = JSON.parse(
     readFileSync(new URL('../../apps/api/package.json', import.meta.url)),
   );
-  const lock = JSON.parse(
-    readFileSync(new URL('../../package-lock.json', import.meta.url)),
+  const lock = readFileSync(
+    new URL('../../pnpm-lock.yaml', import.meta.url),
+    'utf8',
   );
   assert.equal(manifest.devDependencies.wrangler, '4.155.0');
-  assert.equal(
-    lock.packages['node_modules/wrangler'].version,
-    manifest.devDependencies.wrangler,
+  assert.match(
+    lock,
+    /\n {6}wrangler:\n {8}specifier: 4\.155\.0\n {8}version: 4\.155\.0[(\n]/,
   );
-  assert.ok(lock.packages['node_modules/wrangler'].integrity);
+  assert.deepEqual(
+    [...lock.matchAll(/^ {2}wrangler@([^:(]+)[:(]/gm)].map((match) => match[1]),
+    ['4.155.0', '4.155.0'],
+  );
+  assert.match(
+    lock,
+    /\n {2}wrangler@4\.155\.0:\n {4}resolution: \{integrity: sha512-[A-Za-z0-9+/=]+\}/,
+  );
   assert.ok(
     workflow.indexOf('uses: ./.github/actions/setup-node') <
       workflow.indexOf('secrets.CLOUDFLARE_API_TOKEN'),
@@ -70,7 +78,7 @@ test('the Worker build CLI is lockfile pinned and has no provider credential dur
   assert.equal(productionPath('scripts/release/staging-api-runner.mjs'), false);
   assert.doesNotMatch(
     workflow,
-    /npm install --global|npx .*wrangler|wrangler deploy/,
+    /npm install --global|pnpm add (?:-g|--global)|npx .*wrangler|pnpm (?:dlx|exec) .*wrangler|wrangler deploy/,
   );
 });
 test('actual tag shell rejects missing/unreviewed refs and shell syntax without executing it', (t) => {

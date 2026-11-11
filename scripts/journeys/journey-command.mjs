@@ -40,12 +40,18 @@ export async function runJourney({
   // Playwright supplies FORCE_COLOR to its children; omit the conflicting flag.
   delete childEnvironment.NO_COLOR;
   for (const [command, commandArgs] of [
-    ['npm', ['run', 'build:contracts']],
-    ['npm', ['run', 'db:migrate']],
+    ['pnpm', ['run', 'build:contracts']],
+    ['pnpm', ['run', 'db:migrate']],
     ['node', ['scripts/journeys/build-journey-repository.mjs']],
     [
-      'npx',
-      ['playwright', 'test', '--config=e2e/playwright.config.ts', ...args],
+      'pnpm',
+      [
+        'exec',
+        'playwright',
+        'test',
+        '--config=e2e/playwright.config.ts',
+        ...args,
+      ],
     ],
   ]) {
     const code = await run(command, commandArgs, childEnvironment);

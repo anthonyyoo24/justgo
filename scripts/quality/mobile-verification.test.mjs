@@ -37,14 +37,14 @@ function commandFixture(t, executable, source) {
 test('workspace verification stops before building when mobile dependency checks fail', (t) => {
   const fixture = commandFixture(
     t,
-    'npm',
+    'pnpm',
     `const fs = require('node:fs');
 const path = process.env.JUSTGO_VERIFICATION_RECORD;
 const calls = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path)) : [];
 const args = process.argv.slice(2);
 calls.push(args);
 fs.writeFileSync(path, JSON.stringify(calls));
-process.exit(args[0] === 'run' && args[1] === 'doctor' ? 17 : 0);
+process.exit(args.includes('doctor') ? 17 : 0);
 `,
   );
   const result = spawnSync('/bin/sh', ['-c', rootPackage.scripts.check], {
@@ -54,7 +54,7 @@ process.exit(args[0] === 'run' && args[1] === 'doctor' ? 17 : 0);
   });
   assert.equal(result.status, 17, result.stderr);
   assert.deepEqual(JSON.parse(readFileSync(fixture.record)), [
-    ['run', 'doctor', '-w', '@justgo/mobile'],
+    ['--filter', '@justgo/mobile', 'run', 'doctor'],
   ]);
 });
 
@@ -78,22 +78,42 @@ process.exit(19);
 });
 
 test('mobile singleton overrides and the lockfile agree with declared versions', () => {
-  const lock = JSON.parse(
-    readFileSync(new URL('../../package-lock.json', import.meta.url)),
+  const workspace = readFileSync(
+    new URL('../../pnpm-workspace.yaml', import.meta.url),
+    'utf8',
+  );
+  const lock = readFileSync(
+    new URL('../../pnpm-lock.yaml', import.meta.url),
+    'utf8',
+  );
+  const importerStart = lock.indexOf('\n  apps/mobile:\n');
+  assert.ok(importerStart > 0, 'mobile importer');
+  const importer = lock.slice(
+    importerStart,
+    lock.indexOf('\n\n', importerStart),
   );
   for (const name of ['react', 'react-dom', 'react-native', 'test-renderer']) {
     const declared =
       mobilePackage.dependencies[name] ?? mobilePackage.devDependencies[name];
-    assert.equal(rootPackage.overrides[name], declared, `${name} override`);
-    assert.equal(
-      lock.packages['apps/mobile'].dependencies?.[name] ??
-        lock.packages['apps/mobile'].devDependencies?.[name],
-      declared,
+    assert.match(
+      workspace,
+      new RegExp(`^  ${name}: ${declared}$`, 'm'),
+      `${name} override`,
+    );
+    assert.match(
+      importer,
+      new RegExp(
+        `\\n      ${name}:\\n        specifier: ${declared}\\n        version: ${declared}[(\\n]`,
+      ),
       `${name} workspace lock`,
     );
-    assert.equal(
-      lock.packages[`node_modules/${name}`].version,
-      declared,
+    const locked = [
+      ...lock.matchAll(new RegExp(`^  ${name}@([^:(]+)[:(]`, 'gm')),
+    ].map((match) => match[1]);
+    assert.ok(locked.length > 0, `${name} locked`);
+    assert.deepEqual(
+      new Set(locked),
+      new Set([declared]),
       `${name} resolution`,
     );
   }

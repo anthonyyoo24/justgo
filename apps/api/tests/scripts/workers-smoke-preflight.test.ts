@@ -65,7 +65,7 @@ describe('explicit Worker check commands', () => {
     },
   );
 
-  it('binds the npm smoke and profiler commands to their distinct explicit modes', () => {
+  it('binds the package smoke and profiler commands to their distinct explicit modes', () => {
     const api = JSON.parse(
       readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
     ) as { scripts: Record<string, string> };
@@ -80,10 +80,10 @@ describe('explicit Worker check commands', () => {
       /workers-smoke\.ts --profile$/,
     );
     expect(root.scripts['test:workers']).toBe(
-      'npm run test:workers -w @justgo/api',
+      'pnpm --filter @justgo/api run test:workers',
     );
     expect(root.scripts['profile:workers']).toBe(
-      'npm run profile:workers -w @justgo/api',
+      'pnpm --filter @justgo/api run profile:workers',
     );
   });
 

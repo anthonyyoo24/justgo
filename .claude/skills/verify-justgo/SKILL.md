@@ -11,11 +11,11 @@ Run every command from the repository root. `bin/` paths below are relative to t
 
 ## Launch
 
-Two modes share one local stack: Postgres 17 on `127.0.0.1:54329` (database `justgo_test`), the fixture API on `127.0.0.1:3000` (`apps/api/scripts/challenge-dev.ts`, the same server `npm run dev:challenges -w @justgo/api` runs) and Expo web on `127.0.0.1:8081`.
+Two modes share one local stack: Postgres 17 on `127.0.0.1:54329` (database `justgo_test`), the fixture API on `127.0.0.1:3000` (`apps/api/scripts/challenge-dev.ts`, the same server `pnpm --filter @justgo/api run dev:challenges` runs) and Expo web on `127.0.0.1:8081`.
 
-- **Scripted drive (evidence).** `bin/verify drive <feature>...`, for example `bin/verify drive challenge` or `bin/verify drive welcome challenge progress account data`. It starts the database (`npm run db:local`, which also creates the cluster, roles and missing `.env` files on a fresh checkout), then runs `npm run test:journey` with this skill's `verify.config.ts`. The wrapper validates the loopback database roles, refuses occupied ports, builds contracts, migrates (migrations seed the challenge catalog), starts both services, runs the drives and stops the services. Ready is built in: each drive waits for the deck's `Accept challenge` button before acting.
-- **Saved journeys.** `npm run test:journey` runs every journey spec in `e2e/` except the exported-web smoke (`testIgnore` in `e2e/playwright.config.ts`) through the same wrapper, and `npm run test:journey -- e2e/<name>.spec.ts` runs one. Install the pinned browser first with `npx playwright install chromium`. Failures write `.local/journey-results` and `.local/journey-report`.
-- **Exported-web smoke.** After `npm run export:web -w @justgo/mobile`, `npm run test:exported-web` serves `apps/mobile/dist/` from its own server on `127.0.0.1:8093` (`JUSTGO_EXPORTED_WEB_PORT`) and never reuses a running one. Its fence rejects every `/v1` request, so it needs no API, database or account. Reports go to `.local/exported-web-report/` and `.local/exported-web-results/`. Run it before `export:ios`, which replaces the same `dist/`.
+- **Scripted drive (evidence).** `bin/verify drive <feature>...`, for example `bin/verify drive challenge` or `bin/verify drive welcome challenge progress account data`. It starts the database (`pnpm run db:local`, which also creates the cluster, roles and missing `.env` files on a fresh checkout), then runs `pnpm run test:journey` with this skill's `verify.config.ts`. The wrapper validates the loopback database roles, refuses occupied ports, builds contracts, migrates (migrations seed the challenge catalog), starts both services, runs the drives and stops the services. Ready is built in: each drive waits for the deck's `Accept challenge` button before acting.
+- **Saved journeys.** `pnpm run test:journey` runs every journey spec in `e2e/` except the exported-web smoke (`testIgnore` in `e2e/playwright.config.ts`) through the same wrapper, and `pnpm run test:journey e2e/<name>.spec.ts` runs one. Install the pinned browser first with `pnpm exec playwright install chromium`. Failures write `.local/journey-results` and `.local/journey-report`.
+- **Exported-web smoke.** After `pnpm --filter @justgo/mobile run export:web`, `pnpm run test:exported-web` serves `apps/mobile/dist/` from its own server on `127.0.0.1:8093` (`JUSTGO_EXPORTED_WEB_PORT`) and never reuses a running one. Its fence rejects every `/v1` request, so it needs no API, database or account. Reports go to `.local/exported-web-report/` and `.local/exported-web-results/`. Run it before `export:ios`, which replaces the same `dist/`.
 - **Interactive (built-in browser pane).** `bin/verify serve` starts the database, migrates and starts the same two services with the journeys' commands and environment, records their process groups in `.local/verify-justgo/serving.json` and returns when both answer. Then run `bin/verify doctor`. Ready means doctor reports `"state": "serving"`. Open `http://127.0.0.1:8081/welcome` with `preview_start`, and resize the tab to 390x844, the journeys' viewport. The first page load compiles the bundle and can take a minute.
 
 Set `JUSTGO_VERIFY_RUN_ID` to name the run. Otherwise it is a UTC timestamp plus the first feature, or `serve`.
@@ -28,7 +28,7 @@ Set `JUSTGO_VERIFY_RUN_ID` to name the run. Otherwise it is a UTC timestamp plus
 - `state: serving`: the ports belong to the process groups `bin/verify serve` recorded and run from this checkout. `/ready` is 200 and `/__fixtures/accounts` answers (the fixture API, not the deployable one). The bundle Metro serves has API origin `http://127.0.0.1:3000`, `EXPO_PUBLIC_PROJECT_ROOT` in this checkout, the guarded journey environment, and none of the hosted origins saved in `apps/mobile/.env*`.
 - `state: broken`: read `problems`. A port owned by a process this skill did not start means someone else's server. Do not drive it and do not kill it. Report it.
 
-It also reports the checkout's HEAD, branch and changed-file count, migration status (`current`, `pending`, or `ahead of this checkout` when another branch migrated `justgo_test`), and `justgo.users` and `justgo.attempts` counts. The counts need a running database, so start it first (`npm run db:local`, or any earlier `drive` or `serve`). Run doctor before and after a drive. Matching counts prove fixture cleanup.
+It also reports the checkout's HEAD, branch and changed-file count, migration status (`current`, `pending`, or `ahead of this checkout` when another branch migrated `justgo_test`), and `justgo.users` and `justgo.attempts` counts. The counts need a running database, so start it first (`pnpm run db:local`, or any earlier `drive` or `serve`). Run doctor before and after a drive. Matching counts prove fixture cleanup.
 
 ## Drive
 
@@ -76,7 +76,7 @@ For pane checks, save screenshots under the same run folder and read `read_netwo
 - `drives/cleanup.spec.ts`: fixture-account teardown against a served API.
 - `verify.config.ts`: the Playwright config that `drive` and `stop` layer over `e2e/playwright.config.ts`.
 
-CI type-checks these files through `npm run typecheck:journey`.
+CI type-checks these files through `pnpm run typecheck:journey`.
 
 ## Isolate
 
@@ -87,7 +87,7 @@ Run one instance per machine and one drive at a time. Queue further drives into 
 - Database: every instance shares the one `justgo_test` database in the main checkout's `.local/postgres`, and every launch migrates it. A second worktree on another branch can migrate it ahead of this checkout. Doctor reports that. `db:local` uses the current folder's `.local`, so in a fresh worktree it creates a second cluster on the same port. Symlink the worktree's `.local` to the main checkout's before `db:local`, and let `db:local` write the missing `.env` files. Do not copy the hosted-origin `apps/mobile/.env.local` or `.env.development.local`.
 - Data: lanes on one instance stay apart through fixture accounts. Each run's fixture API registers only its own accounts and rate-limit buckets, and teardown deletes only those.
 - Memory: one launched instance plus headless Chromium took system free memory from 64% down to 31-36% across two runs on the owner's 8 GB Mac.
-- Do not run `npm run test:journey`, `npm run test:db` or `npm run test:coverage` while an instance is serving. They use the same ports or database.
+- Do not run `pnpm run test:journey`, `pnpm run test:db` or `pnpm run test:coverage` while an instance is serving. They use the same ports or database.
 - Two instances side by side (separate worktrees, distinct ports) are untested. A larger verification host needs its own measurement before raising the cap.
 
 ## Native
@@ -95,15 +95,15 @@ Run one instance per machine and one drive at a time. Queue further drives into 
 Unproven. On 2026-11-05 the Mac had no simulator devices, only the iOS 26.5 runtime. No current JustGO simulator build was installed. The archived `.app` files in `.local/` date from September and October 6, before the Sentry SDK and the current native modules, so they cannot run today's JavaScript. Three things are missing:
 
 1. A current EAS `development-simulator` build (README, "iOS development"). Build it on EAS, never locally on this Mac.
-2. A guarded native Metro launch pinned to the loopback fixture API. The journey fixture seam resolves only for web. `npm run dev:mobile` targets hosted staging. `apps/mobile/.env`, `.env.local` and `.env.development.local` all hold a hosted API origin, so a plain `expo start` would likely serve that origin to the simulator (inference).
+2. A guarded native Metro launch pinned to the loopback fixture API. The journey fixture seam resolves only for web. `pnpm run dev:mobile` targets hosted staging. `apps/mobile/.env`, `.env.local` and `.env.development.local` all hold a hosted API origin, so a plain `expo start` would likely serve that origin to the simulator (inference).
 3. One booted simulator, for example `xcrun simctl create` and `boot` with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`, kept closed during builds.
 
 With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_Code_iOS_Simulator__control`) would drive it: `attach`, then `launch` with the `.app` path, then `open_url` with `justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`, then `tap`, `swipe` and `text` on what `screenshot` shows. Prove one feature from the map that way before trusting this section.
 
 ## Gotchas
 
-- Running from a worktree: before Metro, `serve`, `drive` or the journeys, copy the root, `apps/mobile`, `apps/api` and `packages/contracts` `node_modules` from the main checkout with `cp -cR` (an APFS clone). Never symlink them. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. Check `test ! -L node_modules` before you trust a worktree run. Symlinks are fine for Node-only checks such as Jest, ESLint and `node --test`. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
-- Never verify with `npm run dev:web`, `dev:api` or `dev:mobile`. The saved mobile `.env` files point at hosted staging, and Expo's virtual env can prefer `.env.local` even when CLI variables override it. `serve` and `drive` replace that module with the guarded journey environment. Doctor checks the served bundle.
+- Running from a worktree: before Metro, `serve`, `drive` or the journeys, run `pnpm install --frozen-lockfile` in the worktree. It clones every package from the shared pnpm store, so it takes seconds and adds almost no disk. Never symlink `node_modules` from another checkout. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. Check `test ! -L node_modules` before you trust a worktree run. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
+- Never verify with `pnpm run dev:web`, `dev:api` or `dev:mobile`. The saved mobile `.env` files point at hosted staging, and Expo's virtual env can prefer `.env.local` even when CLI variables override it. `serve` and `drive` replace that module with the guarded journey environment. Doctor checks the served bundle.
 - `justgo_test` keeps rows from earlier runs (42 users on 2026-11-05). Compare doctor counts before and after instead of expecting zero.
 - Expo logs `Unable to run simctl` when Command Line Tools are selected. Web runs ignore it.
 - Right after navigation, `find` in the pane can miss controls that are still rendering. Read the page again before concluding a control is absent.

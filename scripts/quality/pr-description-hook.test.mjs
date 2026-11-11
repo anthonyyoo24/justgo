@@ -156,7 +156,7 @@ test('commands that create or edit no PR are ignored without calling gh', (t) =>
     'gh pr list',
     "grep -n 'gh pr create' AGENTS.md",
     'git commit -m "docs: run gh pr edit after a change"',
-    'npm run merge:pr -- 248 --head abc --auto',
+    'pnpm run merge:pr 248 --head abc --auto',
   ]) {
     const result = run(command, { stdout: url });
     assert.equal(result.output, undefined, command);

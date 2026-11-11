@@ -43,12 +43,12 @@ jobs:
           # Validate GitHub syntax/contexts without adding separate shell/Python linters.
           "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes=
       - uses: ./.github/actions/setup-node
-      - run: npm run doctor -w @justgo/mobile
+      - run: pnpm --filter @justgo/mobile run doctor
       # Mobile typechecking generates and verifies fresh Expo route declarations
       # without starting Metro, including on clean CI runners.
-      - run: npm run check:static
+      - run: pnpm run check:static
       - name: Audit API production dependencies
-        run: npm run audit:api
+        run: pnpm run audit:api
   unit:
     runs-on: ubuntu-24.04
     needs: changes
@@ -61,7 +61,7 @@ jobs:
       - uses: ./.github/actions/setup-node
       - name: Collect mobile coverage
         id: mobile-coverage
-        run: npm run test:coverage -w @justgo/mobile
+        run: pnpm --filter @justgo/mobile run test:coverage
       - name: Upload mobile coverage
         if: always() && (steps.mobile-coverage.outcome == 'success' || steps.mobile-coverage.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -71,7 +71,7 @@ jobs:
           if-no-files-found: error
       - name: Collect contracts coverage
         id: contracts-coverage
-        run: npm run test:coverage -w @justgo/contracts
+        run: pnpm --filter @justgo/contracts run test:coverage
       - name: Upload contracts coverage
         if: always() && (steps.contracts-coverage.outcome == 'success' || steps.contracts-coverage.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -121,15 +121,15 @@ jobs:
           sudo apt-get install -y postgresql-client-17 age
           /usr/lib/postgresql/17/bin/pg_dump --version
       - uses: ./.github/actions/setup-database
-      - run: npm run db:migrate
+      - run: pnpm run db:migrate
       # Includes every integration suite and the migration rehearsal exactly once.
       - name: Collect API database coverage
         id: api-database-coverage
         run: node scripts/quality/api-coverage.mjs database
       - name: Verify Workers runtime against isolated PostgreSQL
-        run: npm run test:workers
+        run: pnpm run test:workers
       - name: Rehearse encrypted recovery without resurrecting deleted data
-        run: npm run test:backup:recovery
+        run: pnpm run test:backup:recovery
       - name: Upload API database coverage
         if: always() && (steps.api-database-coverage.outcome == 'success' || steps.api-database-coverage.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -153,7 +153,7 @@ jobs:
       - uses: ./.github/actions/setup-playwright
       - name: Verify app/API/database journeys
         run: |
-          npm run test:journey
+          pnpm run test:journey
           test -s .local/journey-report/index.html
       - name: Upload journey results
         if: always()
@@ -175,11 +175,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-node
-      - run: npm run export:web -w @justgo/mobile
+      - run: pnpm --filter @justgo/mobile run export:web
       - uses: ./.github/actions/setup-playwright
       - name: Verify exported web build
         run: |
-          npm run test:exported-web
+          pnpm run test:exported-web
           test -s .local/exported-web-report/index.html
       - name: Upload exported web results
         if: always()
@@ -191,7 +191,7 @@ jobs:
             .local/exported-web-report/
           include-hidden-files: true
           if-no-files-found: ignore
-      - run: npm run export:ios -w @justgo/mobile
+      - run: pnpm --filter @justgo/mobile run export:ios
   native-icloud:
     runs-on: macos-15
     needs: changes

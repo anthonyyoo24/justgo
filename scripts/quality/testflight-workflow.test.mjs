@@ -274,7 +274,7 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
   }
   assert.match(
     step('Check resolved beta configuration'),
-    /eas env:exec preview .*npm --prefix \.\.\/\.\. run release:beta:check.*--non-interactive/,
+    /eas env:exec preview .*pnpm --dir \.\.\/\.\. run release:beta:check.*--non-interactive/,
   );
   assert.match(
     step('Build signed beta on GitHub without uploading'),

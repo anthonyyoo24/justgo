@@ -1,4 +1,3 @@
-/** @jest-environment node */
 import { JSDOM } from 'jsdom';
 import { renderHook } from '@testing-library/react-native';
 import type { RefObject } from 'react';

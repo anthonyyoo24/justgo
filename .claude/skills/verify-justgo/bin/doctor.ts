@@ -198,7 +198,9 @@ else {
         : null,
   };
   if (ready.status !== 200 || registry.status !== 200)
-    problems.push('api: not the ready fixture API (npm run dev:challenges)');
+    problems.push(
+      'api: not the ready fixture API (pnpm --filter @justgo/api run dev:challenges)',
+    );
   const served = await app();
   report.app = served;
   if (served.bundle !== 200) problems.push('app: Metro did not serve a bundle');

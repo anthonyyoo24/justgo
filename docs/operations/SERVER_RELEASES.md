@@ -3,7 +3,7 @@
 **The Worker release lane is retired.** Anthony moved the API host to Supabase
 Edge Functions. Until the
 [Supabase plan](../implementation-plan/phase-15-supabase-api.md) replaces this
-lane, the Worker workflow and `npm run release:staging:local` still deploy the
+lane, the Worker workflow and `pnpm run release:staging:local` still deploy the
 Worker. Run them only when Anthony's go names the Worker. The database guard,
 release identity and probe rules below carry over.
 
@@ -77,7 +77,7 @@ To provision a database, follow this order:
    `aws-0-ca-central-1.pooler.supabase.com` and username
    `justgo_migrator.<project-ref>`. Supply the project's CA and keep certificate
    and hostname verification on.
-3. Apply the application migrations with `npm run db:migrate`.
+3. Apply the application migrations with `pnpm run db:migrate`.
 4. Connect the runtime role with its own password. The Vercel API that build 5
    still uses connects through the **transaction** pooler on port 6543 as
    `justgo_runtime.<project-ref>`. The Worker connects through Hyperdrive.
@@ -86,7 +86,7 @@ Supabase records the administrative provisioning as its own migration,
 `foundation_roles`. Drizzle's journal in schema `drizzle` records the application
 migrations from `0000_foundation.sql` on. Keep the two runners separate.
 Generate a later domain migration with
-`npm run db:generate -w @justgo/api -- --name <feature_name>`, or a custom one
+`pnpm --filter @justgo/api run db:generate --name <feature_name>`, or a custom one
 with Drizzle Kit's `--custom` option, and review the generated SQL and journal
 together. Managed Auth also needs the operator-installed session-check helper in
 [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
@@ -142,7 +142,7 @@ runner uses its own narrowly scoped credentials, described in
 ## Local branch staging tests
 
 With Anthony's go, a code-only staging test may deploy a committed branch through
-`npm run release:staging:local`. That go does not cover migrations, production
+`pnpm run release:staging:local`. That go does not cover migrations, production
 releases or merges. The lane needs no push, tag or PR, and it does not impersonate
 a GitHub run. The GitHub workflow keeps its exact-main CI and protected-environment
 requirements.
@@ -150,9 +150,9 @@ requirements.
 Run from the repository root:
 
 ```sh
-npm run release:staging:local -- --prepare --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
-npm run db:local
-npm run release:staging:local -- --deploy --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+pnpm run release:staging:local --prepare --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+pnpm run db:local
+pnpm run release:staging:local --deploy --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 ```
 
 Pass the checked-out branch to `--phase-branch` and its exact commit to
@@ -234,9 +234,9 @@ promotion. GitHub also serializes these jobs without cancelling an active releas
 
 ## Local Worker runtime checks
 
-`npm run test:workers` runs the pinned Wrangler and workerd entrypoint against
+`pnpm run test:workers` runs the pinned Wrangler and workerd entrypoint against
 loopback `justgo_test`. `JUSTGO_WORKERS_TEST_PORT` selects another loopback port.
-`npm run profile:workers` writes mode-0600 CPU profiles under
+`pnpm run profile:workers` writes mode-0600 CPU profiles under
 `.local/workers/profiles/`. Both are local evidence only. They do not establish
 hosted Hyperdrive, CPU or account acceptance.
 
