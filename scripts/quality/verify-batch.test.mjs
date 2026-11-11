@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
+  brief,
   exclusion,
   format,
   maxBatchPulls,
@@ -159,5 +162,42 @@ test('the report names every batch and every PR left alone', () => {
     text,
     /Own verifier:\n {2}#4 PR 4: boundary file \.github\/x\.yml/,
   );
+  assert.match(text, /--brief <n>\.\.\.$/);
   assert.equal(format(plan([])), 'No open PR needs a verdict.');
+});
+
+test('the brief names the PRs and carries the verifier rules', () => {
+  const one = brief([12]);
+  assert.match(one, /^Agent description: Verify PR #12\n/);
+  assert.match(
+    one,
+    /JustGO PR #12 \(https:\/\/github\.com\/anthonyyoo24\/justgo\/pull\/12\)\. You did not write it\./,
+  );
+  const two = brief([7, 8]);
+  assert.match(two, /^Agent description: Verify PRs #7, #8\n/);
+  assert.match(two, /each PR/);
+  for (const text of [one, two]) {
+    assert.match(text, /gh pr checks <n>/);
+    assert.match(text, /Do not rerun install/);
+    assert.match(text, /no fuzzer/);
+    assert.match(text, /never real programs such as `say`/);
+    assert.match(text, /File no issues/);
+    assert.match(
+      text,
+      /^Verifier verdict: <PASS\|PASS\+NOTES\|FAIL> on base `<base-sha>`, head `<head-sha>`$/m,
+    );
+    assert.match(text, /^Sensitive: <yes\|no>$/m);
+    assert.match(text, /Failure shown:/);
+  }
+});
+
+test('--brief prints the brief and refuses a missing or bad number', () => {
+  const script = fileURLToPath(new URL('./verify-batch.mjs', import.meta.url));
+  const run = (...args) =>
+    spawnSync(process.execPath, [script, ...args], { encoding: 'utf8' });
+  const ok = run('--brief', '7', '8');
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(ok.stdout.trimEnd(), brief([7, 8]));
+  assert.notEqual(run('--brief').status, 0);
+  assert.notEqual(run('--brief', 'x').status, 0);
 });

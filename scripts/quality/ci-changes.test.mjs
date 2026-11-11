@@ -14,6 +14,7 @@ import test from 'node:test';
 import {
   appJobsNeeded,
   classifyChanges,
+  isToolingOnly,
   nativeICloudNeeded,
 } from './ci-changes.mjs';
 
@@ -23,6 +24,33 @@ test('only a change made entirely of Markdown skips the app jobs', () => {
   assert.equal(appJobsNeeded(['apps/mobile/src/App.tsx']), true);
   assert.equal(appJobsNeeded(['docs/notes.mdx']), true);
   assert.equal(appJobsNeeded([]), true);
+});
+
+test('a change made only of Markdown and agent tooling skips the app jobs', () => {
+  assert.equal(
+    appJobsNeeded([
+      '.claude/hooks/sync-main.mjs',
+      '.claude/settings.json',
+      'scripts/quality/merge-pr.mjs',
+      'scripts/quality/merge-pr.test.mjs',
+      'AGENTS.md',
+    ]),
+    false,
+  );
+  for (const file of [
+    'scripts/quality/api-coverage.mjs',
+    'scripts/quality/ci-changes.mjs',
+    'scripts/quality/generate-route-types.mjs',
+    '.claude/skills/verify-justgo/bin/verify',
+    '.claude/settings.local.json',
+    '.github/workflows/ci.yml',
+    'eslint.config.mjs',
+    'scripts/journeys/run-journey.mjs',
+    'scripts/backups/run.mjs',
+  ]) {
+    assert.equal(isToolingOnly(file), false, file);
+    assert.equal(appJobsNeeded(['.claude/hooks/x.mjs', file]), true, file);
+  }
 });
 
 test('only a change to the iCloud module or the CI workflow runs the native iCloud tests', () => {

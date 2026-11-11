@@ -2,8 +2,27 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { changedPaths } from './git.mjs';
 
+// Agent tooling that the unit, database, journeys and exports jobs never run.
+// Its own tests run in `static`. The files those jobs do run stay out:
+// api-coverage.mjs (unit, database, checks), ci-changes.mjs (this gate) and
+// generate-route-types.mjs (the mobile typecheck).
+const appRunsFromQuality = new Set([
+  'scripts/quality/api-coverage.mjs',
+  'scripts/quality/ci-changes.mjs',
+  'scripts/quality/generate-route-types.mjs',
+]);
+
+export function isToolingOnly(file) {
+  if (file.startsWith('.claude/hooks/') || file === '.claude/settings.json')
+    return true;
+  return file.startsWith('scripts/quality/') && !appRunsFromQuality.has(file);
+}
+
 export function appJobsNeeded(files) {
-  return files.length === 0 || !files.every((file) => file.endsWith('.md'));
+  return (
+    files.length === 0 ||
+    !files.every((file) => file.endsWith('.md') || isToolingOnly(file))
+  );
 }
 
 // The Swift package tests only this module; the workflow counts so job edits run it.

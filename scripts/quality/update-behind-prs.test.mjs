@@ -3,7 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { decide, tokenName, updateBehindPulls } from './update-behind-prs.mjs';
+import {
+  checkStates,
+  decide,
+  tokenName,
+  updateBehindPulls,
+} from './update-behind-prs.mjs';
 
 const workflow = readFileSync(
   new URL('../../.github/workflows/update-behind-prs.yml', import.meta.url),
@@ -12,15 +17,43 @@ const workflow = readFileSync(
 const repo = 'owner/justgo';
 const sha = (n) => String(n).padStart(40, 'a');
 const armed = { enabledAt: '2026-11-09T00:00:00Z' };
-const pull = (number, mergeStateStatus, extra = {}) => ({
-  number,
-  baseRefName: 'main',
-  headRefOid: sha(number),
-  isCrossRepository: false,
-  mergeStateStatus,
-  autoMergeRequest: armed,
-  ...extra,
+// The required check runs on a PR head. Each value is a conclusion, PENDING
+// for a run still going, or MISSING for one not started. All pass by default.
+const rollup = (states = {}) => ({
+  nodes: [
+    {
+      commit: {
+        statusCheckRollup: {
+          contexts: {
+            nodes: ['checks', 'description', 'verdict']
+              .map((name) => [name, states[name] ?? 'SUCCESS'])
+              .filter(([, state]) => state !== 'MISSING')
+              .map(([name, state]) => ({
+                name,
+                status: state === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED',
+                conclusion: state === 'PENDING' ? null : state,
+                startedAt: '2026-11-11T00:00:00Z',
+              })),
+          },
+        },
+      },
+    },
+  ],
 });
+const pull = (number, mergeStateStatus, extra = {}) => {
+  const { checks, ...rest } = extra;
+  return {
+    number,
+    baseRefName: 'main',
+    headRefOid: sha(number),
+    isCrossRepository: false,
+    mergeStateStatus,
+    autoMergeRequest: armed,
+    commits: rollup(checks),
+    ...rest,
+  };
+};
+const failing = { checks: { checks: 'FAILURE' } };
 
 // A fake GitHub. `pages` answers successive GraphQL listings: each entry is
 // the list of PRs for that listing, or an array of pages for one listing.
@@ -106,39 +139,120 @@ async function runWith(github, extra = {}) {
   return { result, lines, sleeps };
 }
 
-test('only armed PRs on main that GitHub reports BEHIND are updated, pinned to their head', async () => {
+test('only the lowest-numbered armed PR on main that is behind with a passing verdict is updated, pinned to its head', async () => {
   const github = fakeGitHub({
     listings: [
       [
-        pull(1, 'BEHIND'),
+        pull(1, 'BEHIND', { checks: { verdict: 'FAILURE' } }),
         pull(2, 'BEHIND', { autoMergeRequest: null }),
         pull(3, 'DIRTY'),
-        pull(4, 'BLOCKED'),
-        pull(5, 'CLEAN'),
+        pull(4, 'BLOCKED', failing),
+        pull(5, 'BEHIND', failing),
         pull(6, 'BEHIND', { baseRefName: 'feature' }),
         pull(7, 'BEHIND', { isCrossRepository: true }),
         pull(8, 'BEHIND'),
+        pull(9, 'BEHIND', { checks: { description: 'FAILURE' } }),
       ],
     ],
   });
   const { result, lines } = await runWith(github);
-  assert.deepEqual(github.updated(), [
-    { number: 1, expected: sha(1) },
-    { number: 8, expected: sha(8) },
+  assert.deepEqual(github.updated(), [{ number: 5, expected: sha(5) }]);
+  assert.deepEqual(result.updated, [5]);
+  assert.deepEqual(result.skipped, [
+    { number: 1, reason: 'no passing verdict covers its head yet' },
+    {
+      number: 3,
+      reason: 'it conflicts with main; rebase it and get a fresh verdict',
+    },
+    { number: 4, reason: 'it is not behind main (BLOCKED)' },
+    {
+      number: 7,
+      reason: 'its branch is in a fork, which this job does not update',
+    },
+    { number: 9, reason: 'its description check fails' },
+    { number: 8, reason: '#5 goes first; this waits its turn' },
   ]);
-  assert.deepEqual(result.updated, [1, 8]);
-  assert.deepEqual(
-    result.skipped.map(({ number }) => number),
-    [3, 4, 5, 7],
-  );
-  assert.match(lines.join('\n'), /#3: skipped, it conflicts with main/);
-  assert.match(
-    lines.join('\n'),
-    /#4: skipped, it is not behind main \(BLOCKED\)/,
-  );
-  assert.match(lines.join('\n'), /#7: skipped, its branch is in a fork/);
   assert.doesNotMatch(lines.join('\n'), /#2|#6/);
-  assert.match(lines.at(-1), /Updated 2, skipped 4, failed 0\./);
+  assert.match(lines.at(-1), /Updated 1, skipped 6, failed 0\./);
+});
+
+test('an up-to-date armed PR with no failed required check holds every update', async () => {
+  for (const holder of [
+    pull(1, 'CLEAN'),
+    pull(1, 'BLOCKED', { checks: { checks: 'PENDING' } }),
+    pull(1, 'BLOCKED', { checks: { verdict: 'PENDING', checks: 'MISSING' } }),
+    pull(1, 'UNSTABLE'),
+  ]) {
+    const github = fakeGitHub({ listings: [[holder, pull(2, 'BEHIND')]] });
+    const { result, lines } = await runWith(github);
+    assert.deepEqual(github.updated(), []);
+    assert.deepEqual(result.skipped, [
+      {
+        number: 2,
+        reason: '#1 is up to date and about to merge; this waits its turn',
+      },
+    ]);
+    assert.match(
+      lines.join('\n'),
+      /#1: up to date with no failed required check/,
+    );
+  }
+});
+
+test('a failed required check on the up-to-date PR releases the hold', async () => {
+  for (const name of ['checks', 'description', 'verdict']) {
+    const github = fakeGitHub({
+      listings: [
+        [
+          pull(1, 'BLOCKED', { checks: { [name]: 'FAILURE' } }),
+          pull(2, 'BEHIND'),
+        ],
+      ],
+    });
+    const { result } = await runWith(github);
+    assert.deepEqual(result.updated, [2]);
+  }
+});
+
+test('the newest run of each required check counts, and a run not started is pending', () => {
+  const run = (name, conclusion, startedAt) => ({
+    name,
+    status: conclusion ? 'COMPLETED' : 'QUEUED',
+    conclusion,
+    startedAt,
+  });
+  const states = checkStates({
+    commits: {
+      nodes: [
+        {
+          commit: {
+            statusCheckRollup: {
+              contexts: {
+                nodes: [
+                  run('verdict', 'SUCCESS', '2026-11-11T02:00:00Z'),
+                  run('verdict', 'FAILURE', '2026-11-11T01:00:00Z'),
+                  run('checks', 'SUCCESS', '2026-11-11T01:00:00Z'),
+                  run('checks', null, null),
+                  run('unit', 'FAILURE', '2026-11-11T01:00:00Z'),
+                  {},
+                ],
+              },
+            },
+          },
+        },
+      ],
+    },
+  });
+  assert.deepEqual(states, {
+    checks: 'pending',
+    description: 'pending',
+    verdict: 'success',
+  });
+  assert.deepEqual(checkStates({}), {
+    checks: 'pending',
+    description: 'pending',
+    verdict: 'pending',
+  });
 });
 
 test('every request carries the token and asks for the REST API version', async () => {
@@ -156,6 +270,10 @@ test('every request carries the token and asks for the REST API version', async 
     after: null,
   });
   assert.match(list.body.query, /states: OPEN, baseRefName: "main"/);
+  assert.match(
+    list.body.query,
+    /statusCheckRollup[\s\S]*CheckRun \{ name status conclusion startedAt \}/,
+  );
 });
 
 test('an update failure other than a refusal fails the run without a retry', async () => {
@@ -177,21 +295,36 @@ test('an update failure other than a refusal fails the run without a retry', asy
 test('a PR whose head moved under a racing update is read again once and updated on its new head', async () => {
   const moved = 'b'.repeat(40);
   const github = fakeGitHub({
-    listings: [
-      [pull(1, 'BEHIND'), pull(2, 'BEHIND')],
-      [pull(1, 'BEHIND', { headRefOid: moved }), pull(2, 'BEHIND')],
-    ],
+    listings: [[pull(1, 'BEHIND')], [pull(1, 'BEHIND', { headRefOid: moved })]],
     updates: { 1: (expected) => (expected === moved ? 202 : 422) },
   });
   const { result, sleeps } = await runWith(github);
   assert.deepEqual(github.updated(), [
     { number: 1, expected: sha(1) },
-    { number: 2, expected: sha(2) },
     { number: 1, expected: moved },
   ]);
-  assert.deepEqual(result, { updated: [2, 1], skipped: [], failed: [] });
+  assert.deepEqual(result, { updated: [1], skipped: [], failed: [] });
   assert.equal(github.listed(), 2);
   assert.deepEqual(sleeps, [5]);
+});
+
+test('a refused PR gives its turn to the next, which is not read again', async () => {
+  const github = fakeGitHub({
+    listings: [[pull(1, 'BEHIND'), pull(2, 'BEHIND'), pull(3, 'BEHIND')]],
+    updates: { 1: 422 },
+  });
+  const { result, sleeps } = await runWith(github);
+  assert.deepEqual(
+    github.updated().map(({ number }) => number),
+    [1, 2],
+  );
+  assert.deepEqual(result.updated, [2]);
+  assert.deepEqual(result.skipped, [
+    { number: 3, reason: '#2 goes first; this waits its turn' },
+    { number: 1, reason: '#2 goes first; this waits its turn' },
+  ]);
+  assert.equal(github.listed(), 1);
+  assert.deepEqual(sleeps, []);
 });
 
 test('a refused PR that is no longer behind, conflicts or is gone is skipped, not retried', async () => {
@@ -245,18 +378,22 @@ test('a refusal that persists after the second read fails the run', async () => 
   assert.match(lines.at(-1), /Updated 0, skipped 0, failed 1\./);
 });
 
-test('UNKNOWN is asked again until GitHub decides, and only those PRs are rechecked', async () => {
+test('UNKNOWN is asked again until GitHub decides', async () => {
   const github = fakeGitHub({
     listings: [
       [pull(1, 'UNKNOWN'), pull(2, 'BEHIND'), pull(3, 'UNKNOWN')],
-      [pull(1, 'UNKNOWN'), pull(2, 'BEHIND'), pull(3, 'CLEAN')],
-      [pull(1, 'BEHIND'), pull(2, 'BEHIND'), pull(3, 'CLEAN')],
+      [pull(1, 'UNKNOWN'), pull(2, 'BEHIND'), pull(3, 'DIRTY')],
+      [pull(1, 'BEHIND'), pull(2, 'BEHIND'), pull(3, 'DIRTY')],
     ],
   });
   const { result, sleeps } = await runWith(github);
-  assert.deepEqual(result.updated, [2, 1]);
+  assert.deepEqual(result.updated, [1]);
   assert.deepEqual(result.skipped, [
-    { number: 3, reason: 'it is not behind main (CLEAN)' },
+    {
+      number: 3,
+      reason: 'it conflicts with main; rebase it and get a fresh verdict',
+    },
+    { number: 2, reason: '#1 goes first; this waits its turn' },
   ]);
   assert.deepEqual(sleeps, [5, 5]);
 });
@@ -264,25 +401,26 @@ test('UNKNOWN is asked again until GitHub decides, and only those PRs are rechec
 test('a PR still UNKNOWN after every attempt is tried anyway, and GitHub decides', async () => {
   const github = fakeGitHub({
     listings: [[pull(1, 'UNKNOWN'), pull(2, 'UNKNOWN')]],
-    updates: { 2: 422 },
+    updates: { 1: 422 },
   });
   const { result, lines, sleeps } = await runWith(github);
-  assert.equal(sleeps.length, 3);
-  assert.deepEqual(result.updated, [1]);
+  assert.equal(sleeps.length, 2);
+  assert.deepEqual(result.updated, [2]);
   assert.deepEqual(
     result.skipped.map(({ number }) => number),
-    [2],
+    [1],
   );
   assert.deepEqual(result.failed, []);
   assert.match(lines.join('\n'), /#1: GitHub still reports UNKNOWN/);
+  assert.match(lines.join('\n'), /#2: GitHub still reports UNKNOWN/);
 });
 
 test('every page of open PRs is read', async () => {
   const github = fakeGitHub({
-    listings: [[[pull(1, 'BEHIND')], [pull(2, 'CLEAN')], [pull(3, 'BEHIND')]]],
+    listings: [[[pull(3, 'BEHIND')], [pull(2, 'DIRTY')], [pull(1, 'BEHIND')]]],
   });
   const { result } = await runWith(github);
-  assert.deepEqual(result.updated, [1, 3]);
+  assert.deepEqual(result.updated, [1]);
   assert.deepEqual(
     github.calls
       .filter((call) => call.method === 'POST')
@@ -380,6 +518,11 @@ test('the workflow runs on main only, with the PAT secret and no PR code', () =>
   const [triggers, rest] = workflow.split(/^permissions:$/m);
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(triggers, /^ {2}workflow_dispatch:$/m);
+  // A run that finishes may free the next PR in line.
+  assert.match(
+    triggers,
+    /^ {2}workflow_run:\n {4}workflows: \[Foundation checks, PR description\]\n {4}types: \[completed\]$/m,
+  );
   assert.doesNotMatch(workflow, /pull_request/);
   assert.match(rest, /^ {2}contents: read$/m);
   assert.match(workflow, /^ {4}if: github\.ref == 'refs\/heads\/main'$/m);
