@@ -351,6 +351,7 @@ test('the trigger is session start, an Agent call or a worktree add', () => {
     'cd /repo;git worktree add w',
     'a|git worktree add w',
     'a&git worktree add w',
+    'case x in x)git worktree add w;; esac',
     'git --attr-source HEAD worktree add w',
     'git --no-pager worktree add w',
     'git --version;git worktree add w',

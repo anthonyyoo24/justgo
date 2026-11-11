@@ -39,10 +39,17 @@ const valueOptions = new Set([
 // such as /usr/bin/git counts too. Each word is read once, so a long command
 // costs linear time. A miss only skips a sync, since every Agent call also
 // syncs, and a false match only costs one.
+// A $(...) with no space inside, such as `-C $(pwd)`, becomes one placeholder
+// word first, so an option keeps its value. Braces and ! split nothing, since
+// a brace group or a ! before a command stands as its own word, and inside a
+// value such as `-C ${REPO}` or `-c alias.w=!f` they belong to it. An empty
+// word, at either end, matches nothing.
+const substitution = /\$\([^\s()]*\)/g;
+
 function createsWorktree(command) {
   const words = shellText(command)
-    .split(/[\s;&|()`{}!]+/)
-    .filter(Boolean);
+    .replace(substitution, '_')
+    .split(/[\s;&|()`]+/);
   for (let at = 0; at < words.length; at += 1) {
     if (words[at] !== 'git' && !words[at].endsWith('/git')) continue;
     at += 1;
