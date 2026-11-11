@@ -132,6 +132,7 @@ function fixture(t) {
         busyPaths: rest.busyPaths ?? (() => busy),
         pullRequests: () => prs,
         log: (line) => logs.push(line),
+        remove: rest.remove,
       });
       return Object.fromEntries(
         results.map((entry) => [path.basename(entry.path), entry.verdict]),
@@ -745,6 +746,26 @@ test('never forces a removal when a worktree changes after its check', (t) => {
   });
   assert.equal(existsSync(path.join(changed, 'draft.txt')), true);
   assert.deepEqual(repo.logs, []);
+});
+
+// #275
+test('finishes a removal killed partway on the next sweep, without --force', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const killed = repo.add('killed', '--detach');
+  // git deletes the files first and its record last, so a kill partway
+  // leaves a registered worktree with some tracked files gone.
+  const kill = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    throw new Error('killed');
+  };
+  assert.throws(() => repo.run({ remove: kill }), /killed/);
+  repo.run();
+  assert.equal(existsSync(killed), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+  assert.equal(git(repo.main, 'status', '--porcelain'), '');
 });
 
 test('leaves a worktree inside another worktree to the outer one', (t) => {

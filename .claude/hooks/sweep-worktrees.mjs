@@ -553,8 +553,10 @@ export function lock(main) {
 }
 
 // deps: { now, busyPaths(): string[] | undefined,
-//         pullRequests(): object[] | undefined, home, log(line), dryRun }
-// home defaults to the user's home folder, where Claude keeps transcripts.
+//         pullRequests(): object[] | undefined, home, log(line), dryRun,
+//         remove(worktree): boolean }
+// home defaults to the user's home folder, where Claude keeps transcripts,
+// and remove to `git worktree remove` without --force.
 export function sweep(dir, deps) {
   if (!isMainCheckout(dir)) return [];
   const main = realpathSync(git(dir, ['rev-parse', '--show-toplevel']));
@@ -585,6 +587,10 @@ function sweepCandidates(main, root, candidates, deps, held) {
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
   const history = branchHistory(main);
   const prs = deps.pullRequests();
+  const remove =
+    deps.remove ??
+    ((worktree) =>
+      succeeds(main, ['worktree', 'remove', worktree], removeTimeout));
   const results = [];
   for (const entry of candidates) {
     held.refresh();
@@ -622,7 +628,7 @@ function sweepCandidates(main, root, candidates, deps, held) {
       }
       // No --force: git refuses if the worktree changed since the check.
       if (ref) {
-        if (succeeds(main, ['worktree', 'remove', entry.path], removeTimeout))
+        if (remove(entry.path))
           deps.log(
             `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}`,
           );
