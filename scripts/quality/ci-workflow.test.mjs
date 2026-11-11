@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import yaml from 'js-yaml';
 import {
   action,
   commands,
@@ -14,14 +15,46 @@ const [triggers] = workflow.split(/^permissions:$/m);
 const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
 const producers = ['static', ...appJobs];
 const workflowsUrl = new URL('../../.github/workflows/', import.meta.url);
+const actionsUrl = new URL('../../.github/actions/', import.meta.url);
+const actionEntries = readdirSync(actionsUrl);
+const actionFolders = actionEntries.filter((name) =>
+  existsSync(new URL(`${name}/action.yml`, actionsUrl)),
+);
 const definitions = [
   ...readdirSync(workflowsUrl)
-    .filter((name) => name.endsWith('.yml'))
+    .filter((name) => /\.ya?ml$/.test(name))
     .map((name) => readFileSync(new URL(name, workflowsUrl), 'utf8')),
-  ...readdirSync(new URL('../../.github/actions/', import.meta.url)).map(
-    action,
-  ),
+  ...actionFolders.map(action),
 ];
+const doctorSkip = /\bEXPO_(?:OFFLINE|NO_DEPENDENCY_VALIDATION|DOCTOR_\w+)\b/g;
+const doctorOptIns = new Set(['EXPO_DOCTOR_ENABLE_DIRECTORY_CHECK']);
+const doctorSkipsIn = (source) => {
+  const found = [];
+  const visit = (value) => {
+    if (typeof value === 'string')
+      found.push(
+        ...[...value.matchAll(doctorSkip)]
+          .map(([name]) => name)
+          .filter((name) => !doctorOptIns.has(name)),
+      );
+    else if (value && typeof value === 'object')
+      for (const [key, child] of Object.entries(value)) {
+        visit(key);
+        visit(child);
+      }
+  };
+  visit(yaml.load(source));
+  return found;
+};
+
+test('every .github/actions entry is a composite action folder with action.yml', () => {
+  assert.deepEqual(
+    actionEntries.filter((name) => !actionFolders.includes(name)),
+    [],
+    'Keep only action folders in .github/actions, each with its definition named action.yml, not action.yaml',
+  );
+  assert.ok(actionFolders.length > 0);
+});
 
 test('database CI runs real Worker and encrypted recovery boundaries after shared prerequisites', () => {
   const job = jobs.database;
@@ -273,11 +306,37 @@ test('every external action in every workflow has an immutable reviewed-release 
 
 test('Expo Doctor runs live in CI without offline mode or skipped checks', () => {
   for (const source of definitions)
-    assert.doesNotMatch(
-      source,
-      /\bEXPO_(?:OFFLINE|NO_DEPENDENCY_VALIDATION|DOCTOR_\w+)\b/,
+    assert.deepEqual(
+      doctorSkipsIn(source),
+      [],
       'Fix the Expo Doctor finding instead of hiding live metadata checks',
     );
+});
+
+test('the Expo Doctor ban reads variables and commands, not YAML comments or opt-in checks', () => {
+  assert.deepEqual(
+    doctorSkipsIn(`
+# EXPO_OFFLINE stays unset so Expo Doctor reads live metadata.
+env:
+  EXPO_DOCTOR_ENABLE_DIRECTORY_CHECK: 1
+`),
+    [],
+  );
+  assert.deepEqual(
+    doctorSkipsIn(`
+env:
+  EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: 1
+steps:
+  - run: EXPO_OFFLINE=1 pnpm run check
+  - run: pnpm run doctor
+    env: { EXPO_NO_DEPENDENCY_VALIDATION: 1 }
+`),
+    [
+      'EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK',
+      'EXPO_OFFLINE',
+      'EXPO_NO_DEPENDENCY_VALIDATION',
+    ],
+  );
 });
 
 test('Jest uses one local worker and two on CI without changing local verification ordering', () => {
