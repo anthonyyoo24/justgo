@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { ownerTransactions } from '../src/db/owner-transaction.js';
 import { createManagedAuthVerifier } from '../src/identity/managed-verifier.js';
 import { createServerErrorReporter } from '../src/http/server-error-reporter.js';
 import { serverDiagnosticConfiguration } from '../src/http/sentry-configuration.js';
@@ -49,9 +51,28 @@ export async function checkWorkerOutboundAdapters() {
     sessionId: claims.session_id,
     expiresAt: new Date(claims.exp * 1000).toISOString(),
   });
+
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 1));
+  const database = drizzle.mock();
+  database.transaction = async (work) => {
+    await tick();
+    return work({} as Parameters<typeof work>[0]);
+  };
+  let deferred: Promise<unknown> | undefined;
+  await ownerTransactions(database).transaction(async () => {
+    await assert.rejects(verify(token), { code: 'UNAVAILABLE' });
+    await tick();
+    await assert.rejects(verify(token), { code: 'UNAVAILABLE' });
+    deferred = tick().then(() => verify(token));
+  });
+  assert.equal(authCalls, 1, 'Owner transaction refused provider I/O');
+  await verify(token);
+  await deferred;
+  assert.equal(authCalls, 3, 'Provider I/O resumed after the transaction');
+
   authStatus = 307;
   await assert.rejects(verify(token), { code: 'UNAVAILABLE', status: 503 });
-  assert.equal(authCalls, 2);
+  assert.equal(authCalls, 4);
 
   const config = serverDiagnosticConfiguration(
     true,
