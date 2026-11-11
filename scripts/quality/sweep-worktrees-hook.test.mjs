@@ -9,6 +9,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -24,7 +25,9 @@ import {
   idleMs,
   localScratch,
   prState,
+  staleLockMs,
   sweep,
+  takeOver,
   transcriptDir,
 } from '../../.claude/hooks/sweep-worktrees.mjs';
 
@@ -470,6 +473,30 @@ test('archives under a new name when an earlier archive holds the name', (t) => 
   assert.deepEqual(readdirSync(path.join(store, 'taken-2')), ['new.md']);
 });
 
+test('never overwrites an archive that a same-name worktree on the same commit left', (t) => {
+  const repo = fixture(t);
+  // An earlier verifier checkout of the same PR head left its archive.
+  git(repo.main, 'update-ref', 'refs/archive/worktrees/ver-9', 'main');
+  const store = path.join(repo.main, '.local', 'archived-worktrees');
+  mkdirSync(path.join(store, 'ver-9'), { recursive: true });
+  writeFileSync(path.join(store, 'ver-9', 'verdict.md'), 'earlier verdict\n');
+  const again = repo.add('ver-9', '--detach');
+  mkdirSync(path.join(again, '.local'));
+  writeFileSync(path.join(again, '.local', 'verdict.md'), 'later verdict\n');
+  assert.deepEqual(repo.run(), { 'ver-9': 'remove' });
+  const main = git(repo.main, 'rev-parse', 'main');
+  assert.equal(archived(repo.main, 'ver-9'), main);
+  assert.equal(archived(repo.main, 'ver-9-2'), main);
+  assert.equal(
+    readFileSync(path.join(store, 'ver-9', 'verdict.md'), 'utf8'),
+    'earlier verdict\n',
+  );
+  assert.equal(
+    readFileSync(path.join(store, 'ver-9-2', 'verdict.md'), 'utf8'),
+    'later verdict\n',
+  );
+});
+
 test('keeps a worktree whose .local folder cannot be copied', (t) => {
   const repo = fixture(t);
   const sealed = repo.add('sealed', '--detach');
@@ -818,6 +845,40 @@ test('runs one sweep at a time and takes over the lock of a sweep that died', (t
   writeFileSync(file, `${dead}\n`);
   assert.deepEqual(repo.run(), { idle: 'remove' });
   assert.equal(existsSync(file), false);
+});
+
+test('takes over a lock older than the stale limit even when its PID now names a live process', (t) => {
+  const repo = fixture(t);
+  const idle = repo.add('idle', '--detach');
+  const file = path.join(repo.main, '.local', 'worktree-sweep.lock');
+  mkdirSync(path.dirname(file), { recursive: true });
+  // After a reboot, the PID a dead sweep wrote can name an unrelated process.
+  writeFileSync(file, `${process.pid}\n`);
+  const old = (Date.now() - staleLockMs - 60_000) / 1000;
+  utimesSync(file, old, old);
+  assert.deepEqual(repo.run(), { idle: 'remove' });
+  assert.equal(existsSync(idle), false);
+  assert.equal(existsSync(file), false);
+});
+
+test('a sweep that judged a lock stale never removes a fresh lock another sweep took first', (t) => {
+  const dir = realpathSync(mkdtempSync(path.join(tmpdir(), 'sweep-lock-')));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'worktree-sweep.lock');
+  const dead = spawnSync(process.execPath, ['-e', '']).pid;
+  writeFileSync(file, `${dead}\n`);
+  const old = (Date.now() - staleLockMs - 60_000) / 1000;
+  utimesSync(file, old, old);
+  const judged = statSync(file);
+  // Between that look and the takeover, another sweep replaced the stale
+  // lock with its own.
+  rmSync(file);
+  writeFileSync(file, `${process.pid}\n`);
+  assert.equal(takeOver(file, judged), false);
+  assert.equal(readFileSync(file, 'utf8'), `${process.pid}\n`);
+  assert.deepEqual(readdirSync(dir), ['worktree-sweep.lock']);
+  assert.equal(takeOver(file, statSync(file)), true);
+  assert.deepEqual(readdirSync(dir), []);
 });
 
 test('leaves worktrees outside .claude/worktrees and does nothing from a linked worktree', (t) => {

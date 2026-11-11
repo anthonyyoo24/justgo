@@ -1,15 +1,21 @@
 import { execFileSync, spawn } from 'node:child_process';
 import {
   appendFileSync,
+  closeSync,
   cpSync,
   existsSync,
+  fstatSync,
+  linkSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
@@ -421,24 +427,26 @@ function refCommit(main, ref) {
 }
 
 // Keeps the worktree's HEAD commit reachable with a local ref and copies its
-// .local/ records into the main checkout, leaving out tool output. A name an
-// earlier archive used for another commit gets a numbered slot, so no archive
-// is overwritten, and a retry after a refused removal reuses its own slot.
-// Returns the ref, or throws when it cannot archive.
+// .local/ records into the main checkout, leaving out tool output. Verifier
+// checkouts reuse names such as ver-<n>, often on the same commit, so every
+// archive takes the first numbered slot with neither a ref nor a folder, and
+// no earlier archive is ever overwritten. A retry after a refused removal
+// takes a new slot too. Returns the ref, or throws when it cannot archive.
 export function archive(main, entry, name) {
   for (let n = 1; n <= 100; n += 1) {
     const slot = n === 1 ? name : `${name}-${n}`;
     const ref = `refs/archive/worktrees/${slot}`;
     const dest = path.join(main, '.local', 'archived-worktrees', slot);
-    const held = refCommit(main, ref);
-    if (held ? held !== entry.head : existsSync(dest)) continue;
+    if (refCommit(main, ref) || existsSync(dest)) continue;
     // An empty old value makes git refuse a ref that appeared meanwhile.
-    if (!held) git(main, ['update-ref', ref, entry.head, '']);
+    git(main, ['update-ref', ref, entry.head, '']);
     const local = path.join(entry.path, '.local');
     if (existsSync(local))
       cpSync(local, dest, {
         recursive: true,
         verbatimSymlinks: true,
+        force: false,
+        errorOnExist: true,
         filter: (file) =>
           file === local || !localScratch(path.relative(local, file)),
       });
@@ -464,27 +472,82 @@ function alive(pid) {
   }
 }
 
-// Session starts and ends overlap, so one sweep runs at a time. A lock left by
-// a sweep that died is taken over. Returns a release function, or undefined
-// while another sweep runs.
+// A running sweep touches its lock before each worktree, and one removal gets
+// at most `removeTimeout`, so a lock this old belongs to no running sweep even
+// when its PID now names another process, as after a reboot.
+export const staleLockMs = 30 * 60_000;
+
+const sameFile = (a, b) =>
+  a.ino === b.ino && a.birthtimeMs === b.birthtimeMs && a.mtimeMs === b.mtimeMs;
+
+// Moves a lock judged stale aside, so only one sweep can take it over. When
+// the file moved is not the one judged, another sweep took the lock first, so
+// it goes back.
+export function takeOver(file, judged) {
+  const aside = `${file}.${process.pid}.${Date.now()}`;
+  try {
+    renameSync(file, aside);
+  } catch {
+    return false;
+  }
+  const moved = statSync(aside);
+  if (!sameFile(moved, judged)) {
+    try {
+      linkSync(aside, file);
+    } catch {
+      // A third sweep holds the lock now.
+    }
+    rmSync(aside, { force: true });
+    return false;
+  }
+  rmSync(aside, { force: true });
+  return true;
+}
+
+// Session starts and ends overlap, so one sweep runs at a time. Returns
+// { refresh, release }, or undefined while another sweep runs.
 export function lock(main) {
   const file = path.join(main, '.local', 'worktree-sweep.lock');
   mkdirSync(path.dirname(file), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       writeFileSync(file, `${process.pid}\n`, { flag: 'wx' });
-      return () => rmSync(file, { force: true });
+      const own = statSync(file);
+      const owned = () => {
+        try {
+          return statSync(file).ino === own.ino;
+        } catch {
+          return false;
+        }
+      };
+      return {
+        refresh() {
+          const now = new Date();
+          if (owned()) utimesSync(file, now, now);
+        },
+        release() {
+          if (owned()) rmSync(file, { force: true });
+        },
+      };
     } catch (error) {
       if (error?.code !== 'EEXIST') return undefined;
     }
+    let judged;
     let owner;
     try {
-      owner = Number(readFileSync(file, 'utf8'));
+      const fd = openSync(file, 'r');
+      try {
+        judged = fstatSync(fd);
+        owner = Number(readFileSync(fd, 'utf8'));
+      } finally {
+        closeSync(fd);
+      }
     } catch {
       continue;
     }
-    if (alive(owner)) return undefined;
-    rmSync(file, { force: true });
+    if (alive(owner) && Date.now() - judged.mtimeMs < staleLockMs)
+      return undefined;
+    if (!takeOver(file, judged)) return undefined;
   }
   return undefined;
 }
@@ -507,16 +570,16 @@ export function sweep(dir, deps) {
       ),
   );
   if (candidates.length === 0) return [];
-  const release = deps.dryRun ? () => {} : lock(main);
-  if (!release) return [];
+  const held = deps.dryRun ? { refresh() {}, release() {} } : lock(main);
+  if (!held) return [];
   try {
-    return sweepCandidates(main, root, candidates, deps);
+    return sweepCandidates(main, root, candidates, deps, held);
   } finally {
-    release();
+    held.release();
   }
 }
 
-function sweepCandidates(main, root, candidates, deps) {
+function sweepCandidates(main, root, candidates, deps, held) {
   const started = Date.now();
   const busy = deps.busyPaths();
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
@@ -524,6 +587,7 @@ function sweepCandidates(main, root, candidates, deps) {
   const prs = deps.pullRequests();
   const results = [];
   for (const entry of candidates) {
+    held.refresh();
     const name = path.relative(root, entry.path);
     let verdict;
     try {
