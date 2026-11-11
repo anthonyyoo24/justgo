@@ -7,7 +7,6 @@ import {
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
-  backend,
   card,
   deferred,
   input,
@@ -54,7 +53,6 @@ beforeEach(async () => {
     accountId: owner,
     storage,
     localJournal: memoryLocalJournal(owner, storage),
-    transport: backend(),
     today,
     timeZone: zone,
   });
@@ -102,7 +100,6 @@ it('replaces the missing-activity message with a working editor after a slow jou
     accountId: owner,
     storage,
     localJournal: memoryLocalJournal(owner, storage),
-    transport: backend(),
     today,
     timeZone: zone,
   });

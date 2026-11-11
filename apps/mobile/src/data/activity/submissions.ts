@@ -22,7 +22,7 @@ function activityDate(startedAt: string, timeZone: string) {
     .join('-');
 }
 // Domain updates are synchronous; the repository commits their consistent
-// snapshot before navigation, and the sender owns subsequent external delivery.
+// snapshot before navigation.
 export function addCompletion(
   journal: Journal,
   input: CreateAttempt,

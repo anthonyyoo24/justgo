@@ -10,7 +10,6 @@ import { Platform, Pressable, StyleSheet, type TextInput } from 'react-native';
 import { AccountRepository } from '../../../../data/activity/repository';
 import {
   MemoryStorage,
-  backend,
   owner,
   today,
   zone,
@@ -36,7 +35,6 @@ beforeEach(async () => {
   repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
   });

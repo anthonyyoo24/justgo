@@ -119,7 +119,7 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 - `aria-*` props, `pointerEvents` and CSS-looking styles in React Native components do not make the code web-only. Do not strip them as browser leftovers.
 - Install a failure route before the navigation that starts the targeted work. For a one-shot fault after sign-in, first send the old page to `about:blank` so its background requests cannot consume the fault. Wait on the intended request, not on a sleep or a longer timeout.
 - A phone development server on LAN port 8081 blocks the drive's Expo port. Move the drive with `JUSTGO_JOURNEY_APP_PORT`.
-- `e2e/local-sync.spec.ts`, `cleanup-isolation.spec.ts` and `network-isolation.spec.ts` test the repository, transport and fixture safety, not UI. A native drive does not replace them.
+- `e2e/local-sync.spec.ts`, `cleanup-isolation.spec.ts` and `network-isolation.spec.ts` test the repository and fixture safety, not UI. A native drive does not replace them.
 - The Maestro flow and `test:native` were retired on November 2. Do not restore them.
 - Uncached illustrations load over HTTP from Metro in a development client. Offline artwork needs a self-contained build.
 - Earlier simulator drags (XcodeBuildMCP, mirrored pointer, Computer Use) did not commit native gestures. Drive the equivalent button path and leave swipe feel to a physical phone.

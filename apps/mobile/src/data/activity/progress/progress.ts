@@ -10,15 +10,6 @@ export type ProgressMetrics = {
   currentStreak: number;
   bestStreak: number;
 };
-export function preserveNewerReflection(
-  incoming: Attempt,
-  retained?: Attempt,
-): Attempt {
-  return retained &&
-    (retained.reflection?.revision ?? 0) > (incoming.reflection?.revision ?? 0)
-    ? { ...incoming, reflection: retained.reflection }
-    : incoming;
-}
 const shiftDay = (date: string, offset: number) =>
   new Date(Date.parse(`${date}T12:00:00Z`) + offset * 86_400_000)
     .toISOString()
