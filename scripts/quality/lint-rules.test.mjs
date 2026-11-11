@@ -147,6 +147,28 @@ const cases = [
       "const { FlatList } = require('react-native-gesture-handler'); export const List = FlatList;",
       filePath,
     ],
+    ...['SectionList', 'VirtualizedList', 'VirtualizedSectionList'].map(
+      (list) => [
+        'no-restricted-imports',
+        `import { ${list} } from 'react-native'; export const List = ${list};`,
+        filePath,
+      ],
+    ),
+    [
+      'no-restricted-imports',
+      "import { LegacyFlatList } from 'react-native-gesture-handler'; export const List = LegacyFlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import { Animated } from 'react-native'; export const List = Animated.SectionList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "const { VirtualizedList } = require('react-native'); export const List = VirtualizedList;",
+      filePath,
+    ],
     // The FlatList property ban replaces the mobile block's crypto property bans unless it repeats them.
     [
       'no-restricted-properties',
