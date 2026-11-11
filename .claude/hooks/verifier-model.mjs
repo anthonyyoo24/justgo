@@ -58,11 +58,16 @@ const sonnetName = new RegExp(
   String.raw`^\s*(?:${[...routinePrefixes, ...pstackRolePrefixes].join('|')})s?(?![\w-])`,
   'i',
 );
-// The PR the brief names. Without exactly one, the hook cannot know the diff.
-// A link names its repository. `PR #N` means this one.
-const thisRepo = 'anthonyyoo24/justgo';
+export const thisRepo = 'anthonyyoo24/justgo';
 const prReference =
   /(?:\bPR\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)(\d+)\b/gi;
+// Each PR a text names, as lowercase `owner/repo#N`. A link names its
+// repository. `PR #N` means this one. review-rounds-guard.mjs reads links the
+// same way and also reads lists such as `PRs #7, #8`.
+const prKeysIn = (text) =>
+  [...(text ?? '').matchAll(prReference)].map(
+    ([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`,
+  );
 // GitHub lists at most 3000 files of a PR, so a list that long may be cut.
 export const maxFiles = 3000;
 
@@ -83,13 +88,10 @@ export function kindOf(input) {
   return undefined;
 }
 
+// The PR the brief names. Without exactly one, the hook cannot know the diff.
 export function prOf(input) {
   const prs = new Set(
-    [
-      ...`${input.description ?? ''}\n${input.prompt ?? ''}`.matchAll(
-        prReference,
-      ),
-    ].map(([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`),
+    prKeysIn(`${input.description ?? ''}\n${input.prompt ?? ''}`),
   );
   const [only] = prs;
   return prs.size === 1 && only.startsWith(`${thisRepo}#`)

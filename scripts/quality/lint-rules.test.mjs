@@ -147,6 +147,42 @@ const cases = [
       "const { FlatList } = require('react-native-gesture-handler'); export const List = FlatList;",
       filePath,
     ],
+    ...['SectionList', 'VirtualizedList', 'VirtualizedSectionList'].map(
+      (list) => [
+        'no-restricted-imports',
+        `import { ${list} } from 'react-native'; export const List = ${list};`,
+        filePath,
+      ],
+    ),
+    [
+      'no-restricted-imports',
+      "import { LegacyFlatList } from 'react-native-gesture-handler'; export const List = LegacyFlatList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "import { Animated } from 'react-native'; export const List = Animated.SectionList;",
+      filePath,
+    ],
+    [
+      'no-restricted-properties',
+      "const { VirtualizedList } = require('react-native'); export const List = VirtualizedList;",
+      filePath,
+    ],
+    ...[
+      "import { Animated } from 'react-native'; export const List = () => <Animated.SectionList sections={[]} renderItem={() => null} />;",
+      "import Animated from 'react-native-reanimated'; export const List = () => <Animated.FlatList data={[]} renderItem={() => null} />;",
+      "import * as RN from 'react-native'; export const List = () => <RN.VirtualizedList data={[]} renderItem={() => null} />;",
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
+    ...[
+      "import { VirtualizedList } from '@react-native/virtualized-lists'; export const List = VirtualizedList;",
+      "import FlatList from 'react-native/Libraries/Lists/FlatList'; export const List = FlatList;",
+    ].map((source) => ['no-restricted-imports', source, filePath]),
+    // The JSX list ban replaces the route and feature syntax bans unless it repeats them.
+    ...[
+      "import { useQuery } from '@tanstack/react-query'; export const useRead = () => useQuery({ queryKey: ['progress'], queryFn: () => 1 });",
+      'export const reset = (repository: { clearData(): void }) => repository.clearData();',
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
     // The FlatList property ban replaces the mobile block's crypto property bans unless it repeats them.
     [
       'no-restricted-properties',
@@ -387,6 +423,15 @@ const cases = [
     'no-restricted-syntax',
     source,
     'apps/api/src/data-sync/journal.ts',
+  ]),
+  ...[
+    'export const owner = (claims: { email?: string }) => claims.email;',
+    "export const owner = (claims: Record<string, unknown>) => claims['email'];",
+    "import { sql } from 'drizzle-orm'; export const find = (address: string) => sql`select id from justgo.users where email = ${address}`;",
+  ].map((source) => [
+    'no-restricted-syntax',
+    source,
+    'apps/api/src/identity/managed-service.ts',
   ]),
 ];
 

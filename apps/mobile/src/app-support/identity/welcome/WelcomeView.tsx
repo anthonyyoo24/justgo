@@ -58,7 +58,6 @@ export function WelcomeView({
               insets.top + spacing.xl,
               height * 0.28 - wordmarkGrowth,
             ),
-            paddingBottom: Math.max(insets.bottom, spacing.xxl),
           },
         ]}
       >
@@ -106,18 +105,25 @@ export function WelcomeView({
             </Text>
           )}
           {signInButtons}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Continue"
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            onPress={onContinue}
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-          >
-            <Text style={styles.buttonLabel}>Continue</Text>
-          </Pressable>
         </View>
       </ScrollView>
+      <View
+        style={[
+          styles.actions,
+          { paddingBottom: Math.max(insets.bottom, spacing.xxl) },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Continue"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onContinue}
+          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+        >
+          <Text style={styles.buttonLabel}>Continue</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -128,7 +134,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
-    minHeight: 611,
   },
   hero: {
     width: '100%',
@@ -153,6 +158,13 @@ const styles = StyleSheet.create({
   },
   spacer: { flexGrow: 1, minHeight: spacing.xl },
   footer: { width: '100%', maxWidth: layout.maxContentWidth, gap: 18 },
+  actions: {
+    width: '100%',
+    maxWidth: layout.maxContentWidth + 2 * spacing.xl,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: 18,
+  },
   button: {
     minHeight: layout.buttonHeight,
     // Sampled from the H1 reference's warm cream button fill.

@@ -13,6 +13,8 @@ import {
   MemoryStorage,
   backend,
   card,
+  deckFields,
+  deckPreferences,
   input,
   owner,
   today,
@@ -156,6 +158,26 @@ it('uploads durable completion and private content separately and recovers a los
   expect(remote.uploads).toHaveLength(1);
 });
 
+it('keeps saved deck order and venue out of completion and writing uploads', async () => {
+  const { repository, sync, remote } = setup();
+  const putCompletions = jest.spyOn(remote.transport, 'putCompletions');
+  const putVersions = jest.spyOn(remote.transport, 'putVersions');
+  repository.deckPreferences.save(deckPreferences);
+  await repository.complete(input(), card);
+  await repository.submitReflection(uuid(1), uuid(2), { text: 'Kept' });
+  await expect(repository.deckPreferences.read()).resolves.toEqual(
+    deckPreferences,
+  );
+  await sync.synchronize();
+  expect(putCompletions).toHaveBeenCalledTimes(1);
+  expect(putVersions).toHaveBeenCalledTimes(1);
+  const bodies = JSON.stringify([
+    ...putCompletions.mock.calls,
+    ...putVersions.mock.calls,
+  ]);
+  expect(bodies).toContain('Kept');
+  expect(bodies).not.toMatch(deckFields);
+});
 it('replaces a known ancestor but preserves both concurrent edits', async () => {
   const { repository, sync, remote } = setup();
   await repository.complete(input(), card);

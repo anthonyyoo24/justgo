@@ -432,8 +432,13 @@ it('connects to identity that hydrated after runtime construction, then follows 
   expect(repository?.accountId).toBe(userId);
   expect(repository?.store.getState().dataMode).toBe('cloud');
   expect(runtime.client.ownsAccount(userId)).toBe(true);
+  expect(runtime.access.getSnapshot()).toMatchObject({
+    authenticated: true,
+    owner: { id: userId, kind: 'account' },
+  });
   await controller.signOut();
   expect(repository?.store.getState().dataMode).toBe('local');
+  expect(runtime.access.getSnapshot().authenticated).toBe(false);
   unsubscribe();
 });
 

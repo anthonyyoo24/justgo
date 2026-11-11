@@ -7,6 +7,7 @@ import type {
 import { ApiError } from '../src/lib/network/http';
 import type { JournalStorage } from '../src/data/activity/model';
 import type { JournalTransport } from '../src/data/activity/sync/transport';
+import type { DeckPreferences } from '../src/data/activity/persistence/deck-preferences';
 export const owner = '10000000-0000-4000-8000-000000000001';
 export const otherOwner = '10000000-0000-4000-8000-000000000002';
 export const today = '2026-10-05';
@@ -38,6 +39,11 @@ export const attempt = (n = 1): Attempt => ({
   activityDate: today,
   reflection: null,
 });
+export const deckPreferences: DeckPreferences = {
+  selected: 'bookstore',
+  orders: { bookstore: ['deck-order-sentinel'] },
+};
+export const deckFields = /deck-order-sentinel|\b(?:selected|orders)\\?":/;
 export function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
