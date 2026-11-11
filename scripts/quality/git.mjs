@@ -7,7 +7,8 @@ export function changedPaths(range, cwd) {
   return execFileSync(
     'git',
     ['diff', '--name-only', '-z', '--no-renames', range],
-    { cwd, encoding: 'utf8' },
+    // The default 1 MiB buffer throws on a diff of about 40,000 paths.
+    { cwd, encoding: 'utf8', maxBuffer: Infinity },
   )
     .split('\0')
     .filter(Boolean);
