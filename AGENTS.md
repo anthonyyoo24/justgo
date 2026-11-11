@@ -448,8 +448,11 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `main` in and checks the verdict as above, then arms on the new head without
   waiting for CI. Branch protection requires up-to-date branches, so on each
   push to `main` the `Update behind PRs` workflow
-  (`.github/workflows/update-behind-prs.yml`) merges `main` into every armed PR
-  that is behind, and rerunning the script does the same by hand. After a
+  (`.github/workflows/update-behind-prs.yml`) merges `main` into one armed PR
+  at a time: the lowest-numbered behind PR whose head has a passing verdict,
+  once no up-to-date armed PR is still on its way to merging. It also runs
+  after each CI and PR description run, and rerunning the script does the
+  same by hand. After a
   `PASS`, push nothing more to the PR. Those `main` merges are the one
   exception, and the `push-after-pass-guard` hook denies a code push to a PR
   whose head has a `PASS`. It cannot check a push in the same command as a
