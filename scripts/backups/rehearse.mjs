@@ -425,6 +425,9 @@ export async function rehearse(env = process.env) {
           'drop trigger data_epoch_never_decreases on justgo.users',
           'alter table justgo.users disable trigger data_epoch_never_decreases',
           'create or replace trigger data_epoch_never_decreases after update on justgo.users for each row when (false) execute function justgo.reject_data_epoch_decrease()',
+          'create or replace trigger data_epoch_never_decreases before update on justgo.users for each row when (new.data_epoch < old.data_epoch) execute function justgo.reject_data_epoch_decrease()',
+          'create or replace trigger data_epoch_never_decreases after insert on justgo.users for each row execute function justgo.reject_data_epoch_decrease()',
+          "create or replace function justgo.reject_data_epoch_decrease() returns trigger language plpgsql set search_path = '' as $$ begin return new; end $$",
         ])
           assert.notDeepEqual(await reviewedAccess(client, drift), reviewed);
         console.log(
