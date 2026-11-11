@@ -151,8 +151,10 @@ describe.each(['default', 'worker'] as const)(
       );
     });
     it('managed mode refuses exactly legacy key, code, device and transfer administration and new bootstrap or transfer sessions', async () => {
-      const legacy = setup().app;
-      const managed = setup(false).app;
+      const legacySetup = setup();
+      const managedSetup = setup(false);
+      const legacy = legacySetup.app;
+      const managed = managedSetup.app;
       const routes = (app: typeof legacy) => [
         ...new Set(
           app.routes
@@ -189,6 +191,18 @@ describe.each(['default', 'worker'] as const)(
           'DELETE /v1/account',
         ]),
       );
+      const session = {
+        userId: randomUUID(),
+        deviceId: randomUUID(),
+        sessionId: randomUUID(),
+        expiresAt: '2026-12-01T00:00:00.000Z',
+      };
+      const spies = ({ identity }: typeof legacySetup) => ({
+        bootstrap: vi.spyOn(identity, 'bootstrap').mockResolvedValue(session),
+        redeem: vi.spyOn(identity, 'redeemTransfer').mockResolvedValue(session),
+      });
+      const accepting = spies(legacySetup);
+      const refusing = spies(managedSetup);
       for (const payload of [
         {
           kind: 'bootstrap',
@@ -206,8 +220,17 @@ describe.each(['default', 'worker'] as const)(
         const create = (app: typeof legacy) =>
           apiRequest(app, { url: '/v1/sessions', method: 'POST', payload });
         expect((await create(managed)).statusCode).toBe(410);
-        expect((await create(legacy)).statusCode).not.toBe(410);
+        const accepted = await create(legacy);
+        expect(accepted.statusCode).toBe(200);
+        expect(accepted.json()).toEqual(session);
       }
+      expect(accepting.bootstrap).toHaveBeenCalledOnce();
+      expect(accepting.redeem).toHaveBeenCalledExactlyOnceWith(
+        'ABCDEF0123456789',
+        'c'.repeat(64),
+      );
+      expect(refusing.bootstrap).not.toHaveBeenCalled();
+      expect(refusing.redeem).not.toHaveBeenCalled();
     });
   },
 );
