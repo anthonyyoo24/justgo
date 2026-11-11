@@ -1,20 +1,49 @@
 import { execFileSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { changedPaths } from '../../scripts/quality/git.mjs';
+import { shellText } from './push-after-pass-guard.mjs';
 
-// SessionStart hook. Hooks and settings load from the folder a session starts
-// in, and on 2026-11-08 Anthony's main checkout sat 56 commits behind
-// origin/main, so sessions there ran without newer hooks. This keeps the main
-// checkout on origin/main: it fast-forwards a clean `main` and says nothing,
-// asks for a restart when the update changed session config, and warns when
-// the folder is behind but cannot be updated. Linked worktrees are left alone,
-// since each is cut from origin/main when its session starts.
+// SessionStart and PreToolUse hook. Hooks and settings load from the folder a
+// session starts in, and on 2026-11-08 Anthony's main checkout sat 56 commits
+// behind origin/main, so sessions there ran without newer hooks. A later
+// multi-hour run fell 6 commits behind after it started. So at session start,
+// and before each Agent call or Bash `git worktree add`, this fast-forwards a
+// clean `main` and says nothing, and asks for a restart when the update changed
+// session config. Only session start warns when the folder is behind but
+// cannot be updated, so the warning does not repeat before every tool call.
+// Linked worktrees are left alone, since each is cut from origin/main when its
+// session starts.
 // It never resets, stashes, rebases or touches untracked files, and it must
-// never block or fail a session: every error ends it silently with exit 0.
+// never block a session or a tool call: every error ends it silently with
+// exit 0, and it never returns a permission decision.
 
 const fetchTimeout = 6000;
 const gitTimeout = 2000;
+const stampName = 'sync-main-fetched';
+
+const createsWorktree = (command) =>
+  shellText(command)
+    .split(/&&|\|\||[;|&\n]/)
+    .some((part) =>
+      /^\s*(?:[A-Za-z_]\w*=\S*\s+)*git(?:\s+-[Cc]\s+\S+|\s+-\S+)*\s+worktree\s+add\b/.test(
+        part,
+      ),
+    );
+
+export function triggerOf(event) {
+  if (event.hook_event_name === 'SessionStart')
+    return { event: 'SessionStart', fetchEvery: 0, warns: true };
+  if (event.hook_event_name !== 'PreToolUse') return undefined;
+  const before =
+    event.tool_name === 'Agent' ||
+    (event.tool_name === 'Bash' &&
+      createsWorktree(String(event.tool_input?.command ?? '')));
+  return before
+    ? { event: 'PreToolUse', fetchEvery: 60_000, warns: false }
+    : undefined;
+}
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -77,7 +106,24 @@ function attempt(fn) {
   }
 }
 
-function inspect(dir) {
+// Before a tool call, a fetch within a minute of the last attempt is skipped
+// and the last fetched origin/main stands in, so a fan-out of agents fetches
+// once. The stamp is written before the fetch, so an offline fetch is not
+// retried before every tool call either.
+function fetchMain(dir, gitDir, fetchEvery) {
+  const stamp = path.join(gitDir, stampName);
+  let last = 0;
+  attempt(() => {
+    last = statSync(stamp).mtimeMs;
+  });
+  if (Date.now() - last < fetchEvery) return true;
+  attempt(() => writeFileSync(stamp, ''));
+  return attempt(() =>
+    git(dir, ['fetch', '--quiet', '--no-tags', 'origin', 'main'], fetchTimeout),
+  );
+}
+
+function inspect(dir, fetchEvery) {
   const gitDir = git(dir, ['rev-parse', '--path-format=absolute', '--git-dir']);
   const common = git(dir, [
     'rev-parse',
@@ -85,9 +131,7 @@ function inspect(dir) {
     '--git-common-dir',
   ]);
   if (gitDir !== common) return { linkedWorktree: true };
-  const fetched = attempt(() =>
-    git(dir, ['fetch', '--quiet', '--no-tags', 'origin', 'main'], fetchTimeout),
-  );
+  const fetched = fetchMain(dir, gitDir, fetchEvery);
   if (!fetched) return { fetched };
   let branch = '';
   attempt(() => {
@@ -106,8 +150,8 @@ function inspect(dir) {
   return { linkedWorktree: false, fetched, branch, ahead, behind, dirty };
 }
 
-export function sync(dir) {
-  const state = inspect(dir);
+export function sync(dir, fetchEvery = 0) {
+  const state = inspect(dir, fetchEvery);
   const next = plan(state);
   if (next.action !== 'ff') return next;
   const before = git(dir, ['rev-parse', 'HEAD']);
@@ -129,8 +173,16 @@ export function sync(dir) {
 
 function main() {
   let line;
+  let trigger;
   try {
-    line = report(sync(process.env.CLAUDE_PROJECT_DIR || process.cwd()));
+    trigger = triggerOf(JSON.parse(readFileSync(0, 'utf8')));
+    if (!trigger) return;
+    const result = sync(
+      process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+      trigger.fetchEvery,
+    );
+    if (result.action === 'warn' && !trigger.warns) return;
+    line = report(result);
   } catch {
     return;
   }
@@ -141,7 +193,7 @@ function main() {
     JSON.stringify({
       systemMessage: line,
       hookSpecificOutput: {
-        hookEventName: 'SessionStart',
+        hookEventName: trigger.event,
         additionalContext: line,
       },
     }),
