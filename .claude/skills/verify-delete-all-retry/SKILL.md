@@ -17,7 +17,7 @@ The check reports a counterexample for each of three invariants:
 2. This device never deletes a completion that another device wrote after this device's reset.
 3. After the last retry, `completedDeletionId` is the intent, `deleting` and `clearing` are false, `delete-all-pending` is gone, a restarted `AccountRepository` holds no local completions or journal entries, and the server epoch is above the captured epoch. Every completion and journal version that the server held when the runtime persisted the intent is gone from the server. A retry that met no crash or interference must succeed, and every call must settle.
 
-`docs/architecture/ACTIVITY_DATA.md` states the same rule in its "Deletion epochs" table, in the row for a lost reset acknowledgement.
+The delete-all row in the [AGENTS.md rules list](../../../AGENTS.md#rules-and-what-enforces-them) names this test as the check for the same rule.
 
 ## Run it
 

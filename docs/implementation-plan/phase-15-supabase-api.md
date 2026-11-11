@@ -864,7 +864,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 ## Appendix D. Links and reading list
 
 - Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
-- Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) and [APP_SHELL.md](../architecture/APP_SHELL.md). They own the invariants this plan must keep.
+- Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [APP_SHELL.md](../architecture/APP_SHELL.md) and the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). They own the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
 - History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
 - Run pstack's `how` skill before P15-6 and P15-8.
