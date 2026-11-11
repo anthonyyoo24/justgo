@@ -196,6 +196,21 @@ test('a fast-forward that outlasts its wait finishes in the background', async (
   assert.equal(git(repo.checkout, 'status', '--porcelain'), '');
 });
 
+test('a fast-forward whose list of changed paths passes 1 MiB still updates', async (t) => {
+  const repo = fixture(t);
+  const dir = path.join(repo.author, '.claude', 'many');
+  mkdirSync(dir, { recursive: true });
+  for (let i = 0; i < 4500; i += 1)
+    writeFileSync(path.join(dir, `${String(i).padStart(240, 'x')}.md`), '');
+  git(repo.author, 'add', '.claude');
+  git(repo.author, 'commit', '-q', '-m', 'many');
+  git(repo.author, 'push', '-q', 'origin', 'main');
+  const result = await sync(repo.checkout, 0, { mergeWait: 20_000 });
+  assert.equal(result.action, 'updated');
+  assert.equal(result.paths.length, 4500);
+  assert.equal(head(repo.checkout), head(repo.author));
+});
+
 test('a linked worktree is left alone and prints nothing', (t) => {
   const repo = fixture(t);
   repo.push('.claude/settings.json', '{}\n');
