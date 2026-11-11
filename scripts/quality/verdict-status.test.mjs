@@ -319,7 +319,7 @@ test('description and verdict are separate jobs, and a verdict comment reruns th
   assert.match(workflow, /^ {2}pull-requests: read$/m);
   assert.doesNotMatch(workflow, /pull_request_target|issue_comment/);
   const jobs = workflowJobs(workflow.slice(workflow.indexOf('\njobs:\n')));
-  assert.deepEqual(Object.keys(jobs), ['description', 'verdict', 'sections']);
+  assert.deepEqual(Object.keys(jobs), ['description', 'verdict']);
   assert.match(
     jobs.description,
     /run: node scripts\/quality\/pr-description\.mjs/,
@@ -327,14 +327,6 @@ test('description and verdict are separate jobs, and a verdict comment reruns th
   assert.doesNotMatch(jobs.description, /verdict-status/);
   assert.match(jobs.verdict, /run: node scripts\/quality\/verdict-status\.mjs/);
   assert.doesNotMatch(jobs.verdict, /pr-description\.mjs/);
-  // A skipped required job counts as passing, so the transition aggregate
-  // must run after a failed need and pass only when both succeeded.
-  assert.match(jobs.sections, /needs: \[description, verdict\]/);
-  assert.match(jobs.sections, /if: always\(\)/);
-  assert.match(
-    jobs.sections,
-    /test "\$DESCRIPTION" = success && test "\$VERDICT" = success/,
-  );
   const recheck = readFileSync(
     new URL('verdict-recheck.yml', workflows),
     'utf8',
