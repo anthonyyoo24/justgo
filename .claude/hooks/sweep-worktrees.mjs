@@ -14,6 +14,7 @@ import {
   readFileSync,
   realpathSync,
   renameSync,
+  rmdirSync,
   rmSync,
   statSync,
   utimesSync,
@@ -52,8 +53,9 @@ import { fileURLToPath } from 'node:url';
 // <main>/.local/archived-worktrees/<name>/. Then `git worktree move` puts it
 // in <main>/.local/worktree-trash/, and `git worktree remove` deletes it
 // there. git deletes the files first and its record last, so a removal killed
-// partway leaves a half-deleted worktree, and the next sweep deletes what is
-// left in the trash. It never forces a removal, never deletes branches, and
+// or timed out partway leaves a half-deleted worktree, and the next sweep
+// deletes what is left in the trash once git status there shows nothing but
+// deleted files. It never forces a removal, never deletes branches, and
 // must never fail a session: every error ends it silently with exit 0. Each
 // removal is logged to .local/worktree-sweep.log with its branch, commit and
 // archive ref.
@@ -80,6 +82,14 @@ function git(cwd, args, timeout = gitTimeout, input) {
     encoding: 'utf8',
     stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'ignore'],
   }).trim();
+}
+
+function attempt(fn) {
+  try {
+    fn();
+  } catch {
+    // The caller goes on either way.
+  }
 }
 
 function succeeds(cwd, args, timeout) {
@@ -559,7 +569,8 @@ export function lock(main) {
 
 // deps: { now, busyPaths(): string[] | undefined,
 //         pullRequests(): object[] | undefined, home, log(line), dryRun,
-//         remove(worktree): boolean }
+//         remove(worktree): 'removed' | 'stopped' | 'refused',
+//         removeTimeout }
 // home defaults to the user's home folder, where Claude keeps transcripts,
 // and remove to `git worktree remove` without --force.
 export function sweep(dir, deps) {
@@ -598,8 +609,11 @@ function boxes(trash) {
 }
 
 // Each box in the trash held a worktree that passed every check before it
-// moved there, so what is left of it is deleted, unless a process is inside
-// or it is locked: a worktree git refused to remove that could not move back.
+// moved there, so what is left of it is deleted, unless a process is inside,
+// it is locked (a worktree git refused to remove that could not move back),
+// or git status shows anything but deleted files, which means someone changed
+// it after its check. A box that holds no worktree git knows is deleted only
+// when it holds no files.
 function finish(main, leftovers, all, deps) {
   if (leftovers.length === 0) return;
   const busy = deps.busyPaths();
@@ -607,10 +621,56 @@ function finish(main, leftovers, all, deps) {
     const inside = all.filter((entry) => within(box, entry.path));
     if (!busy || busy.some((file) => within(box, file))) continue;
     if (inside.some((entry) => entry.locked)) continue;
+    if (inside.length === 0 ? !empty(box) : inside.some(changedSince)) continue;
     rmSync(box, { recursive: true, force: true });
     for (const entry of inside)
       if (succeeds(main, ['worktree', 'remove', entry.path]))
         deps.log(`finished removing ${entry.path}`);
+  }
+}
+
+function empty(dir) {
+  try {
+    return readdirSync(dir, { withFileTypes: true }).every(
+      (item) => item.isDirectory() && empty(path.join(dir, item.name)),
+    );
+  } catch {
+    return false;
+  }
+}
+
+// What git status shows for a worktree a removal stopped partway: 'deleted'
+// when only deleted files show, 'gone' when its .git file is gone with them,
+// 'whole' when nothing shows, and 'changed' for anything else or no answer.
+function leftover(worktree) {
+  if (!existsSync(worktree)) return 'gone';
+  if (!existsSync(path.join(worktree, '.git'))) return 'gone';
+  try {
+    const lines = git(worktree, [
+      'status',
+      '--porcelain',
+      '--untracked-files=all',
+    ])
+      .split('\n')
+      .filter(Boolean);
+    if (lines.length === 0) return 'whole';
+    // The output is trimmed, so the first line lost its leading space.
+    return lines.every((line) => /^ ?D /.test(line)) ? 'deleted' : 'changed';
+  } catch {
+    return 'changed';
+  }
+}
+
+const changedSince = (entry) => leftover(entry.path) === 'changed';
+
+// 'removed', 'stopped' when a signal ended git (the time limit sends one), or
+// 'refused' when git exited on its own.
+function removal(main, worktree, timeout) {
+  try {
+    git(main, ['worktree', 'remove', worktree], timeout);
+    return 'removed';
+  } catch (error) {
+    return error?.signal ? 'stopped' : 'refused';
   }
 }
 
@@ -623,7 +683,7 @@ function sweepCandidates(main, root, trash, candidates, deps, held) {
   const remove =
     deps.remove ??
     ((worktree) =>
-      succeeds(main, ['worktree', 'remove', worktree], removeTimeout));
+      removal(main, worktree, deps.removeTimeout ?? removeTimeout));
   const results = [];
   for (const entry of candidates) {
     held.refresh();
@@ -668,7 +728,11 @@ function sweepCandidates(main, root, trash, candidates, deps, held) {
 
 // The move is one rename, so a kill leaves the worktree whole in one place or
 // the other. No --force: git refuses if the worktree changed since the check,
-// and it moves back.
+// and it moves back. A removal stopped partway, or one that deleted files
+// before git gave up, stays in the trash for the next sweep to finish, unless
+// git status shows a change since the check. The
+// box is deleted here only when empty, so a move that renamed the folder and
+// then failed never deletes it.
 function removeAside(main, trash, entry, ref, remove, deps) {
   let box;
   try {
@@ -679,18 +743,31 @@ function removeAside(main, trash, entry, ref, remove, deps) {
   }
   const aside = path.join(box, path.basename(entry.path));
   if (!succeeds(main, ['worktree', 'move', entry.path, aside])) {
-    rmSync(box, { recursive: true, force: true });
+    attempt(() => rmdirSync(box));
     return 'keep: could not move it aside';
   }
-  if (remove(aside)) {
-    rmSync(box, { recursive: true, force: true });
+  const outcome = remove(aside);
+  if (outcome === 'removed') {
+    attempt(() => rmdirSync(box));
     deps.log(
       `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}`,
     );
     return 'remove';
   }
+  // A worktree changed since its check goes back even when git was stopped.
+  const state = leftover(aside);
+  if (
+    state === 'deleted' ||
+    state === 'gone' ||
+    (state === 'whole' && outcome === 'stopped')
+  ) {
+    deps.log(
+      `stopped removing ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}; the next sweep finishes it in ${box}`,
+    );
+    return 'keep: removal stopped partway; the next sweep finishes it';
+  }
   if (succeeds(main, ['worktree', 'move', aside, entry.path]))
-    rmSync(box, { recursive: true, force: true });
+    attempt(() => rmdirSync(box));
   else
     succeeds(main, [
       'worktree',
