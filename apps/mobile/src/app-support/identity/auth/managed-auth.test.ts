@@ -261,17 +261,14 @@ it.each([
   'error=access_denied&error_code=signup_disabled&error_description=Signups+not+allowed',
   'error=server_error&error_code=unexpected_failure',
   'error=invalid_request&error_code=bad_oauth_state',
-])(
-  'fails a callback that Supabase Auth itself rejected: %s',
-  async (query) => {
-    const replaceState = webCallback(query);
-    await expect(createManagedAuth().initialize()).rejects.toMatchObject({
-      code: 'AUTH',
-    });
-    expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
-    expect(mockAuth.exchangeCodeForSession).not.toHaveBeenCalled();
-  },
-);
+])('fails a callback that Supabase Auth itself rejected: %s', async (query) => {
+  const replaceState = webCallback(query);
+  await expect(createManagedAuth().initialize()).rejects.toMatchObject({
+    code: 'AUTH',
+  });
+  expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
+  expect(mockAuth.exchangeCodeForSession).not.toHaveBeenCalled();
+});
 
 it('notifies refreshed sessions without making Auth calls from the SDK callback and stops workers on logout', async () => {
   const auth = createManagedAuth();
