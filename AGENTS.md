@@ -111,10 +111,13 @@ these rules:
   and sequencing. When a task names a phase, read that phase before you edit.
   Change the plan only when scope or a decision changes. Keep a task's scope
   bounded, and preserve existing behavior unless the task changes it.
-- [IDENTITY.md](docs/architecture/IDENTITY.md) owns account transitions, account
-  deletion and credential preservation. Read it before you change that behavior.
-- No doc owns the app shell, saving, sync or deletion epochs. Their rules are in
-  [Rules and what enforces them](#rules-and-what-enforces-them). In
+- No doc owns identity, the app shell, saving, sync or deletion epochs. Their
+  rules are in [Rules and what enforces them](#rules-and-what-enforces-them).
+  [Account sync setup](docs/operations/ACCOUNT_SYNC_SETUP.md) owns the provider
+  settings and accepted security exceptions. In
+  `apps/mobile/src/app-support/identity`, `auth/` owns sign-in, provider
+  switching and logout, and `deletion/` owns account deletion.
+  `apps/api/src/identity` owns the server side. In
   `apps/mobile/src/data`, `activity/` owns completion history, and its `sync/`
   folder sends completion uploads with their retry and transport. `journal/` owns
   private writing. `cloud/` owns the cloud download, journal sync, delete-all and
@@ -223,6 +226,8 @@ highest level that works and updates this list.
   - Enforced by (lint): `@typescript-eslint/switch-exhaustiveness-check`, `only-throw-error`, `no-unnecessary-type-assertion` and `no-redundant-type-constituents`, with cases in `scripts/quality/lint-rules.test.mjs`
 - Stored identity digests stay lowercase-hex SHA-256 of the raw secret or code. A new algorithm, encoding, case or input form locks out legacy installations and stops revoked-proof tombstones and deletion receipts from matching.
   - Enforced by (test): Known-answer tests for `digest` in `apps/api/tests/identity/identity.test.ts` and for the deletion-receipt match in `apps/mobile/src/app-support/identity/deletion/cleanup.test.ts`
+- Never restore an older transfer API against the schema from migration `0003_transfer_verification`, which erased plaintext transfer verification. Transfers store only a keyed verifier, and inspection never returns it.
+  - Enforced by (database, test): The `transfers_verification_hmac` CHECK in `apps/api/drizzle/0003_transfer_verification.sql` refuses a non-HMAC verifier. `apps/api/tests/identity/identity.credentials.integration.test.ts` ("stores only a keyed verifier"), `packages/contracts/src/access.test.ts` (the transfer inspection has no `verification`) and `apps/api/tests/identity/identity.protocol.integration.test.ts` (the old `/v1/identity/transfers/*` paths return 404).
 - Scripts read changed paths and patch ids only through `changedPaths()` and `patchIdOf()`, which always use `-z --no-renames` and `--verbatim`.
   - Enforced by (architecture, lint): `scripts/quality/git.mjs`, the `no-restricted-syntax` entry for `scripts/**/*.mjs` in `eslint.config.mjs`, and its case in `scripts/quality/lint-rules.test.mjs`
 - API source (`apps/api/src`) sets RLS context only by calling `setTransactionContext()`, which is always transaction-local. Only identity services and the guest catalog import it, with a static import, and none re-export, bind or pass it on. Never write `app.*` settings with `SET`, `set_config` or a `-c` connection option.
