@@ -78,6 +78,16 @@ test('the merge script and other commands pass', () => {
     assert.equal(decide(command), undefined, command);
 });
 
+// #348
+test.todo('parameter expansion and repeated flags are denied', () => {
+  for (const command of [
+    'gh pr ${x:-merge} 1',
+    'gh pr m${x}erge 1',
+    'gh pr -R a/b -R a/b merge 1',
+  ])
+    assert.equal(decide(command)?.permissionDecision, 'deny', command);
+});
+
 test('output wraps a denial for Claude Code', () => {
   assert.deepEqual(output(decide('gh pr merge 1')), {
     hookSpecificOutput: {
