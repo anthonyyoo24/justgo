@@ -2,9 +2,24 @@
 
 # Phase 15 plan to move the API to one Supabase Edge Function
 
-**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. This plan is planning only. Execution starts on Anthony's explicit go.
+**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work.
 
-The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. A runtime trial decides whether the port proceeds. The PRs, in order, are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
+The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. The steps are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The fast path below runs them in a different order. Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
+
+## Fast path
+
+On November 11, 2026, Anthony chose the fastest path that keeps every critical check. It overrides P15-1's `Decision: stop`, which failed only the rule that a small route's CPU stays within twice trunk's, a ratio that garbage-collection pauses drove ([Appendix A](#appendix-a-prototype-evidence)). Every P15-1 lane passed. Where a section below disagrees with this one, this one wins.
+
+1. **PR 1, entry and release lane.** P15-6 absorbs P15-8. One PR adds the Edge entry, its CI smoke and the Supabase staging lane, reusing the `phase15/edge-trial` code. It replaces the Worker's deploy lane but keeps the Worker code, and the deployed Worker keeps serving the beta profile.
+2. **Hosted window.** On one go from Anthony that names the deploy, the secrets and the trial function's deletion, run P15-2 and P15-9 together. Deploy `api` from `main` through the new lane, deploy `justgo-trial` for its probe route, run the kept lanes, then delete `justgo-trial`. No build points at the function yet, so a failure reaches no user. On a failure, stop and present it to Anthony. One docs PR records the result.
+3. **PR 2, switch.** P15-11 points the Dev and beta profiles at the function. Anthony ships a new TestFlight build and checks it on the iPhone. The Worker and the Vercel API stay until that build passes.
+4. **Cleanup and notices.** P15-5 then removes the Worker code. P15-10 updates the notices before the first outside tester joins.
+
+**Kept.** The hosted query speed and the predicted worst-case sync, the log canary, the forged client-address check, the cold start, Anthony's sign-in on the iPhone, one independent verifier per PR, CI's security tests, Anthony's go before every hosted step, and the R2 backups.
+
+**Deferred, not dropped.** P15-2 lanes 3, 7 and 9 (the pooler `statement_timeout`, the region pin and the body-size limits) run before the first outside tester joins. P15-9 lanes 5 to 8 run there too, except where P15-11's iPhone lanes cover them. P15-9 lane 3, the worst-case import on the iPhone, runs in the hosted window only when P15-2 predicts a worst-case sync above 4,000 ms. P15-9 lane 10 waits until backups resume.
+
+**Dropped.** The hourly `/loop` audit tick, and the rule that a small route's CPU stays within twice trunk's. P15-6 uses a fixed CPU limit instead.
 
 ## How to read this
 
@@ -21,7 +36,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 ### Arm the program
 
 - [ ] State the protocol and this plan to Anthony, then stop. Start execution only on Anthony's explicit go.
-- [ ] Read these from trunk at program start. Re-read them at every tick.
+- [ ] Read these from trunk at program start. Re-read them before each PR.
   - [ ] `git show origin/main:AGENTS.md`
   - [ ] `git show origin/main:docs/implementation-plan/phase-15-supabase-api.md`
   - [ ] `git show origin/main:.claude/skills/verify-justgo/SKILL.md`
@@ -35,30 +50,26 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [x] Local tools. Edge runtime lanes run in GitHub Actions, and nothing new is installed on the Mac.
 - [ ] While backups are paused, the backup clock's November 29 token expiry needs no renewal. Renew it with the R2 credentials when backups resume.
 - [ ] Backups are paused. On November 6, 2026, Anthony set `JUSTGO_BACKUPS_ENABLED` to `paused` because staging holds only test data. Before outside testers store real journals, renew the R2 credentials and the backup clock token, set the variable back to `approved`, confirm one nightly and one hourly run succeed, record the new expiry dates on issue #77, then close it.
-- [ ] On Anthony's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.
-- [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk. Audit the operation against it and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
 - [ ] On Anthony's hold or stand-down, send every owner a zero-writes order at once.
 
 ### Spawn owners
 
 - [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners run at `high` effort, the cap that [Agent effort](../../AGENTS.md#agent-effort) sets, including the P15-1 owner whose trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
-  - [ ] P15-1, P15-3 and P15-4 are independent and first. All three branch from `main`.
-  - [ ] P15-2 after P15-1 reports `Decision: go`.
-  - [ ] P15-5 after P15-2 reports `Decision: go`. It deletes the only working staging deploy lane, so it waits until the port is certain.
-  - [ ] P15-7 after P15-1 reports `Decision: go`. It branches from `main`.
-  - [ ] P15-6 after P15-2 reports `Decision: go` and P15-5 merges.
-  - [ ] P15-8 after P15-6 merges.
-  - [ ] P15-9 after P15-7 and P15-8 merge.
-  - [ ] P15-10 after P15-9 merges.
-  - [ ] P15-11 after P15-10 merges.
+  - [x] P15-1, P15-3, P15-4 and P15-7 are done.
+  - [ ] P15-6, which carries P15-8, branches from `main` now.
+  - [ ] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go.
+  - [ ] P15-11 after the hosted window passes and its docs PR merges.
+  - [ ] P15-5 after the new TestFlight build passes P15-11.
+  - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
 - [ ] Hold the file boundaries.
   - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
   - [ ] P15-5 touches only the API Worker code, its scripts, tests, CI step and docs. It never touches `scripts/backups/clock/`, `sites/legal/` or `.github/workflows/staging-health.yml`.
   - [ ] P15-7 touches only `apps/mobile/src/lib/network/`, `scripts/development/`, the fixture API prefix and their tests.
+  - [ ] P15-6 keeps the Worker code, its smoke scripts and `scripts/backups/clock/`. It replaces only the Worker's staging deploy lane.
   - [ ] P15-3 and P15-5 can both edit `apps/api/tests/http/routing.test.ts`. Whichever lands second rebases onto the first.
 - [ ] Hold the review gate. P15-10 changes what users read. It waits for Anthony's review in chat with screenshots and a video before merge.
-- [ ] Hold Anthony's hosted gates. Every deploy, `supabase secrets set`, provider setting change, new build and notice publication waits for his go. These happen in P15-2, P15-8, P15-9 and P15-11.
+- [ ] Hold Anthony's hosted gates. Every deploy, `supabase secrets set`, provider setting change, new build and notice publication waits for his go. These happen in the hosted window (P15-2, P15-8 and P15-9), in P15-11 and in P15-10.
 
 ### PR mechanics, for every PR
 
@@ -151,7 +162,9 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Run the hosted runtime trial (P15-2)
 
-**Depends on.** P15-1 with `Decision: go`, and Anthony's go for a trial deploy to the JustGo project.
+**Depends on.** P15-6 merged, with P15-8's lane, and Anthony's one go for the hosted window, which P15-2 shares with P15-9.
+
+**Fast path.** Run lanes 1, 2, 4, 5, 6, 8 and 10 and the perf rule in the hosted window. Lanes 3, 7 and 9 run before the first outside tester joins. P15-6 picks the client-address header before this trial runs, so lane 4 confirms that choice. A different header gets a fix PR before P15-11.
 
 **Files.**
 
@@ -198,7 +211,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 **Merge.**
 
 - [ ] Never merge `phase15/edge-trial`.
-- [ ] Open a docs-only PR that records the hosted report in Appendix A and the decision in this plan. An agent merges it after an independent verdict.
+- [ ] Open one docs-only PR that records the hosted report in Appendix A, the P15-9 receipts and the decision in this plan. An agent merges it after an independent verdict.
 - [ ] On `Decision: stop`, present the failed lanes to Anthony and stop the program.
 
 ## Remove the Vercel API leftovers (P15-3)
@@ -315,14 +328,14 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Remove the API Worker and its release lane (P15-5)
 
-**Depends on.** P15-2 with `Decision: go`.
+**Depends on.** P15-11, once the new TestFlight build reaches the function and Anthony has deleted the Worker. On the fast path this is cleanup after the switch.
 
 **Files.**
 
 - [ ] Delete `apps/api/src/worker.ts`, `apps/api/src/db/worker-database.ts`, `apps/api/src/http/worker-router.ts` and `apps/api/cloudflare-config.mjs`, with their tests.
 - [ ] Delete `apps/api/scripts/workers-smoke.ts`, `workers-smoke-entry.ts`, `workers-smoke-preflight.ts`, `workers-outbound-smoke.ts` and `workers-cpu-profile.ts`, with their tests.
 - [ ] Delete `scripts/release/staging-cloudflare.mjs`, `staging-worker-build.mjs`, `staging-bootstrap.mjs`, `staging-promotion.mjs` and `staging-abandoned-version.mjs`, with their tests.
-- [ ] Delete `.github/workflows/staging-api.yml`. P15-8 adds the Supabase workflow.
+- [ ] Keep `.github/workflows/staging-api.yml`, which P15-6 already turned into the Supabase lane.
 - [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-api-deployment.mjs`, `scripts/release/staging-api-runner.mjs`, `scripts/release/staging-public-probes.mjs`, `scripts/release/staging-local.mjs`, `apps/api/scripts/local-staging-release.ts`, `apps/api/tests/http/routing.test.ts` and every other caller that the deletions break.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml`, `scripts/quality/ci-workflow.test.mjs`, `scripts/quality/staging-api-workflow.test.mjs` and delete `scripts/quality/cloudflare-config.test.mjs`.
 - [ ] Edit `AGENTS.md` and `docs/operations/SERVER_RELEASES.md`.
@@ -332,9 +345,9 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Delete the Workers fetch entry, the Hyperdrive adapter with `LOCK_DATABASE_URL` and `needsDirectTransaction`, and the per-invocation router.
 - [ ] Delete every step that calls Cloudflare. Keep `apps/api/scripts/staging-release-guard.ts`, `validateProbe` and `scripts/release/staging-public-probes.mjs` with their tests.
 - [ ] Move the `wrangler` devDependency to the root manifest, because `scripts/backups/clock/` still deploys with it.
-- [ ] Leave `scripts/backups/clock/`, `sites/legal/wrangler.json` and `.github/workflows/staging-health.yml` unchanged. The backup clock and the serving Worker still run.
-- [ ] Delete the `release:staging:local` script from the root manifest. P15-8 adds it back for Supabase.
-- [ ] Say in `AGENTS.md` and `SERVER_RELEASES.md` that no staging deploy lane exists until P15-8.
+- [ ] Leave `scripts/backups/clock/`, `sites/legal/wrangler.json` and `.github/workflows/staging-health.yml` unchanged. The backup clock still runs.
+- [ ] Keep the `release:staging:local` script, which P15-6 moved to Supabase.
+- [ ] Remove what is left of the Worker lane from `AGENTS.md` and `SERVER_RELEASES.md`.
 
 **You see.**
 
@@ -354,7 +367,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Lane 5. Request `/ready` on the Node fixture API. Save `node-ready.json`. Pass when it returns 200.
 - [ ] Lane 6. Run `pnpm exec wrangler deploy --dry-run --config scripts/backups/clock/wrangler.json`. Save `clock-dry-run.txt`. Pass when the clock still builds with the moved dependency and nothing deploys.
 - [ ] Lane 7. Run `pnpm run test:backup:recovery`. Save `recovery.txt`. Pass when the rehearsal passes through the Node app.
-- [ ] Lane 8. Run `pnpm run` to list the root scripts. Save `staging-lane.txt`. Pass when `release:staging:local` is absent.
+- [ ] Lane 8. Run `pnpm run` to list the root scripts. Save `staging-lane.txt`. Pass when `release:staging:local` is present and no root script but the backup clock's names Cloudflare.
 - [ ] Lane 9. Search the code for imports of every deleted module. Save `removed-imports.txt`. Pass when nothing imports a deleted module.
 - [ ] Lane 10. Read `AGENTS.md` and `SERVER_RELEASES.md` at head. Save `docs-audit.txt`. Pass when neither tells an agent to deploy a Worker.
 
@@ -376,7 +389,9 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Add the Edge Functions entry and its CI smoke (P15-6)
 
-**Depends on.** P15-2 with `Decision: go`, and P15-5 merged.
+**Depends on.** P15-7 merged, which it is. On the fast path it no longer waits for P15-2 or P15-5.
+
+**Fast path.** This PR also carries P15-8's files, build steps and unit checks, so one verifier reviews the entry and the lane together. P15-8's lanes that deploy, and its perf probe, run in the hosted window after merge. A failure there gets a fix PR before P15-11.
 
 **Files.**
 
@@ -384,15 +399,15 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Create `supabase/config.toml`, `supabase/functions/api/index.ts` and `supabase/functions/api/deno.json`.
 - [ ] Create `apps/api/scripts/edge-build.mjs` and `apps/api/scripts/edge-smoke.ts`.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml` and `scripts/quality/ci-workflow.test.mjs`.
-- [ ] Edit `apps/api/src/db/client.ts`, `apps/api/src/identity/managed-verifier.ts`, `apps/api/src/progress/service.ts` and `apps/api/src/http/server-error-reporter.ts` only where P15-1 or P15-2 recorded a failure.
-- [ ] Edit each `AGENTS.md` rule that names Workers, such as `test:workers` in the `outboundFetch()` row.
+- [ ] Edit `apps/api/src/db/client.ts`, `apps/api/src/identity/managed-verifier.ts`, `apps/api/src/progress/service.ts` and `apps/api/src/http/server-error-reporter.ts` only where P15-1 recorded a failure.
+- [ ] Add the Edge smoke beside `test:workers` in each `AGENTS.md` rule that names it, such as the `outboundFetch()` row. P15-5 removes the Worker names.
 
 **Build.**
 
 - [ ] `edge.ts` exports `createEdgeHandler` with injected configuration, database and app, the shape of the deleted `createWorker` in `git show ce611dd:apps/api/src/worker.ts`.
 - [ ] The handler strips the `/api` function prefix once, then calls `app.fetch`.
 - [ ] The handler maps `JUSTGO_AUTH_PUBLISHABLE_KEY` and `JUSTGO_AUTH_SECRET_KEY` into the existing config fields. It never reads `SUPABASE_DB_URL`.
-- [ ] The handler builds the app and a one-connection pool once per worker, and passes `clientAddress` from the header that P15-2 recorded.
+- [ ] The handler builds the app and a one-connection pool once per worker, and passes `clientAddress` from the header the `phase15/edge-trial` branch reads. P15-2 lane 4 confirms it in the hosted window.
 - [ ] A startup failure returns the same safe body and `x-justgo-startup-stage` header as `worker.ts:102-126` at `ce611dd`.
 - [ ] Server error reports flush through `EdgeRuntime.waitUntil`.
 - [ ] The Edge smoke drives managed sign-in and account deletion, and runs `checkWorkerOutboundAdapters()` from `apps/api/scripts/workers-outbound-smoke.ts`, so it proves that `outboundFetch()` is refused inside an `IdentityService` transaction and sends after it on Deno. If P15-2 falls back to `drizzle-orm/postgres-js`, retype `ownerTransactions()` for that database.
@@ -427,7 +442,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Metric. CPU ms and wall ms per request for `/health`, the guest catalog, an attempt write and the worst-case sync, plus the bundle size in bytes.
 - [ ] Probe. Run the P15-1 request script against the trunk Node entry and the head Edge entry, alternating, for 20 rounds.
 - [ ] Baseline. Record the trunk Node numbers first.
-- [ ] Rule. Head fails if the worst-case sync exceeds 1,000 ms of CPU or 5,000 ms of wall time, if a small route's p95 CPU exceeds twice trunk's, or if the bundle exceeds 5 MB.
+- [ ] Rule. Head fails if the worst-case sync exceeds 1,000 ms of CPU or 5,000 ms of wall time, if a small route's p95 worker thread CPU exceeds 50 ms, or if the bundle exceeds 5 MB. The fixed 50 ms limit replaces the twice-trunk rule. It is a fortieth of the 2,000 ms runtime limit, and P15-1's worst small route measured 7.85 ms.
 
 **Review gate.** None. P15-6 is not review-gated.
 
@@ -495,7 +510,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Release staging through Supabase Edge Functions (P15-8)
 
-**Depends on.** P15-6 merged.
+**Depends on.** Nothing on the fast path. Its work lands in the P15-6 PR, and its lanes that deploy run in the hosted window.
 
 **Files.**
 
@@ -557,7 +572,9 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Record hosted staging acceptance (P15-9)
 
-**Depends on.** P15-7 and P15-8 merged, and Anthony's go for each hosted step.
+**Depends on.** P15-6 merged, with P15-8's lane, and Anthony's one go for the hosted window, which P15-9 shares with P15-2.
+
+**Fast path.** Run lanes 1, 2, 4 and 9 and the perf rule in the hosted window. Lane 3 runs there only when P15-2 predicts a worst-case sync above 4,000 ms. Lanes 5 to 8 run before the first outside tester joins, except where P15-11 lanes 4 to 6 cover them. Lane 10 waits until backups resume. P15-2's docs PR records these receipts too.
 
 **Files.**
 
@@ -609,7 +626,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Update the notices for Supabase Edge Functions (P15-10)
 
-**Depends on.** P15-9 merged.
+**Depends on.** P15-9 merged. It must merge before the first outside tester joins, and it does not block P15-11 or P15-5.
 
 **Files.**
 
@@ -666,7 +683,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Switch builds to the function and retire the old hosts (P15-11)
 
-**Depends on.** P15-10 merged, and Anthony's go for each provider action.
+**Depends on.** The hosted window passed and its docs PR merged, and Anthony's go for each provider action. On the fast path it no longer waits for P15-10.
 
 **Files.**
 
@@ -843,6 +860,8 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 - **Rename the config fields to `JUSTGO_` names everywhere.** That touches `.env` files, scripts and the release guard. One mapping in the entry is enough.
 - **Postgres.js from the start.** It changes every `NodePgDatabase` signature. Keep `pg` unless the trial fails it.
 - **One PR for the whole port.** AGENTS.md asks for small PRs, and the trials must be able to stop the port before code lands.
+- **Separate PRs for the entry (P15-6) and the release lane (P15-8).** Rejected for speed on November 11, 2026. Neither serves a user until P15-11, so one review covers both.
+- **Remove the Worker (P15-5) before the port.** Rejected for speed and safety on November 11, 2026. The Worker keeps serving the beta profile until the new build passes.
 
 ## Appendix C. Risks
 
@@ -850,7 +869,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 | ----------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
 | `pg` cannot verify the Supabase CA on Deno                                    | P15-1, P15-2  | P15-2 lane 1. The fallback is `drizzle-orm/postgres-js`.                                      |
 | Bundled code has no `Buffer`, so every managed request returns `UNAUTHORIZED` | P15-1         | Lane 8. Import `node:buffer` or use web base64url helpers.                                    |
-| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | P15-2 lane 3. Drop the pool option, because the role sets the timeout.                        |
+| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | Lane 3 is deferred. A rejection fails `/ready`, which P15-2 lane 1 catches.                   |
 | The worst-case sync outlasts the 10 second client deadline                    | P15-1, P15-9  | P15-1 at loopback, a P15-2 prediction, and P15-9 hosted. Batch the parent checks if it fails. |
 | A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
 | Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |
@@ -861,6 +880,8 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 | The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                                             |
 | Installed builds keep their embedded API URL                                  | P15-11        | Build 5 keeps Vercel until the new build passes.                                              |
 | Edge runtime lanes cannot run on the 8 GB Mac                                 | P15-1, P15-6  | They run in CI.                                                                               |
+| The first hosted deploy has no previous tag to roll back to                   | P15-6, P15-9  | No build points at the function until P15-11, so a failed deploy reaches no user.             |
+| The Worker needs a fix after P15-6 replaced its deploy lane                   | P15-6         | The Worker serves only Anthony's beta profile. Redeploy it from the commit before P15-6.      |
 
 ## Appendix D. Links and reading list
 
