@@ -491,12 +491,14 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   whole PR, not only the change since the last verdict.
 - Verifiers run on Opus. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
   sets the model of every verifier `Agent` call: one whose description starts
-  with Verify, Verifier, Re-verify or Re-check, or whose prompt asks for a
-  `Verifier verdict:` line. It picks Sonnet only for a re-check (description
-  starting with Re-verify or Re-check) whose brief names exactly one PR, as
-  `PR #<n>` or a PR URL, whose files on GitHub are all docs or tests by the
-  `verdict-patch.mjs` rule, none on the sensitive list, and whose brief has no
-  `Sensitive: yes` line. Anything else gets Opus. The hook sets the model only,
+  with a form of Verify, Verifier, Re-verify or Re-check, such as Verifying,
+  or whose prompt asks for a `Verifier verdict:` line in any case. It picks
+  Sonnet only for a re-check (description starting with a form of Re-verify
+  or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
+  URL, whose files on GitHub, with the old path of each rename, are all docs
+  or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
+  whose brief has no `Sensitive: yes` line. A PR with 3000 or more files gets
+  Opus, because GitHub may not list them all. Anything else gets Opus. The hook sets the model only,
   so pass `effort: "high"` yourself. A hook that cannot run blocks the call.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
