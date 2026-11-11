@@ -2,8 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// PreToolUse hook on Agent. Verifiers run on Opus. A re-check of a docs- or
-// tests-only, non-sensitive PR runs on Sonnet. Any doubt keeps Opus.
+// PreToolUse hook on Agent. Verifiers run on Opus, except two cases that run
+// on Sonnet: a verifier whose PRs are all small by the verify-batch.mjs rule
+// (no sensitive or boundary file, few counted lines), and a re-check of a
+// docs- or tests-only, non-sensitive PR. Any doubt keeps Opus.
 // Decision-trail reviews run on Sonnet. An audit runs on Sonnet unless its
 // brief says `Sensitive: yes` or names a PR that touches a sensitive path.
 // Any other Agent call that picks a non-Opus model keeps it only when its
@@ -68,8 +70,15 @@ const prKeysIn = (text) =>
   [...(text ?? '').matchAll(prReference)].map(
     ([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`,
   );
+// Each JustGO PR number a text names, also in lists such as `PRs #7, #8 and
+// #9`, as review-rounds-guard.mjs reads them. A link to another repository
+// makes the set unknown, so the hook keeps Opus.
+const prListReference =
+  /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
 // GitHub lists at most 3000 files of a PR, so a list that long may be cut.
 export const maxFiles = 3000;
+// A verifier with more PRs than a batch holds stays on Opus.
+export const maxSmallPulls = 4;
 
 export function isVerifier(input) {
   return (
@@ -99,6 +108,35 @@ export function prOf(input) {
     : undefined;
 }
 
+// The PRs a verifier brief names, or undefined when it names none, more than a
+// batch holds, or one in another repository.
+export function prsOf(input) {
+  const text = `${input.description ?? ''}\n${input.prompt ?? ''}`;
+  const numbers = new Set();
+  for (const [list, repo = thisRepo] of text.matchAll(prListReference)) {
+    if (repo.toLowerCase() !== thisRepo) return undefined;
+    for (const number of list.match(/(?<=#|\/pull\/)\d+/g)) numbers.add(number);
+  }
+  return numbers.size > 0 && numbers.size <= maxSmallPulls
+    ? [...numbers]
+    : undefined;
+}
+
+// A PR's files with their line counts, in the shape verify-batch.mjs reads. A
+// rename also lists its old path with no lines, so a sensitive or boundary
+// path cannot hide behind a new name. A list that may be cut is unknown.
+export function sizedFilesOf(entries) {
+  if (!entries.length || entries.length >= maxFiles) return undefined;
+  return entries.flatMap(
+    ({ filename, previous_filename, additions = 0, deletions = 0 }) => [
+      { path: filename, additions, deletions },
+      ...(previous_filename
+        ? [{ path: previous_filename, additions: 0, deletions: 0 }]
+        : []),
+    ],
+  );
+}
+
 // The paths a verifier reviews, from GitHub's list of a PR's files. A rename
 // counts its old path too, so a code or sensitive path cannot hide behind a
 // docs or test name. A list that may be cut short counts as unknown.
@@ -109,10 +147,13 @@ export function filesOf(entries) {
   );
 }
 
+// `changed` holds the paths of the one PR the brief names. `pulls` holds the
+// sized files of every PR the brief names, or undefined when any is unknown.
 export function decide(
   input,
   changed,
-  { isReviewOnly, isSensitivePath, sensitiveFlag },
+  { isReviewOnly, isSensitivePath, sensitiveFlag, sizeExclusion },
+  pulls,
 ) {
   const kind = kindOf(input);
   if (kind === 'trail')
@@ -131,6 +172,13 @@ export function decide(
           reason: `only helpers whose description starts with ${routinePrefixes.join(', ')} or a pstack Sonnet role (${pstackRolePrefixes.join(', ')}) may pick Sonnet`,
         };
   if (kind !== 'verifier') return undefined;
+  if (
+    !sensitiveFlag.test(input.prompt ?? '') &&
+    Array.isArray(pulls) &&
+    pulls.length > 0 &&
+    pulls.every((files) => files && !sizeExclusion(files))
+  )
+    return { model: 'sonnet', reason: 'every PR is small and not sensitive' };
   const sonnet =
     recheckName.test(input.description ?? '') &&
     !sensitiveFlag.test(input.prompt ?? '') &&
@@ -144,7 +192,7 @@ export function decide(
         reason:
           changed === undefined
             ? 'no single PR named, or its files could not be read'
-            : 'first verifier, or code or sensitive files changed',
+            : 'a PR is not small, or code or sensitive files changed',
       };
 }
 
@@ -160,10 +208,9 @@ export function output(input, decision) {
   };
 }
 
-// The files of the PR the brief names, read from GitHub, not from the
-// spawning session's checkout.
-function prFiles(number) {
-  if (!number) return undefined;
+// The files of a PR the brief names, read from GitHub, not from the spawning
+// session's checkout. Undefined when GitHub cannot be read.
+function prEntries(number) {
   try {
     const pages = JSON.parse(
       execFileSync(
@@ -177,7 +224,7 @@ function prFiles(number) {
         { encoding: 'utf8', timeout: 10000, maxBuffer: 64 * 1024 * 1024 },
       ),
     );
-    return filesOf(pages.flat());
+    return pages.flat();
   } catch {
     return undefined;
   }
@@ -194,10 +241,27 @@ async function main() {
     const rules = {
       ...(await import('../../scripts/quality/sensitive-paths.mjs')),
       ...(await import('../../scripts/quality/verdict-patch.mjs')),
+      ...(await import('../../scripts/quality/verify-batch.mjs')),
     };
-    const files =
-      kind === 'trail' || kind === 'helper' ? undefined : prFiles(prOf(input));
-    result = output(input, decide(input, files, rules));
+    let files;
+    let pulls;
+    if (kind === 'audit') {
+      const one = prOf(input);
+      const entries = one && prEntries(one);
+      files = entries && filesOf(entries);
+    } else if (kind === 'verifier') {
+      const numbers = prsOf(input) ?? [];
+      const entries = new Map(numbers.map((n) => [n, prEntries(n)]));
+      if (numbers.length > 0)
+        pulls = numbers.map((n) => {
+          const list = entries.get(n);
+          return list ? sizedFilesOf(list) : undefined;
+        });
+      const one = prOf(input);
+      const list = one && (entries.get(one) ?? prEntries(one));
+      files = list && filesOf(list);
+    }
+    result = output(input, decide(input, files, rules, pulls));
   } catch {
     result = output(input, { model: 'opus', reason: 'hook error' });
   }

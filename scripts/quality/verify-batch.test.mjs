@@ -110,10 +110,13 @@ test('drafts, sensitive paths, boundary files and large PRs keep their own verif
     exclusion(pull(1, [['scripts/quality/verdict-patch.test.mjs', 1]])),
     undefined,
   );
-  assert.match(exclusion(pull(1, [['a.ts', 100, 51]])), /151 changed lines/);
+  assert.match(
+    exclusion(pull(1, [['a.ts', 100, 51]])),
+    /151 counted changed lines/,
+  );
 });
 
-test('tests do not count toward the size, but Markdown does', () => {
+test('tests and docs do not count toward the size, but agent instructions do', () => {
   assert.equal(
     exclusion(
       pull(1, [
@@ -124,7 +127,22 @@ test('tests do not count toward the size, but Markdown does', () => {
     ),
     undefined,
   );
-  assert.match(exclusion(pull(1, [['AGENTS.md', 151]])), /151 changed lines/);
+  assert.equal(
+    exclusion(
+      pull(1, [
+        ['a.ts', 150],
+        ['docs/implementation-plan/README.md', 400],
+        ['apps/mobile/README.md', 400],
+      ]),
+    ),
+    undefined,
+  );
+  for (const path of ['AGENTS.md', 'docs/operations/X.md'])
+    assert.match(
+      exclusion(pull(1, [[path, 151]])),
+      /151 counted changed lines/,
+      path,
+    );
 });
 
 test('batches close at the PR and line limits, in number order', () => {
