@@ -167,6 +167,58 @@ const cases = [
     'no-restricted-properties',
     `export const secret = () => ${object}.crypto.getRandomValues(new Uint8Array(32));`,
   ]),
+  ...[
+    "useQuery({ queryKey: ['progress'] as const });",
+    "useQuery({ 'queryKey': ['progress'] });",
+    "useQuery({ [`queryKey`]: ['progress'] });",
+    "useQuery({ queryKey: [...progressKey(owner), 'day'] });",
+    ...[
+      'getQueryData',
+      'getQueryDefaults',
+      'getQueryState',
+      'setQueryData',
+      'setQueryDefaults',
+    ].flatMap((method) => [
+      `queries.${method}(['progress']);`,
+      `queries['${method}'](['progress']);`,
+      `queries[\`${method}\`](['progress']);`,
+    ]),
+  ].map((source) => ['no-restricted-syntax', source]),
+  // The route and feature block replaces the mobile syntax bans unless it repeats them.
+  ...[
+    production,
+    'apps/mobile/src/features/progress/ProgressScreen.tsx',
+    'apps/mobile/src/app/data.tsx',
+  ].flatMap((filePath) =>
+    [
+      "import { useQuery } from '@tanstack/react-query'; export const useRead = () => useQuery({ queryKey: ['progress'], queryFn: () => 1 });",
+      "import type { QueryClient } from '@tanstack/react-query'; export const seed = (queries: QueryClient) => queries.setQueryData(['progress'], 1);",
+      "export const open = () => import('./native-store');",
+    ].map((source) => ['no-restricted-syntax', source, filePath]),
+  ),
+  ...[
+    'clearData',
+    'erase',
+    'restoreJournal',
+    'mergeCompletions',
+    'mergeSyncedJournal',
+    'observeDataEpoch',
+    'withDataMigration',
+  ].flatMap((operation) =>
+    [
+      `export const run = (repository: Repository) => repository.${operation}();`,
+      `export const run = (repository: Repository) => repository['${operation}']();`,
+      `export const run = (repository: Repository) => repository[\`${operation}\`]();`,
+      `export const run = (repository: Repository) => { const { ${operation} } = repository; return ${operation}; };`,
+      `export const run = (repository: Repository) => { const { ['${operation}']: run } = repository; return run; };`,
+      `export const run = (repository: Repository) => Reflect.get(repository, '${operation}');`,
+    ].flatMap((source) =>
+      [
+        'apps/mobile/src/features/settings/data/SettingsDataScreen.tsx',
+        'apps/mobile/src/app/data.tsx',
+      ].map((filePath) => ['no-restricted-syntax', source, filePath]),
+    ),
+  ),
   [
     'no-restricted-syntax',
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
@@ -381,6 +433,64 @@ test('RLS context lint accepts ordinary SQL, messages and built-in connection op
   assert.deepEqual(
     result.messages.filter(
       (message) => message.ruleId === 'justgo/rls-context',
+    ),
+    [],
+  );
+});
+
+test('Mobile syntax bans accept scoped query keys, type-only imports and coordinated data calls', async () => {
+  const [result] = await eslint.lintText(
+    `
+    import { useQuery, type QueryClient } from '@tanstack/react-query';
+    import { accountKey } from '../../lib/network/account-client';
+    import type { ActivityRuntime } from '../../app-support/providers/activity-runtime';
+    import type { AccountRepository } from '../../data/activity/repository';
+    export type Native = typeof import('react-native');
+    export type Clear = Pick<AccountRepository, 'clearData'>;
+    export const useRead = (owner: string, queries: QueryClient) => {
+      const queryKey = accountKey(owner, 'progress');
+      void queries.invalidateQueries({ queryKey });
+      queries.setQueryData(accountKey(owner, 'progress', 'day'), 1);
+      queries.setQueryData([...accountKey(owner, 'progress'), 'week'], 1);
+      useQuery({ queryKey: [...accountKey(owner, 'progress'), 'month'], queryFn: () => 1 });
+      return useQuery({ queryKey: accountKey(owner, 'access'), queryFn: () => queries.getQueryData(queryKey) });
+    };
+    export const wipe = (activity: ActivityRuntime) => activity.deleteAllData();
+  `,
+    {
+      filePath: path.join(
+        root,
+        'apps/mobile/src/features/progress/ProgressScreen.tsx',
+      ),
+    },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'no-restricted-syntax',
+    ),
+    [],
+  );
+});
+
+test('Mobile syntax bans exempt tests, which load modules lazily and seed data directly', async () => {
+  const [result] = await eslint.lintText(
+    `
+    export const load = () => import('./SettingsDataScreen');
+    export const seed = (queries: QueryClient) => queries.setQueryData(['progress'], 1);
+    export const wipe = (repository: Repository) => repository.clearData();
+  `,
+    {
+      filePath: path.join(
+        root,
+        'apps/mobile/src/features/settings/data/SettingsDataScreen.test.tsx',
+      ),
+    },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'no-restricted-syntax',
     ),
     [],
   );
