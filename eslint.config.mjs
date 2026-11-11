@@ -53,7 +53,14 @@ const cryptoPropertyBans = ['globalThis', 'global', 'window', 'self'].map(
   (object) => ({ object, property: 'crypto', message: randomSecretFix }),
 );
 const dayEntryListFix =
-  "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks FlatList's estimated offsets, and FlatList then mounts every row.";
+  "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks a virtualized list's estimated offsets, and the list then mounts every row.";
+const virtualizedLists = [
+  'FlatList',
+  'LegacyFlatList',
+  'SectionList',
+  'VirtualizedList',
+  'VirtualizedSectionList',
+];
 const accountKeyFix =
   "Build query keys with accountKey() from apps/mobile/src/lib/network/account-client.ts, or a variable that holds one, so each key starts with ['account', userId]. An unscoped key serves one account's cached data to another.";
 // An identifier, a string or a template with no expressions can name a key or method.
@@ -266,17 +273,41 @@ export default tseslint.config(
             ...mobileImportBans,
             ...['react-native', 'react-native-gesture-handler'].map((name) => ({
               name,
-              importNames: ['FlatList'],
+              importNames: virtualizedLists,
               message: dayEntryListFix,
             })),
+            {
+              name: '@react-native/virtualized-lists',
+              message: dayEntryListFix,
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '@react-native/virtualized-lists/*',
+                'react-native/Libraries/Lists/*',
+              ],
+              message: dayEntryListFix,
+            },
           ],
         },
       ],
-      // Reanimated and react-native also expose FlatList as Animated.FlatList.
+      'no-restricted-syntax': [
+        'error',
+        ...routeAndFeatureSyntaxBans,
+        {
+          selector: `JSXMemberExpression[property.name=/^(${virtualizedLists.join('|')})$/]`,
+          message: dayEntryListFix,
+        },
+      ],
+      // Reanimated and react-native also expose lists as Animated.FlatList and Animated.SectionList.
       'no-restricted-properties': [
         'error',
         ...cryptoPropertyBans,
-        { property: 'FlatList', message: dayEntryListFix },
+        ...virtualizedLists.map((property) => ({
+          property,
+          message: dayEntryListFix,
+        })),
       ],
     },
   },
