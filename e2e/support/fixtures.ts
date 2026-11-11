@@ -117,6 +117,14 @@ async function removeFixtureAccounts(database: Pool) {
   for (const owner of userIds) {
     await database.query('begin');
     try {
+      // A closed page can still have an upload in flight on the server. Its
+      // rows reference this user, so lock the user row first: a write that
+      // already holds it commits before the deletes below read the tables,
+      // and a later one waits and then fails on the missing user.
+      await database.query(
+        'select 1 from justgo.users where id=$1 for update',
+        [owner],
+      );
       for (const table of [
         'journal_versions',
         'managed_auth_deletions',
