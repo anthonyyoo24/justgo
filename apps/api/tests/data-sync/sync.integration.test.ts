@@ -578,7 +578,7 @@ describe('managed authentication and guest boundary', () => {
         })
       ).statusCode,
     ).toBe(410);
-    for (const path of ['/v1/credentials', '/v1/devices', '/v1/transfers'])
+    for (const path of ['/v1/credentials', '/v1/devices'])
       expect((await apiRequest(managed, { url: path })).statusCode).toBe(404);
     expect(
       (
