@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScaledText as Text } from '../../components/typography/ScaledText';
@@ -12,15 +12,35 @@ type NoticeOptions = {
   navigationEnabled?: boolean;
   toastChannel?: string;
 };
+// Every notice host shares one dismissal per repository, so a sheet does not
+// bring back a notice the user closed on the screen beneath it.
+const dismissedIssues = new WeakMap<object, string>();
+const dismissalListeners = new Set<() => void>();
+function subscribeDismissals(listener: () => void) {
+  dismissalListeners.add(listener);
+  return () => {
+    dismissalListeners.delete(listener);
+  };
+}
+function setDismissedIssue(repository: object, issueKey: string | null) {
+  if (dismissedIssues.get(repository) === (issueKey ?? undefined)) return;
+  if (issueKey === null) dismissedIssues.delete(repository);
+  else dismissedIssues.set(repository, issueKey);
+  for (const listener of dismissalListeners) listener();
+}
+
 export function SavingNotice(options: NoticeOptions = {}) {
   const { repository, state } = useActivityState();
-  if (!state || !repository) return null;
-  const operations = actionableOperations(state);
-  const unreadable = state.hydrationError === 'unreadable';
-  const warning = !!state.warning?.visible;
-  if (!unreadable && !warning && !operations.length) return null;
+  const operations = state ? actionableOperations(state) : [];
+  const unreadable = state?.hydrationError === 'unreadable';
+  const warning = !!state?.warning?.visible;
+  const resolved = !unreadable && !warning && !operations.length;
+  useEffect(() => {
+    // Forget a resolved episode, so a later failure can be announced again.
+    if (repository && resolved) setDismissedIssue(repository, null);
+  }, [repository, resolved]);
+  if (!state || !repository || resolved) return null;
   const episode = `${unreadable ? 'storage' : ''}:${state.warning?.episode ?? ''}:${operations.map((operation) => `${operation.id}:${operation.state}:${operation.code}`).join(',')}`;
-  // Unmount a resolved episode, so a later failure can be announced again.
   return (
     <NoticeEpisode
       issueKey={episode}
@@ -49,18 +69,13 @@ function NoticeEpisode({
   const [expandedFor, setExpandedFor] = useState<typeof repository | null>(
     null,
   );
-  const [dismissedFor, setDismissedFor] = useState<{
-    repository: typeof repository;
-    key: string;
-  } | null>(null);
   const hidden =
-    dismissedFor?.repository === repository && dismissedFor.key === issueKey;
+    useSyncExternalStore(subscribeDismissals, () =>
+      dismissedIssues.get(repository),
+    ) === issueKey;
   const expanded = expandedFor === repository;
-  const title = unreadable
-    ? 'Your saved entries couldn’t load'
-    : warning
-      ? 'New activity isn’t saved yet'
-      : 'Some activity needs attention';
+  const copy =
+    noticeCopy[unreadable ? 'unreadable' : warning ? 'warning' : 'upload'];
   return (
     <>
       {!hidden && (
@@ -82,13 +97,7 @@ function NoticeEpisode({
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={
-                unreadable
-                  ? 'Review saved entries that couldn’t load'
-                  : warning
-                    ? 'Review saving warning'
-                    : 'Review activity that couldn’t upload'
-              }
+              accessibilityLabel={copy.review}
               onPress={() => setExpandedFor(repository)}
               style={styles.details}
             >
@@ -97,15 +106,15 @@ function NoticeEpisode({
                 accessibilityLiveRegion="polite"
                 style={styles.copy}
               >
-                {title}
+                {copy.title}
               </Text>
               <Text style={styles.link}>Details</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close saving warning"
+              accessibilityLabel={copy.close}
               onPress={() => {
-                setDismissedFor({ repository, key: issueKey });
+                setDismissedIssue(repository, issueKey);
                 if (warning) repository.dismissWarning();
               }}
               style={styles.close}
@@ -126,6 +135,23 @@ function NoticeEpisode({
     </>
   );
 }
+const noticeCopy = {
+  unreadable: {
+    title: 'Your saved entries couldn’t load',
+    review: 'Review saved entries that couldn’t load',
+    close: 'Close saved entries warning',
+  },
+  warning: {
+    title: 'New activity isn’t saved yet',
+    review: 'Review saving warning',
+    close: 'Close saving warning',
+  },
+  upload: {
+    title: 'Some activity needs attention',
+    review: 'Review activity that couldn’t upload',
+    close: 'Close upload warning',
+  },
+};
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', zIndex: 100 },
   notice: {
