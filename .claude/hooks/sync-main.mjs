@@ -23,14 +23,36 @@ const fetchTimeout = 6000;
 const gitTimeout = 2000;
 const stampName = 'sync-main-fetched';
 
-// A git command anywhere in the text outside quotes, so one after `then`,
-// `env`, `time`, `$(` or a path such as /usr/bin/git counts too. A miss only
-// skips a sync, since every Agent call also syncs, and a false match only
-// costs one.
-const worktreeAdd =
-  /(?:^|[\s(`{!]|\$\()(?:\S*\/)?git(?:\s+-[Cc]\s+\S+|\s+--(?:git-dir|work-tree|namespace|config-env)\s+\S+|\s+-\S+)*\s+worktree\s+add\b/;
+// git options whose value is the next word.
+const valueOptions = new Set([
+  '-C',
+  '-c',
+  '--git-dir',
+  '--work-tree',
+  '--namespace',
+  '--config-env',
+  '--attr-source',
+]);
 
-const createsWorktree = (command) => worktreeAdd.test(shellText(command));
+// A git command anywhere in the text outside quotes and heredocs, so one after
+// `then`, `env`, `time`, `$(`, an operator with no space around it, or a path
+// such as /usr/bin/git counts too. Each word is read once, so a long command
+// costs linear time. A miss only skips a sync, since every Agent call also
+// syncs, and a false match only costs one.
+function createsWorktree(command) {
+  const words = shellText(command)
+    .split(/[\s;&|()`{}!]+/)
+    .filter(Boolean);
+  for (let at = 0; at < words.length; at += 1) {
+    if (words[at] !== 'git' && !words[at].endsWith('/git')) continue;
+    at += 1;
+    while (at < words.length && words[at].startsWith('-'))
+      at += valueOptions.has(words[at]) ? 2 : 1;
+    if (words[at] === 'worktree' && words[at + 1] === 'add') return true;
+    at -= 1;
+  }
+  return false;
+}
 
 export function triggerOf(event) {
   if (event.hook_event_name === 'SessionStart')
