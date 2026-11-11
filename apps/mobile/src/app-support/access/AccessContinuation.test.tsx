@@ -21,7 +21,6 @@ import {
 } from '../../../test-support/local-journal';
 import {
   MemoryStorage,
-  backend,
   card,
   deferred,
   input,
@@ -160,7 +159,6 @@ function createRepository(accountId: string) {
     accountId,
     storage,
     localJournal: memoryLocalJournal(accountId, storage),
-    transport: backend(),
     dataMode: 'local',
     today,
     timeZone: zone,

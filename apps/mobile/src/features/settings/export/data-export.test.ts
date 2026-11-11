@@ -5,7 +5,6 @@ import { collectExport } from './data-export';
 import { ApiError } from '../../../lib/network/http';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -24,7 +23,6 @@ async function setup(kind: 'guest' | 'account' = 'guest', signedIn = false) {
   const repository = new AccountRepository({
     accountId: owner,
     storage: new MemoryStorage(),
-    transport: backend(),
     today,
     timeZone: zone,
   });

@@ -3,9 +3,8 @@ import { performance } from 'node:perf_hooks';
 import { catalogSchema, sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import type { JournalClock } from '../apps/mobile/src/data/activity/model';
 
-// Node repository tests use the same loopback-only development transport guard.
+// Mobile modules read React Native's __DEV__ global.
 Object.defineProperty(globalThis, '__DEV__', {
   value: true,
   configurable: true,
@@ -13,9 +12,6 @@ Object.defineProperty(globalThis, '__DEV__', {
 
 const {
   AccountRepository,
-  createJournalTransport,
-  AccountClient,
-  createHttpClient,
   MemoryStorage,
   memoryLocalJournal,
   memoryJournalBackend,
@@ -25,7 +21,7 @@ const {
 type MemoryStorage = InstanceType<typeof MemoryStorage>;
 
 // Failure controls stay in the runner, never in the deployable app/API. The
-// repository consumes its real account transport against loopback fixtures.
+// fixture account and catalog come from the loopback fixture API.
 async function fixtureAccount() {
   const token = randomBytes(32).toString('hex');
   const response = await fetch(`${journeyApiUrl}/v1/sessions`, {
@@ -48,52 +44,23 @@ async function fixtureAccount() {
   const catalog = catalogSchema.parse(await catalogResponse.json());
   return { token, account, card: catalog.cards[0]! };
 }
-function repository(
-  accountId: string,
-  token: string,
-  storage: MemoryStorage,
-  fetcher: typeof fetch = fetch,
-  clock?: JournalClock,
-) {
-  const client = new AccountClient(createHttpClient(journeyApiUrl, fetcher), {
-    current: () => ({ userId: accountId, token }),
-    renew: async () => {
-      throw new Error('Unexpected fixture renewal');
-    },
-    reject: () => {},
-  });
-  client.changeAccount(accountId);
+function repository(accountId: string, storage: MemoryStorage) {
   const repo = new AccountRepository({
     accountId,
     storage,
     localJournal: memoryLocalJournal(accountId, storage),
-    transport: createJournalTransport(client, accountId),
     today: new Date().toISOString().slice(0, 10),
     timeZone: 'UTC',
-    random: () => 0.5,
-    ...(clock ? { clock } : {}),
   });
-  return {
-    repo,
-    close: () => {
-      repo.dispose();
-      client.changeAccount(null);
-    },
-  };
+  return { repo, close: () => repo.dispose() };
 }
 
-test('private journal failures preserve input locally and send nothing to the API', async ({
+test('private journal failures preserve input locally and leave the server empty', async ({
   fixtureDatabase,
 }) => {
-  const { token, account, card } = await fixtureAccount();
+  const { account, card } = await fixtureAccount();
   const storage = new MemoryStorage();
-  const writes: string[] = [];
-  const fetcher: typeof fetch = async (url, options) => {
-    if (options?.method && options.method !== 'GET')
-      writes.push(String(options.body ?? ''));
-    return fetch(url, options);
-  };
-  const { repo, close } = repository(account.userId, token, storage, fetcher);
+  const { repo, close } = repository(account.userId, storage);
   try {
     await repo.hydrate();
     const completion = {
@@ -122,7 +89,6 @@ test('private journal failures preserve input locally and send nothing to the AP
     );
     // No data mode uploads through the attempts API since #293 retired the
     // legacy sender, so the server holds nothing this phone saved.
-    expect(writes).toEqual([]);
     expect(
       (
         await fixtureDatabase.query(
@@ -147,9 +113,9 @@ test('private journal failures preserve input locally and send nothing to the AP
 test('ten long submissions persist on the phone with measured serialization bounds and stay off the server', async ({
   fixtureDatabase,
 }, testInfo) => {
-  const { token, account, card } = await fixtureAccount();
+  const { account, card } = await fixtureAccount();
   const storage = new MemoryStorage();
-  const { repo, close } = repository(account.userId, token, storage);
+  const { repo, close } = repository(account.userId, storage);
   try {
     repo.setEnvironment({ active: true, online: false });
     await repo.hydrate();
