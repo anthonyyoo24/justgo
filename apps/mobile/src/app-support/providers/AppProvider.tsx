@@ -60,7 +60,6 @@ export function createAppRuntime<
         ? client.request('/v1/challenges', catalogSchema, { signal })
         : client.requestGuest('/v1/guest/challenges', catalogSchema, signal),
   });
-  let sessionId: string | null = null;
   let accountId: string | null = null;
   const sync = () => {
     const snapshot = identity.getSnapshot();
@@ -105,10 +104,6 @@ export function createAppRuntime<
         : 'account',
     );
     challenges.changeAccount(collection);
-    const nextSession = identity.getSnapshot().account?.sessionId ?? null;
-    if (nextSession && sessionId !== nextSession)
-      activity.resumeAuthentication();
-    sessionId = nextSession;
   };
   sync();
   return {

@@ -1,12 +1,10 @@
 import { AccountRepository } from './repository';
-import type { JournalTransport } from './sync/transport';
 import { emptyJournal } from './model';
 import { addCompletion, addReflection } from './submissions';
 import { journalEntry } from './private-journal';
 import { progressDay, progressMetrics } from './progress/progress';
 import {
   MemoryStorage,
-  backend,
   card,
   input,
   owner,
@@ -27,18 +25,11 @@ const privateAttempt = (id = 1, text = 'Private synthetic writing') => ({
   ...attempt(id),
   reflection: { feeling: 'a_little_better' as const, text, revision: 1 },
 });
-function setup(
-  storage = new MemoryStorage(),
-  transport: JournalTransport & {
-    calls: string[];
-    records: Map<string, import('@justgo/contracts').Attempt>;
-  } = backend(),
-) {
+function setup(storage = new MemoryStorage()) {
   const journal = memoryLocalJournal(owner, storage);
   const repository = new AccountRepository({
     accountId: owner,
     storage,
-    transport,
     today,
     timeZone: zone,
     localJournal: journal,
@@ -48,7 +39,6 @@ function setup(
   return {
     repository,
     storage,
-    transport,
     journal,
     database: memoryJournalBackend(storage),
   };
@@ -76,7 +66,7 @@ it('commits private saves independently, with completion-only cache data', async
 });
 
 it('rejects a failed private commit and retains the prior entry without cloud fallback', async () => {
-  const { repository, database, transport } = setup();
+  const { repository, database } = setup();
   await repository.complete(input(), card);
   await repository.submitReflection(uuid(1), uuid(2), { text: 'Saved' });
   database.failCommit = true;
@@ -84,7 +74,6 @@ it('rejects a failed private commit and retains the prior entry without cloud fa
     repository.submitReflection(uuid(1), uuid(3), { text: 'New input' }),
   ).rejects.toMatchObject({ code: 'STORAGE' });
   expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe('Saved');
-  expect(transport.calls).toEqual([]);
   database.failCommit = false;
   await repository.submitReflection(uuid(1), uuid(3), { text: 'New input' });
   expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe('New input');

@@ -1,7 +1,7 @@
 import { ActivityRuntime } from './activity-runtime';
 import { AccountClient } from '../../lib/network/account-client';
 import { createHttpClient } from '../../lib/network/http';
-import { journalSchema, type JournalClock } from '../../data/activity/model';
+import type { JournalClock } from '../../data/activity/model';
 import { clearExportFiles } from '../../platform/export/export-file';
 import { clearBackupFiles } from '../../platform/backup/backup-file';
 import {
@@ -256,7 +256,7 @@ it('parks activity across identity changes and reuses the same repository on rec
   client.changeAccount(null);
 });
 
-it('rolls over at midnight while active, clears stale downloads and retains pending submissions', async () => {
+it('rolls over at midnight while active, clears stale cached downloads and retains completions', async () => {
   jest.setSystemTime(new Date('2026-10-31T23:59:59.500-04:00'));
   const storage = new MemoryStorage();
   const { runtime, client } = createRuntime(storage, { timeZone: () => zone });
@@ -265,15 +265,25 @@ it('rolls over at midnight while active, clears stale downloads and retains pend
     runtime.changeAccount(owner);
     const repository = runtime.getRepository()!;
     await repository.hydrate();
-    await repository.acceptTodayPage(
-      { date: '2026-10-31', totalReps: 0, entries: [], nextCursor: null },
-      zone,
-    );
-    await repository.acceptCalendar(
-      { month: '2026-10', monthlyReps: 0, activeDays: 0, days: [] },
-      zone,
-      repository.store.getState().journal.generation,
-    );
+    // Saved journals from before #293 can still hold these server caches.
+    repository.store.setState({
+      journal: {
+        ...repository.store.getState().journal,
+        today: {
+          data: {
+            date: '2026-10-31',
+            totalReps: 0,
+            entries: [],
+            nextCursor: null,
+          },
+          timeZone: zone,
+        },
+        calendar: {
+          data: { month: '2026-10', monthlyReps: 0, activeDays: 0, days: [] },
+          timeZone: zone,
+        },
+      },
+    });
     expect(repository.store.getState().journal.calendar?.data.month).toBe(
       '2026-10',
     );
@@ -284,13 +294,6 @@ it('rolls over at midnight while active, clears stale downloads and retains pend
       journal: { today: null, calendar: null },
     });
     expect(repository.getAttempt(input().id)).toBeDefined();
-    await repository.acceptTodayPage(
-      { date: '2026-11-01', totalReps: 0, entries: [], nextCursor: null },
-      zone,
-    );
-    expect(repository.store.getState().journal.today?.data.date).toBe(
-      '2026-11-01',
-    );
     const writes = storage.writes.length;
     await jest.advanceTimersByTimeAsync(60_000);
     expect(storage.writes).toHaveLength(writes);
@@ -364,64 +367,4 @@ it('refreshes the foreground period and cancels background, disconnect and dispo
     runtime.dispose();
     client.changeAccount(null);
   }
-});
-
-it('resumes hydrated auth-blocked submissions after a session becomes valid during a slow journal read', async () => {
-  const storage = new MemoryStorage();
-  const seed = createRuntime(storage);
-  seed.runtime.setEnvironment({ active: true, online: false });
-  seed.runtime.changeAccount(owner);
-  await seed.runtime.getRepository()!.complete(input(), card);
-  const key = `justgo:v1:${owner}:journal`;
-  const journal = journalSchema.parse(JSON.parse(storage.values.get(key)!));
-  journal.operations[0]!.state = 'auth';
-  const raw = JSON.stringify(journal);
-  seed.runtime.dispose();
-  seed.client.changeAccount(null);
-  const read = deferred<string | null>();
-  jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
-  const { runtime, client } = createRuntime(storage);
-  try {
-    runtime.setEnvironment({ active: true, online: false });
-    runtime.changeAccount(owner);
-    const repository = runtime.getRepository()!;
-    runtime.resumeAuthentication();
-    expect(repository.store.getState().ready).toBe(false);
-    read.resolve(raw);
-    await repository.hydrate();
-    expect(repository.store.getState().journal.operations[0]?.state).toBe(
-      'pending',
-    );
-  } finally {
-    read.resolve(raw);
-    runtime.dispose();
-    client.changeAccount(null);
-  }
-});
-
-it('defers renewed authentication while inactive and applies it only to the same foreground account', async () => {
-  const { runtime, client } = createRuntime();
-  runtime.setEnvironment({ active: true, online: false });
-  runtime.changeAccount(owner);
-  const first = runtime.getRepository()!;
-  await first.complete(input(), card);
-  const journal = structuredClone(first.store.getState().journal);
-  journal.operations[0]!.state = 'auth';
-  first.store.setState({ journal });
-  runtime.setEnvironment({ active: false, online: false });
-  expect(() => runtime.resumeAuthentication()).not.toThrow();
-  expect(first.store.getState().journal.operations[0]?.state).toBe('auth');
-  runtime.setEnvironment({ active: true, online: false });
-  expect(first.store.getState().journal.operations[0]?.state).toBe('pending');
-  journal.operations[0]!.state = 'auth';
-  first.store.setState({ journal: structuredClone(journal) });
-  runtime.setEnvironment({ active: false, online: false });
-  runtime.resumeAuthentication();
-  runtime.changeAccount(otherOwner);
-  runtime.setEnvironment({ active: true, online: false });
-  expect(first.store.getState().journal.operations[0]?.state).toBe('auth');
-  expect(runtime.getRepository()?.accountId).toBe(otherOwner);
-  runtime.dispose();
-  runtime.resumeAuthentication();
-  client.changeAccount(null);
 });

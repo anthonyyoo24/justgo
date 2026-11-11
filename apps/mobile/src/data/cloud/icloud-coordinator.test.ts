@@ -20,7 +20,6 @@ import {
 import {
   MemoryStorage,
   attempt,
-  backend,
   card,
   deckFields,
   deckPreferences,
@@ -50,7 +49,6 @@ function setup(
   const repository = new AccountRepository({
     accountId: account,
     storage,
-    transport: backend(),
     today,
     timeZone: zone,
     localJournal: memoryLocalJournal(account, storage),
