@@ -172,6 +172,15 @@ export default tseslint.config(
           `${ownerTransactionCallback} MemberExpression[property.name=/^(db|pool|rateLimit|withSession|withAccountDeletion)$/]`,
           `${ownerTransactionCallback} MemberExpression[object.name=/^(db|pool|database)$/]`,
         ].map((selector) => ({ selector, message: ownerTransactionFix })),
+        ...[
+          'Identifier[name=/e-?mail/i]',
+          'Literal[value=/e-?mail/i]',
+          'TemplateElement[value.raw=/e-?mail/i]',
+        ].map((selector) => ({
+          selector,
+          message:
+            'API code never reads, stores or matches an email. Only the verified Auth subject, through managed_auth_accounts, names an owner, so accounts are never found or merged by email.',
+        })),
       ],
     },
   },
