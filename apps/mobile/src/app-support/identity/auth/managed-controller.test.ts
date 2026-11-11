@@ -1379,6 +1379,32 @@ it('does not adopt or relabel an unchanged SDK session after interrupted browser
   ctx.controller.dispose();
 });
 
+it('restores the source quietly and marks the switch cancelled after a provider cancel callback', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  expect(ctx.controller.getSnapshot().switchCancelled).toBe(false);
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  // The cancel callback leaves the SDK on the source session it already held.
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account,
+    provider: 'apple',
+    message: '',
+    hasPending: false,
+    switchCancelled: true,
+  });
+  await restarted.retry();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account,
+    switchCancelled: false,
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
 it('resumes confirmed callback switching with the old bearer only in secure storage', async () => {
   const ctx = setup();
   await ctx.controller.initialize();

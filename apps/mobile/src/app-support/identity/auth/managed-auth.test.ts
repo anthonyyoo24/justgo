@@ -225,6 +225,54 @@ it('redirects browser sign-in with PKCE and exchanges only the callback code, re
   expect(nativeProviderToken).not.toHaveBeenCalled();
 });
 
+function webCallback(query: string) {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+  const replaceState = jest.fn();
+  global.window = {
+    location: {
+      href: `https://justgo.example/auth/callback?${query}`,
+      origin: 'https://justgo.example',
+      assign: jest.fn(),
+    },
+    history: { replaceState },
+  } as unknown as Window & typeof globalThis;
+  return replaceState;
+}
+
+it.each([
+  ['Google', 'error=access_denied&error_description=User+denied'],
+  ['Apple', 'error=user_cancelled_authorize'],
+])(
+  'keeps the stored session without an exchange when the user cancels at %s',
+  async (_provider, query) => {
+    const replaceState = webCallback(query);
+    const restored = await createManagedAuth().initialize();
+    expect(restored).toMatchObject({
+      authUserId: serverSession.user.id,
+      accessToken: serverSession.access_token,
+    });
+    expect(restored?.freshSignIn).toBeUndefined();
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
+    expect(mockAuth.exchangeCodeForSession).not.toHaveBeenCalled();
+  },
+);
+
+it.each([
+  'error=access_denied&error_code=signup_disabled&error_description=Signups+not+allowed',
+  'error=server_error&error_code=unexpected_failure',
+  'error=invalid_request&error_code=bad_oauth_state',
+])(
+  'fails a callback that Supabase Auth itself rejected: %s',
+  async (query) => {
+    const replaceState = webCallback(query);
+    await expect(createManagedAuth().initialize()).rejects.toMatchObject({
+      code: 'AUTH',
+    });
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
+    expect(mockAuth.exchangeCodeForSession).not.toHaveBeenCalled();
+  },
+);
+
 it('notifies refreshed sessions without making Auth calls from the SDK callback and stops workers on logout', async () => {
   const auth = createManagedAuth();
   const listener = jest.fn();
