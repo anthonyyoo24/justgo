@@ -13,6 +13,15 @@ import {
 const [triggers] = workflow.split(/^permissions:$/m);
 const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
 const producers = ['static', ...appJobs];
+const workflowsUrl = new URL('../../.github/workflows/', import.meta.url);
+const definitions = [
+  ...readdirSync(workflowsUrl)
+    .filter((name) => name.endsWith('.yml'))
+    .map((name) => readFileSync(new URL(name, workflowsUrl), 'utf8')),
+  ...readdirSync(new URL('../../.github/actions/', import.meta.url)).map(
+    action,
+  ),
+];
 
 test('database CI runs real Worker and encrypted recovery boundaries after shared prerequisites', () => {
   const job = jobs.database;
@@ -129,10 +138,8 @@ test('every job installs the pinned pnpm from the frozen lockfile through one ca
 
 test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
   const runs = commands(jobs.static);
-  assert.ok(
-    runs.indexOf('pnpm --filter @justgo/mobile run doctor') <
-      runs.indexOf('pnpm run check:static'),
-  );
+  const doctor = runs.indexOf('pnpm --filter @justgo/mobile run doctor');
+  assert.ok(doctor >= 0 && doctor < runs.indexOf('pnpm run check:static'));
   assert.ok(runs.includes('pnpm run audit:api'));
   assert.equal(
     rootPackage.scripts['audit:api'],
@@ -240,21 +247,19 @@ test('browser cache is versioned, installs system dependencies on hits, and expo
 });
 
 test('every external action in every workflow has an immutable reviewed-release pin and updates are configured', () => {
-  const workflows = new URL('../../.github/workflows/', import.meta.url);
-  const definitions = [
-    ...readdirSync(workflows)
-      .filter((name) => name.endsWith('.yml'))
-      .map((name) => readFileSync(new URL(name, workflows), 'utf8')),
-    action('setup-node'),
-    action('setup-database'),
-    action('setup-playwright'),
-  ];
   let external = 0;
   for (const source of definitions)
-    for (const [, reference] of source.matchAll(/\buses: ([^\s]+)/g)) {
+    for (const [, reference, comment] of source.matchAll(
+      /\buses: (\S+)(.*)$/gm,
+    )) {
       if (reference.startsWith('./')) continue;
       external++;
       assert.match(reference, /^actions\/[\w-]+@[a-f0-9]{40}$/);
+      assert.match(
+        comment,
+        /^ # v\d+\.\d+\.\d+$/,
+        `${reference} needs its release version after the SHA, as in "# v7.0.1"`,
+      );
     }
   assert.ok(external > 5);
   const updates = readFileSync(
@@ -264,6 +269,15 @@ test('every external action in every workflow has an immutable reviewed-release 
   assert.match(updates, /package-ecosystem: github-actions/);
   assert.match(updates, /package-ecosystem: npm/);
   assert.equal([...updates.matchAll(/interval: weekly/g)].length, 2);
+});
+
+test('Expo Doctor runs live in CI without offline mode or skipped checks', () => {
+  for (const source of definitions)
+    assert.doesNotMatch(
+      source,
+      /\bEXPO_(?:OFFLINE|NO_DEPENDENCY_VALIDATION|DOCTOR_\w+)\b/,
+      'Fix the Expo Doctor finding instead of hiding live metadata checks',
+    );
 });
 
 test('Jest uses one local worker and two on CI without changing local verification ordering', () => {
