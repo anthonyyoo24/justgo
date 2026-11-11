@@ -12,7 +12,6 @@ import {
   type JournalClock,
   type JournalStorage,
 } from '../../data/activity/model';
-import { createJournalTransport } from '../../data/activity/sync/transport';
 import { clearExportFiles } from '../../platform/export/export-file';
 import { clearBackupFiles } from '../../platform/backup/backup-file';
 import { CloudDataCoordinator } from '../../data/cloud/coordinator';
@@ -36,7 +35,6 @@ export class ActivityRuntime {
   );
   getRepository = () => this.store.getState().repository;
   private readonly accounts: AccountRepositories;
-  private authenticationPending: AccountRepository | null = null;
   private environment = { active: true, online: true };
   private readonly clock: JournalClock;
   private readonly timeZone: () => string;
@@ -74,7 +72,6 @@ export class ActivityRuntime {
         new AccountRepository({
           accountId,
           storage,
-          transport: createJournalTransport(client, accountId),
           ...this.currentPeriod(),
           clock: this.clock,
         }),
@@ -162,21 +159,10 @@ export class ActivityRuntime {
       );
       repository.setDataMode(mode);
     }
-    if (repository !== this.getRepository()) this.authenticationPending = null;
     this.store.setState({ repository });
     this.refreshPeriod(repository);
     // Repository hydration owns read/quarantine failures and exposes them to UI.
-    if (repository)
-      void repository
-        .hydrate()
-        .then(() => {
-          if (
-            this.getRepository() === repository &&
-            this.authenticationPending === repository
-          )
-            this.resumeAuthentication();
-        })
-        .catch(() => {});
+    if (repository) void repository.hydrate().catch(() => {});
   }
   private async synchronizeData(
     repository: AccountRepository,
@@ -380,22 +366,6 @@ export class ActivityRuntime {
     }
     this.getRepository()?.setEnvironment(environment);
     this.refreshPeriod(this.getRepository());
-    if (
-      environment.active &&
-      this.getRepository() === this.authenticationPending
-    )
-      this.resumeAuthentication();
-  }
-  resumeAuthentication() {
-    const repository = this.getRepository();
-    if (!repository) return;
-    const state = repository.store.getState();
-    if (!state.active || !state.ready) {
-      this.authenticationPending = repository;
-      return;
-    }
-    repository.resumeAuthentication();
-    this.authenticationPending = null;
   }
   deleteAccount = async (accountId: string) => {
     this.cloud.get(accountId)?.stop();
@@ -409,7 +379,6 @@ export class ActivityRuntime {
     this.cloud.delete(accountId);
     if (this.getRepository()?.accountId === accountId) {
       this.clearPeriodTimer();
-      this.authenticationPending = null;
       this.store.setState({ repository: null });
     }
     await this.accounts.erase(accountId);
@@ -422,7 +391,6 @@ export class ActivityRuntime {
     this.accounts.dispose();
     for (const sync of this.cloud.values()) sync.stop();
     for (const sync of this.apple.values()) sync.stop();
-    this.authenticationPending = null;
     this.store.setState({ repository: null });
   }
 }

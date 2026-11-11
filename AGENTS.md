@@ -118,12 +118,11 @@ these rules:
   `apps/mobile/src/app-support/identity`, `auth/` owns sign-in, provider
   switching and logout, and `deletion/` owns account deletion.
   `apps/api/src/identity` owns the server side. In
-  `apps/mobile/src/data`, `activity/` owns completion history, and its `sync/`
-  folder sends each new completion's upload with its retry and transport.
-  `journal/` owns private writing. `cloud/` owns the cloud download, journal sync,
-  delete-all and guest adoption, and the iCloud copy. Its coordinator also uploads
-  completions through `/v1/completion-restores` in ordinary sync, adoption and
-  import. `backup/` owns the file formats. Their tests
+  `apps/mobile/src/data`, `activity/` owns completion history. `journal/` owns
+  private writing. `cloud/` owns the cloud download, journal sync, delete-all and
+  guest adoption, and the iCloud copy. Its coordinator uploads completions through
+  `/v1/completion-restores` in ordinary sync, adoption and import. `backup/` owns
+  the file formats. Their tests
   sit beside them.
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute

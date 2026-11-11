@@ -16,7 +16,6 @@ export const sensitivePaths = [
   'apps/mobile/src/app/account/',
   'apps/mobile/src/data/backup/',
   'apps/mobile/src/data/cloud/',
-  'apps/mobile/src/data/activity/sync/',
   'scripts/release/',
   'scripts/backups/',
   '.github/workflows/database-backups.yml',
