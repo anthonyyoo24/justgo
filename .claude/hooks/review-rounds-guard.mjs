@@ -3,7 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { newestVerdictOf } from '../../scripts/quality/merge-order.mjs';
 import { runVerdictPatch } from '../../scripts/quality/verdict-status.mjs';
-import { isVerifier } from './verifier-model.mjs';
+import { isVerifier, thisRepo } from './verifier-model.mjs';
 
 // PreToolUse hook on Agent. It stops review loops, as AGENTS.md "Review
 // rounds" says. It denies a verifier on an open PR in two cases:
@@ -11,27 +11,50 @@ import { isVerifier } from './verifier-model.mjs';
 // - The newest owner verdict is PASS or PASS+NOTES and still covers the PR
 //   head: the head matches, or verdict-patch says `carries` or
 //   `docs-tests-only`. Notes go to an issue or a follow-up PR, not another round.
-// - The PR already has 3 FAIL verdicts: the first review and two fix rounds.
-//   The PR goes to Anthony.
+// - The PR already has 3 FAIL verdicts that show a failure: the first review
+//   and two fix rounds. The PR goes to Anthony. A FAIL with no `Failure shown:`
+//   line shows no defect, as verdict-status.mjs says, so it uses up no round.
 //
 // A brief with a line `Another round: <Anthony's words>` passes, for when
 // Anthony asks for one. Any git or GitHub failure lets the call through: this
-// guard saves review rounds and protects no data.
+// guard saves review rounds and protects no data. So does running out of
+// time: every git, GitHub and verdict-patch call shares one budget that ends
+// well before the hook timeout in settings.json.
 
-const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
+// A reference is one PR (`PR #7`, a GitHub pull link) or a list (`PRs #7, #8
+// and #9`). Each listed number keeps its `#`, so `PR #7, 2 files` names one PR.
+// A link names its repository, as verifier-model.mjs reads it, so a link to
+// another repository, such as a pstack PR being ported, and the numbers
+// listed after it name no JustGO PR.
+const prReference =
+  /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
 const anotherRound = /^[ \t]*\**Another round:\**[ \t]*\S/im;
 const maxFails = 3;
+export const budgetMs = 45000;
+const callMs = 15000;
 
+// JustGO's PR numbers in a text. Only digits after `#` or `/pull/` count, so
+// the digits in a repository name never do.
 const numbersIn = (text) => [
-  ...new Set([...(text ?? '').matchAll(prReference)].map(([, n]) => n)),
+  ...new Set(
+    [...(text ?? '').matchAll(prReference)].flatMap(
+      ([list, repo = thisRepo]) =>
+        repo.toLowerCase() === thisRepo
+          ? list.match(/(?<=#|\/pull\/)\d+/g)
+          : [],
+    ),
+  ),
 ];
 
 // The PRs under review: those the description names, or else those the
-// prompt names, as for a batch verifier. A prompt that only mentions a PR,
-// such as a stacked parent, never blocks a verifier of another PR.
+// prompt names, as for a batch verifier whose description names none. A
+// prompt that only mentions a PR, such as a stacked parent, never blocks a
+// verifier whose description names its PRs.
 export function prsOf(input) {
   const named = numbersIn(input.description);
-  return named.length ? named : numbersIn(input.prompt);
+  return named.length
+    ? { numbers: named, from: 'description' }
+    : { numbers: numbersIn(input.prompt), from: 'prompt' };
 }
 
 function passCovers(number, pr, verdict, cwd, io) {
@@ -70,10 +93,10 @@ function checkPr(number, cwd, io) {
   );
   if (pr.state !== 'OPEN') return undefined;
   const fails = (pr.comments ?? []).filter(
-    (comment) => newestVerdictOf([comment])?.verdict === 'FAIL',
+    (comment) => newestVerdictOf([comment])?.failureShown,
   ).length;
   if (fails >= maxFails)
-    return `PR #${number} has ${fails} FAIL verdicts, and the limit is ${maxFails}: the first review and two fix rounds. Stop and bring it to Anthony with what still fails.`;
+    return `PR #${number} has ${fails} FAIL verdicts that show a failure, and the limit is ${maxFails}: the first review and two fix rounds. Stop and bring it to Anthony with what still fails.`;
   const verdict = newestVerdictOf(pr.comments);
   if (
     verdict &&
@@ -90,7 +113,8 @@ export function evaluate(input, cwd, io) {
   if (!isVerifier(input) || anotherRound.test(input.prompt ?? ''))
     return undefined;
   const reasons = [];
-  for (const number of prsOf(input)) {
+  const { numbers, from } = prsOf(input);
+  for (const number of numbers) {
     try {
       const reason = checkPr(number, cwd, io);
       if (reason) reasons.push(reason);
@@ -99,9 +123,13 @@ export function evaluate(input, cwd, io) {
     }
   }
   if (!reasons.length) return undefined;
+  const scope =
+    from === 'prompt'
+      ? ' The description names no PR, so every PR the prompt mentions was checked. If the prompt only mentions one of these, name the PRs under review in the description, as in `Verify PRs #7, #8`.'
+      : '';
   return {
     permissionDecision: 'deny',
-    reason: `${reasons.join(' ')} If Anthony asked for another round, add a line \`Another round: <his words>\` to the brief.`,
+    reason: `${reasons.join(' ')}${scope} If Anthony asked for another round, add a line \`Another round: <his words>\` to the brief.`,
   };
 }
 
@@ -116,13 +144,28 @@ export function output(decision) {
   };
 }
 
-const run = (file) => (args, cwd) =>
-  execFileSync(file, args, {
-    cwd,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 15000,
-  });
+// The time left for the next call, capped per call. It throws once the
+// budget is spent, so the PR being checked fails open.
+export function timeLeft(deadline, now = Date.now) {
+  const left = Math.min(callMs, deadline - now());
+  if (left <= 0) throw new Error('review-rounds-guard: time budget spent');
+  return left;
+}
+
+export function processIo(deadline) {
+  const run = (file) => (args, cwd) =>
+    execFileSync(file, args, {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: timeLeft(deadline),
+    });
+  return {
+    git: run('git'),
+    gh: run('gh'),
+    check: (refs, cwd) => runVerdictPatch(refs, cwd, timeLeft(deadline)),
+  };
+}
 
 function main() {
   const event = JSON.parse(readFileSync(0, 'utf8'));
@@ -130,11 +173,11 @@ function main() {
   let result;
   try {
     result = output(
-      evaluate(event.tool_input ?? {}, event.cwd ?? process.cwd(), {
-        git: run('git'),
-        gh: run('gh'),
-        check: runVerdictPatch,
-      }),
+      evaluate(
+        event.tool_input ?? {},
+        event.cwd ?? process.cwd(),
+        processIo(Date.now() + budgetMs),
+      ),
     );
   } catch {
     result = undefined;

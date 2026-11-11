@@ -132,6 +132,8 @@ function fixture(t) {
         busyPaths: rest.busyPaths ?? (() => busy),
         pullRequests: () => prs,
         log: (line) => logs.push(line),
+        remove: rest.remove,
+        removeTimeout: rest.removeTimeout,
       });
       return Object.fromEntries(
         results.map((entry) => [path.basename(entry.path), entry.verdict]),
@@ -256,6 +258,9 @@ test('only rebuildable ignored files are disposable, and only tool output in .lo
     'apps/.env',
     'apps/api/config/.env',
     'packages/contracts/.env',
+    // #349: git lists an ignored directory with a trailing slash, and an
+    // apps/<name>/.env directory may hold a key such as key.pem.
+    'apps/api/.env/',
     'output/',
     '.wrangler/',
   ])
@@ -747,6 +752,276 @@ test('never forces a removal when a worktree changes after its check', (t) => {
   assert.deepEqual(repo.logs, []);
 });
 
+// #275
+test('finishes a removal killed partway on the next sweep, without --force', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const killed = repo.add('killed', '--detach');
+  // git deletes the files first and its record last, so a kill partway
+  // leaves a registered worktree with some tracked files gone.
+  let aside;
+  const kill = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    throw new Error('killed');
+  };
+  assert.throws(() => repo.run({ remove: kill }), /killed/);
+  repo.run({ busy: [path.join(aside, 'apps')] });
+  assert.equal(existsSync(path.join(aside, 'b.txt')), true, 'process inside');
+  repo.run({ busy: undefined });
+  assert.equal(existsSync(path.join(aside, 'b.txt')), true, 'lsof failed');
+  repo.run();
+  assert.equal(existsSync(aside), false);
+  assert.equal(existsSync(killed), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+  assert.equal(git(repo.main, 'status', '--porcelain'), '');
+});
+
+test('locks a refused removal that cannot move back, and later sweeps keep it', (t) => {
+  const repo = fixture(t);
+  const refused = repo.add('refused', '--detach');
+  let aside;
+  // git refuses the removal, and by then something holds the old path.
+  const refuse = (worktree) => {
+    aside = worktree;
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    writeFileSync(refused, '');
+    return 'refused';
+  };
+  assert.deepEqual(repo.run({ remove: refuse }), {
+    refused: 'keep: git refused the removal',
+  });
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+  assert.match(
+    git(repo.main, 'worktree', 'list', '--porcelain'),
+    /^locked git refused the sweep's removal/m,
+  );
+});
+
+const stoppedVerdict =
+  'keep: removal stopped partway; the next sweep finishes it';
+
+// #275, fix round 1 on #364
+test('finishes a removal the time limit stopped partway, without --force', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const killed = repo.add('killed', '--detach');
+  const timedOut = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: timedOut }), { killed: stoppedVerdict });
+  assert.deepEqual(repo.run(), {}, 'the next sweep finishes it');
+  assert.equal(existsSync(killed), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+  assert.match(repo.logs.at(-1), /^finished removing /);
+});
+
+test('a real removal past its time limit is finished by the next sweep', (t) => {
+  const repo = fixture(t);
+  const slow = repo.add('slow', '--detach');
+  assert.deepEqual(repo.run({ removeTimeout: 1 }), { slow: stoppedVerdict });
+  assert.equal(existsSync(slow), false, 'it waits in the trash');
+  assert.deepEqual(repo.run(), {});
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a removal git gives up on after deleting files stays in the trash and is finished', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('failed', '--detach');
+  const failsPartway = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'refused';
+  };
+  assert.deepEqual(repo.run({ remove: failsPartway }), {
+    failed: stoppedVerdict,
+  });
+  repo.run();
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a stopped removal changed in the trash since is kept there', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('edited', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  repo.run({ remove: stopped });
+  writeFileSync(path.join(aside, 'draft.txt'), 'new\n');
+  repo.run();
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+  assert.deepEqual(listed(repo.main), ['main', 'edited']);
+});
+
+test('a stopped removal of a worktree changed since its check goes back', (t) => {
+  const repo = fixture(t);
+  const changed = repo.add('changed', '--detach');
+  const stopped = (worktree) => {
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), {
+    changed: 'keep: git refused the removal',
+  });
+  assert.equal(readFileSync(path.join(changed, 'draft.txt'), 'utf8'), 'new\n');
+});
+
+test('a box in the trash that holds files but no worktree git knows is kept', (t) => {
+  const repo = fixture(t);
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const kept = path.join(trash, 'moved-abc', 'moved', 'notes.md');
+  mkdirSync(path.dirname(kept), { recursive: true });
+  writeFileSync(kept, 'mine\n');
+  const hollow = path.join(trash, 'hollow-abc', 'hollow');
+  mkdirSync(hollow, { recursive: true });
+  repo.run();
+  assert.equal(readFileSync(kept, 'utf8'), 'mine\n');
+  assert.equal(existsSync(path.dirname(hollow)), false);
+});
+
+// #364 fix round 2: a killed `git worktree remove` deletes the worktree's
+// .git file early, so status there has to go through git's own record.
+const stoppedWithoutGitFile = (asides) => (worktree) => {
+  asides.push(worktree);
+  rmSync(path.join(worktree, '.git'));
+  rmSync(path.join(worktree, 'a.txt'));
+  return 'stopped';
+};
+
+test('a stopped removal that lost its .git file keeps a file added in the trash', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('gone', '--detach');
+  const asides = [];
+  assert.deepEqual(repo.run({ remove: stoppedWithoutGitFile(asides) }), {
+    gone: stoppedVerdict,
+  });
+  writeFileSync(path.join(asides[0], 'draft.txt'), 'new\n');
+  repo.run();
+  repo.run();
+  assert.equal(
+    readFileSync(path.join(asides[0], 'draft.txt'), 'utf8'),
+    'new\n',
+  );
+  assert.deepEqual(listed(repo.main), ['main', 'gone']);
+});
+
+test('a stopped removal that lost its .git file is finished when nothing was added', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('gone', '--detach');
+  const asides = [];
+  repo.run({ remove: stoppedWithoutGitFile(asides) });
+  repo.run();
+  assert.equal(existsSync(path.dirname(asides[0])), false);
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a stopped removal whose folder is gone is finished, unless its box holds a file', (t) => {
+  const repo = fixture(t);
+  repo.add('emptied', '--detach');
+  repo.add('crowded', '--detach');
+  const asides = {};
+  const deletesFolder = (worktree) => {
+    asides[path.basename(worktree)] = worktree;
+    rmSync(worktree, { recursive: true, force: true });
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: deletesFolder }), {
+    emptied: stoppedVerdict,
+    crowded: stoppedVerdict,
+  });
+  const notes = path.join(path.dirname(asides.crowded), 'notes.md');
+  writeFileSync(notes, 'mine\n');
+  repo.run();
+  assert.equal(existsSync(path.dirname(asides.emptied)), false);
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n');
+});
+
+test('a stopped removal that git holds no record of is never deleted', (t) => {
+  const repo = fixture(t);
+  repo.add('unknown', '--detach');
+  let aside;
+  const dropsRecord = (worktree) => {
+    aside = worktree;
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    rmSync(path.join(repo.main, '.git', 'worktrees', 'unknown'), {
+      recursive: true,
+    });
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: dropsRecord }), {
+    unknown: 'keep: git refused the removal',
+  });
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+});
+
+test('a locked worktree in the trash is kept even when nothing in it changed', (t) => {
+  const repo = fixture(t);
+  const refused = repo.add('refused', '--detach');
+  let aside;
+  const refuse = (worktree) => {
+    aside = worktree;
+    writeFileSync(refused, '');
+    return 'refused';
+  };
+  repo.run({ remove: refuse });
+  repo.run();
+  assert.equal(existsSync(path.join(aside, '.git')), true);
+  assert.deepEqual(listed(repo.main), ['main', 'refused']);
+});
+
+test('a move that renames the worktree and then fails never deletes it', (t) => {
+  const repo = fixture(t);
+  const moved = repo.add('moved', '--detach');
+  writeFileSync(path.join(moved, 'notes.log'), 'mine\n');
+  // git renames the folder, then cannot rewrite its record.
+  const record = path.join(repo.main, '.git', 'worktrees', 'moved', 'gitdir');
+  chmodSync(record, 0o444);
+  assert.deepEqual(repo.run(), { moved: 'keep: could not move it aside' });
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const [box] = readdirSync(trash);
+  const notes = path.join(trash, box, 'moved', 'notes.log');
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n');
+  repo.run();
+  assert.equal(readFileSync(notes, 'utf8'), 'mine\n', 'the next sweep too');
+});
+
+test('a box in the trash that cannot be deleted is kept and the sweep goes on', (t) => {
+  const repo = fixture(t);
+  const trash = path.join(repo.main, '.local', 'worktree-trash');
+  const stuck = path.join(trash, 'a-stuck', 'sealed');
+  mkdirSync(path.join(stuck, 'inner'), { recursive: true });
+  chmodSync(stuck, 0o555);
+  const hollow = path.join(trash, 'z-hollow');
+  mkdirSync(hollow);
+  const idle = repo.add('idle', '--detach');
+  try {
+    assert.deepEqual(repo.run(), { idle: 'remove' });
+    assert.equal(existsSync(path.join(stuck, 'inner')), true);
+    assert.equal(existsSync(hollow), false);
+    assert.equal(existsSync(idle), false);
+  } finally {
+    chmodSync(stuck, 0o755);
+  }
+});
+
 test('leaves a worktree inside another worktree to the outer one', (t) => {
   const repo = fixture(t);
   const outer = repo.add('outer', '--detach');
@@ -1007,4 +1282,146 @@ test('a chat that starts or ends in the main checkout starts a detached sweep', 
     );
   assert.deepEqual(sweeps('SessionStart'), ['startup']);
   assert.deepEqual(sweeps('SessionEnd'), ['any']);
+});
+
+// #412: git removes in readdir order, and in a JustGO worktree the root
+// .gitignore goes before packages/ and apps/, whose node_modules and dist only
+// it ignores.
+const builtWorktree = (repo) => {
+  commit(repo.main, 'a.txt', 'a\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const built = repo.add('built', '--detach');
+  mkdirSync(path.join(built, 'pkg', 'node_modules'), { recursive: true });
+  writeFileSync(path.join(built, 'pkg', 'node_modules', 'dep.js'), 'x\n');
+  return built;
+};
+
+test('a removal the time limit stopped after the root .gitignore went is finished', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  const stopped = (worktree) => {
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  const first = repo.run({ remove: stopped });
+  const later = repo.run();
+  assert.deepEqual(
+    { first, later },
+    { first: { built: stoppedVerdict }, later: {} },
+  );
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a killed sweep stopped after the root .gitignore went is finished', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  const kill = (worktree) => {
+    rmSync(path.join(worktree, '.gitignore'));
+    throw new Error('killed');
+  };
+  assert.throws(() => repo.run({ remove: kill }), /killed/);
+  repo.run();
+  repo.run();
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('after the root .gitignore went, a file the main checkout does not ignore keeps the box', (t) => {
+  const repo = fixture(t);
+  builtWorktree(repo);
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { built: stoppedVerdict });
+  writeFileSync(path.join(aside, 'pkg', 'notes.md'), 'mine\n');
+  repo.run();
+  repo.run();
+  assert.equal(
+    readFileSync(path.join(aside, 'pkg', 'notes.md'), 'utf8'),
+    'mine\n',
+  );
+});
+
+test('a stopped removal whose tracked file was edited in the trash is kept', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('edited', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { edited: stoppedVerdict });
+  writeFileSync(path.join(aside, 'b.txt'), 'edited\n');
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'b.txt'), 'utf8'), 'edited\n');
+});
+
+test('each stopped removal is checked through its own record', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'x.txt', 'x\n');
+  repo.add('first', '--detach');
+  git(repo.main, 'rm', '-q', 'x.txt');
+  commit(repo.main, 'y.txt', 'y\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('second', '--detach');
+  const stopped = (worktree) => {
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), {
+    first: stoppedVerdict,
+    second: stoppedVerdict,
+  });
+  assert.deepEqual(repo.run(), {});
+  assert.deepEqual(listed(repo.main), ['main']);
+});
+
+test('a stopped removal git cannot read the status of is kept', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  commit(repo.main, 'b.txt', 'b\n');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  repo.add('unread', '--detach');
+  let aside;
+  const stopped = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, 'a.txt'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stopped }), { unread: stoppedVerdict });
+  writeFileSync(
+    path.join(repo.main, '.git', 'worktrees', 'unread', 'index'),
+    'not an index\n',
+  );
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'b.txt'), 'utf8'), 'b\n');
+});
+
+test('after the root .gitignore went, a file that main tracks keeps the box, even when its rules match it', (t) => {
+  const repo = fixture(t);
+  commit(repo.main, 'a.txt', 'a\n');
+  repo.add('older', '--detach');
+  writeFileSync(path.join(repo.main, 'kept.log'), 'tracked\n');
+  git(repo.main, 'add', '-f', 'kept.log');
+  git(repo.main, 'commit', '-q', '-m', 'track kept.log');
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  let aside;
+  const stoppedWithoutIgnore = (worktree) => {
+    aside = worktree;
+    rmSync(path.join(worktree, '.gitignore'));
+    return 'stopped';
+  };
+  assert.deepEqual(repo.run({ remove: stoppedWithoutIgnore }), {
+    older: stoppedVerdict,
+  });
+  writeFileSync(path.join(aside, 'kept.log'), 'mine\n');
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'kept.log'), 'utf8'), 'mine\n');
 });
