@@ -757,15 +757,44 @@ test('finishes a removal killed partway on the next sweep, without --force', (t)
   const killed = repo.add('killed', '--detach');
   // git deletes the files first and its record last, so a kill partway
   // leaves a registered worktree with some tracked files gone.
+  let aside;
   const kill = (worktree) => {
+    aside = worktree;
     rmSync(path.join(worktree, 'a.txt'));
     throw new Error('killed');
   };
   assert.throws(() => repo.run({ remove: kill }), /killed/);
+  repo.run({ busy: [path.join(aside, 'apps')] });
+  assert.equal(existsSync(path.join(aside, 'b.txt')), true, 'process inside');
+  repo.run({ busy: undefined });
+  assert.equal(existsSync(path.join(aside, 'b.txt')), true, 'lsof failed');
   repo.run();
+  assert.equal(existsSync(aside), false);
   assert.equal(existsSync(killed), false);
   assert.deepEqual(listed(repo.main), ['main']);
   assert.equal(git(repo.main, 'status', '--porcelain'), '');
+});
+
+test('locks a refused removal that cannot move back, and later sweeps keep it', (t) => {
+  const repo = fixture(t);
+  const refused = repo.add('refused', '--detach');
+  let aside;
+  // git refuses the removal, and by then something holds the old path.
+  const refuse = (worktree) => {
+    aside = worktree;
+    writeFileSync(path.join(worktree, 'draft.txt'), 'new\n');
+    writeFileSync(refused, '');
+    return false;
+  };
+  assert.deepEqual(repo.run({ remove: refuse }), {
+    refused: 'keep: git refused the removal',
+  });
+  repo.run();
+  assert.equal(readFileSync(path.join(aside, 'draft.txt'), 'utf8'), 'new\n');
+  assert.match(
+    git(repo.main, 'worktree', 'list', '--porcelain'),
+    /^locked git refused the sweep's removal/m,
+  );
 });
 
 test('leaves a worktree inside another worktree to the outer one', (t) => {

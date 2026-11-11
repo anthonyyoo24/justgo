@@ -8,6 +8,7 @@ import {
   linkSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -48,10 +49,14 @@ import { fileURLToPath } from 'node:url';
 //    the main checkout whose steps ran inside it.
 // Before each removal, the ref refs/archive/worktrees/<name> keeps its HEAD
 // commit reachable, and its .local/ records are copied to
-// <main>/.local/archived-worktrees/<name>/. It never forces a removal, never
-// deletes branches, and must never fail a session: every error ends it
-// silently with exit 0. Each removal is logged to .local/worktree-sweep.log
-// with its branch, commit and archive ref.
+// <main>/.local/archived-worktrees/<name>/. Then `git worktree move` puts it
+// in <main>/.local/worktree-trash/, and `git worktree remove` deletes it
+// there. git deletes the files first and its record last, so a removal killed
+// partway leaves a half-deleted worktree, and the next sweep deletes what is
+// left in the trash. It never forces a removal, never deletes branches, and
+// must never fail a session: every error ends it silently with exit 0. Each
+// removal is logged to .local/worktree-sweep.log with its branch, commit and
+// archive ref.
 
 export const idleMs = 2 * 60 * 60 * 1000;
 const gitTimeout = 10_000;
@@ -561,6 +566,7 @@ export function sweep(dir, deps) {
   if (!isMainCheckout(dir)) return [];
   const main = realpathSync(git(dir, ['rev-parse', '--show-toplevel']));
   const root = path.join(main, '.claude', 'worktrees');
+  const trash = path.join(main, '.local', 'worktree-trash');
   const all = worktrees(main).filter((entry) => entry.path !== main);
   // A worktree inside another one is left to the outer one, whose chats and
   // processes it cannot see.
@@ -571,17 +577,44 @@ export function sweep(dir, deps) {
         (other) => other.path !== entry.path && within(other.path, entry.path),
       ),
   );
-  if (candidates.length === 0) return [];
+  const leftovers = deps.dryRun ? [] : boxes(trash);
+  if (candidates.length === 0 && leftovers.length === 0) return [];
   const held = deps.dryRun ? { refresh() {}, release() {} } : lock(main);
   if (!held) return [];
   try {
-    return sweepCandidates(main, root, candidates, deps, held);
+    finish(main, leftovers, all, deps);
+    return sweepCandidates(main, root, trash, candidates, deps, held);
   } finally {
     held.release();
   }
 }
 
-function sweepCandidates(main, root, candidates, deps, held) {
+function boxes(trash) {
+  try {
+    return readdirSync(trash).map((name) => path.join(trash, name));
+  } catch {
+    return [];
+  }
+}
+
+// Each box in the trash held a worktree that passed every check before it
+// moved there, so what is left of it is deleted, unless a process is inside
+// or it is locked: a worktree git refused to remove that could not move back.
+function finish(main, leftovers, all, deps) {
+  if (leftovers.length === 0) return;
+  const busy = deps.busyPaths();
+  for (const box of leftovers) {
+    const inside = all.filter((entry) => within(box, entry.path));
+    if (!busy || busy.some((file) => within(box, file))) continue;
+    if (inside.some((entry) => entry.locked)) continue;
+    rmSync(box, { recursive: true, force: true });
+    for (const entry of inside)
+      if (succeeds(main, ['worktree', 'remove', entry.path]))
+        deps.log(`finished removing ${entry.path}`);
+  }
+}
+
+function sweepCandidates(main, root, trash, candidates, deps, held) {
   const started = Date.now();
   const busy = deps.busyPaths();
   const chats = chatFolders(transcriptDir(main, deps.home), deps.now);
@@ -626,18 +659,47 @@ function sweepCandidates(main, root, candidates, deps, held) {
       } catch {
         verdict = 'keep: could not archive it';
       }
-      // No --force: git refuses if the worktree changed since the check.
-      if (ref) {
-        if (remove(entry.path))
-          deps.log(
-            `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}`,
-          );
-        else verdict = 'keep: git refused the removal';
-      }
+      if (ref) verdict = removeAside(main, trash, entry, ref, remove, deps);
     }
     results.push({ path: entry.path, verdict });
   }
   return results;
+}
+
+// The move is one rename, so a kill leaves the worktree whole in one place or
+// the other. No --force: git refuses if the worktree changed since the check,
+// and it moves back.
+function removeAside(main, trash, entry, ref, remove, deps) {
+  let box;
+  try {
+    mkdirSync(trash, { recursive: true });
+    box = mkdtempSync(path.join(trash, `${path.basename(entry.path)}-`));
+  } catch {
+    return 'keep: could not move it aside';
+  }
+  const aside = path.join(box, path.basename(entry.path));
+  if (!succeeds(main, ['worktree', 'move', entry.path, aside])) {
+    rmSync(box, { recursive: true, force: true });
+    return 'keep: could not move it aside';
+  }
+  if (remove(aside)) {
+    rmSync(box, { recursive: true, force: true });
+    deps.log(
+      `removed ${entry.path} branch=${entry.branch || '(detached)'} head=${entry.head} archive=${ref}`,
+    );
+    return 'remove';
+  }
+  if (succeeds(main, ['worktree', 'move', aside, entry.path]))
+    rmSync(box, { recursive: true, force: true });
+  else
+    succeeds(main, [
+      'worktree',
+      'lock',
+      '--reason',
+      `git refused the sweep's removal of ${entry.path}`,
+      aside,
+    ]);
+  return 'keep: git refused the removal';
 }
 
 // One removal can take minutes, so just before each one this looks again for
