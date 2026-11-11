@@ -246,7 +246,8 @@ The operator migration `enable_beta_identity_retention` enabled `pg_cron`. Job
 `postgres` scheduler login, runs `SET LOCAL ROLE justgo_migrator` inside a
 transaction and calls `justgo.purge_expired_identity_records(1000)` with a
 five-second statement limit. To stop it, call `cron.alter_job` with the job name.
-Never edit the cron tables directly.
+Never edit the cron tables directly. No hosted schedule runs `auth:cleanup`, and
+any other hosted schedule needs Anthony's separate approval.
 
 ### Readiness monitor
 
