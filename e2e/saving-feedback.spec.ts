@@ -1,5 +1,6 @@
 import { test, expect } from './support/fixtures';
 import { signInFixture } from './support/managed-account';
+import { openSettingsLink } from './support/screens';
 
 for (const width of [320, 390]) {
   test(`unreadable saved data never shifts the app and stays discoverable after dismissal at ${width}px`, async ({
@@ -63,9 +64,7 @@ for (const width of [320, 390]) {
     await expect(
       page.getByRole('heading', { name: 'Progress', exact: true }),
     ).toBeVisible();
-    await page
-      .getByRole('link', { name: 'Open Settings', exact: true })
-      .click();
+    await openSettingsLink(page).click();
     await page.getByRole('link', { name: 'Data', exact: true }).click();
     await expect(page.getByTestId('saving-recovery-panel')).toBeVisible();
     await expect(page.getByTestId('saving-notice-overlay')).toBeHidden();
