@@ -14,9 +14,10 @@ import { fileURLToPath } from 'node:url';
 
 // A verifier is named as one in the description, or asked for a verdict line.
 const verifierName =
-  /^\s*(?:independent\s+|fresh\s+)?(?:re-?verif\w*|verif(?:y|ier|ication)\b|re-?check\b)/i;
-const verdictAsk = /Verifier verdict:/;
-const recheckName = /^\s*(?:fresh\s+)?(?:re-?verif\w*|re-?check\b)/i;
+  /^\s*(?:independent\s+|fresh\s+)?(?:re-?verif\w*|verif(?:y|ies|ying|ied|iers?|ication)\b|re-?check(?:s|ing|ed)?\b)/i;
+const verdictAsk = /Verifier verdict:/i;
+const recheckName =
+  /^\s*(?:fresh\s+)?(?:re-?verif\w*|re-?check(?:s|ing|ed)?\b)/i;
 // Routine reviews, named by how the description starts.
 // A trail review starts with "review" (optionally "final" or "close out the")
 // and names the trail as a word, not as part of a name such as
@@ -58,7 +59,12 @@ const sonnetName = new RegExp(
   'i',
 );
 // The PR the brief names. Without exactly one, the hook cannot know the diff.
-const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
+// A link names its repository. `PR #N` means this one.
+const thisRepo = 'anthonyyoo24/justgo';
+const prReference =
+  /(?:\bPR\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)(\d+)\b/gi;
+// GitHub lists at most 3000 files of a PR, so a list that long may be cut.
+export const maxFiles = 3000;
 
 export function isVerifier(input) {
   return (
@@ -78,14 +84,27 @@ export function kindOf(input) {
 }
 
 export function prOf(input) {
-  const numbers = new Set(
+  const prs = new Set(
     [
       ...`${input.description ?? ''}\n${input.prompt ?? ''}`.matchAll(
         prReference,
       ),
-    ].map(([, number]) => number),
+    ].map(([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`),
   );
-  return numbers.size === 1 ? [...numbers][0] : undefined;
+  const [only] = prs;
+  return prs.size === 1 && only.startsWith(`${thisRepo}#`)
+    ? only.slice(thisRepo.length + 1)
+    : undefined;
+}
+
+// The paths a verifier reviews, from GitHub's list of a PR's files. A rename
+// counts its old path too, so a code or sensitive path cannot hide behind a
+// docs or test name. A list that may be cut short counts as unknown.
+export function filesOf(entries) {
+  if (!entries.length || entries.length >= maxFiles) return undefined;
+  return entries.flatMap(({ filename, previous_filename }) =>
+    previous_filename ? [filename, previous_filename] : [filename],
+  );
 }
 
 export function decide(
@@ -144,14 +163,19 @@ export function output(input, decision) {
 function prFiles(number) {
   if (!number) return undefined;
   try {
-    const files = execFileSync(
-      'gh',
-      ['pr', 'view', number, '--json', 'files', '--jq', '.files[].path'],
-      { encoding: 'utf8', timeout: 8000 },
-    )
-      .split('\n')
-      .filter(Boolean);
-    return files.length ? files : undefined;
+    const pages = JSON.parse(
+      execFileSync(
+        'gh',
+        [
+          'api',
+          '--paginate',
+          '--slurp',
+          `repos/${thisRepo}/pulls/${number}/files?per_page=100`,
+        ],
+        { encoding: 'utf8', timeout: 10000, maxBuffer: 64 * 1024 * 1024 },
+      ),
+    );
+    return filesOf(pages.flat());
   } catch {
     return undefined;
   }
