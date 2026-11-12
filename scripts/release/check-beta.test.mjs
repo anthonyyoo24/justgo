@@ -19,8 +19,7 @@ const document = `<!-- legal-version: synthetic-beta -->
 Disposable release configuration test.
 <!-- public:end -->`;
 const documents = {
-  'PRIVACY_POLICY_DRAFT.md':
-    document + '\n<!-- deployment-host: cloudflare -->\n',
+  'PRIVACY_POLICY_DRAFT.md': document,
   'TERMS_DRAFT.md': document,
 };
 function candidate() {
@@ -184,12 +183,14 @@ test('diagnostics cannot bypass the original profile or inherited capability gua
   }
 });
 
-test('an approved notice needs Cloudflare hosting approval and matching diagnostics publication attestation', () => {
+test('the approved notice passes with no hosting marker and needs a matching diagnostics publication attestation', () => {
   const value = diagnosticsCandidate();
+  // The legal pages stay on Vercel, so the approved notice carries no
+  // Cloudflare deployment-host marker and the preflight must not ask for one.
   value.documents['PRIVACY_POLICY_DRAFT.md'] = readFileSync(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
-  ).replace(/^<!-- deployment-host: cloudflare -->\r?\n?/gm, '');
+  ).replace(/^<!-- deployment-host: [^\r\n]+ -->\r?\n?/gm, '');
   for (const version of [undefined, '', 'mismatched-synthetic-notice']) {
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = version;
     assert.ok(checkBetaRelease(value).length);
@@ -198,13 +199,6 @@ test('an approved notice needs Cloudflare hosting approval and matching diagnost
   value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = value.documents[
     'PRIVACY_POLICY_DRAFT.md'
   ].match(/^<!-- legal-version: (.+) -->$/m)[1];
-  assert.ok(
-    checkBetaRelease(value).some((error) =>
-      error.includes('Cloudflare hosting approval'),
-    ),
-  );
-  value.documents['PRIVACY_POLICY_DRAFT.md'] +=
-    '\n<!-- deployment-host: cloudflare -->\n';
   assert.deepEqual(checkBetaRelease(value), []);
 });
 
@@ -572,13 +566,13 @@ test('reuses actual publication validation, never treating preview wording as ap
     '',
     undefined,
   ]) {
-    const value = candidate();
-    value.documents['TERMS_DRAFT.md'] = source;
-    assert.ok(
-      checkBetaRelease(value).some((error) =>
-        error.startsWith('TERMS_DRAFT.md'),
-      ),
-    );
+    for (const filename of ['PRIVACY_POLICY_DRAFT.md', 'TERMS_DRAFT.md']) {
+      const value = candidate();
+      value.documents[filename] = source;
+      assert.ok(
+        checkBetaRelease(value).some((error) => error.startsWith(filename)),
+      );
+    }
   }
 });
 
