@@ -46,12 +46,15 @@ export function requireSuccessfulJobs(value) {
   for (const name of ['changes', 'static'])
     if (jobs?.[name]?.result !== 'success')
       throw new Error(`CI producer did not pass: ${name}`);
-  const markdownOnly = jobs.changes.outputs?.app === 'false';
+  const noAppChange = jobs.changes.outputs?.app === 'false';
   const noICloudChange = jobs.changes.outputs?.icloud === 'false';
-  for (const name of appJobs) {
+  const noDependencyChange = jobs.changes.outputs?.dependencies === 'false';
+  for (const name of [...appJobs, 'dependencies']) {
     const result = jobs?.[name]?.result;
     const maySkip =
-      markdownOnly || (name === 'native-icloud' && noICloudChange);
+      name === 'dependencies'
+        ? noDependencyChange
+        : noAppChange || (name === 'native-icloud' && noICloudChange);
     if (result !== 'success' && !(maySkip && result === 'skipped'))
       throw new Error(`CI producer did not pass: ${name}`);
   }

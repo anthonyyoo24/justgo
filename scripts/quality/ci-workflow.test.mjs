@@ -13,7 +13,7 @@ import {
 
 const [triggers] = workflow.split(/^permissions:$/m);
 const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
-const producers = ['static', ...appJobs];
+const producers = ['static', 'dependencies', ...appJobs];
 const workflowsUrl = new URL('../../.github/workflows/', import.meta.url);
 const actionsUrl = new URL('../../.github/actions/', import.meta.url);
 const actionEntries = readdirSync(actionsUrl);
@@ -91,6 +91,11 @@ test('pushes run only for main, PRs cancel older revisions, and main results sta
 test('independent bounded producer jobs feed one always-evaluated required status', () => {
   assert.deepEqual(Object.keys(jobs), ['changes', ...producers, 'checks']);
   assert.doesNotMatch(jobs.static, /^ {4}needs:/m);
+  assert.match(jobs.dependencies, /^ {4}needs: changes$/m);
+  assert.match(
+    jobs.dependencies,
+    /^ {4}if: needs\.changes\.outputs\.dependencies == 'true'$/m,
+  );
   for (const name of appJobs) {
     assert.match(jobs[name], /^ {4}needs: changes$/m);
     assert.match(
@@ -106,10 +111,10 @@ test('independent bounded producer jobs feed one always-evaluated required statu
     if (!['changes', 'native-icloud', 'checks'].includes(name))
       assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
   }
-  assert.match(
-    jobs.checks,
-    /^ {4}needs: \[changes, static, unit, database, journeys, exports, native-icloud\]$/m,
-  );
+  assert.deepEqual(yaml.load(workflow).jobs.checks.needs, [
+    'changes',
+    ...producers,
+  ]);
   assert.match(jobs.checks, /^ {4}if: always\(\)$/m);
   assert.match(
     jobs.checks,
@@ -129,6 +134,10 @@ test('the change classifier runs first, reads the full PR diff and only feeds th
   assert.match(
     job,
     /^ {6}icloud: \$\{\{ steps\.classify\.outputs\.icloud \}\}$/m,
+  );
+  assert.match(
+    job,
+    /^ {6}dependencies: \$\{\{ steps\.classify\.outputs\.dependencies \}\}$/m,
   );
   assert.match(job, /JUSTGO_CI_EVENT: \$\{\{ github\.event_name \}\}/);
   assert.match(
@@ -169,11 +178,13 @@ test('every job installs the pinned pnpm from the frozen lockfile through one ca
   assert.match(rootPackage.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
 });
 
-test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
-  const runs = commands(jobs.static);
-  const doctor = runs.indexOf('pnpm --filter @justgo/mobile run doctor');
-  assert.ok(doctor >= 0 && doctor < runs.indexOf('pnpm run check:static'));
-  assert.ok(runs.includes('pnpm run audit:api'));
+test('static keeps fresh route typechecking, and live Doctor and the API production audit run in their own job', () => {
+  assert.deepEqual(commands(jobs.static).slice(-1), ['pnpm run check:static']);
+  assert.doesNotMatch(jobs.static, /run doctor|audit:api/);
+  assert.deepEqual(commands(jobs.dependencies), [
+    'pnpm --filter @justgo/mobile run doctor',
+    'pnpm run audit:api',
+  ]);
   assert.equal(
     rootPackage.scripts['audit:api'],
     'node scripts/quality/audit-api-dependencies.mjs',
