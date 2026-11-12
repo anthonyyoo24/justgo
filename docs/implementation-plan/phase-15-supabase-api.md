@@ -2,7 +2,7 @@
 
 # Phase 15 plan to move the API to one Supabase Edge Function
 
-**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging. No build points at it yet. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) records the receipts.
+**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging, at `fdd410d` since that evening. No build points at it yet. [Appendix A](#appendix-a-prototype-evidence) records the receipts.
 
 The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. The steps are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The fast path below runs them in a different order. Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
 
@@ -279,7 +279,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 - [ ] Create a branch from `main` and cherry-pick `b27ba34`, `0ccaaa4`, `a9f3a43` and `5966a16` from `codex/phase15-real-recovery`. Leave the parked branch unchanged.
 - [ ] Edit the planned `docs/checks/phase-15-rollout-review.md`, which `a9f3a43` adds, to drop its Workers rows.
-- [ ] Drop the `docs/handoffs/phase-15-cloudflare-api.md` hunk of `a9f3a43` unless it records backup or recovery evidence.
+- [ ] `a9f3a43` also edits a Phase 15 file that no longer exists. Drop that hunk, and move any backup or recovery evidence in it to `docs/operations/CLOUDFLARE_BACKUPS.md`.
 - [ ] Edit `docs/operations/CLOUDFLARE_BACKUPS.md` to record the backup clock activation, the clock token expiry and the renewed R2 credential dates.
 
 **Build.**
@@ -558,7 +558,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 - [ ] Metric. Lane time from start to serving readback, and the count of failed probes during the swap.
 - [ ] Probe. Run the lane on two consecutive tags after Anthony's go.
-- [ ] Baseline. Trunk has no lane. Record that, and record the Worker lane's last duration from the handoff as context only.
+- [ ] Baseline. Trunk has no lane. Record that.
 - [ ] Rule. Head fails if a run takes more than 15 minutes or any swap probe fails.
 
 **Review gate.** None. P15-8 is not review-gated.
@@ -578,8 +578,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Files.**
 
-- [x] Create `docs/handoffs/phase-15-supabase-api.md` with the acceptance receipts.
-- [x] Edit `docs/implementation-plan/README.md` to point Phase 15 at the new handoff.
+- [x] Record the acceptance receipts in [Appendix A](#appendix-a-prototype-evidence).
 
 **Build.**
 
@@ -589,7 +588,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **You see.**
 
-- [x] The handoff lists each lane's receipt, the serving source SHA and the function version.
+- [x] Appendix A lists each lane's receipt, the serving source SHA and the function version.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -612,7 +611,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 - [ ] Metric. Wall ms per sync batch, CPU ms where the dashboard reports it, the cold first request after idle, and invocations per day.
 - [x] Probe. Read execution times from the function logs for lanes 3 to 8, and time the first request after 15 minutes idle.
-- [ ] Baseline. Trunk lacks the function. Record the Worker's figures from the handoff as context only.
+- [ ] Baseline. Trunk lacks the function. Record that.
 - [ ] Rule. Acceptance fails if any sync batch exceeds 8,000 ms of wall time or 1,000 ms of CPU, or the first request after idle exceeds 2,000 ms.
 
 **Review gate.** None. P15-9 is not review-gated.
@@ -691,8 +690,8 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
 - [ ] Edit `docs/operations/TESTFLIGHT_BETA.md` and `docs/operations/DEVELOPMENT_BUILDS.md`.
-- [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The backup copy, rotation and scope receipts go to `docs/operations/CLOUDFLARE_BACKUPS.md`. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
-- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
+- [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
+- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
 - [ ] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/operations/TESTFLIGHT_BETA.md`, `docs/legal/APPROVALS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
 
 **Build.**
@@ -851,7 +850,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 
 ### P15-2 hosted runtime trial
 
-P15-2 ran on November 12, 2026, in the hosted window it shares with P15-9. `justgo-trial` deployed from `phase15/edge-trial` at `a39d9d508d3b76a997c177a9e3cd0cf638c58024` in [run 43164993608](https://github.com/anthonyyoo24/justgo/actions/runs/43164993608), and [run 43248129302](https://github.com/anthonyyoo24/justgo/actions/runs/43248129302) deleted it after the lanes. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) holds each lane's receipt.
+P15-2 ran on November 12, 2026, in the hosted window it shares with P15-9. `justgo-trial` deployed from `phase15/edge-trial` at `a39d9d508d3b76a997c177a9e3cd0cf638c58024` in [run 43164993608](https://github.com/anthonyyoo24/justgo/actions/runs/43164993608), and [run 43248129302](https://github.com/anthonyyoo24/justgo/actions/runs/43248129302) deleted it after the lanes. The [log scan run](https://github.com/anthonyyoo24/justgo/actions/runs/43165904280) read 63 rows and found no bearer, header or body canary.
 
 - Lanes 1, 2, 3, 4, 5, 6, 8 and 10 passed. The fast path deferred lanes 7 and 9, now gates #449 and #450.
 - Lane 3 read `show statement_timeout` as `5s`. The pooler ignores the pool setting, and the `justgo_runtime` role's 5 s default applies.
@@ -864,13 +863,32 @@ The report ended with `Decision: stop`. Anthony then chose to go ahead with Supa
 
 ### P15-9 hosted acceptance
 
-P15-9 ran on November 12, 2026, against the `api` function at version 1, serving `c8d6295c41d683c01c5a1ba98e873dfcdf68b7f1` from [deploy run 43255502203](https://github.com/anthonyyoo24/justgo/actions/runs/43255502203). The [migrate-deploy run](https://github.com/anthonyyoo24/justgo/actions/runs/43253293118) before it applied migrations 0024 and 0025 under Anthony's owner test-data waiver. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) holds the receipts.
+P15-9 ran on November 12, 2026, against the `api` function at version 1, serving `c8d6295c41d683c01c5a1ba98e873dfcdf68b7f1` from [deploy run 43255502203](https://github.com/anthonyyoo24/justgo/actions/runs/43255502203). The [migrate-deploy run](https://github.com/anthonyyoo24/justgo/actions/runs/43253293118) before it applied migrations 0024 and 0025 under Anthony's owner test-data waiver. Its upload was 2,206,518 bytes.
 
 - Lanes 1, 2 and 9 passed. The warm guest catalog p50 was 91 ms and the p95 137 ms over 30 requests. Release identity headers come only on `/health` and `/ready`, by design.
 - Lane 3 imported a 23.7 MB archive of 260 completions and 260 journal entries with 10,000-character reflections on the iPhone. The 14 sync POSTs all returned 200, and the slowest took 1,098 ms of wall time against the 8,000 ms limit. The function logs carry no CPU time, so the 1,000 ms CPU part is Inconclusive (#455).
 - Lanes 4 and 5 passed on Anthony's report, with no screenshots. Apple and Google stayed separate accounts.
 - The first request after about 15 minutes 20 seconds idle took 603 ms against the 2,000 ms limit.
 - Lanes 6, 7 and 8 are deferred to gates #451, #452 and #453, and lane 10 to #454 until backups resume.
+
+The release took three steps. Anthony chose the owner test-data waiver, because staging holds only test data and backups are paused, and PR #446 added it. The migrate-deploy run applied 0024 and 0025, but its health check failed, because the `DATABASE_SSL` secret was `true` and `apps/api/src/config.ts` accepts only `verify-full` or `disable`. Anthony re-set it to `verify-full`, [run 43254426042](https://github.com/anthonyyoo24/justgo/actions/runs/43254426042) re-set the secrets, and the code-only deploy found no pending migrations and served `/health` and `/ready`. Before the waiver run, a manual check found 0024 and 0025 compatible with the live Worker, which shares the database, because both add only `AFTER UPDATE` triggers.
+
+Later that day, [run 43300067542](https://github.com/anthonyyoo24/justgo/actions/runs/43300067542) released `fdd410d` to `api` as version 2, so rate limits key on `cf-connecting-ip`. Anthony set `BETA_ACCESS_WINDOW` (November 1 to December 31, 2026) in the Supabase dashboard's function secrets. It is not in the `STAGING_FUNCTION_SECRETS` bundle, and the secrets operation never unsets a name, so it stays.
+
+In lanes 4 and 5, one Google account first showed no imported history. It was a different Google account, and two Google accounts are two JustGO accounts by design. Lane 9 found four 401 responses on `GET /v1/completion-restores` and `GET /v1/journal-sync`, which match polls after a sign-out or switch revoked their session.
+
+The trials answered the questions above.
+
+1. Yes. `/ready` returned 200 through the transaction pooler on both functions, with `DATABASE_SSL=verify-full`.
+2. The pooler ignores it, and the role's 5 s default applies.
+3. P15-1 answered it.
+4. Yes, in P15-2 lane 2.
+5. `cf-connecting-ip`, in P15-2 lane 4.
+6. No, in P15-2 lane 5 and P15-9 lane 9.
+7. The slowest hosted sync batch took 1,098 ms of wall time. CPU is not measured.
+8. Not answered. Gate #449.
+9. Not answered. Gate #450.
+10. The `api` upload was 2,206,518 bytes. The first request after idle took 525 ms on `justgo-trial` and 603 ms on `api`.
 
 ## Appendix B. Alternatives rejected
 
@@ -911,7 +929,7 @@ P15-9 ran on November 12, 2026, against the `api` function at version 1, serving
 - Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
 - Before you edit, read the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). It owns the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
-- History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
+- History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
 - Run pstack's `how` skill before P15-6 and P15-8.
 - Keep a decision trail per PR at `.local/decision-trails/phase-15-<pr-id>.tsv`, per pstack's `show-me-your-work` skill and the Stop hook in `.claude/hooks/require-trail-review.mjs`.
 - Recheck these Supabase references before P15-1. Agents read them on November 6, 2026. [Functions](https://supabase.com/docs/guides/functions), [routing](https://supabase.com/docs/guides/functions/routing), [gateway authentication](https://supabase.com/docs/guides/functions/auth-headers), [Postgres from functions](https://supabase.com/docs/guides/functions/connect-to-postgres), [secrets](https://supabase.com/docs/guides/functions/secrets), [limits](https://supabase.com/docs/guides/functions/limits), [deploy](https://supabase.com/docs/guides/functions/deploy), [regional invocation](https://supabase.com/docs/guides/functions/regional-invocation), [logging](https://supabase.com/docs/guides/functions/logging), [function pricing](https://supabase.com/docs/guides/functions/pricing), [project pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) and [data residency](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq).

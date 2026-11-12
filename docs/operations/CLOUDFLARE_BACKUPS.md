@@ -39,8 +39,7 @@ two additional canaries become eligible for expiry November 7. Actual
 asynchronous deletion has not yet been observed.
 
 The first supervised manual encrypted database and ledger copies succeeded
-through the checked exporters and R2 uploader. The
-[Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status) owns
+through the checked exporters and R2 uploader. [Receipts](#receipts) lists
 their source and object receipts. They used no private decryption identity,
 established no writer fence and sent no Sentry Cron check-ins. On November 2,
 manual dispatches of the actual main-branch database and ledger jobs both passed.
@@ -69,8 +68,8 @@ copy on an encrypted USB drive. That copy was not mounted or tested. Under his
 October 31 custody choice, the protected Mac copies remain local and outside CI,
 without a USB-retrieval prerequisite. On November 1, owner-authorized
 authenticated decryption of both initial R2-downloaded copies passed, and the
-plaintext was discarded. Complete operational recovery remains unverified. The
-handoff owns that receipt.
+plaintext was discarded. Complete operational recovery remains unverified.
+[Receipts](#receipts) lists that receipt.
 
 ## Implemented boundary
 
@@ -379,12 +378,11 @@ lane.
    `2026-11-05T23:06:08Z`. The recovery key was not read or exposed and is
    unchanged.
 
-   Scope verification passed with synthetic encrypted canaries only. The
-   [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#approval-and-acceptance-register)
-   owns the final rotation and scope receipts. The two replacement canaries become
+   Scope verification passed with synthetic encrypted canaries only.
+   [Receipts](#receipts) lists the final rotation and scope receipts. The two replacement canaries become
    eligible for expiry November 7, and asynchronous deletion remains unobserved.
    These synthetic scope checks do not establish operational database or ledger
-   copies. The handoff separately records the first supervised local copies and
+   copies. [Receipts](#receipts) also lists the first supervised local copies and
    the November 2 actual main-workflow manual copies. [Backup clock](#backup-clock)
    records the scheduled copies that followed. Actual hosted-copy
    decryption passed November 1, while complete writer-fenced hosted recovery and
@@ -495,8 +493,8 @@ physically pause provider migrations.
 
 The repository's ordinary rehearsal uses synthetic Auth tables. Separately, a
 matching v2.197.0 real Auth runtime with normal HTTPS validation passed session,
-refresh, verifier, helper and deletion controls locally. The handoff records its
-scope. The production verifier requires an exact issuer that matches the Auth URL.
+refresh, verifier, helper and deletion controls locally. [Receipts](#receipts) lists its
+receipt. The production verifier requires an exact issuer that matches the Auth URL.
 A rejection caused only by different signing keys or a different issuer does not
 prove revocation. Complete the actual archive and the API and provider acceptance
 with positive controls before reopening. The earlier exact-object decryption
@@ -722,3 +720,27 @@ leave the post-copy gap, which is now accepted as a small-beta recovery limit wi
 independent recording explicitly deferred. Local tests do not replace the
 reassessment before paid launch or beta expansion, and they do not establish the
 deferred design.
+
+## Receipts
+
+These ignored receipt files sit under `.local/phase15-cloudflare/rollout/` on the
+Mac that ran the October and November 2026 setup. Git does not keep them.
+
+- First supervised copies, November 1, 2026, from `d66c42d`:
+  `recovery-2026-11-01/copy-receipts.json` and `download-receipts.json`. Separate
+  read-only retrieval returned identical ciphertext checksums. The authenticated
+  decryption of both copies is in `recovery-2026-11-01/decryption-receipt.json`.
+- First main-workflow copies, November 2, 2026, on `d66c42d`: database run
+  [41500830932](https://github.com/anthonyyoo24/justgo/actions/runs/41500830932)
+  and ledger run
+  [41501504987](https://github.com/anthonyyoo24/justgo/actions/runs/41501504987).
+  Independent HEAD checks matched 197,941 database bytes and 31,519 ledger bytes.
+- Retention readback and lock enforcement: `r2-retention-verified.json` and
+  `r2-retention-enforcement.json`.
+- The October 31 credential rotation: `credential-rotation/rotation-complete.json`.
+  The replacement uploader's scope checks:
+  `iphone-readiness/rotated-uploader-scope-2026-10-31.json`.
+- The read-only hosted archive restored into isolated PostgreSQL 17:
+  `hosted-archive-compatibility-verified.json`.
+- The real Supabase Auth v2.197.0 loopback rehearsal:
+  `phone-google-2026-11-01/real-auth-service-rehearsal.json`.

@@ -5,9 +5,8 @@ rollout, and the API moves to Supabase Edge Functions under the
 [Supabase plan](../implementation-plan/phase-15-supabase-api.md). This checklist
 stays as history until that plan's last PR deletes it.
 
-The staging Worker and Hyperdrive exist. The
-[Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
-owns current release source, tag, CI, run, deployment/version and probe evidence.
+The staging Worker and Hyperdrive exist. Git history keeps the earlier release
+source, tag, CI, run, deployment/version and probe evidence.
 Reconfirm the serving/latest baseline before an ordinary release; do not reuse
 the consumed four-version incident opt-in. For uncertain outcomes, follow
 [server releases](SERVER_RELEASES.md#failures-and-uncertain-outcomes).
@@ -16,14 +15,14 @@ Real Apple/Google sign-in, account synchronization/deletion, full-workload
 performance and replacement native-build/iPhone acceptance remain open. The Sentry
 uptime monitor now targets Cloudflare and normal checks pass; failure/notification
 delivery remains unverified. Public route timing and active-version CPU chart
-readbacks are recorded in the handoff. Anthony
+readbacks are in git history. Anthony
 confirmed there are no actual app users and selected a full Cloudflare switch,
 with no external-user transition period. Existing owner-only binaries still
 contain Vercel addresses until replaced or retired. The next public notice names
 Cloudflare only, after Vercel API and legal hosting have ended. Scheduled backups,
 complete recovery/alerts/expiry and
 independent privacy gates remain open. The first supervised encrypted database
-and ledger copies succeeded; the handoff owns their receipts. They do not establish
+and ledger copies succeeded; [backup receipts](CLOUDFLARE_BACKUPS.md#receipts) lists them. They do not establish
 scheduled operation, Cron check-ins or writer-fenced recovery. Anthony accepts protected Mac key custody
 locally outside CI, without a USB-retrieval prerequisite, and owns manual
 credential renewal. Backup schedules remain off and the proposed notice is unpublished.
@@ -32,8 +31,7 @@ accepted the brief legal-URL gap in the prepared coordinated cutover below. On
 November 1, 2026, he accepted the current-account/DPA/private-consumer-journal
 assessment, including its residual interpretation; it adds no
 provider-confirmation or counsel prerequisite.
-The handoff also owns current approval evidence; [server releases](SERVER_RELEASES.md)
-owns the guarded lane.
+[Server releases](SERVER_RELEASES.md) owns the guarded lane.
 
 ## Account and service preparation
 
@@ -51,8 +49,8 @@ owns the guarded lane.
    exception. No Cloudflare contact is authorized. Reassess material changes to
    the terms or actual processing; preserve independent Phase 14 privacy gates.
 2. Initial bootstrap, restricted credentials and seven-day staging backup
-   retention/protection/expiry have their recorded approvals and evidence in the
-   [handoff](../handoffs/phase-15-cloudflare-api.md). Resolve the remaining
+   retention/protection/expiry were approved, and
+   [backup receipts](CLOUDFLARE_BACKUPS.md#receipts) lists the backup evidence. Resolve the remaining
    [backup policy](CLOUDFLARE_BACKUPS.md) renewal and operational gates
    before their dependent actions. Workers Free remains selected; no paid
    subscription is implied.
@@ -79,8 +77,8 @@ The fixed staging origin is
 account subdomain and fixed staging Worker name. Beta configuration selects that
 exact origin. Require provider readback of routes/previews, disabled telemetry/
 caching, origin TLS and the five-connection limit, plus public health/readiness
-and unauthenticated private-route probes. Consult the handoff for actual release
-acceptance and current credential status/expiry before use.
+and unauthenticated private-route probes. Reconfirm release acceptance and current
+credential status/expiry before use.
 
 ## Hosted measurements and recovery acceptance
 
@@ -107,12 +105,12 @@ Assign Anthony usage/budget alerts before activation; free allowances are not a
 zero-cost guarantee. [TestFlight beta](TESTFLIGHT_BETA.md#supabase-pro-upgrade-triggers) lists the
 Supabase Free upgrade triggers.
 October 31 public probes and the active-version CPU chart exceed the Free CPU
-budget; the handoff records their limits. Anthony chose to keep Workers Free;
+budget. Anthony chose to keep Workers Free;
 checkout was exited without purchase. Resolve Free-plan workload suitability;
 no paid subscription has been enabled.
 
 The first supervised manual encrypted database and ledger copies passed the
-checked exporters and R2 uploader; see the handoff for source/object receipts.
+checked exporters and R2 uploader; [backup receipts](CLOUDFLARE_BACKUPS.md#receipts) lists them.
 Those copies used no private decryption identity and captured no writer-fenced
 ledger. They did not run the scheduled workflow or send Sentry Cron check-ins.
 Complete actual recovery acceptance, then verify scheduled nightly and hourly
@@ -191,9 +189,7 @@ recovery from old phones is unsupported.
    credentials, deployment configuration and obsolete tooling;
    keep historical receipts. Sentry uptime monitor 10773615 and the matching
    manual readiness workflow target Cloudflare `/ready`; normal checks pass and
-   GitHub notification delivery is verified. The
-   [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
-   records final evidence. Sentry Cron delivery remains unverified. Run the
+   GitHub notification delivery is verified. Sentry Cron delivery remains unverified. Run the
    authorized controlled backup-alert drills when their operating prerequisites
    are ready;
    do not start live missed-backup expectations while schedules remain off. The

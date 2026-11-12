@@ -16,9 +16,8 @@ the function. This lane never deploys or changes the retired Cloudflare Worker. 
 stay unused until P15-5 removes them.
 
 Release probes do not establish real managed-account, performance,
-alert-delivery or native acceptance. The
-[Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status) owns
-earlier Worker evidence.
+alert-delivery or native acceptance. Git history keeps the earlier Worker
+evidence.
 
 ## Fixed target
 
