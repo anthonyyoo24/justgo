@@ -21,7 +21,6 @@ import { newestVerdictOf } from './merge-order.mjs';
 
 export const maxLines = 150;
 export const maxBatchPulls = 4;
-export const maxBatchLines = 300;
 
 // Files whose change reaches past one capability: shared contracts, the
 // database, CI, dependencies, and the hooks, settings, skills, lint config and
@@ -99,8 +98,8 @@ export function exclusion(pull) {
   return sizeExclusion(pull.files ?? []);
 }
 
-// Groups the qualifying PRs in number order. A batch closes when the next PR
-// would pass either batch limit.
+// Groups the qualifying PRs in number order, at most `maxBatchPulls` a batch.
+// Each PR is already small, so a batch needs no line limit of its own.
 export function plan(pulls) {
   const waiting = pulls
     .filter(needsVerdict)
@@ -115,11 +114,7 @@ export function plan(pulls) {
     }
     const lines = countedLines(pull.files);
     const last = batches.at(-1);
-    if (
-      last &&
-      last.pulls.length < maxBatchPulls &&
-      last.lines + lines <= maxBatchLines
-    ) {
+    if (last && last.pulls.length < maxBatchPulls) {
       last.pulls.push({ number: pull.number, title: pull.title, lines });
       last.lines += lines;
     } else

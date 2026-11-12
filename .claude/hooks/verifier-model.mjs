@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus, except two cases that run
 // on Sonnet: a verifier whose PRs are all small by the verify-batch.mjs rule
-// (no sensitive or boundary file, few counted lines) and together fit one
-// batch, and a re-check of a docs- or tests-only, non-sensitive PR. Any doubt
+// (no sensitive or boundary file, few counted lines), at most 4 of them, and
+// a re-check of a docs- or tests-only, non-sensitive PR. Any doubt
 // keeps Opus, including a brief that mentions a PR or issue number the hook
 // did not check.
 // Decision-trail reviews run on Sonnet. An audit runs on Sonnet unless its
@@ -168,18 +168,10 @@ export function filesOf(entries) {
 
 // `changed` holds the paths of the one PR the brief names. `pulls` holds the
 // sized files of every PR the brief names, or undefined when any is unknown.
-// Small PRs share a Sonnet verifier only up to the batch line limit.
 export function decide(
   input,
   changed,
-  {
-    isReviewOnly,
-    isSensitivePath,
-    sensitiveFlag,
-    sizeExclusion,
-    countedLines,
-    maxBatchLines,
-  },
+  { isReviewOnly, isSensitivePath, sensitiveFlag, sizeExclusion },
   pulls,
 ) {
   const kind = kindOf(input);
@@ -203,8 +195,7 @@ export function decide(
     !sensitiveFlag.test(input.prompt ?? '') &&
     Array.isArray(pulls) &&
     pulls.length > 0 &&
-    pulls.every((files) => files && !sizeExclusion(files)) &&
-    pulls.reduce((sum, files) => sum + countedLines(files), 0) <= maxBatchLines
+    pulls.every((files) => files && !sizeExclusion(files))
   )
     return { model: 'sonnet', reason: 'every PR is small and not sensitive' };
   const sonnet =
@@ -220,7 +211,7 @@ export function decide(
         reason:
           changed === undefined
             ? 'no single PR named, or its files could not be read'
-            : 'a PR is not small, the PRs pass the batch line limit, or code or sensitive files changed',
+            : 'a PR is not small, or code or sensitive files changed',
       };
 }
 

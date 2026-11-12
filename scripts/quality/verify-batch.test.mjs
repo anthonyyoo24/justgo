@@ -178,7 +178,7 @@ test('tests and docs do not count toward the size, but agent instructions do', (
     );
 });
 
-test('batches close at the PR and line limits, in number order', () => {
+test('batches close at the PR limit, in number order', () => {
   const pulls = [
     pull(9, [['a.ts', 140]]),
     pull(3, [['b.ts', 140]]),
@@ -189,8 +189,9 @@ test('batches close at the PR and line limits, in number order', () => {
   const result = plan(pulls);
   assert.deepEqual(
     result.batches.map((batch) => batch.pulls.map((p) => p.number)),
-    [[3, 5], [9]],
+    [[3, 5, 9]],
   );
+  assert.equal(result.batches[0].lines, 420);
   assert.deepEqual(
     result.alone.map((p) => p.number),
     [7],
