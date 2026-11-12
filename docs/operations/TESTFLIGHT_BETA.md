@@ -68,7 +68,10 @@ The three Worker and Cloudflare steps below are retired. Do not build the Phase 
 candidate from them. P15-9 to P15-11 of the
 [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) replace them
 with the Supabase function, its notice and the build switch. The steps stay here
-as history until P15-11 rewrites this section.
+as history until P15-11 rewrites this section. The legal pages stay on Vercel, so
+`release:beta:check` no longer asks for the Cloudflare `deployment-host` marker
+below. It still needs the approved, dated Privacy Policy and Terms, and a
+diagnostics build still needs the matching published Privacy version.
 
 Before building the Phase 15 candidate:
 

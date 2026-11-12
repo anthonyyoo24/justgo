@@ -3,7 +3,6 @@ import { isIP } from 'node:net';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { parseDocument } from '../../sites/legal/build.mjs';
-import { requireCloudflareNotice } from '../../sites/legal/cloudflare.mjs';
 
 // Node 24 can require this synchronous TS module without reclassifying the
 // CommonJS mobile package or changing Metro's package semantics.
@@ -223,8 +222,6 @@ export function checkBetaRelease({
     try {
       // Reuse the site's actual publication boundary, including dates and placeholders.
       const document = parseDocument(documents[filename], true);
-      if (filename === 'PRIVACY_POLICY_DRAFT.md')
-        requireCloudflareNotice(documents[filename]);
       if (diagnostics && filename === 'PRIVACY_POLICY_DRAFT.md') {
         const scopes = documents[filename].match(
           /^<!-- diagnostics-scope: [^\r\n]+ -->$/gm,
@@ -239,7 +236,7 @@ export function checkBetaRelease({
       }
     } catch {
       errors.push(
-        `${filename} needs approved public wording, a final effective date and the Privacy Policy's Cloudflare hosting approval.`,
+        `${filename} needs approved public wording and a final effective date.`,
       );
     }
   }
