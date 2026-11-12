@@ -178,7 +178,7 @@ export function brief(numbers) {
     '',
     'A FAIL adds a line `Failure shown: <command or test> on the head prints <what broke>`. Write `Sensitive: yes` when the PR touches a path in `scripts/quality/sensitive-paths.mjs` or affects sign-in, account data, migrations or release. Say you are a separate Claude agent, not a different model family, and name your model. Report each verdict and its comment URL.',
     '',
-    'What the change is for: <one or two lines from the coordinator>',
+    'What the change is for: <one or two lines from the coordinator, with no other PR or issue number, which keeps the verifier on Opus>',
   ].join('\n');
 }
 

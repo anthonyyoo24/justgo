@@ -21,6 +21,7 @@ import {
   output,
   prOf,
   prsOf,
+  strayReference,
   sizedFilesOf,
 } from '../../.claude/hooks/verifier-model.mjs';
 import * as sensitive from './sensitive-paths.mjs';
@@ -137,6 +138,56 @@ test('the brief names its PRs, also in lists, and only JustGO ones', () => {
   assert.equal(
     prsOf({ description: `Verify PRs ${many.join(', ')}` }),
     undefined,
+  );
+});
+
+test('a brief that mentions a PR or issue the lists miss names no PRs', () => {
+  for (const text of [
+    'Verify PRs #7 #8',
+    'Verify PRs #7–#9',
+    'Verify PR #7 / #8',
+    'Verify PR #7 and otherorg/justgo#5',
+    'Verify PR #7, which fixes #375',
+    'Verify PR #7 (see https://github.com/anthonyyoo24/justgo/issues/375)',
+    'Verify PR #7 after anthonyyoo24/justgo#8',
+  ])
+    assert.equal(prsOf({ description: text }), undefined, text);
+  assert.equal(
+    prsOf({ description: 'Verify PR #7', prompt: 'Also look at #8.' }),
+    undefined,
+  );
+  // The numbers the lists name, the brief's own link and HTML entities pass.
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify PRs #7, #8',
+      prompt:
+        'PR #7 (https://github.com/anthonyyoo24/justgo/pull/7), PR #8, and anthonyyoo24/justgo#8 &#39;',
+    }),
+    ['7', '8'],
+  );
+  assert.equal(strayReference('#7 and #8', new Set(['7'])), '#8');
+  assert.equal(strayReference('o/r#7', new Set(['7'])), 'o/r#7');
+  assert.equal(strayReference('#7', new Set(['7'])), undefined);
+});
+
+test('small PRs share a Sonnet verifier only within the batch line limit', () => {
+  const lines = (n) => sized(['apps/mobile/src/features/a.tsx', n]);
+  assert.equal(
+    decide(first, ['x'], rules, [lines(150), lines(150)]).model,
+    'sonnet',
+  );
+  assert.equal(
+    decide(first, ['x'], rules, [lines(150), lines(150), lines(1)]).model,
+    'opus',
+  );
+  assert.equal(
+    decide(first, ['x'], rules, [
+      lines(150),
+      lines(150),
+      lines(150),
+      lines(150),
+    ]).model,
+    'opus',
   );
 });
 

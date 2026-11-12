@@ -556,9 +556,11 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   or whose prompt asks for a `Verifier verdict:` line in any case. It picks
   Sonnet when the brief names 1 to 4 JustGO PRs, as `PR #<n>`, a list such as
   `PRs #7, #8` or a PR URL, names no PR in another repository, has no
-  `Sensitive: yes` line, and every named PR is small by `sizeExclusion()` in
-  `scripts/quality/verify-batch.mjs`, with the old path of each rename checked
-  too. It also picks Sonnet for a re-check (description starting with a form of Re-verify
+  `Sensitive: yes` line, mentions no other PR or issue number (`#<n>`,
+  `owner/repo#<n>` or a GitHub link), every named PR is small by
+  `sizeExclusion()` in `scripts/quality/verify-batch.mjs`, with the old path of
+  each rename checked too, and the PRs together stay within the 300-line batch
+  limit. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and

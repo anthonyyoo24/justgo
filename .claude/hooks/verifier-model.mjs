@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus, except two cases that run
 // on Sonnet: a verifier whose PRs are all small by the verify-batch.mjs rule
-// (no sensitive or boundary file, few counted lines), and a re-check of a
-// docs- or tests-only, non-sensitive PR. Any doubt keeps Opus.
+// (no sensitive or boundary file, few counted lines) and together fit one
+// batch, and a re-check of a docs- or tests-only, non-sensitive PR. Any doubt
+// keeps Opus, including a brief that mentions a PR or issue number the hook
+// did not check.
 // Decision-trail reviews run on Sonnet. An audit runs on Sonnet unless its
 // brief says `Sensitive: yes` or names a PR that touches a sensitive path.
 // Any other Agent call that picks a non-Opus model keeps it only when its
@@ -75,6 +77,10 @@ const prKeysIn = (text) =>
 // makes the set unknown, so the hook keeps Opus.
 const prListReference =
   /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
+// Every number a text marks as a PR or issue: `#N`, `owner/repo#N`, or a
+// GitHub pull or issue link. `&#N` is an HTML entity, not a reference.
+const anyReference =
+  /(?:github\.com\/([\w.-]+\/[\w.-]+)\/(?:pull|issues)\/|\b([\w.-]+\/[\w.-]+)#|(?<!&)#)(\d+)\b/gi;
 // GitHub lists at most 3000 files of a PR, so a list that long may be cut.
 export const maxFiles = 3000;
 // A verifier with more PRs than a batch holds stays on Opus.
@@ -108,8 +114,20 @@ export function prOf(input) {
     : undefined;
 }
 
+// The first reference in a text to a number outside `numbers`, or to another
+// repository, or undefined when there is none.
+export function strayReference(text, numbers) {
+  for (const [found, link, short, number] of text.matchAll(anyReference)) {
+    const repo = (link ?? short ?? thisRepo).toLowerCase();
+    if (repo !== thisRepo || !numbers.has(number)) return found;
+  }
+  return undefined;
+}
+
 // The PRs a verifier brief names, or undefined when it names none, more than a
-// batch holds, or one in another repository.
+// batch holds, or one in another repository. A brief that also mentions a
+// number the lists do not cover, as in `PRs #7 #8`, `#7–#9` or a stray issue,
+// is unknown too, so a PR the hook did not size never reaches Sonnet.
 export function prsOf(input) {
   const text = `${input.description ?? ''}\n${input.prompt ?? ''}`;
   const numbers = new Set();
@@ -117,6 +135,7 @@ export function prsOf(input) {
     if (repo.toLowerCase() !== thisRepo) return undefined;
     for (const number of list.match(/(?<=#|\/pull\/)\d+/g)) numbers.add(number);
   }
+  if (strayReference(text, numbers)) return undefined;
   return numbers.size > 0 && numbers.size <= maxSmallPulls
     ? [...numbers]
     : undefined;
@@ -149,10 +168,18 @@ export function filesOf(entries) {
 
 // `changed` holds the paths of the one PR the brief names. `pulls` holds the
 // sized files of every PR the brief names, or undefined when any is unknown.
+// Small PRs share a Sonnet verifier only up to the batch line limit.
 export function decide(
   input,
   changed,
-  { isReviewOnly, isSensitivePath, sensitiveFlag, sizeExclusion },
+  {
+    isReviewOnly,
+    isSensitivePath,
+    sensitiveFlag,
+    sizeExclusion,
+    countedLines,
+    maxBatchLines,
+  },
   pulls,
 ) {
   const kind = kindOf(input);
@@ -176,7 +203,8 @@ export function decide(
     !sensitiveFlag.test(input.prompt ?? '') &&
     Array.isArray(pulls) &&
     pulls.length > 0 &&
-    pulls.every((files) => files && !sizeExclusion(files))
+    pulls.every((files) => files && !sizeExclusion(files)) &&
+    pulls.reduce((sum, files) => sum + countedLines(files), 0) <= maxBatchLines
   )
     return { model: 'sonnet', reason: 'every PR is small and not sensitive' };
   const sonnet =
@@ -192,7 +220,7 @@ export function decide(
         reason:
           changed === undefined
             ? 'no single PR named, or its files could not be read'
-            : 'a PR is not small, or code or sensitive files changed',
+            : 'a PR is not small, the PRs pass the batch line limit, or code or sensitive files changed',
       };
 }
 
@@ -257,8 +285,7 @@ async function main() {
           const list = entries.get(n);
           return list ? sizedFilesOf(list) : undefined;
         });
-      const one = prOf(input);
-      const list = one && (entries.get(one) ?? prEntries(one));
+      const list = numbers.length === 1 ? entries.get(numbers[0]) : undefined;
       files = list && filesOf(list);
     }
     result = output(input, decide(input, files, rules, pulls));
