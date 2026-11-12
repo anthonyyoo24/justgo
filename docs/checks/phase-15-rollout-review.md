@@ -3,8 +3,7 @@
 Review checkpoint: November 2, 2026, 23:40 UTC. Phase 15 remains open.
 This prepares one consolidated phase review; it authorizes no Git publication,
 merge, paid subscription, final build, source pause or recovery-key use.
-The [phase handoff](../handoffs/phase-15-cloudflare-api.md) retains earlier
-implementation, phone and provider evidence.
+Git history keeps the earlier implementation, phone and provider evidence.
 
 ## Delivered and verified
 

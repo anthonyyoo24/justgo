@@ -23,12 +23,11 @@ and [App Store release][store] milestones.
 | 12 — Legal documents & release disclosures                          | Reviewed public notices and acceptance copy match the launch build, with product analytics disabled.            | 08–11                                       | Notices published                           |
 | 13 — Local data, optional accounts and cloud sync                   | One continuous journal, optional Apple and Google accounts, cloud sync and concise Account and Data controls.   | 07–12                                       | Merged                                      |
 | 14 — Release validation & launch                                    | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–13 for beta; accepted 16 for paid launch | Internal TestFlight build 5 delivered       |
-| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Move the Hono API to one Supabase Edge Function, keeping PostgreSQL, Auth and the R2 recovery path.             | 14 internal beta; before 14 external beta   | Serving staging ([handoff][p15-handoff])    |
+| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Move the Hono API to one Supabase Edge Function, keeping PostgreSQL, Auth and the R2 recovery path.             | 14 internal beta; before 14 external beta   | Serving staging                             |
 | [16 — Native subscriptions & reliable billing](phase-16-billing.md) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta              | Local work in progress; activation deferred |
 
 [beta]: https://github.com/anthonyyoo24/justgo/milestone/1
 [store]: https://github.com/anthonyyoo24/justgo/milestone/2
-[p15-handoff]: ../handoffs/phase-15-supabase-api.md
 
 ## Release order
 
