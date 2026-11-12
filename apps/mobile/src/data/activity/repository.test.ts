@@ -425,18 +425,14 @@ it('serializes overlapping optional catalog writes and hydrates only the correct
   const isolated = (await setup(storage)).repo;
   expect(state(isolated).catalog).toBeNull();
 });
-// Known bug #375: the retry returns the in-memory record without saving it.
-it.failing(
-  'saves a retried completion to the phone before it reports success (#375)',
-  async () => {
-    const { repo, storage } = await setup();
-    storage.fail = true;
-    await expect(repo.complete(input(), card)).rejects.toMatchObject({
-      code: 'STORAGE',
-    });
-    storage.fail = false;
-    await expect(repo.complete(input(), card)).resolves.toEqual(attempt());
-    expect(storage.values.get(key)).toBeDefined();
-    expect(disk(storage).records[uuid(1)]?.attempt).toEqual(attempt());
-  },
-);
+it('saves a retried completion to the phone before it reports success (#375)', async () => {
+  const { repo, storage } = await setup();
+  storage.fail = true;
+  await expect(repo.complete(input(), card)).rejects.toMatchObject({
+    code: 'STORAGE',
+  });
+  storage.fail = false;
+  await expect(repo.complete(input(), card)).resolves.toEqual(attempt());
+  expect(storage.values.get(key)).toBeDefined();
+  expect(disk(storage).records[uuid(1)]?.attempt).toEqual(attempt());
+});

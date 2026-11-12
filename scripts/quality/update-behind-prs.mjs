@@ -3,11 +3,19 @@ import { fileURLToPath } from 'node:url';
 
 // Branch protection on main requires up-to-date branches, and GitHub never
 // updates a PR with auto-merge armed when main moves, so that PR sits BEHIND.
-// .github/workflows/update-behind-prs.yml runs this on each push to main. It
-// merges main into every open PR on main that has auto-merge armed and is
-// behind, through the same update-branch call as merge-pr.mjs, pinned to the
-// head it read. GitHub then reruns checks, description and verdict and merges the PR once
-// they pass. It skips a PR that conflicts, and says why.
+// .github/workflows/update-behind-prs.yml runs this on each push to main and
+// after each CI or PR description run. It brings one armed PR at a time up to
+// date, the next in line, through the same update-branch call as merge-pr.mjs,
+// pinned to the head it read. GitHub then reruns checks, description and
+// verdict and merges the PR once they pass, and that push to main starts the
+// next one. Updating every behind PR at once reran CI on all of them, and each
+// merge made the rest behind again.
+//
+// The next in line is the lowest-numbered behind PR whose head already has a
+// passing verdict. Nothing is updated while an armed PR that is up to date
+// still has a passing or running verdict and no failed required check: it is
+// about to merge. A PR whose checks fail drops out, and the next run moves on.
+// It skips a PR that conflicts, and says why.
 //
 // The token must not be GITHUB_TOKEN: GitHub holds the CI runs that a
 // GITHUB_TOKEN push starts until someone approves them, so the PR stays stuck.
@@ -30,6 +38,19 @@ const query = `query($owner: String!, $name: String!, $after: String) {
         isCrossRepository
         mergeStateStatus
         autoMergeRequest { enabledAt }
+        commits(last: 1) {
+          nodes {
+            commit {
+              statusCheckRollup {
+                contexts(first: 100) {
+                  nodes {
+                    ... on CheckRun { name status conclusion startedAt }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -53,6 +74,51 @@ export function decide(pull) {
     default:
       return { skip: `it is not behind main (${pull.mergeStateStatus})` };
   }
+}
+
+// The required checks branch protection names.
+export const requiredChecks = ['checks', 'description', 'verdict'];
+
+// The newest run of each required check on the PR head: 'success', 'failure'
+// or 'pending'. A check that has not started yet counts as pending.
+export function checkStates(pull) {
+  const runs =
+    pull.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? [];
+  const newest = new Map();
+  for (const run of runs) {
+    if (!requiredChecks.includes(run?.name)) continue;
+    const seen = newest.get(run.name);
+    // A queued run has no startedAt yet and is the newest.
+    const time = (r) => (r.startedAt ? Date.parse(r.startedAt) : Infinity);
+    if (!seen || time(run) >= time(seen)) newest.set(run.name, run);
+  }
+  const states = {};
+  for (const name of requiredChecks) {
+    const run = newest.get(name);
+    if (!run || run.status !== 'COMPLETED') states[name] = 'pending';
+    else if (['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(run.conclusion))
+      states[name] = 'success';
+    else states[name] = 'failure';
+  }
+  return states;
+}
+
+// Why a behind PR cannot go next, or undefined when it can: a passing verdict
+// must cover its head, and its description must not fail. Its checks may have
+// failed against an older main, which the update may fix.
+export function notReady(pull) {
+  const states = checkStates(pull);
+  if (states.verdict !== 'success')
+    return 'no passing verdict covers its head yet';
+  if (states.description === 'failure') return 'its description check fails';
+}
+
+// About to merge: up to date, its verdict passes or is still running, and no
+// required check has failed.
+export function aboutToMerge(pull) {
+  if (['BEHIND', 'DIRTY', 'UNKNOWN'].includes(pull.mergeStateStatus))
+    return false;
+  return !Object.values(checkStates(pull)).includes('failure');
 }
 
 function client({ fetch, token }) {
@@ -99,7 +165,7 @@ async function openPulls(call, repo) {
   }
 }
 
-// Updates every armed PR on main that is behind. Returns the PRs it updated
+// Updates the next armed PR on main in line. Returns the PRs it updated
 // and skipped. Throws on a listing failure. An update failure other than
 // GitHub's 422 refusal, and a refusal that persists while GitHub still
 // reports the PR behind, go in `failed`, so the run goes red.
@@ -124,43 +190,67 @@ export async function updateBehindPulls({
     log(`#${number}: skipped, ${reason}.`);
   };
 
-  const refused = new Set();
-  const tryUpdate = async (pull) => {
+  // Read until GitHub has decided whether each armed PR is behind.
+  let armed = new Map();
+  for (let attempt = 1; attempt <= timing.attempts; attempt++) {
+    if (attempt > 1) await sleep(timing.pollMs);
+    armed = new Map();
+    for (const pull of await openPulls(call, repo))
+      if (decide(pull) !== 'ignore') armed.set(pull.number, pull);
+    if (![...armed.values()].some((pull) => decide(pull) === 'wait')) break;
+  }
+
+  const inFlight = [...armed.values()].find(
+    (pull) => !pull.isCrossRepository && aboutToMerge(pull),
+  );
+  const candidates = [];
+  for (const pull of [...armed.values()].sort((a, b) => a.number - b.number)) {
+    const action = decide(pull);
+    if (typeof action === 'object') {
+      if (pull !== inFlight) skip(pull.number, action.skip);
+    } else if (notReady(pull)) skip(pull.number, notReady(pull));
+    else if (inFlight)
+      skip(
+        pull.number,
+        `#${inFlight.number} is up to date and about to merge; this waits its turn`,
+      );
+    else candidates.push(pull);
+  }
+  if (inFlight)
+    log(
+      `#${inFlight.number}: up to date with no failed required check; nothing else updates until it merges or fails.`,
+    );
+
+  // Update the first candidate GitHub accepts. A PR GitHub never decided
+  // about is tried too, because update-branch refuses one level with main.
+  const refused = [];
+  for (const pull of candidates) {
+    if (result.updated.length) {
+      skip(
+        pull.number,
+        `#${result.updated[0]} goes first; this waits its turn`,
+      );
+      continue;
+    }
+    if (decide(pull) === 'wait')
+      log(`#${pull.number}: GitHub still reports UNKNOWN; trying the update.`);
     const refusal = await update(pull);
-    if (refusal === undefined) return;
-    refused.add(pull.number);
+    if (refusal === undefined) continue;
+    refused.push(pull.number);
     log(
       `#${pull.number}: GitHub refused the update of head ${pull.headRefOid.slice(0, 7)}: ${refusal}; reading it again.`,
     );
-  };
-
-  let pending = new Map();
-  for (let attempt = 1; attempt <= timing.attempts; attempt++) {
-    if (attempt > 1) await sleep(timing.pollMs);
-    const pulls = await openPulls(call, repo);
-    const waiting = new Map();
-    for (const pull of pulls) {
-      if (attempt > 1 && !pending.has(pull.number)) continue;
-      const action = decide(pull);
-      if (action === 'ignore') continue;
-      if (action === 'wait') waiting.set(pull.number, pull);
-      else if (action === 'update') await tryUpdate(pull);
-      else skip(pull.number, action.skip);
-    }
-    pending = waiting;
-    if (!pending.size) break;
   }
-  // GitHub never said whether these are behind. update-branch refuses a PR
-  // that is level with main, so try it rather than leave one stuck.
-  for (const pull of pending.values()) {
-    log(`#${pull.number}: GitHub still reports UNKNOWN; trying the update.`);
-    await tryUpdate(pull);
-  }
+  const updatedOne = result.updated.length > 0;
+  if (updatedOne)
+    for (const number of refused)
+      skip(number, `#${result.updated[0]} goes first; this waits its turn`);
 
   // A refusal usually means the head moved, often because an earlier run's
-  // update landed after this run read the PR. Read the refused PRs once more
-  // and retry those still behind on the head GitHub reports now.
-  if (refused.size) {
+  // update landed after this run read the PR. When nothing was updated, read
+  // the refused PRs once more and retry the first still behind on the head
+  // GitHub reports now.
+  if (refused.length && !updatedOne) {
     await sleep(timing.pollMs);
     const now = new Map(
       (await openPulls(call, repo)).map((pull) => [pull.number, pull]),
@@ -171,6 +261,8 @@ export async function updateBehindPulls({
       if (action === 'ignore')
         skip(number, 'it is no longer an armed open PR on main');
       else if (typeof action === 'object') skip(number, action.skip);
+      else if (result.updated.length)
+        skip(number, `#${result.updated[0]} goes first; this waits its turn`);
       else {
         const refusal = await update(pull);
         if (refusal === undefined) continue;

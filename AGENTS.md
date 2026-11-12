@@ -144,8 +144,9 @@ these rules:
 - Each operations doc owns the local rehearsals for its area.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
   a `gate` issue for each deferred device, hosted or staging check. File an issue
-  for each approved deferral of a review finding. Close each with a link to its
-  evidence.
+  for each deferral Anthony approves of a `FAIL` that shows a failure. A note in
+  a `PASS+NOTES` verdict stays in that comment. Close each issue with a link to
+  its evidence.
 - File a bug you find outside your task as an issue with its reproduction. Label
   it `bug` and exactly one of these:
   - `agent-fix`: a failing test reproduces the bug and the fix needs no product
@@ -328,23 +329,23 @@ highest level that works and updates this list.
   - Enforced by (hook, written): The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)
 - Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files.
   - Enforced by (written): Nothing. It is a judgment call.
-- Verifiers run on Opus. Only a re-check of one named, docs- or tests-only, non-sensitive PR runs on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
+- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
-- Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself.
-  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes) and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`
+- Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself. A session on the Mac mini starts inside its JustGO checkout, `/Users/anthony/Documents/apps/justgo`, so JustGO's settings, hooks and compaction window load.
+  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes), a call with `target: "ssh"` or a `host` whose `cwd` is missing or outside that checkout, and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`. A preset that carries a host is caught only in review.
 - A session started in the main checkout runs the current hooks and settings, and its checkout stays current during the session. On `main` with no tracked changes, the checkout fast-forwards to `origin/main` at session start and before each `Agent` call or Bash `git worktree add`, and asks for a restart when the update changed `.claude/` or the root agent instructions. At session start it otherwise says how far behind it is and why it was not updated. Before a tool call it fetches at most once a minute and warns about nothing. It never resets, stashes or touches untracked files, never blocks a session or a tool call, and leaves linked worktrees alone.
   - Enforced by (hook, test): The `SessionStart` and `PreToolUse` (`Agent|Bash`) hook `.claude/hooks/sync-main.mjs`, which stays silent when offline or up to date and returns no permission decision, with cases against temporary repositories in `scripts/quality/sync-main-hook.test.mjs`. It finds `git worktree add` in Bash text with `shellText()` from `push-after-pass-guard.mjs`, so a worktree that a script creates is not preceded by a sync.
 - When a chat starts or ends in the main checkout, a detached process removes each worktree under `.claude/worktrees/` that nobody needs: unlocked, with no changes or untracked files, no unique ignored files outside `.local/` (such as a key), its HEAD on a remote branch or its PR (the branch's, or the one a `ver-<n>` or `adv-<n>` name gives) merged or closed, no open PR on its branch or HEAD, no process inside, and no file outside `node_modules` changed for 2 hours. Before each removal, `refs/archive/worktrees/<name>` keeps its HEAD and its `.local/` is copied to `.local/archived-worktrees/<name>/`. It then moves the worktree to `.local/worktree-trash/` with `git worktree move` and removes it there, so the next sweep deletes what a removal killed or timed out partway left in that folder, unless `git status`, run through git's record of that worktree, shows more than deleted files. An untracked path counts as deleted when the main checkout ignores it, since a removal can delete a `.gitignore` before the files it ignores. It keeps a leftover git has no record of, a box that holds a file when its worktree folder is gone, and a box it cannot delete. A worktree git refuses to remove, or one changed since its check, moves back, or is locked in the trash when it cannot. When GitHub cannot be read, it keeps everything. It never forces a removal, never deletes a branch, and logs each removal with its commit to `.local/worktree-sweep.log`.
   - Enforced by (hook, test): The `SessionStart` (`startup`) and `SessionEnd` hooks start `.claude/hooks/sweep-worktrees.mjs --detach`, with cases against temporary repositories in `scripts/quality/sweep-worktrees-hook.test.mjs`. `--dry-run` lists what it would remove.
 - Changes reach `main` only through a PR that passes `checks`, `description` and `verdict`.
   - Enforced by (GitHub): Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion. A required check added in GitHub settings is caught only in review. The old `sections` job in `pr-description.yml` passes only when `description` and `verdict` pass, and stays until no open PR needs it
-- Agents merge only through `pnpm run merge:pr <n> --head <sha> [--auto]`. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.
+- Agents merge only through `pnpm run merge:pr <n> --head <sha> [--auto]`. A PR that targets a branch other than `main` is refused until its parent merges. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.
   - Enforced by (hook, test): The `PreToolUse` Bash hook `.claude/hooks/merge-order-guard.mjs` denies any command with `gh pr merge` on one line (also with quoted words, an unset `$name` variable, a `${…}` expansion that keeps its default word or expands to nothing, such as `${x:-merge}` or `m${x:+zz}erge`, or up to 16 `-R` or `--repo` flags before `merge`, an empty `--repo=` included), a `pulls/<n>/merge` API path or the GraphQL `mergePullRequest`, `enablePullRequestAutoMerge` or `enqueuePullRequest` mutation, harmless mentions included. A mention split across lines merges nothing and passes. A 120k-character line takes it milliseconds. A command that builds those words at runtime in other ways, such as `${x/*/merge}` or `$(echo merge)`, or reads a GraphQL query from a file is caught only in review. Branch merges (GraphQL `mergeBranch`, REST `merges`) pass, because branch protection guards `main`. `scripts/quality/merge-pr.mjs` checks with `git merge-tree` and `verdict-patch.mjs`, fails closed when `gh`, git or the network fails, and pins each step to its head. Cases beside it in `merge-pr.test.mjs` and `merge-order-guard.test.mjs`
 - After a `PASS`, agents push nothing more to that PR but docs, tests and merges from `main`. A push that cannot wait disarms auto-merge first and carries `PUSH_AFTER_PASS=1`.
   - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
 - Review rounds end. A `FAIL` must show a failure on a `Failure shown:` line, or it is a note and the verdict is `PASS+NOTES`. No verifier starts on an open PR whose `PASS` or `PASS+NOTES` still covers its head, or that already has 3 `FAIL` verdicts that show a failure. Anthony can ask for another round.
   - Enforced by (CI, hook, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. The `PreToolUse` Agent hook `.claude/hooks/review-rounds-guard.mjs` denies a verifier on such a PR unless its brief has an `Another round:` line, with cases in `scripts/quality/review-rounds-guard.test.mjs`. It checks the PRs the description names, or every PR the prompt mentions when the description names none. It lets the call through when `gh`, git or the network fails, or when its 45 s budget runs out. Whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony, are caught only in review.
-- Small non-sensitive PRs share one verifier, at most 4 PRs and 300 lines a batch, with a verdict comment on each PR.
+- Small non-sensitive PRs share one Sonnet verifier, at most 4 PRs a batch, with a verdict comment on each PR.
   - Enforced by (test, written): `scripts/quality/verify-batch.mjs` lists the batches, with cases in `scripts/quality/verify-batch.test.mjs`. Starting one verifier per batch is a judgment call.
 - Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.
   - Enforced by (written): Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.
@@ -376,6 +377,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   from `main`. Stack one on another only when it needs that PR's change, and then
   it targets that PR's branch. A phase is several small PRs, not one consolidated PR.
   Parallel agents each get their own worktree and branch, with one owner per branch.
+- **One PR carries a change, its tests and its docs.** Put the tests that prove
+  a change and the doc updates it makes necessary in the same PR as the code.
+  Open a docs-only or tests-only PR only when Anthony asks for one, or when a
+  wrong doc or a broken test blocks work. Add a test a verifier's note asks for
+  to the same PR before it merges, since a tests-only push keeps the verdict.
+  Attach a known-bug test to its issue rather than opening a PR for it alone.
+  Keep other doc tweaks for a PR that already touches that doc.
 - **PR descriptions use pstack sections**: Why, What changed, Scope,
   Tradeoffs, Blast Radius and Verification, in that order. The
   `pr-description-check` hook and the required `description` check enforce them.
@@ -423,46 +431,65 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `description` and `verdict` on the new head, and merges pinned to that head. On `re-verify`
   it stops, and a fresh verifier reviews the new head.
 - **One verifier per PR, sensitive or not.** This replaces the full swarm in
-  step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one Opus
+  step 4 of pstack's `autopilot-full` playbook. At the code-ready head, one
   verifier that did not write the PR proves the behavior and posts the verdict.
+  It runs on Sonnet when the PR is small and on Opus otherwise, as the
+  verifier hook in [Agent effort](#agent-effort) decides.
   Each fix round gets a fresh verifier, as [Agent effort](#agent-effort) says.
   Sensitive PRs get the same one verifier. Run a swarm or `/pstack:interrogate`
-  only when Anthony asks for one on that PR.
+  only when Anthony asks for one on that PR. The verifier reads the PR's CI for
+  the full suites (install, typechecks, lint, architecture, workspace tests,
+  `test:db`, journeys and exports) and does not rerun them locally. When CI has
+  not finished, it waits for the result. It runs the focused tests for the
+  changed behavior, drives a user-facing change with `verify-justgo`, and
+  probes only what the change touches. It writes no fuzzer or broad sweep
+  unless a concrete failure needs one, and any probe that runs generated shell
+  text runs it with stub commands, never real programs such as `say` or `open`.
 - **Review rounds end.** Only a shown defect blocks a PR: a `FAIL` names, on a
   `Failure shown:` line, the command or test that broke on the head and what it
   printed. A risk, a wording gap or a missing case with no failure shown is a
   note, so the verdict is `PASS+NOTES`. Notes never start another round. The
-  PR merges, and each note goes in an issue or a follow-up PR. A PR gets at most
+  PR merges, and its notes stay in the verdict comment. File an issue only for
+  a note that is a bug, under the bug rules in [Where facts live](#where-facts-live),
+  or a deferred device, hosted or staging gate. A PR gets at most
   two fix rounds. After a third `FAIL`, stop and bring it to Anthony with what
   still fails. Another round past these limits runs only when Anthony asks, and
   its brief carries a line `Another round: <his words>`.
 - **Batch small PRs under one verifier.** Before you start verifiers, run
   `node scripts/quality/verify-batch.mjs`. It lists the open PRs that need a
-  verdict and groups the small ones, at most 4 PRs and 300 changed lines a
-  batch. A small PR is not a draft, touches no sensitive path and no contracts,
+  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path and no contracts,
   database, CI, dependency, `.claude` hook, skill or settings file, lint config
-  or `scripts/quality` script outside its tests, and changes at most 150 lines
-  outside tests. Give each batch one Opus verifier whose description
+  or `scripts/quality` script outside its tests, and changes at most 150
+  counted lines. Tests and Markdown do not count, except `AGENTS.md` and
+  `docs/operations/`. Give each batch one verifier whose description
   starts with Verify and names every PR in it, as in `Verify PRs #7, #8`. It posts a separate
   verdict comment on each PR, so a `FAIL` holds only that PR. Every other PR
-  keeps its own verifier.
+  keeps its own verifier. Start every verifier, batched or not, with the brief
+  that `node scripts/quality/verify-batch.mjs --brief <n>...` prints, and add
+  only a line or two on what the change is for.
 - **Arm auto-merge when you open a PR.** Run
   `pnpm run merge:pr <n> --head <head-sha> --auto` right after
-  opening the PR, and again after each push, pinned to the new head. The
+  opening the PR, and again after each push, pinned to the new head. A stacked
+  PR waits: the script refuses any PR that targets a branch other than `main`,
+  because nothing guards that branch and GitHub would merge it at once. Arm it
+  after its parent merges and it targets `main` (#392). The
   required `verdict` check stays red until a readable `PASS` covers that head,
   so GitHub merges on its own once the verdict and CI are green. The agent does
   not wait for CI to merge. If the branch is behind `main`, `--auto` merges
   `main` in and checks the verdict as above, then arms on the new head without
   waiting for CI. Branch protection requires up-to-date branches, so on each
   push to `main` the `Update behind PRs` workflow
-  (`.github/workflows/update-behind-prs.yml`) merges `main` into every armed PR
-  that is behind, and rerunning the script does the same by hand. After a
+  (`.github/workflows/update-behind-prs.yml`) merges `main` into one armed PR
+  at a time: the lowest-numbered behind PR whose head has a passing verdict,
+  once no up-to-date armed PR is still on its way to merging. It also runs
+  after each CI and PR description run, and rerunning the script does the
+  same by hand. After a
   `PASS`, push nothing more to the PR. Those `main` merges are the one
   exception, and the `push-after-pass-guard` hook denies a code push to a PR
   whose head has a `PASS`. It cannot check a push in the same command as a
   commit, merge or rebase, so it denies that too: run them as separate
   commands. Put
-  optional notes and later additions in a follow-up PR or issue. If a push after
+  later additions in a follow-up PR. If a push after
   a `PASS` cannot be avoided, run `pnpm run merge:pr <n> --disable-auto` first,
   prefix the push with `PUSH_AFTER_PASS=1`, and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
   push keeps `verdict` green without a review. Also disarm with
@@ -505,6 +532,17 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
+- Hooks are frozen to cut usage (Anthony, 2026-11-11). Change a hook in
+  `.claude/hooks/` only when it blocks or misfires in real use, shown by the
+  command it got wrong, or when Anthony asks. This holds for `/pstack:correct`
+  too: it fixes a repeated mistake with a written rule, not a new hook check,
+  unless Anthony asks for one. A shell form agents do not write,
+  such as unusual quoting, expansions or heredocs, stays caught only in review.
+  Open no issue or PR for one.
+- Start a session on the Mac mini (the `Mac mini` SSH connection) with `cwd`
+  `/Users/anthony/Documents/apps/justgo` or a worktree inside it, never the
+  home folder. Outside the repository, JustGO's `.claude/settings.json` does
+  not load, so its hooks and compaction window are off.
 - Subagents and helpers run at `medium` or `high` effort. Never use `low` or
   `max`. Anthony capped effort at `high` on 2026-11-07 to cut usage. `high` is
   the default, including for the sensitive areas below.
@@ -515,11 +553,16 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. It re-reads the
   whole PR, not only the change since the last verdict.
-- Verifiers run on Opus. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
+- Verifiers run on Opus, except small PRs. The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`
   sets the model of every verifier `Agent` call: one whose description starts
   with a form of Verify, Verifier, Re-verify or Re-check, such as Verifying,
   or whose prompt asks for a `Verifier verdict:` line in any case. It picks
-  Sonnet only for a re-check (description starting with a form of Re-verify
+  Sonnet when the brief names 1 to 4 JustGO PRs, as `PR #<n>`, a list such as
+  `PRs #7, #8` or a PR URL, names no PR in another repository, has no
+  `Sensitive: yes` line, mentions no other PR or issue number (`#<n>`,
+  `owner/repo#<n>` or a GitHub link), every named PR is small by
+  `sizeExclusion()` in `scripts/quality/verify-batch.mjs`, with the old path of
+  each rename checked too. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
@@ -565,7 +608,10 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `claude -p /autocompact` shows the window in force, and `get_usage` reports
   where auto-compact starts.
 - The sensitive areas are sign-in and identity, account data and
-  deletion, database migrations, and release and backup scripts.
+  deletion, database migrations, release and backup scripts, and privacy:
+  secret storage, the code that carries account data or writing,
+  diagnostics, outbound requests, and the legal pages and the code that
+  shows them.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
   lists their paths, and the verifier hook reads that list.
 - Only Claude models are available here. Where pstack asks for a reviewer, judge
