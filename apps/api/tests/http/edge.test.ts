@@ -89,21 +89,26 @@ describe('Edge entry', () => {
     });
   });
 
-  it('uses the gateway address and ignores a forged X-Forwarded-For', () => {
+  it('uses the gateway CF-Connecting-IP and ignores forged X-Forwarded-For and X-Real-IP', () => {
     const request = (headers: Record<string, string>) =>
       new Request('https://ref.supabase.co/api/health', { headers });
     expect(
       edgeClientAddress(
-        request({ 'x-real-ip': '203.0.113.7', 'x-forwarded-for': '10.0.0.1' }),
+        request({
+          'cf-connecting-ip': '203.0.113.7',
+          'x-forwarded-for': '10.0.0.1',
+          'x-real-ip': '10.0.0.2',
+        }),
       ),
     ).toBe('203.0.113.7');
-    expect(edgeClientAddress(request({ 'x-real-ip': '2001:db8::1' }))).toBe(
-      '2001:db8::1',
-    );
+    expect(
+      edgeClientAddress(request({ 'cf-connecting-ip': '2001:db8::1' })),
+    ).toBe('2001:db8::1');
     for (const headers of [
       { 'x-forwarded-for': '198.51.100.1' },
-      { 'x-real-ip': '198.51.100.1, 203.0.113.7' },
-      { 'x-real-ip': 'unknown' },
+      { 'x-real-ip': '198.51.100.1' },
+      { 'cf-connecting-ip': '198.51.100.1, 203.0.113.7' },
+      { 'cf-connecting-ip': 'unknown' },
       {},
     ])
       expect(edgeClientAddress(request(headers))).toBe('unknown');
