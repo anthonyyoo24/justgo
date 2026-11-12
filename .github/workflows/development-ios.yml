@@ -61,7 +61,7 @@ jobs:
     # Reuse the existing reviewed signing-token boundary, not repository secrets.
     environment:
       name: testflight-beta
-      url: https://justgo-two.vercel.app
+      url: https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       RELEASE_SHA: ${{ needs.validate.outputs.sha }}

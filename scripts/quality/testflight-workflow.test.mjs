@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { betaApiOrigin } from '../release/check-beta.mjs';
+import { betaApiUrl } from '../release/check-beta.mjs';
 
 const workflow = readFileSync(
   new URL('../../.github/workflows/testflight-beta.yml', import.meta.url),
@@ -67,7 +67,7 @@ test('only manual dispatch from main can reach a separately approved build or up
   assert.match(workflow, /^ {4}needs: validate$/m);
   assert.match(
     workflow,
-    /^ {4}environment:\n {6}name: testflight-beta\n {6}url: https:\/\/justgo-api-staging\.anthonyyoo24\.workers\.dev$/m,
+    /^ {4}environment:\n {6}name: testflight-beta\n {6}url: https:\/\/kmcpcauaxlgpevkkenwd\.supabase\.co\/functions\/v1\/api$/m,
   );
   assert.match(workflow, /^ {2}cancel-in-progress: false$/m);
   assert.match(
@@ -364,8 +364,8 @@ test('resolved EAS commands preserve explicit mode, native signing and the uncha
       assert.equal(args[3], '--non-interactive');
       assert.equal(
         args[2].match(/(?:^|\s)EXPO_PUBLIC_API_URL=(\S+)/)?.[1],
-        betaApiOrigin,
-        'Preflight, build and submit must resolve the same reviewed Workers origin',
+        betaApiUrl,
+        'Preflight, build and submit must resolve the same reviewed Edge Function',
       );
       assert.match(
         args[2],

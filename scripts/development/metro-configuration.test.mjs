@@ -35,14 +35,8 @@ test('only guarded local Dev maps public reads for every platform and chains oth
     NODE_ENV: 'development',
     JUSTGO_LOCAL_DEVELOPMENT: '1',
   };
-  for (const EXPO_PUBLIC_API_URL of [
-    'https://justgo-two.vercel.app',
-    'https://justgo-api-staging.anthonyyoo24.workers.dev',
-    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
-  ]) {
-    const lines = resolve({ ...environment, EXPO_PUBLIC_API_URL })
-      .trim()
-      .split('\n');
+  {
+    const lines = resolve(environment).trim().split('\n');
     const paths = JSON.parse(lines[0]);
     assert(
       paths[0].endsWith('src/platform/environment/development-environment.ts'),

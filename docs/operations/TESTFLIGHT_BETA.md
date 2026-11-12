@@ -18,13 +18,13 @@ cutovers need no external-user transition period. Reassess once external testers
 are invited.
 
 `build.beta` is a store-signed release build that uses EAS **preview** variables.
-The beta preflight and every TestFlight workflow command still select the retired
-Worker at `https://justgo-api-staging.anthonyyoo24.workers.dev`, so a beta build
-made before P15-11 of the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) targets that
-retired Worker. TestFlight submissions already need Anthony's go. Installed build 5 still
-uses `https://justgo-two.vercel.app`. The Dev profile and its installed build also
-keep their Vercel target until a coordinated migration or retirement.
+The beta and Dev profiles, the beta preflight and every TestFlight workflow
+command select the staging `api` Edge Function at
+`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, and the preflight
+refuses any other API URL. Installed build 5 and the installed Dev build still
+use `https://justgo-two.vercel.app` until Anthony ships and accepts new builds,
+as P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+describes. TestFlight submissions need Anthony's go.
 
 Store signing does not select a paid production API. Preview reuses the verified
 public Auth, Google and CloudKit settings. Never put private server credentials in
