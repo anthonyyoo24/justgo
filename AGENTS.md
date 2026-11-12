@@ -341,7 +341,7 @@ highest level that works and updates this list.
   - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
 - Review rounds end. A `FAIL` must show a failure on a `Failure shown:` line, or it is a note and the verdict is `PASS+NOTES`. No verifier starts on an open PR whose `PASS` or `PASS+NOTES` still covers its head, or that already has 3 `FAIL` verdicts that show a failure. Anthony can ask for another round.
   - Enforced by (CI, hook, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. The `PreToolUse` Agent hook `.claude/hooks/review-rounds-guard.mjs` denies a verifier on such a PR unless its brief has an `Another round:` line, with cases in `scripts/quality/review-rounds-guard.test.mjs`. It checks the PRs the description names, or every PR the prompt mentions when the description names none. It lets the call through when `gh`, git or the network fails, or when its 45 s budget runs out. Whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony, are caught only in review.
-- Small non-sensitive PRs share one Sonnet verifier, at most 4 PRs and 300 lines a batch, with a verdict comment on each PR.
+- Small non-sensitive PRs share one Sonnet verifier, at most 4 PRs a batch, with a verdict comment on each PR.
   - Enforced by (test, written): `scripts/quality/verify-batch.mjs` lists the batches, with cases in `scripts/quality/verify-batch.test.mjs`. Starting one verifier per batch is a judgment call.
 - Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.
   - Enforced by (written): Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.
@@ -453,8 +453,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   its brief carries a line `Another round: <his words>`.
 - **Batch small PRs under one verifier.** Before you start verifiers, run
   `node scripts/quality/verify-batch.mjs`. It lists the open PRs that need a
-  verdict and groups the small ones, at most 4 PRs and 300 changed lines a
-  batch. A small PR is not a draft, touches no sensitive path and no contracts,
+  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path and no contracts,
   database, CI, dependency, `.claude` hook, skill or settings file, lint config
   or `scripts/quality` script outside its tests, and changes at most 150
   counted lines. Tests and Markdown do not count, except `AGENTS.md` and
@@ -559,8 +558,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `Sensitive: yes` line, mentions no other PR or issue number (`#<n>`,
   `owner/repo#<n>` or a GitHub link), every named PR is small by
   `sizeExclusion()` in `scripts/quality/verify-batch.mjs`, with the old path of
-  each rename checked too, and the PRs together stay within the 300-line batch
-  limit. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
+  each rename checked too. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and

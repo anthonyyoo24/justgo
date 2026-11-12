@@ -170,23 +170,12 @@ test('a brief that mentions a PR or issue the lists miss names no PRs', () => {
   assert.equal(strayReference('#7', new Set(['7'])), undefined);
 });
 
-test('small PRs share a Sonnet verifier only within the batch line limit', () => {
+test('up to 4 small PRs share a Sonnet verifier whatever their total', () => {
   const lines = (n) => sized(['apps/mobile/src/features/a.tsx', n]);
+  const four = [lines(150), lines(150), lines(150), lines(150)];
+  assert.equal(decide(first, ['x'], rules, four).model, 'sonnet');
   assert.equal(
-    decide(first, ['x'], rules, [lines(150), lines(150)]).model,
-    'sonnet',
-  );
-  assert.equal(
-    decide(first, ['x'], rules, [lines(150), lines(150), lines(1)]).model,
-    'opus',
-  );
-  assert.equal(
-    decide(first, ['x'], rules, [
-      lines(150),
-      lines(150),
-      lines(150),
-      lines(150),
-    ]).model,
+    decide(first, ['x'], rules, [...four.slice(0, 3), lines(151)]).model,
     'opus',
   );
 });
