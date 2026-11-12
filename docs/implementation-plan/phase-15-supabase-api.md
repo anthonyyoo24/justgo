@@ -2,7 +2,7 @@
 
 # Phase 15 plan to move the API to one Supabase Edge Function
 
-**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work.
+**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging. No build points at it yet. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) records the receipts.
 
 The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. The steps are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The fast path below runs them in a different order. Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
 
@@ -164,23 +164,23 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Depends on.** P15-6 merged, with P15-8's lane, and Anthony's one go for the hosted window, which P15-2 shares with P15-9.
 
-**Fast path.** Run lanes 1, 2, 4, 5, 6, 8 and 10 and the perf rule in the hosted window. Lanes 3, 7 and 9 run before the first outside tester joins. P15-6 picks the client-address header before this trial runs, so lane 4 confirms that choice. A different header gets a fix PR before P15-11.
+**Fast path.** Run lanes 1, 2, 4, 5, 6, 8 and 10 and the perf rule in the hosted window. Lanes 3, 7 and 9 run before the first outside tester joins. P15-6 picks the client-address header before this trial runs, so lane 4 confirms that choice. A different header gets a fix PR before P15-11. On November 12, 2026, lane 3 also ran in the window. [Appendix A](#p15-2-hosted-runtime-trial) records the result.
 
 **Files.**
 
-- [ ] Edit `supabase/config.toml` on `phase15/edge-trial` to add `[functions.justgo-trial]` with `verify_jwt = false`.
-- [ ] Create a trial-only route on that branch that returns the client-address headers the function receives, the result of `show statement_timeout` inside a transaction, and the median of ten timed `select 1` round trips inside one transaction after one untimed query. It never merges.
-- [ ] Set `statement_timeout` in `poolOptions` to 4,321 ms on that branch only, so the probe can tell the pool value from the role's 5 s default.
+- [x] Edit `supabase/config.toml` on `phase15/edge-trial` to add `[functions.justgo-trial]` with `verify_jwt = false`.
+- [x] Create a trial-only route on that branch that returns the client-address headers the function receives, the result of `show statement_timeout` inside a transaction, and the median of ten timed `select 1` round trips inside one transaction after one untimed query. It never merges.
+- [x] Set `statement_timeout` in `poolOptions` to 4,321 ms on that branch only, so the probe can tell the pool value from the role's 5 s default.
 
 **Build.**
 
-- [ ] With Anthony's go, set `DATABASE_URL` to the pooler user `justgo_runtime.<project-ref>` on port 6543, and set `DATABASE_CA_CERT` to the Supabase root CA.
-- [ ] With Anthony's go, deploy the trial bundle as `justgo-trial` from a workflow on the trial branch. The workflow installs Supabase CLI 3 through the SHA-pinned `supabase/setup-cli` action and runs `--remote <ref> --yes`. Anthony stores the Supabase access token in a protected GitHub environment.
-- [ ] After the lanes, delete the `justgo-trial` function with Anthony's go. Keep the secrets only if Anthony approves them for P15-8.
+- [x] With Anthony's go, set `DATABASE_URL` to the pooler user `justgo_runtime.<project-ref>` on port 6543, and set `DATABASE_CA_CERT` to the Supabase root CA.
+- [x] With Anthony's go, deploy the trial bundle as `justgo-trial` from a workflow on the trial branch. The workflow installs Supabase CLI 3 through the SHA-pinned `supabase/setup-cli` action and runs `--remote <ref> --yes`. Anthony stores the Supabase access token in a protected GitHub environment.
+- [x] After the lanes, delete the `justgo-trial` function with Anthony's go. Keep the secrets only if Anthony approves them for P15-8.
 
 **You see.**
 
-- [ ] `.local/edge-trial/hosted-report.md` lists every hosted lane with pass or fail, the chosen client-address header, the region decision and one decision line.
+- [x] `.local/edge-trial/hosted-report.md` lists every hosted lane with pass or fail, the chosen client-address header, the region decision and one decision line.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -188,21 +188,21 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes call the hosted `justgo-trial` function from the Mac.
 
-- [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS.
-- [ ] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header, then send a protected request with an invalid bearer. Save `gateway-pass.json`. Pass when Hono answers both, the second with the API's typed `UNAUTHORIZED` body, not a gateway 401.
-- [ ] Lane 3. Read `show statement_timeout` from the trial route. Save `statement-timeout.json`. Pass when the report records the value. `4321ms` means the pooler accepted the pool setting, any other value means it ignored it, and a connection error means it rejected it and triggers the Appendix C fallback. After a rejection, redeploy the trial without the option, with Anthony's go, and rerun lanes 1, 2 and 4 to 10.
-- [ ] Lane 4. Send forged `x-forwarded-for`, `x-real-ip` and `cf-connecting-ip` headers to the trial route. Save `client-address.json`. Pass when one header always carries the Mac's real address, whatever the client sends. Record that header.
-- [ ] Lane 5. Send a canary request with a fake bearer, a canary header and canary body text, then read the Invocations view and the edge logs. Save `log-canary.json`. Pass when no bearer, header value or body text appears in any log. If any appears, stop and present it to Anthony.
-- [ ] Lane 6. Wait 15 minutes idle, then time the first request and 50 warm requests. Save `cold-warm.json`. Pass when the numbers meet the perf rule.
+- [x] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS.
+- [x] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header, then send a protected request with an invalid bearer. Save `gateway-pass.json`. Pass when Hono answers both, the second with the API's typed `UNAUTHORIZED` body, not a gateway 401.
+- [x] Lane 3. Read `show statement_timeout` from the trial route. Save `statement-timeout.json`. Pass when the report records the value. `4321ms` means the pooler accepted the pool setting, any other value means it ignored it, and a connection error means it rejected it and triggers the Appendix C fallback. After a rejection, redeploy the trial without the option, with Anthony's go, and rerun lanes 1, 2 and 4 to 10.
+- [x] Lane 4. Send forged `x-forwarded-for`, `x-real-ip` and `cf-connecting-ip` headers to the trial route. Save `client-address.json`. Pass when one header always carries the Mac's real address, whatever the client sends. Record that header.
+- [x] Lane 5. Send a canary request with a fake bearer, a canary header and canary body text, then read the Invocations view and the edge logs. Save `log-canary.json`. Pass when no bearer, header value or body text appears in any log. If any appears, stop and present it to Anthony.
+- [x] Lane 6. Wait 15 minutes idle, then time the first request and 50 warm requests. Save `cold-warm.json`. Pass when the numbers meet the perf rule.
 - [ ] Lane 7. Repeat lane 6 with `x-region: ca-central-1`, and read `x-sb-edge-region` on every response. Save `region-pin.json`. Pass when the report records both regions and the latency difference, and names the region decision.
-- [ ] Lane 8. Read the guest catalog 20 times. Save `guest-hosted.json`. Pass when every read returns the seeded catalog and release identity headers that name the trial source SHA.
+- [x] Lane 8. Read the guest catalog 20 times. Save `guest-hosted.json`. Pass when every read returns the seeded catalog and release identity headers that name the trial source SHA.
 - [ ] Lane 9. Send 1, 4 and 6 MiB bodies to an unauthenticated POST route. Save `body-limit.json`. Pass when the report records which sizes reach Hono and which the gateway rejects.
-- [ ] Lane 10. Read back the deploy and `supabase secrets list` in the workflow. Save `deploy-readback.json`. Pass when the function `version` and the bundle hash match the build, and the receipt holds no secret value.
+- [x] Lane 10. Read back the deploy and `supabase secrets list` in the workflow. Save `deploy-readback.json`. Pass when the function `version` and the bundle hash match the build, and the receipt holds no secret value.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency, the median of the trial route's ten timed `select 1` round trips.
-- [ ] Probe. Alternate requests between the serving Worker and `justgo-trial` for 50 rounds after the idle wait in lane 6.
+- [x] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency, the median of the trial route's ten timed `select 1` round trips.
+- [x] Probe. Alternate requests between the serving Worker and `justgo-trial` for 50 rounds after the idle wait in lane 6.
 - [ ] Baseline. Record the Worker's warm p50 and p95 first.
 - [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms. It also fails if the predicted hosted wall time of the worst-case sync exceeds 8,000 ms. The prediction is the P15-1 loopback sync wall time plus the P15-1 query count times the difference between the hosted and loopback `select 1` medians. Hosted requests need a genuine account, so P15-9 measures that sync directly.
 
@@ -212,7 +212,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 - [ ] Never merge `phase15/edge-trial`.
 - [ ] Open one docs-only PR that records the hosted report in Appendix A, the P15-9 receipts and the decision in this plan. An agent merges it after an independent verdict.
-- [ ] On `Decision: stop`, present the failed lanes to Anthony and stop the program.
+- [x] On `Decision: stop`, present the failed lanes to Anthony and stop the program.
 
 ## Remove the Vercel API leftovers (P15-3)
 
@@ -578,40 +578,40 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Files.**
 
-- [ ] Create `docs/handoffs/phase-15-supabase-api.md` (planned) with the acceptance receipts.
-- [ ] Edit `docs/implementation-plan/README.md` to point Phase 15 at the new handoff.
+- [x] Create `docs/handoffs/phase-15-supabase-api.md` with the acceptance receipts.
+- [x] Edit `docs/implementation-plan/README.md` to point Phase 15 at the new handoff.
 
 **Build.**
 
-- [ ] Release `main` to the `api` function through the P15-8 lane.
-- [ ] Anthony runs the Dev build with `--supabase` on the iPhone for the phone lanes.
-- [ ] Retarget gate issues #79, #81, #84 and #99 to the function. Narrow #103 and #118. File one `gate` issue for each hosted check that cannot run yet.
+- [x] Release `main` to the `api` function through the P15-8 lane.
+- [x] Anthony runs the Dev build with `--supabase` on the iPhone for the phone lanes.
+- [ ] Retarget gate issues #79, #81, #84 and #99 to the function. Narrow #103 and #118. File one `gate` issue for each hosted check that cannot run yet. The new gates are filed as #449 to #455. The retargeting and narrowing are still to do.
 
 **You see.**
 
-- [ ] The handoff lists each lane's receipt, the serving source SHA and the function version.
+- [x] The handoff lists each lane's receipt, the serving source SHA and the function version.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Run `node --test scripts/quality/doc-links.test.mjs` and check formatting of the changed files.
+- [x] Run `node --test scripts/quality/doc-links.test.mjs` and check formatting of the changed files.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. Lanes 1, 2, 9 and 10 run from the Mac. Lanes 3 to 8 run on the iPhone with genuine disposable accounts, and Anthony drives them.
 
-- [ ] Lane 1. Regression lane against trunk. Run the public probes against the serving Worker and the function. Save `public-probes.json`. Pass when both pass and the function names main's SHA.
-- [ ] Lane 2. Request `/health`, `/ready`, the guest catalog and `/openapi.json` on the function. Save `public-routes.json`. Pass when all return 200 with release identity headers.
-- [ ] Lane 3. Import the prepared worst-case archive on the iPhone. Save `worst-import.png`. Pass when every sync batch finishes with no timeout and meets the perf rule.
-- [ ] Lane 4. Sign in with Apple as a guest with writing, sign out, then return to the same account. Save `apple-signin.png`. Pass when the account shows only its own writing.
-- [ ] Lane 5. Sign in with Google, then switch accounts. Save `google-switch.png`. Pass when the second account never shows the first account's writing.
+- [x] Lane 1. Regression lane against trunk. Run the public probes against the serving Worker and the function. Save `public-probes.json`. Pass when both pass and the function names main's SHA.
+- [ ] Lane 2. Request `/health`, `/ready`, the guest catalog and `/openapi.json` on the function. Save `public-routes.json`. Pass when all return 200, and `/health` and `/ready` carry release identity headers. `apps/api/src/http/app.ts` sets those headers only on `/health` and `/ready`.
+- [ ] Lane 3. Import the prepared worst-case archive on the iPhone. Save `worst-import.png`. Pass when every sync batch finishes with no timeout and meets the perf rule. Ran on November 12, 2026. Wall time passed, CPU is Inconclusive (#455), and no screenshot was saved.
+- [ ] Lane 4. Sign in with Apple as a guest with writing, sign out, then return to the same account. Save `apple-signin.png`. Pass when the account shows only its own writing. Passed on November 12, 2026, on Anthony's report, with no screenshot.
+- [ ] Lane 5. Sign in with Google, then switch accounts. Save `google-switch.png`. Pass when the second account never shows the first account's writing. Passed on November 12, 2026, on Anthony's report, with no screenshot.
 - [ ] Lane 6. Save writing on the iPhone and load it in Expo web against the function. Save `two-device.png`. Pass when both show the same entries.
 - [ ] Lane 7. Write offline on the iPhone, then reconnect. Save `offline-reconnect.png`. Pass when the queued writes sync.
 - [ ] Lane 8. Delete the account, then retry the receipt after Auth erasure. Save `delete-account.png`. Pass when the retry returns the same receipt and iCloud cleanup leaves nothing.
-- [ ] Lane 9. Read the function logs for the lane 3 to 8 window. Save `logs-review.json`. Pass when no token, body or reflection text appears.
+- [x] Lane 9. Read the function logs for the lane 3 to 8 window. Save `logs-review.json`. Pass when no token, body or reflection text appears.
 - [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backup-runs.json`. Pass when both succeed after the release.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] Metric. Wall ms per sync batch, CPU ms where the dashboard reports it, the cold first request after idle, and invocations per day.
-- [ ] Probe. Read execution times from the function logs for lanes 3 to 8, and time the first request after 15 minutes idle.
+- [x] Probe. Read execution times from the function logs for lanes 3 to 8, and time the first request after 15 minutes idle.
 - [ ] Baseline. Trunk lacks the function. Record the Worker's figures from the handoff as context only.
 - [ ] Rule. Acceptance fails if any sync batch exceeds 8,000 ms of wall time or 1,000 ms of CPU, or the first request after idle exceeds 2,000 ms.
 
@@ -849,6 +849,29 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 9. P15-2 answers it for the gateway. The local runtime passed the 4,154,082-byte body to the worker.
 10. The production entry bundles to 2,197,373 bytes with `pg` bundled and to 2,014,633 bytes with `npm:pg`, under the 5 MB server-side cap. On the runner the first request to a new worker took 540 ms. P15-2 measures the hosted cold start.
 
+### P15-2 hosted runtime trial
+
+P15-2 ran on November 12, 2026, in the hosted window it shares with P15-9. `justgo-trial` deployed from `phase15/edge-trial` at `a39d9d508d3b76a997c177a9e3cd0cf638c58024` in [run 43164993608](https://github.com/anthonyyoo24/justgo/actions/runs/43164993608), and [run 43248129302](https://github.com/anthonyyoo24/justgo/actions/runs/43248129302) deleted it after the lanes. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) holds each lane's receipt.
+
+- Lanes 1, 2, 3, 4, 5, 6, 8 and 10 passed. The fast path deferred lanes 7 and 9, now gates #449 and #450.
+- Lane 3 read `show statement_timeout` as `5s`. The pooler ignores the pool setting, and the `justgo_runtime` role's 5 s default applies.
+- Lane 4 chose `cf-connecting-ip`. The gateway sends no `x-real-ip`, which the Edge entry read until PR #448.
+- Lane 6 took 525 ms for the first request after 15 idle minutes, and the warm guest catalog p95 over 50 requests was 89 ms.
+- The perf rule failed on the prediction. The hosted `select 1` median was 2.987 ms, so the predicted worst-case sync is 985 + 2,812 × (2.987 − 0.137) = 8,999 ms, above the 8,000 ms limit.
+- The CPU-limit check was Inconclusive, because no worker reached 2,700 ms of total burn.
+
+The report ended with `Decision: stop`. Anthony then chose to go ahead with Supabase, and P15-9 lane 3 measured the hosted sync directly.
+
+### P15-9 hosted acceptance
+
+P15-9 ran on November 12, 2026, against the `api` function at version 1, serving `c8d6295c41d683c01c5a1ba98e873dfcdf68b7f1` from [deploy run 43255502203](https://github.com/anthonyyoo24/justgo/actions/runs/43255502203). The [migrate-deploy run](https://github.com/anthonyyoo24/justgo/actions/runs/43253293118) before it applied migrations 0024 and 0025 under Anthony's owner test-data waiver. The [Phase 15 handoff](../handoffs/phase-15-supabase-api.md) holds the receipts.
+
+- Lanes 1, 2 and 9 passed. The warm guest catalog p50 was 91 ms and the p95 137 ms over 30 requests. Release identity headers come only on `/health` and `/ready`, by design.
+- Lane 3 imported a 23.7 MB archive of 260 completions and 260 journal entries with 10,000-character reflections on the iPhone. The 14 sync POSTs all returned 200, and the slowest took 1,098 ms of wall time against the 8,000 ms limit. The function logs carry no CPU time, so the 1,000 ms CPU part is Inconclusive (#455).
+- Lanes 4 and 5 passed on Anthony's report, with no screenshots. Apple and Google stayed separate accounts.
+- The first request after about 15 minutes 20 seconds idle took 603 ms against the 2,000 ms limit.
+- Lanes 6, 7 and 8 are deferred to gates #451, #452 and #453, and lane 10 to #454 until backups resume.
+
 ## Appendix B. Alternatives rejected
 
 - **Resume the Worker.** Anthony retired it.
@@ -869,7 +892,7 @@ The pinned image enforces a CPU limit only when the main service passes one to `
 | ----------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
 | `pg` cannot verify the Supabase CA on Deno                                    | P15-1, P15-2  | P15-2 lane 1. The fallback is `drizzle-orm/postgres-js`.                                      |
 | Bundled code has no `Buffer`, so every managed request returns `UNAUTHORIZED` | P15-1         | Lane 8. Import `node:buffer` or use web base64url helpers.                                    |
-| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | Lane 3 is deferred. A rejection fails `/ready`, which P15-2 lane 1 catches.                   |
+| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | P15-2 lane 3 found that the pooler ignores it, so the role's 5 s default applies.             |
 | The worst-case sync outlasts the 10 second client deadline                    | P15-1, P15-9  | P15-1 at loopback, a P15-2 prediction, and P15-9 hosted. Batch the parent checks if it fails. |
 | A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
 | Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |
