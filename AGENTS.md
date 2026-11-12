@@ -606,7 +606,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, release and backup scripts, and privacy:
   secret storage, the code that carries account data or writing,
-  diagnostics, outbound requests and the legal pages.
+  diagnostics, outbound requests, and the legal pages and the code that
+  shows them.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
   lists their paths, and the verifier hook reads that list.
 - Only Claude models are available here. Where pstack asks for a reviewer, judge

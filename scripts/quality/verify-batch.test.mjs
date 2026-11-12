@@ -116,7 +116,7 @@ test('drafts, sensitive paths, boundary files and large PRs keep their own verif
   );
 });
 
-test('privacy code and the legal pages are sensitive', () => {
+test('privacy code, private writing and the legal pages are sensitive', () => {
   for (const path of [
     'apps/api/src/build-app.ts',
     'apps/api/src/http/outbound-fetch.ts',
@@ -133,6 +133,10 @@ test('privacy code and the legal pages are sensitive', () => {
     'apps/mobile/src/platform/icloud/index.ts',
     'apps/mobile/plugins/with-sentry-privacy.cjs',
     'docs/legal/PRIVACY_POLICY_DRAFT.md',
+    'apps/mobile/src/features/reflections/controller.ts',
+    'apps/mobile/src/app-support/acceptance/AcceptanceScreen.tsx',
+    'apps/api/src/http/legal-drafts.ts',
+    'sites/legal/build.mjs',
   ])
     assert.match(exclusion(pull(1, [[path, 1]])), /^sensitive path/, path);
   // Neighbours outside the privacy areas stay small.
