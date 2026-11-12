@@ -17,13 +17,24 @@ import {
   isVerifier,
   kindOf,
   maxFiles,
+  maxSmallPulls,
   output,
   prOf,
+  prsOf,
+  strayReference,
+  sizedFilesOf,
 } from '../../.claude/hooks/verifier-model.mjs';
 import * as sensitive from './sensitive-paths.mjs';
 import * as patch from './verdict-patch.mjs';
+import * as batch from './verify-batch.mjs';
 
-const rules = { ...sensitive, ...patch };
+const rules = { ...sensitive, ...patch, ...batch };
+const sized = (...files) =>
+  files.map(([path, additions, deletions = 0]) => ({
+    path,
+    additions,
+    deletions,
+  }));
 const hook = fileURLToPath(
   new URL('../../.claude/hooks/verifier-model.mjs', import.meta.url),
 );
@@ -51,7 +62,7 @@ test('a docs- or tests-only, non-sensitive re-check runs on Sonnet', () => {
   });
 });
 
-test('a first verifier stays on Opus even for docs only', () => {
+test('a first verifier stays on Opus when the PR sizes are unknown', () => {
   assert.equal(decide(first, ['AGENTS.md'], rules).model, 'opus');
   assert.equal(
     output({ ...first, model: 'opus' }, decide(first, ['a.md'], rules)),
@@ -62,6 +73,137 @@ test('a first verifier stays on Opus even for docs only', () => {
     prompt: 'A fresh agent will re-verify later.',
   };
   assert.equal(decide(mentions, ['a.md'], rules).model, 'opus');
+});
+
+test('a verifier runs on Sonnet when every PR it names is small', () => {
+  const small = sized(
+    ['apps/mobile/src/features/progress/a.tsx', 120],
+    ['apps/mobile/src/features/progress/a.test.tsx', 400],
+    ['docs/implementation-plan/README.md', 300],
+  );
+  const decision = decide(first, ['x'], rules, [small]);
+  assert.deepEqual(decision, {
+    model: 'sonnet',
+    reason: 'every PR is small and not sensitive',
+  });
+  const requested = { ...first, model: 'opus' };
+  assert.equal(
+    output(requested, decide(requested, ['x'], rules, [small, small]))
+      .hookSpecificOutput.updatedInput.model,
+    'sonnet',
+  );
+});
+
+test('a sensitive, boundary, large or unknown PR keeps the verifier on Opus', () => {
+  const small = sized(['apps/mobile/src/features/a.tsx', 10]);
+  for (const other of [
+    sized(['apps/mobile/src/app-support/identity/auth/a.test.ts', 1]),
+    sized(['packages/contracts/src/a.ts', 1]),
+    sized(['.claude/hooks/x.mjs', 1]),
+    sized(['apps/mobile/src/features/a.tsx', 151]),
+    sized(['AGENTS.md', 151]),
+    [],
+    undefined,
+  ])
+    assert.equal(
+      decide(first, ['x'], rules, [small, other]).model,
+      'opus',
+      JSON.stringify(other),
+    );
+  const flagged = { ...first, prompt: `Sensitive: yes\n${first.prompt}` };
+  assert.equal(decide(flagged, ['x'], rules, [small]).model, 'opus');
+  assert.equal(decide(first, ['x'], rules, []).model, 'opus');
+  assert.equal(decide(first, ['x'], rules, undefined).model, 'opus');
+});
+
+test('the brief names its PRs, also in lists, and only JustGO ones', () => {
+  assert.deepEqual(prsOf({ description: 'Verify PRs #7, #8 and #9' }), [
+    '7',
+    '8',
+    '9',
+  ]);
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify PR #12',
+      prompt: 'JustGO PR #12 (https://github.com/anthonyyoo24/justgo/pull/12)',
+    }),
+    ['12'],
+  );
+  assert.equal(prsOf({ prompt: 'the current branch' }), undefined);
+  assert.equal(
+    prsOf({ prompt: 'PR #7, ported from https://github.com/o/r/pull/7' }),
+    undefined,
+  );
+  const many = Array.from({ length: maxSmallPulls + 1 }, (_, i) => `#${i + 1}`);
+  assert.equal(
+    prsOf({ description: `Verify PRs ${many.join(', ')}` }),
+    undefined,
+  );
+});
+
+test('a brief that mentions a PR or issue the lists miss names no PRs', () => {
+  for (const text of [
+    'Verify PRs #7 #8',
+    'Verify PRs #7–#9',
+    'Verify PR #7 / #8',
+    'Verify PR #7 and otherorg/justgo#5',
+    'Verify PR #7, which fixes #375',
+    'Verify PR #7 (see https://github.com/anthonyyoo24/justgo/issues/375)',
+    'Verify PR #7 after anthonyyoo24/justgo#8',
+  ])
+    assert.equal(prsOf({ description: text }), undefined, text);
+  assert.equal(
+    prsOf({ description: 'Verify PR #7', prompt: 'Also look at #8.' }),
+    undefined,
+  );
+  // The numbers the lists name, the brief's own link and HTML entities pass.
+  assert.deepEqual(
+    prsOf({
+      description: 'Verify PRs #7, #8',
+      prompt:
+        'PR #7 (https://github.com/anthonyyoo24/justgo/pull/7), PR #8, and anthonyyoo24/justgo#8 &#39;',
+    }),
+    ['7', '8'],
+  );
+  assert.equal(strayReference('#7 and #8', new Set(['7'])), '#8');
+  assert.equal(strayReference('o/r#7', new Set(['7'])), 'o/r#7');
+  assert.equal(strayReference('#7', new Set(['7'])), undefined);
+});
+
+test('up to 4 small PRs share a Sonnet verifier whatever their total', () => {
+  const lines = (n) => sized(['apps/mobile/src/features/a.tsx', n]);
+  const four = [lines(150), lines(150), lines(150), lines(150)];
+  assert.equal(decide(first, ['x'], rules, four).model, 'sonnet');
+  assert.equal(
+    decide(first, ['x'], rules, [...four.slice(0, 3), lines(151)]).model,
+    'opus',
+  );
+});
+
+test('a renamed file keeps its old path, with no lines', () => {
+  assert.deepEqual(
+    sizedFilesOf([
+      {
+        filename: 'apps/mobile/src/features/a.tsx',
+        previous_filename: 'apps/mobile/src/app-support/identity/a.tsx',
+        additions: 2,
+        deletions: 1,
+      },
+    ]),
+    [
+      { path: 'apps/mobile/src/features/a.tsx', additions: 2, deletions: 1 },
+      {
+        path: 'apps/mobile/src/app-support/identity/a.tsx',
+        additions: 0,
+        deletions: 0,
+      },
+    ],
+  );
+  assert.equal(sizedFilesOf([]), undefined);
+  assert.equal(
+    sizedFilesOf(Array.from({ length: maxFiles }, () => ({ filename: 'a' }))),
+    undefined,
+  );
 });
 
 test('a re-check forces Opus over a requested Sonnet when code changed', () => {
@@ -210,8 +352,47 @@ test('the hook reads every page of the PR files, renames included', () => {
   assert.equal(
     run([
       [{ filename: 'AGENTS.md' }],
-      [{ filename: 'docs/b.md', previous_filename: 'apps/api/src/b.ts' }],
+      [
+        {
+          filename: 'docs/b.md',
+          previous_filename: 'apps/api/src/identity/b.ts',
+        },
+      ],
     ]),
+    'opus',
+  );
+  // A small, non-sensitive PR runs on Sonnet whatever the rename hides.
+  assert.equal(
+    run([[{ filename: 'docs/b.md', previous_filename: 'apps/api/src/b.ts' }]]),
+    'sonnet',
+  );
+});
+
+test('the hook process runs a first verifier of a small PR on Sonnet', () => {
+  const bin = mkdtempSync(path.join(tmpdir(), 'fake-gh-'));
+  writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\ncat "$GH_PAGES"\n');
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const run = (pages) => {
+    writeFileSync(path.join(bin, 'pages.json'), JSON.stringify(pages));
+    const result = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({ tool_name: 'Agent', tool_input: first }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${bin}:/bin:/usr/bin`,
+        GH_PAGES: path.join(bin, 'pages.json'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout
+      ? JSON.parse(result.stdout).hookSpecificOutput.updatedInput.model
+      : undefined;
+  };
+  const file = { filename: 'apps/mobile/src/features/a.tsx', additions: 20 };
+  assert.equal(run([[file]]), 'sonnet');
+  assert.equal(run([[{ ...file, additions: 151 }]]), 'opus');
+  assert.equal(
+    run([[{ ...file, previous_filename: 'apps/api/src/identity/a.ts' }]]),
     'opus',
   );
 });

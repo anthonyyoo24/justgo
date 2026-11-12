@@ -426,7 +426,14 @@ export class AccountRepository {
         prior.startTimeZone !== parsed.startTimeZone
       )
         return Promise.reject(new ApiError('CONFLICT'));
-      return this.saving.get(parsed.id) ?? prior;
+      const pending = this.saving.get(parsed.id);
+      if (pending) return pending;
+      // A failed save leaves the record only in memory, so a retry writes it
+      // to the phone before it reports success (#375).
+      const record = this.store.getState().journal.records[parsed.id];
+      if (record && record.phoneVersion < record.version)
+        return this.saveSubmission(parsed.id, parsed.id);
+      return prior;
     }
     if (this.store.getState().journal.submissions[parsed.id])
       throw new ApiError('CONFLICT');

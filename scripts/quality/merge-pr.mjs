@@ -155,8 +155,19 @@ export function plan(options, cwd) {
     '--match-head-commit',
     options.head,
   ];
-  // A merge into another branch does not change main.
-  if (pull.baseRefName !== 'main') return { gh };
+  // A stacked PR waits for its parent (#392). A branch other than main has no
+  // branch protection, so GitHub would merge it at once, with no checks or
+  // verdict, even with --auto.
+  if (pull.baseRefName !== 'main')
+    return {
+      refuse:
+        `merge-pr: #${options.number} targets \`${pull.baseRefName}\`, not main, ` +
+        'and nothing guards that branch. A stacked PR waits until its parent ' +
+        'merges. Then point it at main (GitHub usually does this when the ' +
+        'parent branch is deleted), rebase it with `git rebase --onto ' +
+        'origin/main <old-parent-tip>`, get a verdict that covers the new ' +
+        'head, and retry.',
+    };
   const onMain = pulls.filter((other) => other.baseRefName === 'main');
   const main = fetchHeads(
     [...new Set([options.head, ...onMain.map((other) => other.headRefOid)])],
