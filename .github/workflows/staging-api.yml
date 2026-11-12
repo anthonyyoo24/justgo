@@ -8,16 +8,12 @@ on:
         required: true
         type: string
       operation:
-        description: First Worker bootstrap, code-only deploy, or reviewed migrations and deploy
+        description: Code-only deploy, reviewed migrations and deploy, or function secrets only
         required: true
         type: choice
-        options: [deploy, migrate-deploy, bootstrap]
+        options: [deploy, migrate-deploy, secrets]
       migration_plan_sha256:
         description: Exact reviewed pending-plan digest (migrate-deploy only)
-        required: false
-        type: string
-      abandoned_version_id:
-        description: One-time code-only continuation of failed version c5af7c5b-d045-470b-b91e-d6cfbe7accf5
         required: false
         type: string
 permissions:
@@ -46,7 +42,6 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_OPERATION: ${{ inputs.operation }}
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
-          STAGING_ABANDONED_VERSION_ID: ${{ inputs.abandoned_version_id }}
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
@@ -55,13 +50,10 @@ jobs:
           release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
           git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
           case "$RELEASE_OPERATION" in
-            deploy|bootstrap) [[ -z "$MIGRATION_PLAN_SHA256" ]] || exit 1 ;;
+            deploy|secrets) [[ -z "$MIGRATION_PLAN_SHA256" ]] || exit 1 ;;
             migrate-deploy) [[ "$MIGRATION_PLAN_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1 ;;
             *) exit 1 ;;
           esac
-          if [[ -n "$STAGING_ABANDONED_VERSION_ID" ]]; then
-            [[ "$RELEASE_OPERATION" == deploy && "$STAGING_ABANDONED_VERSION_ID" == c5af7c5b-d045-470b-b91e-d6cfbe7accf5 ]] || exit 1
-          fi
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
           printf 'Staging candidate: %s\nOperation: %s\n' "$release_sha" "$RELEASE_OPERATION" >> "$GITHUB_STEP_SUMMARY"
       - name: Require exact successful Foundation main push
@@ -86,7 +78,7 @@ jobs:
     timeout-minutes: 30
     environment:
       name: justgo-staging
-      url: ${{ vars.STAGING_WORKER_ORIGIN }}
+      url: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/api
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -101,42 +93,40 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging/deployment-branch-policies" > "$RUNNER_TEMP/staging-branches.json"
           node scripts/release/staging-api.mjs environment "$RUNNER_TEMP/staging-environment.json" "$RUNNER_TEMP/staging-branches.json"
       - uses: ./.github/actions/setup-node
-      - name: Guard database history and release exact staging candidate
-        if: inputs.operation != 'bootstrap'
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.1.0
+      - name: Guard database history and release exact staging function
+        if: inputs.operation != 'secrets'
         env:
           RELEASE_SHA: ${{ needs.validate.outputs.sha }}
           RELEASE_OPERATION: ${{ inputs.operation }}
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
-          STAGING_ABANDONED_VERSION_ID: ${{ inputs.abandoned_version_id }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
-          STAGING_HYPERDRIVE_ID: ${{ vars.STAGING_HYPERDRIVE_ID }}
-          WRANGLER_SEND_METRICS: 'false'
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          STAGING_WORKER_ORIGIN: ${{ vars.STAGING_WORKER_ORIGIN }}
+          DO_NOT_TRACK: '1'
+          SUPABASE_TELEMETRY_DISABLED: '1'
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
           DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
           STAGING_RECOVERY_ATTESTATION: ${{ secrets.STAGING_RECOVERY_ATTESTATION }}
         run: |
           umask 077
           node --import tsx apps/api/scripts/staging-release.ts
-      - name: Bootstrap the first reviewed staging Worker
-        if: inputs.operation == 'bootstrap'
+      - name: Set the staging function secrets
+        if: inputs.operation == 'secrets'
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ needs.validate.outputs.sha }}
-          RELEASE_OPERATION: bootstrap
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
-          STAGING_HYPERDRIVE_ID: ${{ vars.STAGING_HYPERDRIVE_ID }}
-          STAGING_BOOTSTRAP_BINDINGS: ${{ secrets.STAGING_BOOTSTRAP_BINDINGS }}
-          WRANGLER_SEND_METRICS: 'false'
-          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+          RELEASE_OPERATION: secrets
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          STAGING_FUNCTION_SECRETS: ${{ secrets.STAGING_FUNCTION_SECRETS }}
+          DO_NOT_TRACK: '1'
+          SUPABASE_TELEMETRY_DISABLED: '1'
         run: |
           umask 077
-          node --import tsx scripts/release/staging-bootstrap.mjs
+          node --import tsx scripts/release/staging-supabase.mjs secrets
       - name: Remove private release files
         if: always()
         shell: bash
-        run: rm -rf "$RUNNER_TEMP"/justgo-worker-release-* "$RUNNER_TEMP"/justgo-worker-bootstrap-*
+        run: rm -rf "$RUNNER_TEMP"/justgo-supabase-* supabase/functions/api/dist

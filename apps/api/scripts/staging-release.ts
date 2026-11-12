@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
-import { stagingApi } from '../../../scripts/release/staging-api-runner.mjs';
+import { supabaseLane } from '../../../scripts/release/staging-supabase.mjs';
 import { stagingReleaseDiagnostic } from './staging-release-diagnostic.js';
 import {
   hostedMigrationOptions,
@@ -26,6 +26,7 @@ try {
   client = connection;
   const watch = watchReleaseConnection(connection);
   watcher = watch;
+  const lane = supabaseLane({ signal: watch.signal });
   await connection.connect();
   requireVerifiedTls(connection);
   await withStagingRelease(
@@ -37,14 +38,7 @@ try {
       },
       operation: operation as 'deploy' | 'migrate-deploy',
       sourceSha: process.env.RELEASE_SHA ?? '',
-      previousApiSha: async () => {
-        const baseline = await stagingApi('preflight', {
-          signal: watch.signal,
-        });
-        process.env.STAGING_BASELINE_ID = baseline.deploymentId;
-        process.env.STAGING_BASELINE_SHA = baseline.sourceSha;
-        return baseline.sourceSha;
-      },
+      previousApiSha: async () => (await lane.preflight()).sha,
       expectedDatabase: 'postgres',
       planDigest: process.env.MIGRATION_PLAN_SHA256,
       attestation: process.env.STAGING_RECOVERY_ATTESTATION,
@@ -67,9 +61,9 @@ try {
         }),
       );
       const signal = watch.signal;
-      const receipt = await stagingApi('deploy', {
-        signal,
-        beforePromote: async () => {
+      // The lease must still hold when the serving function changes.
+      const receipt = await lane.deploy({
+        beforeServing: async () => {
           if (signal.aborted)
             throw new StagingReleaseFailure('staging_release_lease_lost');
           await assertReleaseLease(connection);

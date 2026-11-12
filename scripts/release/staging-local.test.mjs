@@ -1,272 +1,314 @@
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  rmSync,
-  chmodSync,
-  symlinkSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import test from 'node:test';
+import { stagingRunnerFailureCode } from './staging-api.mjs';
 import {
+  dispatchRelease,
+  dryRun,
   localReleaseArguments,
-  localStagingContext,
-  assertLocalSource,
-  localReleaseConfiguration,
-  localBuildEnvironment,
-  localStagingApi,
-  localPublicationEnvironment,
-  runLocalPublicationChecks,
+  receiptsFrom,
+  runLocalStagingRelease,
+  taggedSource,
 } from './staging-local.mjs';
 
 const sha = 'a'.repeat(40);
-const phaseBranch = 'codex/phase-16-billing';
-const source = { sha, phaseBranch };
-const releaseArgs = (mode, branch = phaseBranch, commit = sha) => [
-  mode,
-  '--phase-branch',
-  branch,
-  '--source',
-  commit,
-  '--credentials',
-  'protected.json',
-];
-const git = async (_command, args) =>
-  args[0] === 'branch' ? phaseBranch : args[0] === 'rev-parse' ? sha : '';
-const configuration = {
-  CLOUDFLARE_API_TOKEN: 'synthetic-private-token',
-  CLOUDFLARE_ACCOUNT_ID: '1'.repeat(32),
-  CLOUDFLARE_WORKERS_SUBDOMAIN: 'fixture-account',
-  STAGING_HYPERDRIVE_ID: '2'.repeat(32),
-  MIGRATION_DATABASE_URL: '',
-  DATABASE_CA_CERT: 'synthetic-ca',
-};
-
-test('local command explicitly selects exact committed source and prepare or deploy', () => {
-  for (const mode of ['--prepare', '--deploy']) {
-    assert.deepEqual(localReleaseArguments(releaseArgs(mode)), {
-      deploy: mode === '--deploy',
-      ...source,
-      credentials: 'protected.json',
-    });
+const plan = 'b'.repeat(64);
+const code = async (work) => {
+  try {
+    await work();
+  } catch (error) {
+    return stagingRunnerFailureCode(error);
   }
+  assert.fail('expected a release failure');
+};
+const gitFake =
+  ({ status = '', head = sha, tagged = sha } = {}) =>
+  async (command, args) => {
+    assert.equal(command, 'git');
+    if (args[0] === 'status') return status;
+    if (args.includes('HEAD')) return `${head}\n`;
+    if (tagged === null) throw new Error('unknown tag');
+    return `${tagged}\n`;
+  };
+
+test('arguments name one tag and one operation, with a plan only for migrations', () => {
+  assert.deepEqual(
+    localReleaseArguments(['--tag', 'api-2026.11.11', '--operation', 'deploy']),
+    { dryRun: false, tag: 'api-2026.11.11', operation: 'deploy' },
+  );
+  assert.deepEqual(
+    localReleaseArguments([
+      '--dry-run',
+      '--operation',
+      'migrate-deploy',
+      '--plan',
+      plan,
+      '--tag',
+      'v1',
+    ]),
+    { dryRun: true, operation: 'migrate-deploy', plan, tag: 'v1' },
+  );
   for (const args of [
     [],
-    ['--deploy'],
-    ['--deploy', '--source', sha, '--credentials', 'private'],
-    releaseArgs('--bootstrap'),
-    releaseArgs('--migrate-deploy'),
-    releaseArgs('--deploy', phaseBranch, 'main'),
-    releaseArgs('--deploy', 'main'),
-    releaseArgs('--deploy', ''),
-    [...releaseArgs('--deploy'), '--force'],
+    ['--tag', 'v1'],
+    ['--tag', 'v1', '--operation', 'bootstrap'],
+    ['--tag', 'v1', '--operation', 'migrate-deploy'],
+    ['--tag', 'v1', '--operation', 'deploy', '--plan', plan],
+    ['--tag', 'v1', '--operation', 'migrate-deploy', '--plan', 'short'],
+    ['--tag', '-v1', '--operation', 'deploy'],
+    ['--tag', 'v 1', '--operation', 'deploy'],
+    ['--tag', 'v1', '--tag', 'v2', '--operation', 'deploy'],
+    ['--tag', 'v1', '--operation', 'deploy', '--dry-run', '--dry-run'],
+    ['--tag', 'v1', '--operation', 'deploy', '--source', sha],
+    ['--tag', 'v1', '--operation'],
   ])
     assert.throws(
       () => localReleaseArguments(args),
-      /INVALID_LOCAL_STAGING_CONTEXT/,
+      (error) =>
+        stagingRunnerFailureCode(error) === 'INVALID_LOCAL_STAGING_CONTEXT',
+      args.join(' '),
     );
 });
 
-test('local provenance is truthful and performs only local Git reads', async () => {
-  const calls = [];
-  const context = await localStagingContext(source, {
-    env: {},
-    run: async (...args) => {
-      calls.push(args);
-      return git(...args);
-    },
-  });
-  assert.equal(context.sha, sha);
-  assert.equal(context.phaseBranch, phaseBranch);
-  assert.match(context.runId, /^local-[a-f0-9-]{36}$/);
-  assert.equal(context.attempt, '1');
-  assert.ok(Object.isFrozen(context));
-  assert.deepEqual(
-    calls.map(([command, args]) => [command, ...args]),
-    [
-      ['git', 'branch', '--show-current'],
-      ['git', 'rev-parse', 'HEAD'],
-      ['git', 'status', '--porcelain'],
-    ],
+test('the checkout must be clean and sit on the tag', async () => {
+  assert.equal(await taggedSource('v1', { run: gitFake() }), sha);
+  assert.equal(
+    await code(() =>
+      taggedSource('v1', { run: gitFake({ status: ' M package.json' }) }),
+    ),
+    'STAGING_SOURCE_NOT_CLEAN',
+  );
+  assert.equal(
+    await code(() =>
+      taggedSource('v1', { run: gitFake({ tagged: 'c'.repeat(40) }) }),
+    ),
+    'STAGING_SOURCE_NOT_TAGGED',
+  );
+  assert.equal(
+    await code(() => taggedSource('v1', { run: gitFake({ tagged: null }) })),
+    'STAGING_SOURCE_NOT_TAGGED',
   );
 });
 
-for (const [name, env] of Object.entries({
-  ci: { CI: '1' },
-  github: { GITHUB_ACTIONS: 'true' },
-  githubRun: { GITHUB_RUN_ID: '123' },
-  vercel: { VERCEL: '1' },
-  eas: { EAS_BUILD: 'true' },
-  migrations: { RELEASE_OPERATION: 'migrate-deploy' },
-  plan: { MIGRATION_PLAN_SHA256: 'a'.repeat(64) },
-  recovery: { STAGING_RECOVERY_ATTESTATION: '{}' },
-  abandoned: { STAGING_ABANDONED_VERSION_ID: 'private' },
-}))
-  test(`local context rejects ${name} before any source or provider call`, async () => {
-    let called = false;
-    await assert.rejects(
-      localStagingContext(source, {
-        env,
-        run: async () => {
-          called = true;
-          return '';
+test('a dry run builds, prints each step, ends with no deploy and runs no gh', async () => {
+  for (const operation of ['deploy', 'migrate-deploy', 'secrets']) {
+    const lines = [];
+    const commands = [];
+    let directory;
+    await runLocalStagingRelease(
+      [
+        '--tag',
+        'v1',
+        '--operation',
+        operation,
+        ...(operation === 'migrate-deploy' ? ['--plan', plan] : []),
+        '--dry-run',
+      ],
+      {
+        env: {},
+        run: async (command, args, options) => {
+          commands.push(command);
+          return gitFake()(command, args, options);
         },
-      }),
-      /INVALID_LOCAL_STAGING_CONTEXT/,
+        log: (line) => lines.push(line),
+        build: async (options) => {
+          directory = options.directory;
+          assert.equal(options.sourceSha, sha);
+          assert.ok(existsSync(directory));
+          return { bytes: 1234, uploadSha256: 'd'.repeat(64) };
+        },
+      },
     );
-    assert.equal(called, false);
-  });
-
-for (const [name, override] of Object.entries({
-  branch: { branch: 'main' },
-  'another phase': { branch: 'codex/phase-15-rollout' },
-  'detached HEAD': { branch: '' },
-  source: { 'rev-parse': 'b'.repeat(40) },
-  dirty: { status: ' M apps/api/src/worker.ts' },
-  untracked: { status: '?? unreviewed.ts' },
-}))
-  test(`local source rejects ${name}`, async () => {
-    await assert.rejects(
-      assertLocalSource(source, {
-        run: async (command, args) => override[args[0]] ?? git(command, args),
-      }),
-      /STAGING_SOURCE_NOT_CLEAN/,
-    );
-  });
-
-test('credentials require an owner-only regular file and closed fields', (t) => {
-  const folder = mkdtempSync(join(tmpdir(), 'justgo-local-release-'));
-  t.after(() => rmSync(folder, { recursive: true, force: true }));
-  const path = join(folder, 'credentials.json');
-  const save = (value) =>
-    writeFileSync(path, JSON.stringify(value), { mode: 0o600 });
-  save(configuration);
-  assert.deepEqual(localReleaseConfiguration(path), configuration);
-  chmodSync(path, 0o644);
-  assert.throws(
-    () => localReleaseConfiguration(path),
-    /INVALID_LOCAL_STAGING_CONFIGURATION/,
-  );
-  chmodSync(path, 0o600);
-  const alias = join(folder, 'alias');
-  symlinkSync(path, alias);
-  assert.throws(
-    () => localReleaseConfiguration(alias),
-    /INVALID_LOCAL_STAGING_CONFIGURATION/,
-  );
-  for (const value of [
-    { ...configuration, CLOUDFLARE_API_TOKEN: 'token\nprivate' },
-    { ...configuration, MIGRATION_DATABASE_URL: '[SENSITIVE]' },
-    { ...configuration, UNREVIEWED_OVERRIDE: 'private' },
-    { ...configuration, STAGING_HYPERDRIVE_ID: 'invalid' },
-    [],
-    null,
-  ]) {
-    save(value);
-    assert.throws(
-      () => localReleaseConfiguration(path),
-      /INVALID_LOCAL_STAGING_CONFIGURATION/,
-    );
+    assert.deepEqual([...new Set(commands)], ['git']);
+    assert.equal(lines.at(-1), 'dry run, no deploy');
+    assert.match(lines[0], new RegExp(`${sha} at tag v1, clean`));
+    if (operation === 'secrets') {
+      assert.equal(directory, undefined);
+      assert.ok(lines.some((line) => line.includes('secret names')));
+    } else {
+      assert.equal(existsSync(directory), false);
+      assert.ok(lines.some((line) => line.includes('1234 bytes')));
+      assert.ok(lines.some((line) => line.includes('api-candidate')));
+      assert.ok(lines.some((line) => line.includes('previousApiSha')));
+    }
   }
 });
 
-test('local child environment omits DB, CA, inherited keys and GitHub context', () => {
-  const result = localBuildEnvironment(configuration, {
-    PATH: '/synthetic/bin',
-    HOME: '/synthetic/home',
-    GITHUB_ACTIONS: 'true',
-    PRIVATE_KEY: 'private',
-    MIGRATION_DATABASE_URL: 'private',
-    DATABASE_CA_CERT: 'private',
-  });
-  assert.deepEqual(
-    Object.keys(result).sort(),
-    [
-      'PATH',
-      'HOME',
-      'CLOUDFLARE_API_TOKEN',
-      'CLOUDFLARE_ACCOUNT_ID',
-      'CLOUDFLARE_WORKERS_SUBDOMAIN',
-      'STAGING_HYPERDRIVE_ID',
-    ].sort(),
-  );
-});
-
-test('local wrapper rejects migration operations and false provenance', async () => {
-  for (const operation of ['bootstrap', 'migrate-deploy', 'production'])
-    await assert.rejects(
-      localStagingApi(operation, {}),
-      /INVALID_LOCAL_STAGING_CONTEXT/,
-    );
-  for (const context of [
-    undefined,
-    { sha, runId: '123', attempt: '1' },
-    { sha: 'invalid', runId: 'local-a', attempt: '1' },
-  ])
-    await assert.rejects(
-      localStagingApi('preflight', { context }),
-      /INVALID_LOCAL_STAGING_CONTEXT/,
-    );
-});
-
-test('publication gates use isolated DB credentials and stop at the first failed command', async (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'justgo-local-gates-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const { mkdirSync } = await import('node:fs');
-  mkdirSync(join(root, 'apps/api'), { recursive: true });
-  const path = join(root, 'apps/api/.env');
-  const local = '@127.0.0.1:54329/justgo_test';
-  writeFileSync(
-    path,
-    `DATABASE_URL=postgresql://justgo_runtime:fixture${local}\nMIGRATION_DATABASE_URL=postgresql://justgo_migrator:fixture${local}\nJUSTGO_TEST_ADMIN_DATABASE_URL=postgresql://postgres:fixture${local}\nDATABASE_SSL=disable\n`,
-  );
-  const env = localPublicationEnvironment(root, {
-    PATH: '/bin',
-    HOME: '/home',
-    CLOUDFLARE_API_TOKEN: 'private',
-  });
-  assert.ok(!Object.hasOwn(env, 'CLOUDFLARE_API_TOKEN'));
-  let calls = [];
-  const passed = await runLocalPublicationChecks(root, {
-    env: {},
-    run: async (command, args) => {
-      calls.push([command, args]);
-    },
-  });
-  assert.deepEqual(passed, [
-    'doctor',
-    'check:static',
-    'coverage-including-database',
-    'workers',
-    'selected-journeys',
-  ]);
-  assert.deepEqual(calls.slice(0, 3), [
-    ['pnpm', ['--filter', '@justgo/mobile', 'run', 'doctor']],
-    ['pnpm', ['run', 'check:static']],
-    ['pnpm', ['run', 'test:coverage']],
-  ]);
-  assert.equal(calls.length, 5);
-  calls = [];
+test('a dry run removes its build directory when the build fails', async () => {
+  let directory;
   await assert.rejects(
-    runLocalPublicationChecks(root, {
-      run: async (command, args) => {
-        calls.push([command, args]);
-        throw new Error('safe check failure');
+    dryRun(
+      { tag: 'v1', operation: 'deploy', sha },
+      {
+        log: () => {},
+        build: async (options) => {
+          directory = options.directory;
+          throw new Error('bundle too large');
+        },
       },
-    }),
-    /safe check failure/,
+    ),
+    /bundle too large/,
   );
-  assert.equal(calls.length, 1);
-  writeFileSync(
-    path,
-    `DATABASE_URL=postgresql://justgo_runtime:fixture@hosted.invalid/postgres\n`,
+  assert.equal(existsSync(directory), false);
+});
+
+test('CI, Vercel and EAS builds cannot start the local entry', async () => {
+  for (const name of [
+    'CI',
+    'GITHUB_ACTIONS',
+    'GITHUB_RUN_ID',
+    'VERCEL',
+    'EAS_BUILD',
+  ])
+    assert.equal(
+      await code(() =>
+        runLocalStagingRelease(['--tag', 'v1', '--operation', 'deploy'], {
+          env: { [name]: '1' },
+          run: async () => assert.fail('no command may run'),
+        }),
+      ),
+      'INVALID_LOCAL_STAGING_CONTEXT',
+    );
+});
+
+const ghFake = ({ runs, watchFails = false, log = '' }) => {
+  const calls = [];
+  const run = async (command, args) => {
+    calls.push([command, ...args]);
+    assert.equal(command, 'gh');
+    if (args[0] === 'workflow') return '';
+    if (args[1] === 'list') return JSON.stringify(runs.shift() ?? []);
+    if (args[1] === 'watch') {
+      if (watchFails) throw new Error('run failed');
+      return '';
+    }
+    if (args[1] === 'view') return log;
+    assert.fail(args.join(' '));
+  };
+  return { calls, run };
+};
+
+test('a real run dispatches the workflow, waits and prints its receipts', async () => {
+  const now = Date.parse('2026-11-11T12:00:00Z');
+  const match = {
+    databaseId: 42,
+    createdAt: '2026-11-11T12:00:05Z',
+    displayTitle: 'Staging API migrate-deploy from v1',
+    url: 'https://github.com/anthonyyoo24/justgo/actions/runs/42',
+  };
+  const receipt = {
+    event: 'staging_supabase_release',
+    sourceSha: sha,
+    servingVersion: 3,
+  };
+  const { calls, run } = ghFake({
+    runs: [
+      [],
+      [
+        { ...match, databaseId: 7, displayTitle: 'Staging API deploy from v1' },
+        { ...match, databaseId: 8, createdAt: '2026-11-11T11:00:00Z' },
+        match,
+      ],
+    ],
+    log: `deploy\tGuard\t2026-11-11T12:01:00Z ${JSON.stringify(receipt)}\nnoise {"event":"staging_\n`,
+  });
+  const lines = [];
+  const waits = [];
+  const result = await dispatchRelease(
+    { tag: 'v1', operation: 'migrate-deploy', plan },
+    {
+      run,
+      log: (line) => lines.push(line),
+      wait: async (ms) => waits.push(ms),
+      now: () => now,
+    },
   );
-  calls = [];
-  await assert.rejects(
-    runLocalPublicationChecks(root, {
-      run: async () => calls.push('unexpected'),
-    }),
+  assert.deepEqual(calls[0], [
+    'gh',
+    'workflow',
+    'run',
+    'staging-api.yml',
+    '--repo',
+    'anthonyyoo24/justgo',
+    '--ref',
+    'main',
+    '-f',
+    'tag=v1',
+    '-f',
+    'operation=migrate-deploy',
+    '-f',
+    `migration_plan_sha256=${plan}`,
+  ]);
+  assert.deepEqual(waits, [3000]);
+  assert.deepEqual(calls.at(-2), [
+    'gh',
+    'run',
+    'watch',
+    '42',
+    '--repo',
+    'anthonyyoo24/justgo',
+    '--exit-status',
+  ]);
+  assert.deepEqual(result.receipts, [receipt]);
+  assert.deepEqual(lines, [`dispatched ${match.url}`, JSON.stringify(receipt)]);
+});
+
+test('a failed run still prints its receipts, then fails', async () => {
+  const failure = { event: 'staging_supabase_secrets_failed', code: 'X' };
+  const { run } = ghFake({
+    runs: [
+      [
+        {
+          databaseId: 9,
+          createdAt: new Date().toISOString(),
+          displayTitle: 'Staging API secrets from v1',
+          url: 'u',
+        },
+      ],
+    ],
+    watchFails: true,
+    log: JSON.stringify(failure),
+  });
+  const lines = [];
+  assert.equal(
+    await code(() =>
+      dispatchRelease(
+        { tag: 'v1', operation: 'secrets' },
+        { run, log: (line) => lines.push(line), wait: async () => {} },
+      ),
+    ),
+    'STAGING_COMMAND_FAILED',
   );
-  assert.equal(calls.length, 0);
+  assert.deepEqual(lines, ['dispatched u', JSON.stringify(failure)]);
+});
+
+test('the run lookup is bounded', async () => {
+  const { calls, run } = ghFake({ runs: [] });
+  assert.equal(
+    await code(() =>
+      dispatchRelease(
+        { tag: 'v1', operation: 'deploy' },
+        { run, log: () => {}, wait: async () => {}, attempts: 3 },
+      ),
+    ),
+    'STAGING_COMMAND_FAILED',
+  );
+  assert.equal(calls.filter((call) => call[2] === 'list').length, 3);
+  assert.equal(
+    calls.some((call) => call[2] === 'watch'),
+    false,
+  );
+});
+
+test('receipts come only from whole JSON lines that the lane prints', () => {
+  assert.deepEqual(
+    receiptsFrom(
+      [
+        'x {"event":"staging_database_verified","operation":"deploy"}',
+        '{"event":"other"}',
+        '{"event":"staging_ broken',
+      ].join('\n'),
+    ),
+    [{ event: 'staging_database_verified', operation: 'deploy' }],
+  );
 });

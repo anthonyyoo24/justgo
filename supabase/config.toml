@@ -1,0 +1,23 @@
+# Supabase CLI settings for the JustGO API Edge Function. The staging lane in
+# .github/workflows/staging-api.yml deploys it; docs/operations/SERVER_RELEASES.md
+# owns the release steps.
+project_id = "justgo"
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+deno_version = 2
+
+# The API checks its own bearer through the managed verifier, so the gateway
+# JWT check stays off. The lane deploys the same bundle as api-candidate first.
+[functions.api]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/api/index.ts"
+import_map = "./functions/api/deno.json"
+
+[functions.api-candidate]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/api/index.ts"
+import_map = "./functions/api/deno.json"

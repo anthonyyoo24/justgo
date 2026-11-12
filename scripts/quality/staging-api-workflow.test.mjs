@@ -4,16 +4,17 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { productionPath } from '../release/staging-api.mjs';
 const workflow = readFileSync(
   new URL('../../.github/workflows/staging-api.yml', import.meta.url),
   'utf8',
 );
+const step = (name) =>
+  workflow.split(`      - name: ${name}`)[1].split('      - ')[0];
 test('staging release is manual, serialized, main-only and checks protection before credentials', () => {
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^ {2}(?:push|pull_request|schedule):/m);
   assert.match(workflow, /cancel-in-progress: false/);
-  assert.match(workflow, /options: \[deploy, migrate-deploy, bootstrap\]/);
+  assert.match(workflow, /options: \[deploy, migrate-deploy, secrets\]/);
   assert.equal(
     (workflow.match(/github\.ref == 'refs\/heads\/main'/g) ?? []).length,
     2,
@@ -23,64 +24,101 @@ test('staging release is manual, serialized, main-only and checks protection bef
     2,
   );
   assert.match(workflow, /name: justgo-staging/);
-  assert.match(workflow, /ref: \$\{\{ needs\.validate\.outputs\.sha \}\}/);
-  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-node/);
   assert.match(
     workflow,
-    /node --import tsx apps\/api\/scripts\/staging-release\.ts/,
+    /url: https:\/\/\$\{\{ vars\.SUPABASE_PROJECT_REF \}\}\.supabase\.co\/functions\/v1\/api/,
   );
+  assert.match(workflow, /ref: \$\{\{ needs\.validate\.outputs\.sha \}\}/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-node/);
   const validate = workflow.split(/^ {2}release:$/m)[0];
   assert.doesNotMatch(validate, /secrets\./);
   assert.ok(
     workflow.lastIndexOf('staging-api.mjs environment') <
-      workflow.indexOf('secrets.CLOUDFLARE_API_TOKEN'),
-  );
-  assert.match(
-    workflow,
-    /STAGING_RECOVERY_ATTESTATION: \$\{\{ secrets\.STAGING_RECOVERY_ATTESTATION \}\}/,
-  );
-  assert.match(
-    workflow,
-    /STAGING_HYPERDRIVE_ID: \$\{\{ vars\.STAGING_HYPERDRIVE_ID \}\}/,
+      workflow.indexOf('secrets.SUPABASE_ACCESS_TOKEN'),
   );
   assert.doesNotMatch(workflow, /VERCEL_|vercel-cli/);
   assert.doesNotMatch(
     workflow,
-    /upload-artifact|supabase db push|db:local|test:db|--public|--debug/,
+    /CLOUDFLARE_|wrangler|WRANGLER_|HYPERDRIVE|abandoned|bootstrap/i,
   );
-  assert.match(workflow, /if: always\(\)/);
-});
-test('the Worker build CLI is lockfile pinned and has no provider credential during installation', () => {
-  const manifest = JSON.parse(
-    readFileSync(new URL('../../apps/api/package.json', import.meta.url)),
-  );
-  const lock = readFileSync(
-    new URL('../../pnpm-lock.yaml', import.meta.url),
-    'utf8',
-  );
-  assert.equal(manifest.devDependencies.wrangler, '4.155.0');
-  assert.match(
-    lock,
-    /\n {6}wrangler:\n {8}specifier: 4\.155\.0\n {8}version: 4\.155\.0[(\n]/,
-  );
-  assert.deepEqual(
-    [...lock.matchAll(/^ {2}wrangler@([^:(]+)[:(]/gm)].map((match) => match[1]),
-    ['4.155.0', '4.155.0'],
-  );
-  assert.match(
-    lock,
-    /\n {2}wrangler@4\.155\.0:\n {4}resolution: \{integrity: sha512-[A-Za-z0-9+/=]+\}/,
-  );
-  assert.ok(
-    workflow.indexOf('uses: ./.github/actions/setup-node') <
-      workflow.indexOf('secrets.CLOUDFLARE_API_TOKEN'),
-  );
-  assert.equal(productionPath('scripts/release/staging-api-runner.mjs'), false);
   assert.doesNotMatch(
     workflow,
-    /npm install --global|pnpm add (?:-g|--global)|npx .*wrangler|pnpm (?:dlx|exec) .*wrangler|wrangler deploy/,
+    /upload-artifact|supabase db push|db:local|test:db|--public|--debug/,
+  );
+  assert.match(
+    workflow,
+    /if: always\(\)[\s\S]*rm -rf "\$RUNNER_TEMP"\/justgo-supabase-\* supabase\/functions\/api\/dist/,
   );
 });
+
+test('the Supabase CLI is a pinned action release with no provider credential during setup', () => {
+  assert.match(
+    workflow,
+    /uses: supabase\/setup-cli@[0-9a-f]{40} # v3\.2\.0\n {8}with:\n {10}version: 3\.1\.0\n/,
+  );
+  const setup = workflow.indexOf('uses: supabase/setup-cli@');
+  assert.ok(workflow.indexOf('uses: ./.github/actions/setup-node') < setup);
+  assert.ok(setup < workflow.indexOf('secrets.SUPABASE_ACCESS_TOKEN'));
+  assert.doesNotMatch(
+    workflow,
+    /npm install --global|pnpm add (?:-g|--global)|npx .*supabase|pnpm (?:dlx|exec) .*supabase|brew install/,
+  );
+  const manifest = readFileSync(
+    new URL('../../apps/api/package.json', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(manifest, /"supabase"/);
+});
+
+test('the release and secrets steps each get only their own credentials', () => {
+  const release = step(
+    'Guard database history and release exact staging function',
+  );
+  const secrets = step('Set the staging function secrets');
+  assert.match(release, /if: inputs\.operation != 'secrets'/);
+  assert.match(secrets, /if: inputs\.operation == 'secrets'/);
+  assert.match(
+    release,
+    /node --import tsx apps\/api\/scripts\/staging-release\.ts/,
+  );
+  assert.match(
+    secrets,
+    /node --import tsx scripts\/release\/staging-supabase\.mjs secrets/,
+  );
+  for (const body of [release, secrets]) {
+    assert.match(body, /umask 077/);
+    assert.match(body, /DO_NOT_TRACK: '1'/);
+    assert.match(body, /SUPABASE_TELEMETRY_DISABLED: '1'/);
+    assert.match(
+      body,
+      /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/,
+    );
+    assert.match(
+      body,
+      /SUPABASE_PROJECT_REF: \$\{\{ vars\.SUPABASE_PROJECT_REF \}\}/,
+    );
+    assert.match(
+      body,
+      /RELEASE_SHA: \$\{\{ needs\.validate\.outputs\.sha \}\}/,
+    );
+    assert.doesNotMatch(body, /GH_TOKEN|GITHUB_ACTIONS:|GITHUB_RUN_ID:/);
+  }
+  assert.match(
+    release,
+    /STAGING_RECOVERY_ATTESTATION: \$\{\{ secrets\.STAGING_RECOVERY_ATTESTATION \}\}/,
+  );
+  assert.doesNotMatch(release, /STAGING_FUNCTION_SECRETS/);
+  assert.match(
+    secrets,
+    /STAGING_FUNCTION_SECRETS: \$\{\{ secrets\.STAGING_FUNCTION_SECRETS \}\}/,
+  );
+  assert.doesNotMatch(
+    secrets,
+    /MIGRATION_DATABASE_URL|DATABASE_CA_CERT|STAGING_RECOVERY_ATTESTATION|MIGRATION_PLAN/,
+  );
+  assert.match(secrets, /RELEASE_OPERATION: secrets/);
+});
+
 test('actual tag shell rejects missing/unreviewed refs and shell syntax without executing it', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'justgo-staging-tag-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -111,7 +149,7 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
     .split('\n')
     .map((line) => line.slice(10))
     .join('\n');
-  const run = (tag, operation = 'deploy', digest = '', abandoned = '') =>
+  const run = (tag, operation = 'deploy', digest = '') =>
     spawnSync('bash', ['-c', source], {
       cwd: root,
       encoding: 'utf8',
@@ -120,13 +158,14 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
         RELEASE_TAG: tag,
         RELEASE_OPERATION: operation,
         MIGRATION_PLAN_SHA256: digest,
-        STAGING_ABANDONED_VERSION_ID: abandoned,
         GITHUB_OUTPUT: join(root, 'output'),
         GITHUB_STEP_SUMMARY: join(root, 'summary'),
       },
     });
   assert.equal(run('reviewed').status, 0);
-  assert.equal(run('reviewed', 'bootstrap').status, 0);
+  assert.equal(run('reviewed', 'secrets').status, 0);
+  assert.equal(run('reviewed', 'migrate-deploy', 'a'.repeat(64)).status, 0);
+  assert.notEqual(run('reviewed', 'bootstrap').status, 0);
   for (const tag of [
     'missing',
     '$(touch exploited)',
@@ -136,56 +175,5 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
     assert.notEqual(run(tag).status, 0);
   assert.notEqual(run('reviewed', 'migrate-deploy', 'invalid').status, 0);
   assert.notEqual(run('reviewed', 'deploy', 'a'.repeat(64)).status, 0);
-  assert.notEqual(run('reviewed', 'bootstrap', 'a'.repeat(64)).status, 0);
-  const abandoned = 'c5af7c5b-d045-470b-b91e-d6cfbe7accf5';
-  assert.equal(run('reviewed', 'deploy', '', abandoned).status, 0);
-  for (const predecessor of [
-    'c0fefad7-9a31-4db7-976a-bfc8fbb0366b',
-    '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
-  ])
-    assert.notEqual(run('reviewed', 'deploy', '', predecessor).status, 0);
-  assert.notEqual(run('reviewed', 'deploy', '', 'arbitrary-version').status, 0);
-  assert.notEqual(run('reviewed', 'deploy', '', `${abandoned}\n`).status, 0);
-  assert.notEqual(run('reviewed', 'bootstrap', '', abandoned).status, 0);
-  assert.notEqual(
-    run('reviewed', 'migrate-deploy', 'a'.repeat(64), abandoned).status,
-    0,
-  );
-});
-
-test('bootstrap uses the same protected main workflow with isolated secrets and no fabricated local run context', () => {
-  const ordinary = workflow
-    .split(
-      '      - name: Guard database history and release exact staging candidate',
-    )[1]
-    .split('      - name:')[0];
-  const bootstrap = workflow
-    .split('      - name: Bootstrap the first reviewed staging Worker')[1]
-    .split('      - name:')[0];
-  assert.match(ordinary, /if: inputs\.operation != 'bootstrap'/);
-  assert.match(
-    ordinary,
-    /STAGING_ABANDONED_VERSION_ID: \$\{\{ inputs\.abandoned_version_id \}\}/,
-  );
-  assert.doesNotMatch(bootstrap, /STAGING_ABANDONED_VERSION_ID/);
-  assert.doesNotMatch(ordinary, /STAGING_BOOTSTRAP_BINDINGS/);
-  assert.match(bootstrap, /if: inputs\.operation == 'bootstrap'/);
-  assert.match(bootstrap, /GH_TOKEN: \$\{\{ github\.token \}\}/);
-  assert.match(
-    bootstrap,
-    /STAGING_BOOTSTRAP_BINDINGS: \$\{\{ secrets\.STAGING_BOOTSTRAP_BINDINGS \}\}/,
-  );
-  assert.match(
-    bootstrap,
-    /RELEASE_SHA: \$\{\{ needs\.validate\.outputs\.sha \}\}/,
-  );
-  assert.match(
-    bootstrap,
-    /node --import tsx scripts\/release\/staging-bootstrap\.mjs/,
-  );
-  assert.doesNotMatch(
-    bootstrap,
-    /STAGING_RECOVERY_ATTESTATION|GITHUB_ACTIONS:|GITHUB_RUN_ID:|GITHUB_EVENT_NAME:/,
-  );
-  assert.match(workflow, /if: always\(\)[\s\S]*justgo-worker-bootstrap-\*/);
+  assert.notEqual(run('reviewed', 'secrets', 'a'.repeat(64)).status, 0);
 });

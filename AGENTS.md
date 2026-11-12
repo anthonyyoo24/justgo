@@ -230,7 +230,7 @@ highest level that works and updates this list.
 - Await each promise or handle its failure. Use `void` only for background work whose failure is already handled.
   - Enforced by (lint): `@typescript-eslint/no-floating-promises`, `no-misused-promises` and `await-thenable`, with the promise-lint cases in `import-boundaries.test.mjs`
 - API code reaches another service only through `outboundFetch()`. It keeps redirects manual, so a secret or bearer never follows a `Location`. Workers rejects `redirect: 'error'` before sending, so `manual` is the only safe mode on both runtimes. It fails a 3xx as `UNAVAILABLE` without reading its body.
-  - Enforced by (lint, test, written): `no-restricted-globals` (`fetch`, `global`, `globalThis`, `self`, `window`) and `no-restricted-imports` (`undici` and its subpaths, `node-fetch`, `cross-fetch`, `http`, `https`, `node:http`, `node:https`, and `@supabase/*` outside `managed-deletion.ts`) in `apps/api/src`, with cases in `lint-rules.test.mjs`. The 3xx, passthrough and redirect-mode cases in `apps/api/tests/http/outbound-fetch.test.ts`, redirect cases in each caller's test, and `test:workers`, whose smoke checks native Workers `Request` compatibility and redirect rejection. Dynamic `import()`, `eval`, other Node network modules such as `node:http2` and `node:net`, and other HTTP packages are caught only in review.
+  - Enforced by (lint, test, written): `no-restricted-globals` (`fetch`, `global`, `globalThis`, `self`, `window`) and `no-restricted-imports` (`undici` and its subpaths, `node-fetch`, `cross-fetch`, `http`, `https`, `node:http`, `node:https`, and `@supabase/*` outside `managed-deletion.ts`) in `apps/api/src`, with cases in `lint-rules.test.mjs`. The 3xx, passthrough and redirect-mode cases in `apps/api/tests/http/outbound-fetch.test.ts`, redirect cases in each caller's test, and `test:workers` and `test:edge`, whose smokes check native `Request` compatibility and redirect rejection in workerd and the pinned Supabase Edge runtime. Dynamic `import()`, `eval`, other Node network modules such as `node:http2` and `node:net`, and other HTTP packages are caught only in review.
 - Auth verification runs before the owner transaction opens. Auth deletion, diagnostics delivery and any other provider I/O run only after it returns. An `outboundFetch()` call inside any `IdentityService` transaction fails before anything is sent, and work deferred from inside one may send once it commits.
   - Enforced by (architecture, test): `IdentityService` opens every transaction, including the guest catalog and rate limits that take no owner lock, through `ownerTransactions()` in `apps/api/src/db/owner-transaction.ts`, and `outboundFetch()` refuses to send while one is open. `apps/api/tests/db/owner-transaction.test.ts` fails when the refusal is removed, stops holding across a timer, or still refuses deferred work after commit, and `pnpm run test:workers` runs the same cases on workerd. `apps/api/tests/identity/owner-transaction-io.integration.test.ts` in `pnpm run test:db` drives the real Auth verifier, Auth deletion and server error reporter through the routes. It fails when verification or deletion moves into the transaction, or when the refusal is removed. Only review catches provider I/O that bypasses `outboundFetch()`, a transaction opened outside `IdentityService.db`, and services tested only with an injected verifier, deletion or reporter, which skip `outboundFetch()`.
 - Switches are exhaustive, code throws only `Error` values, and type assertions and union members are necessary.
@@ -396,11 +396,11 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   any database other than the local `justgo_test`, production releases, TestFlight
   or App Store submissions, and settings changes in outside services (Supabase,
   Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging
-  test may deploy a committed branch through `pnpm run release:staging:local`.
-  That go does not cover migrations, production releases or merges. Until P15-8
-  of the [Phase 15 plan](docs/implementation-plan/phase-15-supabase-api.md) moves
-  that command to Supabase, it deploys the retired Worker. Run it only when
-  Anthony's go names the Worker.
+  test may deploy a reviewed tag to the staging Supabase function through
+  `pnpm run release:staging:local --tag <tag> --operation deploy`, which
+  dispatches the protected staging workflow. That go does not cover migrations,
+  function secrets, production releases or merges. `--dry-run` deploys nothing
+  and needs no go. Nothing deploys the retired Worker.
 - **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
   about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.

@@ -56,12 +56,13 @@ test('every .github/actions entry is a composite action folder with action.yml',
   assert.ok(actionFolders.length > 0);
 });
 
-test('database CI runs real Worker and encrypted recovery boundaries after shared prerequisites', () => {
+test('database CI runs real Worker, Edge and encrypted recovery boundaries after shared prerequisites', () => {
   const job = jobs.database;
   assert.match(job, /postgresql-client-17 age/);
   const runs = commands(job);
   for (const command of [
     'pnpm run test:workers',
+    'pnpm run test:edge',
     'pnpm run test:backup:recovery',
   ]) {
     assert.ok(runs.includes(command));
@@ -298,7 +299,11 @@ test('every external action in every workflow has an immutable reviewed-release 
     )) {
       if (reference.startsWith('./')) continue;
       external++;
-      assert.match(reference, /^actions\/[\w-]+@[a-f0-9]{40}$/);
+      // GitHub's own actions, plus the Supabase CLI setup the staging lane pins.
+      assert.match(
+        reference,
+        /^(?:actions\/[\w-]+|supabase\/setup-cli)@[a-f0-9]{40}$/,
+      );
       assert.match(
         comment,
         /^ # v\d+\.\d+\.\d+$/,

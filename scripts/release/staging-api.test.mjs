@@ -23,7 +23,6 @@ import {
   validateHyperdrive,
 } from './staging-api-runner.mjs';
 import { abandonedVersionRequested } from './staging-abandoned-version.mjs';
-import { localStagingApi } from './staging-local.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -669,43 +668,6 @@ test('uploads inspected bytes without traffic then probes and promotes precisely
   assert.ok(
     !readdirSync(f.root).some((p) => p.startsWith('justgo-worker-release-')),
   );
-});
-test('local staging uses truthful provenance and the same one-upload/one-promotion path', async (t) => {
-  const f = fixture(t);
-  const local = {
-    sha,
-    phaseBranch: 'codex/phase-16-billing',
-    runId: 'local-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
-    attempt: '1',
-  };
-  let uploadedMetadata;
-  const result = await localStagingApi('deploy', {
-    ...f,
-    context: local,
-    run: async (command, args, options) =>
-      args[0] === 'branch' ? local.phaseBranch : f.run(command, args, options),
-    request: async (target, path, options) => {
-      if (options.method === 'POST')
-        uploadedMetadata = JSON.parse(options.body.get('metadata'));
-      const value = await f.request(target, path, options);
-      if (path === `/versions/${candidateId}`)
-        value.resources.bindings.find(
-          (b) => b.name === 'JUSTGO_RELEASE_RUN_ID',
-        ).text = local.runId;
-      return value;
-    },
-  });
-  assert.equal(result.runId, local.runId);
-  assert.match(
-    uploadedMetadata.annotations['workers/message'],
-    / Local local-/,
-  );
-  assert.ok(
-    !uploadedMetadata.annotations['workers/message'].includes('GitHub'),
-  );
-  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
-  assert.equal(f.calls.filter((c) => c.promotion).length, 1);
-  assert.equal(f.calls.filter((c) => c.probe).length, 8);
 });
 test('source changed during bundle capture cannot upload on either release entry', async (t) => {
   const f = fixture(t);
