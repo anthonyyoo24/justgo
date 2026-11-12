@@ -198,6 +198,15 @@ owner-reviewed `STAGING_RECOVERY_ATTESTATION`. `apps/api/scripts/staging-release
 checks its fields and the 24-hour freshness window. Never create placeholder
 approval values or infer its booleans from a successful upload.
 
+While staging holds only test data, Anthony may approve a test-data waiver in
+place of that recovery proof (2026-11-12, because backups are paused). The
+secret then holds `kind: "test-data-waiver"`, `version`, `project`,
+`sourceSha`, `previousApiSha`, `historyDigest`, `planDigest`,
+`testDataOnly: true`, `ownerApprovedAt` and an `expiresAt` at most 24 hours
+after it. The guard binds it to that one plan. A waiver proves no recovery and
+leaves gate #98 open. Retire this path, in code and here, before outside
+testers store real journals, when backups resume.
+
 Encrypted R2 database and ledger receipts and the isolated restore in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation
 once the actual arrangement is accepted. The

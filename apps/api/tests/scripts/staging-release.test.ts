@@ -164,6 +164,68 @@ describe('staging migration target and recovery fences', () => {
         ),
       ).toThrow();
   });
+  it('accepts a test-data waiver only for this plan, for one day, and never mixed with a partial recovery proof', () => {
+    const plan = migrationPlan(entries, applied, sha, previous);
+    const waiver = {
+      kind: 'test-data-waiver',
+      version: 1,
+      project: stagingProject,
+      sourceSha: sha,
+      previousApiSha: previous,
+      historyDigest: plan.historyDigest,
+      planDigest: plan.digest,
+      testDataOnly: true,
+      ownerApprovedAt: new Date(now - 60_000).toISOString(),
+      expiresAt: new Date(now + 60_000).toISOString(),
+    };
+    expect(() =>
+      requireRecoveryAttestation(
+        JSON.stringify(waiver),
+        plan,
+        sha,
+        previous,
+        now,
+      ),
+    ).not.toThrow();
+    for (const change of [
+      { kind: 'other' },
+      { version: 2 },
+      { project: 'other' },
+      { sourceSha: previous },
+      { previousApiSha: sha },
+      { historyDigest: 'f'.repeat(64) },
+      { planDigest: 'f'.repeat(64) },
+      { testDataOnly: false },
+      { testDataOnly: 'true' },
+      { ownerApprovedAt: new Date(now - 25 * 60 * 60_000).toISOString() },
+      { ownerApprovedAt: new Date(now + 1).toISOString() },
+      { ownerApprovedAt: 'invalid' },
+      { expiresAt: new Date(now - 1).toISOString() },
+      {
+        ownerApprovedAt: new Date(now - 60_000).toISOString(),
+        expiresAt: new Date(now + 24 * 60 * 60_000).toISOString(),
+      },
+    ])
+      expect(() =>
+        requireRecoveryAttestation(
+          JSON.stringify({ ...waiver, ...change }),
+          plan,
+          sha,
+          previous,
+          now,
+        ),
+      ).toThrow();
+    // A real recovery proof that names the waiver kind is judged as a waiver.
+    expect(() =>
+      requireRecoveryAttestation(
+        JSON.stringify({ ...attestation(), kind: 'test-data-waiver' }),
+        plan,
+        sha,
+        previous,
+        now,
+      ),
+    ).toThrow();
+  });
 });
 
 describe('shared release lease and first Worker migration guard', () => {
