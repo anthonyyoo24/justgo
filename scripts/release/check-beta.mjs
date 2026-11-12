@@ -12,10 +12,9 @@ const { diagnosticConfiguration } = createRequire(import.meta.url)(
 );
 
 const root = new URL('../../', import.meta.url);
-// Candidate target in the verified account; hosted acceptance precedes release.
-export const betaApiOrigin =
-  'https://justgo-api-staging.anthonyyoo24.workers.dev';
 const authOrigin = 'https://kmcpcauaxlgpevkkenwd.supabase.co';
+// The staging `api` Edge Function, which passed the Phase 15 hosted window.
+export const betaApiUrl = `${authOrigin}/functions/v1/api`;
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 
@@ -147,7 +146,7 @@ export function checkBetaRelease({
   );
   const api = publicUrl(env.EXPO_PUBLIC_API_URL);
   check(
-    api?.origin === betaApiOrigin && api.pathname === '/',
+    api?.href === betaApiUrl,
     'EXPO_PUBLIC_API_URL must select the reviewed staging API.',
   );
   const auth = publicUrl(env.EXPO_PUBLIC_SUPABASE_URL);
@@ -218,7 +217,7 @@ export function checkBetaRelease({
   for (const [filename, name, route] of legal) {
     const url = publicUrl(env[name]);
     check(
-      url && url.origin !== betaApiOrigin && url.pathname === route,
+      url && url.origin !== authOrigin && url.pathname === route,
       `${name} must point to the published HTTPS document, independently of API drafts.`,
     );
     try {

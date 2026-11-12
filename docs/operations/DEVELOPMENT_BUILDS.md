@@ -147,27 +147,19 @@ From the repository root, run:
 pnpm run dev:mobile --clear
 ```
 
-For an owner-only synthetic test of the Cloudflare staging API, select it
-explicitly:
-
-```sh
-pnpm run dev:mobile --cloudflare --clear
-```
-
-The launcher consumes the option before Expo starts. It first validates the
-saved development environment and the pinned native profile. Then it changes
-only `EXPO_PUBLIC_API_URL` to
-`https://justgo-api-staging.anthonyyoo24.workers.dev`. The default command keeps
-its existing Vercel API target. Identity, Auth and provider pairing, Sentry-off
-mode, current legal URLs and fixture rejection stay enforced. Remote EAS settings
-and release profiles do not change. Arbitrary API origins are not accepted.
+The launcher first validates the saved development environment and the pinned
+native profile. Both must name the staging `api` Edge Function,
+`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, so a saved file
+that still names the retired Vercel or Worker API stops the launch. Update
+`EXPO_PUBLIC_API_URL` in the EAS `development` environment, then pull it again.
+Identity, Auth and provider pairing, Sentry-off mode, current legal URLs and
+fixture rejection stay enforced. Arbitrary API origins are not accepted, and the
+launcher takes no API option.
 
 The first phone screen and navigation check can use guest mode. Dev shares the
 staging database. Before account synchronization or deletion checks, use a
 genuinely disposable Apple or Google identity and synthetic writing. An existing secondary
-provider account is enough. A new email is not required. This early test can come
-before the final TestFlight and legal/Vercel retirement. It does not publish the
-pending Cloudflare notice or close final native and cutover acceptance. Before
+provider account is enough. A new email is not required. Before
 loading current source, verify that the Dev binary is compatible. The recorded
 October 26 build predates the current native patches and source-build policy, and
 it is not accepted as compatible.

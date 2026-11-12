@@ -14,40 +14,24 @@ export const developmentIdentity = Object.freeze({
 });
 export const releaseGoogleIosClientId =
   '881166911699-nnplpatgdvqogjlnfed198jlbqslj3cn.apps.googleusercontent.com';
-export const developmentApiUrls = Object.freeze({
-  vercel: 'https://justgo-two.vercel.app',
-  cloudflare: 'https://justgo-api-staging.anthonyyoo24.workers.dev',
-  supabase: 'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
-});
-const apiTargetFlags = ['--cloudflare', '--supabase'];
+export const developmentApiUrl =
+  'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api';
 
 export function developmentLaunchOptions(args) {
-  const selected = new Set(args.filter((arg) => apiTargetFlags.includes(arg)));
-  if (
-    selected.size > 1 ||
-    args.some((arg) => !['--clear', '--web', ...apiTargetFlags].includes(arg))
-  ) {
+  if (args.some((arg) => !['--clear', '--web'].includes(arg))) {
     throw new Error(
-      'JustGO Dev supports --clear, --web and one of --cloudflare or --supabase; its app scheme and LAN port are fixed.',
+      'JustGO Dev supports --clear and --web; its API, app scheme and LAN port are fixed.',
     );
   }
-  const [flag] = selected;
-  return {
-    apiTarget: flag ? flag.slice(2) : 'vercel',
-    expoArgs: args.filter((arg) => !selected.has(arg)),
-  };
+  return { expoArgs: args };
 }
 
 /** Public configuration only. Fail with variable names, never supplied values. */
-export function validateDevelopmentEnvironment(
-  environment,
-  { apiTarget = 'vercel' } = {},
-) {
+export function validateDevelopmentEnvironment(environment) {
   const check = (condition, name) => {
     if (!condition)
       throw new Error(`Invalid JustGO Dev configuration: ${name}.`);
   };
-  check(Object.hasOwn(developmentApiUrls, apiTarget), 'development API target');
   check(
     environment.IOS_BUNDLE_IDENTIFIER === developmentIdentity.bundle,
     'IOS_BUNDLE_IDENTIFIER',
@@ -59,7 +43,7 @@ export function validateDevelopmentEnvironment(
     'separate Production CloudKit container',
   );
   check(
-    environment.EXPO_PUBLIC_API_URL === developmentApiUrls[apiTarget],
+    environment.EXPO_PUBLIC_API_URL === developmentApiUrl,
     'EXPO_PUBLIC_API_URL',
   );
   check(
@@ -150,7 +134,6 @@ export async function developmentEnvironment(environment, configuration) {
 export async function localDevelopmentEnvironment(
   base = process.env,
   path = new URL('../../apps/mobile/.env.development.local', import.meta.url),
-  { apiTarget = 'vercel' } = {},
 ) {
   let file;
   try {
@@ -160,13 +143,9 @@ export async function localDevelopmentEnvironment(
       'Pull the configured EAS development environment into apps/mobile/.env.development.local before starting JustGO Dev.',
     );
   }
-  // Check the saved EAS environment and native profile before selecting the
-  // explicit local test target, so an override cannot hide stale/unsafe inputs.
-  const resolved = await developmentEnvironment({ ...base, ...parseEnv(file) });
-  return validateDevelopmentEnvironment(
-    { ...resolved, EXPO_PUBLIC_API_URL: developmentApiUrls[apiTarget] },
-    { apiTarget },
-  );
+  // The saved EAS environment and the native profile must both pass, so a
+  // stale or unsafe saved input stops the launch.
+  return developmentEnvironment({ ...base, ...parseEnv(file) });
 }
 
 /** Only the local Dev launcher may replace Expo's development dotenv module. */
@@ -186,13 +165,7 @@ export function validateLocalMetroEnvironment(environment) {
     throw new Error(
       'The public environment adapter requires local JustGO Dev.',
     );
-  return validateDevelopmentEnvironment(environment, {
-    apiTarget:
-      Object.keys(developmentApiUrls).find(
-        (target) =>
-          developmentApiUrls[target] === environment.EXPO_PUBLIC_API_URL,
-      ) ?? 'vercel',
-  });
+  return validateDevelopmentEnvironment(environment);
 }
 
 if (

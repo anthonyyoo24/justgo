@@ -8,16 +8,8 @@ import {
 } from './configuration.mjs';
 
 try {
-  const { apiTarget, expoArgs } = developmentLaunchOptions(
-    process.argv.slice(2),
-  );
-  const environment = await localDevelopmentEnvironment(
-    process.env,
-    undefined,
-    {
-      apiTarget,
-    },
-  );
+  const { expoArgs } = developmentLaunchOptions(process.argv.slice(2));
+  const environment = await localDevelopmentEnvironment(process.env);
   const require = createRequire(
     new URL('../../apps/mobile/package.json', import.meta.url),
   );

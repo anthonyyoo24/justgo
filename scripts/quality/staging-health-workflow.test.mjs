@@ -48,7 +48,7 @@ test('the manual diagnostic uses Cloudflare public readiness while Sentry owns r
   );
   assert.deepEqual(
     [...script.matchAll(/https:\/\/[^'\s]+/g)].map((value) => value[0]),
-    ['https://justgo-api-staging.anthonyyoo24.workers.dev/ready'],
+    ['https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready'],
   );
   assert.doesNotMatch(
     workflow,

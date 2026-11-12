@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-  betaApiOrigin,
+  betaApiUrl,
   betaDiagnosticsMode,
   checkBetaRelease,
 } from './check-beta.mjs';
@@ -209,6 +209,11 @@ test('an approved notice needs Cloudflare hosting approval and matching diagnost
 });
 
 test('admits a store-signed staging candidate and the verified App Store upload target', () => {
+  assert.equal(
+    betaApiUrl,
+    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
+  );
+  assert.equal(eas.build.beta.env.EXPO_PUBLIC_API_URL, betaApiUrl);
   assert.deepEqual(checkBetaRelease(candidate()), []);
   assert.deepEqual(
     checkBetaRelease({ ...candidate(), operation: 'submit' }),
@@ -476,7 +481,29 @@ test('rejects different API/Auth owners and preserves native account capabilitie
     ['profile', 'IOS_BUNDLE_IDENTIFIER', 'another.app'],
     ['profile', 'EXPO_PUBLIC_API_URL', 'https://another-api.vercel.app'],
     ['profile', 'EXPO_PUBLIC_API_URL', 'https://justgo-two.vercel.app'],
-    ['profile', 'EXPO_PUBLIC_API_URL', `${betaApiOrigin}/other`],
+    [
+      'profile',
+      'EXPO_PUBLIC_API_URL',
+      'https://justgo-api-staging.anthonyyoo24.workers.dev',
+    ],
+    ['profile', 'EXPO_PUBLIC_API_URL', `${betaApiUrl}/`],
+    ['profile', 'EXPO_PUBLIC_API_URL', `${betaApiUrl}/v1`],
+    [
+      'profile',
+      'EXPO_PUBLIC_API_URL',
+      'https://kmcpcauaxlgpevkkenwd.supabase.co',
+    ],
+    [
+      'profile',
+      'EXPO_PUBLIC_API_URL',
+      'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/other',
+    ],
+    [
+      'profile',
+      'EXPO_PUBLIC_API_URL',
+      'https://anotherproject.supabase.co/functions/v1/api',
+    ],
+    ['profile', 'EXPO_PUBLIC_API_URL', `${betaApiUrl}?next=1`],
     ['environment', 'EXPO_PUBLIC_SUPABASE_URL', 'https://another.supabase.co'],
     ['environment', 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID', 'unconfigured'],
     ['environment', 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'unconfigured'],
@@ -522,8 +549,8 @@ test('rejects missing, local, credential-bearing and draft legal destinations', 
     'https://notices.vercel.app/privacy/?token=private',
     'https://notices.vercel.app/privacy/#fragment',
     'https://notices.vercel.app/terms/',
-    `${betaApiOrigin}/legal/privacy`,
-    `${betaApiOrigin}/privacy/`,
+    'https://kmcpcauaxlgpevkkenwd.supabase.co/privacy/',
+    `${betaApiUrl}/privacy/`,
     'invalid',
   ]) {
     const value = candidate();
