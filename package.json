@@ -37,6 +37,7 @@
     "test:migrations": "pnpm --filter @justgo/api run test:migrations",
     "test:exported-web": "playwright test --config e2e/exported-web.config.ts",
     "test:workers": "pnpm --filter @justgo/api run test:workers",
+    "test:edge": "pnpm --filter @justgo/api run test:edge",
     "profile:workers": "pnpm --filter @justgo/api run profile:workers",
     "test:backup:recovery": "node --env-file-if-exists=apps/api/.env --import tsx scripts/backups/rehearse.mjs"
   },

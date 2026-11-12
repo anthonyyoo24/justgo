@@ -1,62 +1,58 @@
-import type { StagingBaseline, StagingReceipt } from './staging-api-runner.mjs';
-
-type LocalSource = Readonly<{
-  sha: string;
-  phaseBranch: string;
+type Operation = 'deploy' | 'migrate-deploy' | 'secrets';
+export type LocalReleaseOptions = Readonly<{
+  tag: string;
+  operation: Operation;
+  plan?: string;
+  dryRun: boolean;
 }>;
-export type LocalContext = LocalSource &
-  Readonly<{
-    runId: string;
-    attempt: '1';
-  }>;
-export type LocalConfiguration = Record<
-  | 'CLOUDFLARE_API_TOKEN'
-  | 'CLOUDFLARE_ACCOUNT_ID'
-  | 'CLOUDFLARE_WORKERS_SUBDOMAIN'
-  | 'STAGING_HYPERDRIVE_ID'
-  | 'MIGRATION_DATABASE_URL'
-  | 'DATABASE_CA_CERT',
-  string
->;
-type Options = {
-  env?: NodeJS.ProcessEnv;
-  root?: string;
-  signal?: AbortSignal | undefined;
-};
-type ReleaseOptions = Options & { context: LocalContext };
-export function localReleaseArguments(args: string[]): LocalSource & {
-  deploy: boolean;
-  credentials: string;
-};
-export function assertLocalSource(
-  source: LocalSource,
-  options?: Options,
+type Run = (
+  command: string,
+  args: string[],
+  options?: { cwd?: string },
+) => Promise<string>;
+type Receipt = Record<string, unknown> & { event: string };
+export const stagingWorkflow: 'staging-api.yml';
+export const usage: string;
+export function localReleaseArguments(args: string[]): LocalReleaseOptions;
+export function localCommand(
+  command: string,
+  args: string[],
+  options?: { cwd?: string },
+): Promise<string>;
+export function taggedSource(
+  tag: string,
+  options?: { root?: string; run?: Run },
+): Promise<string>;
+export function assertOwnerMachine(env?: NodeJS.ProcessEnv): void;
+export function receiptsFrom(log: string): Receipt[];
+export function dryRun(
+  release: { tag: string; operation: Operation; sha: string },
+  options?: {
+    root?: string;
+    log?: (line: string) => void;
+    build?: (options: {
+      root?: string;
+      directory: string;
+      sourceSha: string;
+    }) => Promise<{ bytes: number; uploadSha256: string }>;
+  },
 ): Promise<void>;
-export function localStagingContext(
-  source: LocalSource,
-  options?: Options,
-): Promise<LocalContext>;
-export function localReleaseConfiguration(path: string): LocalConfiguration;
-export function localBuildEnvironment(
-  configuration: LocalConfiguration,
-  env?: NodeJS.ProcessEnv,
-): NodeJS.ProcessEnv;
-export function localPublicationEnvironment(
-  root: string,
-  env?: NodeJS.ProcessEnv,
-): NodeJS.ProcessEnv;
-export function runLocalPublicationChecks(root: string): Promise<string[]>;
-export function localStagingApi(
-  operation: 'preflight',
-  options: ReleaseOptions,
-): Promise<StagingBaseline>;
-export function localStagingApi(
-  operation: 'deploy',
-  options: ReleaseOptions & { beforePromote: () => Promise<void> },
-): Promise<StagingReceipt>;
-export function prepareLocalBundle(
-  context: LocalContext,
-  env: NodeJS.ProcessEnv,
-  root?: string,
-  options?: { signal?: AbortSignal | undefined },
-): Promise<{ uploadSha256: string; bytes: number }>;
+export function dispatchRelease(
+  release: { tag: string; operation: Operation; plan?: string },
+  options?: {
+    run?: Run;
+    log?: (line: string) => void;
+    wait?: (ms: number) => Promise<unknown>;
+    now?: () => number;
+    attempts?: number;
+  },
+): Promise<{ runId: string; url: string; receipts: Receipt[] }>;
+export function runLocalStagingRelease(
+  args: string[],
+  options?: {
+    env?: NodeJS.ProcessEnv;
+    root?: string;
+    run?: Run;
+    log?: (line: string) => void;
+  },
+): Promise<unknown>;

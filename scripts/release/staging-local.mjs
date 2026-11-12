@@ -1,256 +1,237 @@
-import { randomUUID } from 'node:crypto';
-import { parseEnv } from 'node:util';
-import {
-  lstatSync,
-  readFileSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-} from 'node:fs';
-import { join, resolve } from 'node:path';
+import { execFile } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { setTimeout as pause } from 'node:timers/promises';
+import { promisify } from 'node:util';
+import { buildEdge } from '../../apps/api/scripts/edge-build.mjs';
 import {
   isSourceSha,
   requireRelease,
-  cloudflareTarget,
+  StagingRunnerFailure,
+  stagingTarget,
 } from './staging-api.mjs';
-import {
-  privateCommand,
-  runStagingDeployment,
-} from './staging-api-deployment.mjs';
-import { buildStagingWorker } from './staging-worker-build.mjs';
-import { localTestDatabaseUrl } from '../../apps/api/scripts/local-test-database.ts';
 
+const executeFile = promisify(execFile);
 const invalid = 'INVALID_LOCAL_STAGING_CONTEXT';
-const configurationFailure = 'INVALID_LOCAL_STAGING_CONFIGURATION';
-const isPhaseBranch = (branch) =>
-  typeof branch === 'string' &&
-  branch.length > 0 &&
-  branch !== 'main' &&
-  !branch.startsWith('-') &&
-  !/\s/.test(branch);
+const operations = ['deploy', 'migrate-deploy', 'secrets'];
+export const stagingWorkflow = 'staging-api.yml';
 
+export const usage =
+  'Usage: pnpm run release:staging:local --tag <tag> --operation deploy|migrate-deploy|secrets [--plan <sha256>] [--dry-run]';
+
+/** Parse the owner's flags. Anything unknown or repeated is refused. */
 export function localReleaseArguments(args) {
-  requireRelease(args.length === 7, invalid);
-  const [
-    mode,
-    branchFlag,
-    phaseBranch,
-    sourceFlag,
-    sha,
-    credentialsFlag,
-    credentials,
-  ] = args;
+  const options = { dryRun: false };
+  for (let index = 0; index < args.length; index++) {
+    const flag = args[index];
+    if (flag === '--dry-run' && !options.dryRun) {
+      options.dryRun = true;
+      continue;
+    }
+    const name = {
+      '--tag': 'tag',
+      '--operation': 'operation',
+      '--plan': 'plan',
+    }[flag];
+    const value = args[index + 1];
+    requireRelease(
+      name && options[name] === undefined && typeof value === 'string',
+      invalid,
+    );
+    options[name] = value;
+    index++;
+  }
   requireRelease(
-    ['--prepare', '--deploy'].includes(mode) &&
-      branchFlag === '--phase-branch' &&
-      isPhaseBranch(phaseBranch) &&
-      sourceFlag === '--source' &&
-      isSourceSha(sha) &&
-      credentialsFlag === '--credentials' &&
-      typeof credentials === 'string' &&
-      credentials.length > 0,
+    typeof options.tag === 'string' &&
+      /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(options.tag) &&
+      operations.includes(options.operation) &&
+      (options.operation === 'migrate-deploy'
+        ? /^[a-f0-9]{64}$/.test(options.plan ?? '')
+        : options.plan === undefined),
     invalid,
   );
-  return { deploy: mode === '--deploy', phaseBranch, sha, credentials };
+  return options;
 }
 
-/** No remote Git operation and no fabricated GitHub environment. */
-export async function assertLocalSource(
-  { sha, phaseBranch },
-  { root = process.cwd(), run = privateCommand, signal } = {},
-) {
-  requireRelease(isSourceSha(sha) && isPhaseBranch(phaseBranch), invalid);
-  const git = async (...args) =>
-    (await run('git', args, { cwd: root, signal })).trim();
+export async function localCommand(command, args, options = {}) {
+  try {
+    const result = await executeFile(command, args, {
+      encoding: 'utf8',
+      timeout: 40 * 60_000,
+      maxBuffer: 32 * 1024 * 1024,
+      ...options,
+    });
+    return result.stdout;
+  } catch {
+    throw new StagingRunnerFailure('STAGING_COMMAND_FAILED');
+  }
+}
+
+/** The checkout must be clean and sit exactly on the tag it releases. */
+export async function taggedSource(tag, { root, run = localCommand } = {}) {
+  const git = async (...args) => (await run('git', args, { cwd: root })).trim();
   requireRelease(
-    (await git('branch', '--show-current')) === phaseBranch &&
-      (await git('rev-parse', 'HEAD')) === sha &&
-      !(await git('status', '--porcelain')),
+    !(await git('status', '--porcelain', '--untracked-files=normal')),
     'STAGING_SOURCE_NOT_CLEAN',
   );
+  const head = await git('rev-parse', 'HEAD');
+  let tagged;
+  try {
+    tagged = await git('rev-parse', '--verify', `refs/tags/${tag}^{commit}`);
+  } catch {
+    tagged = undefined;
+  }
+  requireRelease(
+    isSourceSha(head) && tagged === head,
+    'STAGING_SOURCE_NOT_TAGGED',
+  );
+  return head;
 }
 
-export async function localStagingContext(
-  source,
-  { env = process.env, root, run, signal } = {},
+/** Print every step, build the bundle locally and contact no provider. */
+export async function dryRun(
+  { tag, operation, sha },
+  { root, build = buildEdge, log = console.info } = {},
 ) {
+  log(`source ${sha} at tag ${tag}, clean`);
+  if (operation === 'secrets') {
+    log('would dispatch staging-api.yml with operation secrets');
+    log('would set the function secrets from STAGING_FUNCTION_SECRETS');
+    log('would list the secret names and probe api /health and /ready');
+  } else {
+    const directory = mkdtempSync(join(tmpdir(), 'justgo-dry-run-'));
+    try {
+      const bundle = await build({ root, directory, sourceSha: sha });
+      log(
+        `built edge.mjs: ${bundle.bytes} bytes, upload sha256 ${bundle.uploadSha256}`,
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+    log(`would dispatch staging-api.yml with operation ${operation}`);
+    log('would read the serving /health as previousApiSha');
+    log(
+      operation === 'migrate-deploy'
+        ? 'would hold the database lock and apply the reviewed migration plan'
+        : 'would hold the database lock and require no pending migration',
+    );
+    log('would deploy api-candidate and probe it');
+    log('would deploy api, probe it and read back its version');
+  }
+  log('dry run, no deploy');
+}
+
+/** Lines the lane prints as JSON receipts. They hold no secret values. */
+export function receiptsFrom(log) {
+  const receipts = [];
+  for (const line of log.split('\n')) {
+    const start = line.indexOf('{"event":"staging_');
+    if (start < 0) continue;
+    try {
+      receipts.push(JSON.parse(line.slice(start)));
+    } catch {
+      // A partial line is not a receipt.
+    }
+  }
+  return receipts;
+}
+
+/**
+ * Dispatch the protected workflow and wait for its receipt. The Mac runs no
+ * deploy and holds no provider credential.
+ */
+export async function dispatchRelease(
+  { tag, operation, plan },
+  {
+    run = localCommand,
+    log = console.info,
+    wait = pause,
+    now = () => Date.now(),
+    attempts = 20,
+  } = {},
+) {
+  const repo = ['--repo', stagingTarget.repository];
+  const started = now();
+  await run('gh', [
+    'workflow',
+    'run',
+    stagingWorkflow,
+    ...repo,
+    '--ref',
+    'main',
+    '-f',
+    `tag=${tag}`,
+    '-f',
+    `operation=${operation}`,
+    ...(plan ? ['-f', `migration_plan_sha256=${plan}`] : []),
+  ]);
+  const title = `Staging API ${operation} from ${tag}`;
+  let found;
+  for (let attempt = 0; attempt < attempts && !found; attempt++) {
+    if (attempt) await wait(3000);
+    const runs = JSON.parse(
+      await run('gh', [
+        'run',
+        'list',
+        ...repo,
+        '--workflow',
+        stagingWorkflow,
+        '--event',
+        'workflow_dispatch',
+        '--limit',
+        '10',
+        '--json',
+        'databaseId,createdAt,displayTitle,url',
+      ]),
+    );
+    found = runs.find(
+      (item) =>
+        item.displayTitle === title &&
+        Date.parse(item.createdAt) >= started - 60_000,
+    );
+  }
+  requireRelease(found, 'STAGING_COMMAND_FAILED');
+  log(`dispatched ${found.url}`);
+  const id = String(found.databaseId);
+  let failed = false;
+  try {
+    await run('gh', ['run', 'watch', id, ...repo, '--exit-status']);
+  } catch {
+    failed = true;
+  }
+  const receipts = receiptsFrom(
+    await run('gh', ['run', 'view', id, ...repo, '--log']),
+  );
+  for (const receipt of receipts) log(JSON.stringify(receipt));
+  requireRelease(!failed, 'STAGING_COMMAND_FAILED');
+  return { runId: id, url: found.url, receipts };
+}
+
+/** The owner's Mac only. A CI or hosted build must use the workflow itself. */
+export function assertOwnerMachine(env = process.env) {
   requireRelease(
     !['CI', 'GITHUB_ACTIONS', 'GITHUB_RUN_ID', 'VERCEL', 'EAS_BUILD'].some(
       (name) => env[name] && env[name] !== 'false' && env[name] !== '0',
-    ) &&
-      !env.MIGRATION_PLAN_SHA256 &&
-      !env.STAGING_ABANDONED_VERSION_ID &&
-      !env.STAGING_RECOVERY_ATTESTATION &&
-      (!env.RELEASE_OPERATION || env.RELEASE_OPERATION === 'deploy'),
+    ),
     invalid,
   );
-  await assertLocalSource(source, { root, run, signal });
-  return Object.freeze({
-    sha: source.sha,
-    phaseBranch: source.phaseBranch,
-    runId: `local-${randomUUID()}`,
-    attempt: '1',
-  });
 }
 
-const fields = [
-  'CLOUDFLARE_API_TOKEN',
-  'CLOUDFLARE_ACCOUNT_ID',
-  'CLOUDFLARE_WORKERS_SUBDOMAIN',
-  'STAGING_HYPERDRIVE_ID',
-  'MIGRATION_DATABASE_URL',
-  'DATABASE_CA_CERT',
-];
-
-/** Read one explicitly selected owner-only file, never dotenv or GitHub secrets. */
-export function localReleaseConfiguration(path) {
-  try {
-    const file = lstatSync(path);
-    requireRelease(
-      file.isFile() &&
-        !file.isSymbolicLink() &&
-        file.nlink === 1 &&
-        file.uid === process.getuid() &&
-        (file.mode & 0o077) === 0,
-      configurationFailure,
-    );
-    const input = JSON.parse(readFileSync(path, 'utf8'));
-    requireRelease(
-      input &&
-        typeof input === 'object' &&
-        !Array.isArray(input) &&
-        Object.keys(input).every((name) => fields.includes(name)),
-      configurationFailure,
-    );
-    const values = Object.fromEntries(
-      fields.map((name) => [name, input[name]]),
-    );
-    requireRelease(
-      fields.every(
-        (name) =>
-          typeof values[name] === 'string' &&
-          (name === 'MIGRATION_DATABASE_URL' || values[name].length > 0) &&
-          !values[name].includes('[SENSITIVE]'),
-      ) && !/[\r\n]/.test(values.CLOUDFLARE_API_TOKEN),
-      configurationFailure,
-    );
-    cloudflareTarget(values);
-    return values;
-  } catch {
-    requireRelease(false, configurationFailure);
-  }
-}
-
-/** The build receives only public target configuration; DB/CA secrets stay here. */
-export function localBuildEnvironment(configuration, env = process.env) {
-  return {
-    ...(env.PATH ? { PATH: env.PATH } : {}),
-    ...(env.HOME ? { HOME: env.HOME } : {}),
-    CLOUDFLARE_API_TOKEN: configuration.CLOUDFLARE_API_TOKEN,
-    CLOUDFLARE_ACCOUNT_ID: configuration.CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_WORKERS_SUBDOMAIN: configuration.CLOUDFLARE_WORKERS_SUBDOMAIN,
-    STAGING_HYPERDRIVE_ID: configuration.STAGING_HYPERDRIVE_ID,
-  };
-}
-
-/** Publication checks can use only the dedicated loopback test database. */
-export function localPublicationEnvironment(root, env = process.env) {
-  const input = parseEnv(readFileSync(resolve(root, 'apps/api/.env'), 'utf8'));
-  for (const [name, role] of [
-    ['DATABASE_URL', 'justgo_runtime'],
-    ['MIGRATION_DATABASE_URL', 'justgo_migrator'],
-    ['JUSTGO_TEST_ADMIN_DATABASE_URL', 'postgres'],
-  ])
-    requireRelease(
-      localTestDatabaseUrl(input[name]).username === role,
-      configurationFailure,
-    );
-  requireRelease(input.DATABASE_SSL === 'disable', configurationFailure);
-  return {
-    ...(env.PATH ? { PATH: env.PATH } : {}),
-    ...(env.HOME ? { HOME: env.HOME } : {}),
-    ...(env.JUSTGO_PG_BIN ? { JUSTGO_PG_BIN: env.JUSTGO_PG_BIN } : {}),
-    DATABASE_URL: input.DATABASE_URL,
-    MIGRATION_DATABASE_URL: input.MIGRATION_DATABASE_URL,
-    JUSTGO_TEST_ADMIN_DATABASE_URL: input.JUSTGO_TEST_ADMIN_DATABASE_URL,
-    DATABASE_SSL: 'disable',
-    DATABASE_POOL_MAX: '1',
-  };
-}
-
-export async function runLocalPublicationChecks(
-  root,
-  { run = privateCommand, env = process.env } = {},
+export async function runLocalStagingRelease(
+  args,
+  {
+    env = process.env,
+    root = process.cwd(),
+    run = localCommand,
+    log = console.info,
+    ...rest
+  } = {},
 ) {
-  const childEnvironment = localPublicationEnvironment(root, env);
-  const commands = [
-    ['--filter', '@justgo/mobile', 'run', 'doctor'],
-    ['run', 'check:static'],
-    ['run', 'test:coverage'],
-    ['run', 'test:workers'],
-    [
-      'run',
-      'test:journey',
-      'e2e/provider-sign-in.spec.ts',
-      'e2e/local-sync.spec.ts',
-      'e2e/account-deletion.spec.ts',
-    ],
-  ];
-  for (const args of commands)
-    await run('pnpm', args, { cwd: root, env: childEnvironment });
-  return [
-    'doctor',
-    'check:static',
-    'coverage-including-database',
-    'workers',
-    'selected-journeys',
-  ];
-}
-
-/** Explicit local entry. The GitHub wrapper and its main-only checks are unchanged. */
-export async function localStagingApi(operation, options) {
-  requireRelease(['preflight', 'deploy'].includes(operation), invalid);
-  const { context, ...rest } = options;
-  requireRelease(
-    isSourceSha(context?.sha) &&
-      /^local-[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
-        context?.runId,
-      ) &&
-      context.attempt === '1',
-    invalid,
-  );
-  await assertLocalSource(context, rest);
-  return runStagingDeployment(operation, {
-    ...rest,
-    context,
-    provenance: 'Local',
-  });
-}
-
-export async function prepareLocalBundle(
-  context,
-  env,
-  root = process.cwd(),
-  { signal } = {},
-) {
-  const parent = resolve(root, '.local/phase15-cloudflare/local-releases');
-  mkdirSync(parent, { recursive: true, mode: 0o700 });
-  const directory = mkdtempSync(join(parent, 'prepare-'));
-  try {
-    await assertLocalSource(context, { root, signal });
-    const bundle = await buildStagingWorker({
-      root,
-      directory,
-      target: cloudflareTarget(env),
-      context,
-      env,
-      run: privateCommand,
-      signal,
-    });
-    requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
-    await assertLocalSource(context, { root, signal });
-    return { uploadSha256: bundle.uploadSha256, bytes: bundle.content.length };
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
+  assertOwnerMachine(env);
+  const options = localReleaseArguments(args);
+  const sha = await taggedSource(options.tag, { root, run });
+  if (options.dryRun)
+    return dryRun({ ...options, sha }, { root, log, build: rest.build });
+  return dispatchRelease(options, { run, log, ...rest });
 }

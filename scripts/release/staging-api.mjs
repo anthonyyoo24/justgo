@@ -44,6 +44,7 @@ const failureCodes = new Set([
   'STAGING_DATABASE_LEASE_LOST',
   'STAGING_BASELINE_SOURCE_REQUIRED',
   'STAGING_SOURCE_NOT_CLEAN',
+  'STAGING_SOURCE_NOT_TAGGED',
   'STAGING_BASELINE_CHANGED',
   'PINNED_WRANGLER_REQUIRED',
   'STAGING_PROJECT_CONFIGURATION_MISMATCH',
@@ -54,6 +55,12 @@ const failureCodes = new Set([
   'STAGING_BOOTSTRAP_UNCONFIRMED',
   'STAGING_BOOTSTRAP_REQUIRES_EMPTY_WORKER',
   'STAGING_BOOTSTRAP_BINDINGS_REQUIRED',
+  'INVALID_RELEASE_SOURCE',
+  'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
+  'STAGING_SUPABASE_FUNCTION_MISSING',
+  'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
+  'STAGING_SUPABASE_SECRETS_REJECTED',
+  'STAGING_SUPABASE_SECRETS_UNCONFIRMED',
 ]);
 const trustedFailures = new WeakMap();
 const promotionPhases = new Set([
@@ -112,7 +119,9 @@ export function releaseContext(env = process.env) {
       isSourceSha(env.RELEASE_SHA) &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ID ?? '') &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ATTEMPT ?? '') &&
-      ['deploy', 'migrate-deploy', 'bootstrap'].includes(env.RELEASE_OPERATION),
+      ['deploy', 'migrate-deploy', 'bootstrap', 'secrets'].includes(
+        env.RELEASE_OPERATION,
+      ),
     'INVALID_STAGING_RELEASE_CONTEXT',
   );
   return {
