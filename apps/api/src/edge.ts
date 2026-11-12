@@ -53,12 +53,13 @@ export function edgeConfigEnvironment(
 }
 
 /**
- * The Supabase gateway sets X-Real-IP. X-Forwarded-For carries caller-written
- * entries, so it never names a rate-limit bucket. Anything but one address is
- * unknown.
+ * The hosted Supabase gateway sits behind Cloudflare, which overwrites
+ * CF-Connecting-IP with the caller's address (P15-2 lane 4, 2026-11-12). It
+ * does not set X-Real-IP, and X-Forwarded-For carries caller-written entries,
+ * so neither names a rate-limit bucket. Anything but one address is unknown.
  */
 export function edgeClientAddress(request: Request) {
-  const address = request.headers.get('x-real-ip') ?? '';
+  const address = request.headers.get('cf-connecting-ip') ?? '';
   return isIP(address) ? address : 'unknown';
 }
 
