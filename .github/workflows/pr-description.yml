@@ -54,21 +54,3 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/quality/verdict-status.mjs
-
-  # Transition only: branch protection still names `sections` until it moves
-  # to `description` and `verdict`. A skipped job would count as passing, so
-  # this one always runs and passes only when both passed. Remove it once no
-  # open PR needs it.
-  sections:
-    needs: [description, verdict]
-    if: always() && github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Require description and verdict
-        env:
-          DESCRIPTION: ${{ needs.description.result }}
-          VERDICT: ${{ needs.verdict.result }}
-        run: |
-          echo "description: $DESCRIPTION, verdict: $VERDICT"
-          test "$DESCRIPTION" = success && test "$VERDICT" = success
