@@ -82,9 +82,10 @@ and nothing else:
 | Providers | Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements.                                                                     | Providers may also process information in other countries, including through their networks and support operations. Information processed in another country may be subject to that country's laws and lawful-access requirements.                                                                                                                                                                   |
 | Requests  | For Canadian privacy concerns, you may contact the Office of the Privacy Commissioner of Canada.                                                                                                                                                                           | Removed. The general right to complain to a privacy regulator stays.                                                                                                                                                                                                                                                                                                                                 |
 
-The other sentences stay word for word. The Terms still name the operator and
-province, and the support address is a personal Gmail account. Both wait for
-Anthony's choice.
+The other sentences stay word for word. The Terms candidate
+`terms-us-east-candidate` drops the operator's name and province the same way
+and publishes with it. The support address is still a personal Gmail account,
+which waits for Anthony's choice.
 
 - **What makes it true.** Build 8 points at the new project and sends
   `x-region: us-east-1` on every API request, so Supabase runs the `api`
