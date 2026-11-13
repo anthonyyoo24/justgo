@@ -14,6 +14,7 @@ Anthony made these choices on November 13, 2026. The plan follows them.
 - **Plan.** "we're using the free plan for now"
 - **Role.** "we would be using the us project for production"
 - **Canada.** "we would remove it after we finish the us database and it works with th eapp"
+- **Free slots.** On November 13 the organization's active projects were JustGo (`ca-central-1`) and content-machine (`ca-central-1`), so both free slots were taken. Asked whether content-machine may be paused when the move starts, Anthony answered "Yes, pause it then".
 
 ## Why us-east-1
 
@@ -76,7 +77,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 - [ ] Gate #476 is closed with a passing first scheduled nightly backup from November 14 at 04:43 UTC. Check `gh issue view 476`.
 - [ ] Issue #474, the R2 credential renewal due by November 20 at 15:39 UTC, is done or scheduled. It happens whatever this move does. The renewal is independent of the move if [decision 3](#open-decisions) keeps the bucket and prefixes, because the uploader is scoped to those.
-- [ ] Anthony confirms in the Supabase organization's project list that Canada is the only active free project. The free plan allows two. If another active free project exists, Anthony pauses it or decides otherwise before US-2 ([decision 2](#open-decisions)).
+- [ ] Anthony pauses content-machine, as he approved ([decision 2](#open-decisions)). Then the Supabase organization's project list shows JustGo in Canada as the only active free project. The free plan allows two. If another active free project has appeared, Anthony pauses it or decides otherwise before US-2.
 - [ ] `apps/api/tests/db/fixtures/applied-migration-hashes.json` on `main` lists 26 applied migrations, 0000 to 0025, and an empty `unapplied`. Check `git show origin/main:apps/api/tests/db/fixtures/applied-migration-hashes.json`.
 - [ ] No open PR adds a migration. Check `gh pr list --search 'drizzle in:files'` and read the file lists.
 - [ ] PR A (first-release path) has merged. See [PR split](#pr-split).
@@ -345,7 +346,7 @@ This plan sits before the external free beta in the [release order](README.md#re
 Anthony decides each one. The recommendation comes first.
 
 1. **Dashboard name.** Recommend "JustGo US". The ref, not the name, selects the project.
-2. **A third free project.** If US-1 finds another active free project, pause it before US-2.
+2. **A third free project.** Decided: Anthony pauses content-machine at US-1 ("Yes, pause it then"). Any other active free project found then is paused before US-2 too.
 3. **Backups bucket.** Recommend keeping `justgo-staging-backups` and the `staging/` prefixes, with a new policy that names the new source. The #474 renewal then carries over unchanged. The other choice is a new `justgo-production-backups` bucket with `environment: "production"` now, which needs new R2 credentials, a new lock and lifecycle, and a code change to the cron exception. #106 can make that split with the rest of the production naming.
 4. **Supabase Pro.** Recommend approving Pro before the first outside tester stores a real journal, because a free project can pause and has no automatic backups. Until then the free plan stays, as Anthony chose.
 5. **PR #479.** Recommend closing it and carrying its code and tests into PR D with `us-east-1`.
