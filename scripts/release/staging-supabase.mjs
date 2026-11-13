@@ -64,6 +64,90 @@ const requiredSecretNames = [
   'JUSTGO_AUTH_SECRET_KEY',
 ];
 
+const oneOf = (allowed) => (value) => allowed.includes(value);
+const integer = (min, max) => (value) =>
+  /^[1-9][0-9]{0,5}$/.test(value) &&
+  Number(value) >= min &&
+  Number(value) <= max;
+const instant = (value) =>
+  typeof value === 'string' &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(value) &&
+  !Number.isNaN(Date.parse(value)) &&
+  new Date(Date.parse(value)).toISOString().slice(0, 10) === value.slice(0, 10);
+const exactKeys = (record, required, optional = []) =>
+  record !== null &&
+  typeof record === 'object' &&
+  !Array.isArray(record) &&
+  required.every((key) => key in record) &&
+  Object.keys(record).every(
+    (key) => required.includes(key) || optional.includes(key),
+  );
+const ordered = (first, second) => Date.parse(first) < Date.parse(second);
+const json = (check) => (value) => {
+  try {
+    return check(JSON.parse(value));
+  } catch {
+    return false;
+  }
+};
+const uuid =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const accessWindow = (window) =>
+  exactKeys(window, ['startsAt', 'expiresAt']) &&
+  instant(window.startsAt) &&
+  instant(window.expiresAt) &&
+  ordered(window.startsAt, window.expiresAt);
+const grant = (entry) =>
+  exactKeys(entry, ['userId', 'startsAt', 'expiresAt'], ['revokedAt']) &&
+  typeof entry.userId === 'string' &&
+  uuid.test(entry.userId) &&
+  instant(entry.startsAt) &&
+  instant(entry.expiresAt) &&
+  ordered(entry.startsAt, entry.expiresAt) &&
+  (entry.revokedAt === undefined ||
+    (instant(entry.revokedAt) &&
+      Date.parse(entry.revokedAt) >= Date.parse(entry.startsAt)));
+
+/**
+ * Values the function would refuse at boot. Each rule mirrors `readConfig()`
+ * in apps/api/src/config.ts, narrowed to staging where the release requires
+ * it: verify-full TLS to the pooler, production mode and managed Auth.
+ * apps/api/tests/scripts/staging-function-secrets.test.ts runs every rule
+ * against the real `readConfig()`, so the two cannot drift apart unseen.
+ */
+export const functionSecretRules = Object.freeze({
+  NODE_ENV: oneOf(['production']),
+  APP_ENVIRONMENT: oneOf(['staging']),
+  MANAGED_AUTH_ENABLED: oneOf(['true']),
+  DATABASE_SSL: oneOf(['verify-full']),
+  LOG_LEVEL: oneOf(['silent', 'error', 'warn', 'info', 'debug']),
+  API_SENTRY_ENABLED: oneOf(['true', 'false']),
+  // The bundle supplies the release, so only the DSN is checked here.
+  API_SENTRY_DSN: (value, values) =>
+    values.API_SENTRY_ENABLED !== 'true' ||
+    /^https:\/\/[a-f0-9]{32}@o[1-9][0-9]{0,19}\.ingest\.us\.sentry\.io\/[1-9][0-9]{0,19}$/.test(
+      value,
+    ),
+  IDENTITY_SESSION_HOURS: integer(1, 720),
+  IDENTITY_TRANSFER_MINUTES: integer(1, 30),
+  IDENTITY_RECOVERY_RATE_LIMIT: integer(1, 100),
+  ACTIVITY_WRITE_RATE_LIMIT: integer(1, 10000),
+  ACCOUNT_EXPORT_RATE_LIMIT: integer(1, 10000),
+  BETA_ACCESS_WINDOW: json((window) => window === null || accessWindow(window)),
+  BETA_ACCESS_GRANTS: json(
+    (grants) =>
+      Array.isArray(grants) &&
+      grants.length <= 100 &&
+      grants.every(grant) &&
+      new Set(grants.map((entry) => entry.userId)).size === grants.length,
+  ),
+});
+
+/** The failure code that names a refused field, never its value. */
+export function functionSecretFailure(name) {
+  return `STAGING_SUPABASE_SECRET_${name}_INVALID`;
+}
+
 /** Read the public target and the CLI token's presence, never its value. */
 export function supabaseTarget(env) {
   requireRelease(
@@ -324,15 +408,22 @@ export function functionSecrets(text) {
           (name === 'DATABASE_CA_CERT' || !/[\r\n]/.test(values[name])),
       ) &&
       requiredSecretNames.every((name) => names.includes(name)) &&
-      values.APP_ENVIRONMENT === 'staging' &&
-      values.NODE_ENV === 'production' &&
-      values.MANAGED_AUTH_ENABLED === 'true' &&
       poolerUrl(values.DATABASE_URL) &&
       values.DATABASE_CA_CERT.includes('-----BEGIN CERTIFICATE-----') &&
       values.JUSTGO_AUTH_SECRET_KEY.length >= 32 &&
       values.IDENTITY_RATE_LIMIT_KEY.length >= 32,
     'STAGING_SUPABASE_SECRETS_REJECTED',
   );
+  for (const [name, accepts] of Object.entries(functionSecretRules))
+    requireRelease(
+      !(name in values) || accepts(values[name], values),
+      functionSecretFailure(name),
+    );
+  if (values.API_SENTRY_ENABLED === 'true')
+    requireRelease(
+      'API_SENTRY_DSN' in values,
+      functionSecretFailure('API_SENTRY_DSN'),
+    );
   return { values, names };
 }
 
