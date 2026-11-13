@@ -2,7 +2,7 @@
 
 # Phase 15A plan to move the database and API to Supabase us-east-1
 
-**Status.** Planned on November 13, 2026. Nothing in this plan has run. It waits for Anthony's review of the plan and the [open decisions](#open-decisions), then for his go on each hosted step. It changes no provider, secret, build or database by itself.
+**Status.** Planned on November 13, 2026. Nothing in this plan has run. Anthony settled its [decisions](#decisions) on November 13. Each hosted step still waits for his go. It changes no provider, secret, build or database by itself.
 
 This plan moves JustGO's Supabase database, Auth and the `api` Edge Function from project `kmcpcauaxlgpevkkenwd` in Canada Central (`ca-central-1`) to a new Supabase project in us-east-1 (North Virginia). The new project becomes the one the app uses. The Canada project stays until the app works on the new one, then Anthony deletes it.
 
@@ -29,7 +29,7 @@ Supabase runs a function in the region closest to the caller unless the request 
 | Database, Auth and `api` function | Project `kmcpcauaxlgpevkkenwd`, `ca-central-1`, pooler `aws-0-ca-central-1.pooler.supabase.com`       | A new free project in `us-east-1`. Its pooler host is the one its dashboard shows. |
 | Release lane                      | `.github/workflows/staging-api.yml`, environment `justgo-staging`, pinned to the Canada ref           | The same lane and environment, pinned to the new ref                               |
 | `APP_ENVIRONMENT`                 | `staging`                                                                                             | `staging`, until #106 introduces production                                        |
-| Backups                           | R2 bucket `justgo-staging-backups`, prefixes `staging/database/` and `staging/ledger/`, source Canada | Same bucket and prefixes, source the new project ([decision 3](#open-decisions))   |
+| Backups                           | R2 bucket `justgo-staging-backups`, prefixes `staging/database/` and `staging/ledger/`, source Canada | Same bucket and prefixes, source the new project ([decision 3](#decisions))        |
 | Readiness monitor                 | Sentry monitor 10773615 on the Canada `/ready`                                                        | The same monitor on the new `/ready`                                               |
 | TestFlight                        | Build 7, no region pin, Canada URL                                                                    | Build 8, `x-region: us-east-1`, new URL                                            |
 | Legal notices                     | Database in Canada Central                                                                            | Database and server in the United States, with a U.S. storage disclosure           |
@@ -55,7 +55,7 @@ A separate test project can come later as a second target with its own ref, GitH
 - The new project creates new Auth users, so Anthony's account gets a new id on first sign-in. Data owned by the old account on the phone may not adopt into the new account by itself. The export ZIP and Settings import avoid that question. Import runs through `ActivityRuntime.importData()` and uploads through `/v1/completion-restores`.
 - Canada's final backup at [US-6](#us-6) keeps the old server copy until its R2 retention ends.
 
-The alternative is a `pg_dump` of the `justgo` schemas into the new project after migrations. It is listed as [decision 7](#open-decisions).
+The alternative is a `pg_dump` of the `justgo` schemas into the new project after migrations. It is listed as [decision 7](#decisions).
 
 ## How to read this
 
@@ -76,8 +76,8 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 **Who.** Agent checks. Anthony confirms the dashboard facts.
 
 - [ ] Gate #476 is closed with a passing first scheduled nightly backup from November 14 at 04:43 UTC. Check `gh issue view 476`.
-- [ ] Issue #474, the R2 credential renewal due by November 20 at 15:39 UTC, is done or scheduled. It happens whatever this move does. The renewal is independent of the move if [decision 3](#open-decisions) keeps the bucket and prefixes, because the uploader is scoped to those.
-- [ ] Anthony pauses content-machine, as he approved ([decision 2](#open-decisions)). Then the Supabase organization's project list shows JustGo in Canada as the only active free project. The free plan allows two. If another active free project has appeared, Anthony pauses it or decides otherwise before US-2.
+- [ ] Issue #474, the R2 credential renewal due by November 20 at 15:39 UTC, is done or scheduled. It happens whatever this move does. The renewal is independent of the move if [decision 3](#decisions) keeps the bucket and prefixes, because the uploader is scoped to those.
+- [ ] Anthony pauses content-machine, as he approved ([decision 2](#decisions)). Then the Supabase organization's project list shows JustGo in Canada as the only active free project. The free plan allows two. If another active free project has appeared, Anthony pauses it or decides otherwise before US-2.
 - [ ] `apps/api/tests/db/fixtures/applied-migration-hashes.json` on `main` lists 26 applied migrations, 0000 to 0025, and an empty `unapplied`. Check `git show origin/main:apps/api/tests/db/fixtures/applied-migration-hashes.json`.
 - [ ] No open PR adds a migration. Check `gh pr list --search 'drizzle in:files'` and read the file lists.
 - [ ] PR A (first-release path) has merged. See [PR split](#pr-split).
@@ -91,7 +91,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Who.** Anthony.
 
-- [ ] Create a new project in the existing organization, on the free plan, region **East US (North Virginia)**, named as [decision 1](#open-decisions) says.
+- [ ] Create a new project in the existing organization, on the free plan, region **East US (North Virginia)**, named as [decision 1](#decisions) says.
 - [ ] Generate the database password in the dashboard and store it where the Canada one is kept. It never goes into chat, an issue or a file in the repository.
 - [ ] Turn off the Data API's exposure of everything but what [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md#keep-private-tables-off-the-data-api) allows, before any schema exists.
 - [ ] Give the agent the new project ref, the session pooler host and the transaction pooler host from the dashboard's Connect panel. None of these is a secret.
@@ -116,7 +116,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 - [ ] Anthony sets the `justgo_migrator` and `justgo_runtime` passwords with a secure prompt, as [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) describes for Canada.
 - [ ] PR B merges. It repins the release lane and guard to the new ref and pooler host. Canada releases stop from this point, which the freeze already covers.
 - [ ] Anthony updates the `justgo-staging` environment. Set the variable `SUPABASE_PROJECT_REF` to the new ref. Replace `MIGRATION_DATABASE_URL` with the session pooler on port 5432 as `justgo_migrator.<new-ref>`. Keep or replace `DATABASE_CA_CERT` after checking that the new pooler presents a chain it signs.
-- [ ] Anthony approves a test-data waiver for the first migration, bound to the new project and the empty history ([decision 8](#open-decisions)). The new database holds no data, so a recovery attestation has nothing to prove.
+- [ ] Anthony approves a test-data waiver for the first migration, bound to the new project and the empty history ([decision 8](#decisions)). The new database holds no data, so a recovery attestation has nothing to prove.
 - [ ] Anthony dispatches the first-release migration through PR A's path. It applies 0000 to 0025 as `justgo_migrator` and deploys nothing yet.
 - [ ] Anthony runs `apps/api/scripts/managed-auth/session-check-v1.sql` as `postgres` after the migrations, as [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) describes.
 - [ ] Anthony runs `scripts/backups/backup-role.sql` as `postgres` and sets the `justgo_backup` password.
@@ -259,10 +259,10 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 - [ ] PR E rewrites the region paragraph of [PRIVACY_POLICY_DRAFT.md](../legal/PRIVACY_POLICY_DRAFT.md). It replaces "Our primary database remains in Canada Central" and #479's Canada sentence with one that says the database and the server run in the United States, in Supabase's us-east-1 region in Virginia.
 - [ ] It adds the U.S. storage disclosure. Canadian federal privacy law expects a business that stores personal information abroad to tell users so, and to say the information may be accessed by that country's courts, law enforcement and national security authorities under its laws. The existing sentence on foreign lawful access stays and names the United States.
-- [ ] It adds a short Quebec Law 25 transfer assessment as `docs/legal/US_TRANSFER_ASSESSMENT.md` (planned). Quebec's private-sector act requires an assessment before personal information leaves Quebec. It weighs the information's sensitivity, the purpose, the safeguards, including the provider's written terms, and the destination's legal framework. It must conclude that the information gets adequate protection. Journal text is sensitive, so the assessment names the safeguards that apply, such as RLS, `justgo_runtime`-only grants, TLS `verify-full`, encrypted R2 backups and no analytics.
 - [ ] It updates [DATA_INVENTORY.md](../legal/DATA_INVENTORY.md), [RELEASE_DISCLOSURES.md](../legal/RELEASE_DISCLOSURES.md) and [SUPABASE_NOTICE_REVIEW.md](../legal/SUPABASE_NOTICE_REVIEW.md) wherever they name Canada Central or `ca-central-1` as the database region. The operator's Ontario address stays.
 - [ ] It records Anthony's approval in [APPROVALS.md](../legal/APPROVALS.md) and a new notice version, such as `2026-11-<dd>-us-east`.
-- [ ] It notes that a lawyer should review the cross-border wording and the assessment before the paid launch.
+- [ ] It notes that a lawyer should review the cross-border wording before the paid launch.
+- [ ] It adds no Quebec-specific text or transfer assessment ([decision 6](#decisions)).
 - [ ] Anthony publishes the pages only together with build 8, never earlier while build 7 still points at Canada. The published notice version becomes `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which PR D sets.
 
 **Check.**
@@ -285,7 +285,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 - [ ] Anthony confirms the app works on the new project and gives an explicit go to delete Canada. Approval of this plan does not count.
 - [ ] Anthony expires build 7 in App Store Connect, so no installed build points at Canada.
 - [ ] Anthony reads in the Canada SQL editor that no completion or journal row is newer than the final US-6 backup. If one is, it is test data that build 8 already holds, or Anthony runs one more manual export before deleting.
-- [ ] Anthony decides how long to keep Canada's final backup ([decision 9](#open-decisions)). R2 retention removes it after the policy's `backupDays` unless he keeps a copy.
+- [ ] Anthony decides how long to keep Canada's final backup ([decision 9](#decisions)). R2 retention removes it after the policy's `backupDays` unless he keeps a copy.
 - [ ] Anthony removes the Canada callback from the Google web client.
 - [ ] Anthony deletes the Canada project in the Supabase dashboard. This frees the second free slot.
 - [ ] PR F records the retirement in this plan and in the runbooks, and closes the plan.
@@ -324,7 +324,7 @@ Each PR is small and lands on its own, from `main`, with one verifier. None is s
 
 Each code PR runs the checks its row in [AGENTS.md](../../AGENTS.md#choosing-checks) names. Each PR updates every test that pins the old ref, such as `scripts/release/staging-supabase.test.mjs`, `scripts/release/check-beta.test.mjs`, the backup tests, `scripts/quality/staging-health-workflow.test.mjs`, `scripts/quality/testflight-workflow.test.mjs`, `apps/api/tests/http/edge.test.ts`, `apps/api/tests/scripts/staging-release.test.ts` and `apps/api/tests/scripts/staging-function-secrets.test.ts`. Run `git grep -n kmcpcauaxlgpevkkenwd` before opening each PR, and account for every hit.
 
-PR #479 adds the region pin with `ca-central-1` and a Canada Privacy sentence. That sentence would never be true for a published build after this move. [Decision 5](#open-decisions) asks whether to close #479 and carry its code into PR D.
+PR #479 adds the region pin with `ca-central-1` and a Canada Privacy sentence. That sentence would never be true for a published build after this move. [Decision 5](#decisions) closes #479 and carries its code into PR D.
 
 ## Order
 
@@ -341,20 +341,20 @@ This plan sits before the external free beta in the [release order](README.md#re
 
 <a id="open-decisions"></a>
 
-## Open decisions
+## Decisions
 
-Anthony decides each one. The recommendation comes first.
+Anthony settled these on November 13, 2026. For the recommended choices he answered "for the other decisions i agree".
 
-1. **Dashboard name.** Recommend "JustGo US". The ref, not the name, selects the project.
-2. **A third free project.** Decided: Anthony pauses content-machine at US-1 ("Yes, pause it then"). Any other active free project found then is paused before US-2 too.
-3. **Backups bucket.** Recommend keeping `justgo-staging-backups` and the `staging/` prefixes, with a new policy that names the new source. The #474 renewal then carries over unchanged. The other choice is a new `justgo-production-backups` bucket with `environment: "production"` now, which needs new R2 credentials, a new lock and lifecycle, and a code change to the cron exception. #106 can make that split with the rest of the production naming.
-4. **Supabase Pro.** Recommend approving Pro before the first outside tester stores a real journal, because a free project can pause and has no automatic backups. Until then the free plan stays, as Anthony chose.
-5. **PR #479.** Recommend closing it and carrying its code and tests into PR D with `us-east-1`.
-6. **Legal wording.** Approve the Privacy paragraph, the U.S. storage disclosure and the Quebec assessment. Decide when a lawyer reviews them, at the latest before the paid launch.
-7. **Data.** Recommend starting empty and carrying the phone data with export and import. The other choice is a `pg_dump` of the `justgo` schemas into the new project.
-8. **First-migration waiver.** Approve one test-data waiver bound to the new ref and the empty history. It is not a recovery attestation and binds to one plan and one day.
-9. **Canada's final backup.** Recommend letting R2 retention remove it. Keep a copy on the Mac only if Anthony wants the old test history.
-10. **Naming.** Recommend keeping every "staging" name until #106, as [Naming and selection](#naming-and-selection) explains.
+1. **Dashboard name.** "JustGo US". The ref, not the name, selects the project.
+2. **A third free project.** Anthony pauses content-machine at US-1 ("Yes, pause it then"). Any other active free project found then is paused before US-2 too.
+3. **Backups bucket.** Keep `justgo-staging-backups` and the `staging/` prefixes, with a new policy that names the new source. The #474 renewal then carries over unchanged. #106 can split out a `justgo-production-backups` bucket with the rest of the production naming.
+4. **Supabase Pro.** Upgrade to Pro before the first outside tester stores a real journal, because a free project can pause and has no automatic backups. Until then the free plan stays, as Anthony chose.
+5. **PR #479.** Closed. Its code and tests carry into PR D with `us-east-1`.
+6. **Legal wording.** PR E drafts the U.S. Privacy paragraph and the U.S. storage disclosure, and Anthony approves the final text before publication. A lawyer reviews the cross-border wording before the paid launch at the latest. No Quebec text or Quebec transfer assessment: "we are not going to mention quebec".
+7. **Data.** Start empty and carry the phone data with export and import.
+8. **First-migration waiver.** Approved in principle: one test-data waiver bound to the new ref and the empty history. It is not a recovery attestation and binds to one plan and one day, recorded when US-3 runs.
+9. **Canada's final backup.** R2 retention removes it. No copy is kept on the Mac.
+10. **Naming.** Keep every "staging" name until #106, as [Naming and selection](#naming-and-selection) explains.
 
 ## Risks
 
