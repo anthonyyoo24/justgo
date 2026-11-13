@@ -198,13 +198,13 @@ checks its fields and the 24-hour freshness window. Never create placeholder
 approval values or infer its booleans from a successful upload.
 
 While staging holds only test data, Anthony may approve a test-data waiver in
-place of that recovery proof (2026-11-12, because backups are paused). The
+place of that recovery proof (2026-11-12, while backups were paused). The
 secret then holds `kind: "test-data-waiver"`, `version`, `project`,
 `sourceSha`, `previousApiSha`, `historyDigest`, `planDigest`,
 `testDataOnly: true`, `ownerApprovedAt` and an `expiresAt` at most 24 hours
 after it. The guard binds it to that one plan. A waiver proves no recovery and
 leaves gate #98 open. Retire this path, in code and here, before outside
-testers store real journals, when backups resume.
+testers store real journals. Backups resumed on 2026-11-13.
 
 Encrypted R2 database and ledger receipts and the isolated restore in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation

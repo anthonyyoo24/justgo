@@ -4,16 +4,23 @@ Moving the API to Supabase Edge Functions does not change these backups. The API
 Worker and its Hyperdrive configuration were deleted on November 13, 2026. Keep
 R2, the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`.
 
-Backups are paused. On November 6, 2026, Anthony set the repository variable
-`JUSTGO_BACKUPS_ENABLED` to `paused`, because staging holds only test data. The
-`backup` job in `database-backups.yml` now skips on every schedule and every
-clock dispatch. The last copy, ledger run
+Backups resumed on November 13, 2026. They had been paused since November 6,
+when Anthony set the repository variable `JUSTGO_BACKUPS_ENABLED` to `paused`
+because staging held only test data. The last copy before the pause, ledger run
 [42287912720](https://github.com/anthonyyoo24/justgo/actions/runs/42287912720),
-passed at 20:23 UTC that day. Before outside testers store real journals, renew
-the R2 credentials and the clock token, and set the variable back to `approved`.
-Then confirm that one nightly and one hourly run succeed, and record the new
-expiry dates in [Credential dates](#credential-dates) and on
-[#77](https://github.com/anthonyyoo24/justgo/issues/77).
+passed at 20:23 UTC on November 6. On November 13 the R2 parent, uploader and
+inspector were renewed, the variable went back to `approved` at 16:56 UTC, and
+database run
+[43467724155](https://github.com/anthonyyoo24/justgo/actions/runs/43467724155)
+and ledger run
+[43467743601](https://github.com/anthonyyoo24/justgo/actions/runs/43467743601)
+passed. The clock token was renewed at 17:05 UTC, and the clock's 17:23 UTC
+dispatch, ledger run [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285),
+passed. The first clock-dispatched nightly database run is due at 04:43 UTC on
+November 14, and gate [#476](https://github.com/anthonyyoo24/justgo/issues/476)
+tracks it.
+[Credential dates](#credential-dates) and
+[#77](https://github.com/anthonyyoo24/justgo/issues/77) hold the new expiry dates.
 
 Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony
 approved creating the empty private `justgo-staging-backups` bucket. Its creation
@@ -141,32 +148,43 @@ database run
 [41579744704](https://github.com/anthonyyoo24/justgo/actions/runs/41579744704)
 at 04:43 UTC on November 3, and that run passed. Every dispatched run passed until
 the November 6 pause. The ledger slot at 23:23 UTC on November 5 has no run,
-and its cause is unknown. Since the pause, the clock still dispatches, and the
-`backup` job skips. The [Phase 15 rollout review](../checks/phase-15-rollout-review.md)
+and its cause is unknown. During the pause, the clock kept dispatching, and the
+`backup` job skipped. The [Phase 15 rollout review](../checks/phase-15-rollout-review.md)
 records the activation evidence.
+
+On November 13, 2026, the clock got a new GitHub token, limited to this
+repository with Actions read and write, and a new expiry value. Deployed version
+`5a4182f5-74ba-47fd-97bf-5f5a8a9194ce` replaced `8dcf5dc4-5fc2-413c-aaa6-9b16f4a04b6a`
+at 17:05 UTC, from main at `176104a5`, whose clock source differs from the
+first deploy only in a comment. Its schedules and three bindings read back
+unchanged apart from the expiry.
 
 ## Credential dates
 
-The November 3, 2026 renewal replaced the R2 upload and inspector secrets in the
-`database-backups` environment at 00:09 UTC, as
-[#77](https://github.com/anthonyyoo24/justgo/issues/77) records. Copies kept
-passing after the old uploader, parent and inspector expiry times on November 5,
-so the runner used renewed credentials. No record holds the new expiry dates, and
-the run logs do not print them.
+The November 13, 2026 renewal replaced the R2 parent, the derived uploader, the
+inspector and the clock's GitHub token, with unchanged scopes. Each R2 credential
+lasts seven days, the longest the uploader allows.
 
-| Credential                       | Recorded expiry or cutoff                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Derived uploader, `R2_UPLOAD_*`  | Unknown. Issue #77 reports November 9, 2026, from another tool, and nobody has checked it in Cloudflare. |
-| Inspector, `R2_INSPECT_TOKEN`    | Unknown.                                                                                                 |
-| R2 parent, kept local outside CI | Unknown.                                                                                                 |
-| Clock GitHub token               | It stops passing the clock's expiry check at 23:40 UTC on November 29, 2026, per the rollout review.     |
+| Credential                                      | Expires (UTC)         | Guard cutoff (UTC)    |
+| ----------------------------------------------- | --------------------- | --------------------- |
+| Derived uploader, `R2_UPLOAD_*`                 | November 20, 15:59:58 | November 20, 15:39:58 |
+| Inspector, `R2_INSPECT_TOKEN`                   | November 20, 16:53:36 | None                  |
+| R2 parent, kept local outside CI                | November 20, 16:52:21 | None                  |
+| Clock GitHub token, `BACKUP_CLOCK_GITHUB_TOKEN` | December 13, 16:58:59 | December 12, 23:40:00 |
 
-The runner rejects an uploader credential with less than 20 minutes left, and the
-clock applies the same margin to its token. The rollout review's renewal proposal
-named November 9 expiries for the parent, the uploader and the inspector. No
-record shows that the renewal used those dates. While backups are paused, none of
-these credentials needs renewal. Renew all four before you set
-`JUSTGO_BACKUPS_ENABLED` back to `approved`.
+Renew the three R2 credentials before the uploader's cutoff, 10:39 a.m. Toronto
+on November 20, 2026. Gate [#474](https://github.com/anthonyyoo24/justgo/issues/474)
+tracks it. The parent mints the uploader, so renew it first. The
+runner rejects an uploader credential with less than 20 minutes left. The clock
+stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its deployed
+configuration, which is `2026-12-13T00:00:00Z`, so the clock token's last
+dispatch falls before 23:40 UTC on December 12.
+
+Before November 13, no record held the expiry dates of the November 3 renewal,
+and backups were paused while they lapsed. On November 13 the variable went back
+to `approved` after the R2 credentials were renewed and before the clock token
+was. The old clock token was still valid until November 29, so no dispatch
+failed.
 
 ## Recovery decision and remaining proposals
 
