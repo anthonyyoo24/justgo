@@ -35,11 +35,13 @@ stay on Vercel until Anthony moves them.
   holds the P15-2 and P15-9 receipts.
 - **Region.** The database sits in Canada Central (`ca-central-1`). Edge Functions
   [run in the region closest to the caller](https://supabase.com/docs/guides/functions/regional-invocation)
-  unless a request pins one. On [#449](https://github.com/anthonyyoo24/justgo/issues/449)
-  Anthony decided to pin `ca-central-1` later, in a separate mobile change and
-  build. Build 7 sends no pin, so the published region sentence is accurate. Once
-  a pinned build ships, the region sentence can say so, but network, support and
-  recovery processing still reach outside Canada, so the placement sentence stays.
+  unless a request pins one. On [#449](https://github.com/anthonyyoo24/justgo/issues/449),
+  where Anthony delegated the pick, the decision is to pin `ca-central-1` later,
+  in a separate mobile change and build. Build 7 sends no pin, so the published
+  region sentence is accurate. The pin change carries a one-sentence notice
+  update, which Anthony approves and which is published before the pinned build
+  reaches testers. Network, support and recovery processing still reach outside
+  Canada, so the placement sentence stays.
 - **Network.** The gateway passes `cf-connecting-ip` (P15-2 lane 4), which indicates that Supabase's
   edge network runs behind Cloudflare. That is Supabase's arrangement, covered by the
   existing sentence on hosting and network providers. It is separate from
