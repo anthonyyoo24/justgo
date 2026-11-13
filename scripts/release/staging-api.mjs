@@ -29,10 +29,26 @@ const failureCodes = new Set([
   'STAGING_SOURCE_NOT_TAGGED',
   'INVALID_RELEASE_SOURCE',
   'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
-  'STAGING_SUPABASE_FUNCTION_MISSING',
   'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
   'STAGING_SUPABASE_SECRETS_REJECTED',
   'STAGING_SUPABASE_SECRETS_UNCONFIRMED',
+  // One per rule in functionSecretRules, so a refusal names its field.
+  ...[
+    'NODE_ENV',
+    'APP_ENVIRONMENT',
+    'MANAGED_AUTH_ENABLED',
+    'DATABASE_SSL',
+    'LOG_LEVEL',
+    'API_SENTRY_ENABLED',
+    'API_SENTRY_DSN',
+    'IDENTITY_SESSION_HOURS',
+    'IDENTITY_TRANSFER_MINUTES',
+    'IDENTITY_RECOVERY_RATE_LIMIT',
+    'ACTIVITY_WRITE_RATE_LIMIT',
+    'ACCOUNT_EXPORT_RATE_LIMIT',
+    'BETA_ACCESS_WINDOW',
+    'BETA_ACCESS_GRANTS',
+  ].map((name) => `STAGING_SUPABASE_SECRET_${name}_INVALID`),
 ]);
 const trustedFailures = new WeakMap();
 
@@ -52,6 +68,11 @@ export function stagingRunnerFailureCode(error) {
 export function requireRelease(condition, code) {
   if (!condition) throw new StagingRunnerFailure(code);
 }
+/**
+ * `previousApiSha` when the project has no `api` function yet. The database
+ * guard accepts it only while the applied migration history is empty.
+ */
+export const noPreviousApi = 'none';
 export function isSourceSha(value) {
   return (
     typeof value === 'string' &&

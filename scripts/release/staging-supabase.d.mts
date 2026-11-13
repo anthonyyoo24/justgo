@@ -1,7 +1,4 @@
-export type ServingState = {
-  sha: string;
-  version?: number;
-};
+export type ServingState = { sha: string; version: number } | { sha: 'none' };
 export type SupabaseReleaseReceipt = {
   event: 'staging_supabase_release';
   status: 'deployed' | 'unchanged';
@@ -23,3 +20,13 @@ export function supabaseLane(options?: {
     beforeServing: () => Promise<void>;
   }): Promise<SupabaseReleaseReceipt>;
 };
+export const functionSecretNames: readonly string[];
+export const functionSecretRules: Readonly<
+  Record<string, (value: string, values: Record<string, string>) => boolean>
+>;
+export function functionSecretFailure(name: string): string;
+export function functionSecrets(text: string | undefined): {
+  values: Record<string, string>;
+  names: string[];
+};
+export function envFileText(values: Record<string, string>): string;

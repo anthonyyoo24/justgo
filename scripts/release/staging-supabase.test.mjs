@@ -237,11 +237,59 @@ test('a rollback is the same lane on the previous tag', async () => {
   assert.equal(world.state.functions.api.sha, older);
 });
 
-test('with no serving function the lane cannot name the previous API', async () => {
+test('with no serving function the lane names no previous API', async () => {
   const world = project({ functions: {} });
+  assert.deepEqual(await readServing({ cli: world.cli, probe: world.probe }), {
+    sha: 'none',
+  });
+});
+
+test('a first release deploys the candidate, then creates api, and its receipt names no previous function', async () => {
+  const world = project({ functions: {} });
+  const receipt = await release(world, newer);
+  assert.deepEqual(world.events, [
+    'build',
+    'deploy api-candidate',
+    'lease',
+    'deploy api',
+  ]);
+  assert.deepEqual(receipt, {
+    event: 'staging_supabase_release',
+    project: stagingProjectRef,
+    sourceSha: newer,
+    previousApiSha: 'none',
+    status: 'deployed',
+    uploadSha256: 'd'.repeat(64),
+    bytes: 2_200_000,
+    candidateVersion: 1,
+    servingVersion: 1,
+  });
+  assert.deepEqual(world.state.functions.api, { version: 1, sha: newer });
+});
+
+test('a first release whose candidate fails its probes creates no api', async () => {
+  const world = project({ functions: {}, broken: new Set([newer]) });
+  await rejectsWith(release(world, newer), 'STAGING_READINESS_FAILED');
+  assert.deepEqual(world.events, ['build', 'deploy api-candidate']);
+  assert.equal(world.state.functions.api, undefined);
+});
+
+test('an existing api that cannot name its source refuses instead of reading as none', async () => {
+  const world = project({ functions: { api: { version: 3, sha: older } } });
+  world.probe = async () => ({
+    ...response(older, '/health'),
+    status: 503,
+  });
   await rejectsWith(
     readServing({ cli: world.cli, probe: world.probe }),
-    'STAGING_SUPABASE_FUNCTION_MISSING',
+    'STAGING_HEALTH_FAILED',
+  );
+  world.cli.functions = async () => [
+    { slug: 'api', version: 3, status: 'INACTIVE', verify_jwt: false },
+  ];
+  await rejectsWith(
+    readServing({ cli: world.cli, probe: world.probe }),
+    'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
   );
 });
 
@@ -257,7 +305,8 @@ const secretValues = {
   IDENTITY_RATE_LIMIT_KEY: 'r'.repeat(32),
   JUSTGO_AUTH_PUBLISHABLE_KEY: 'sb_publishable_synthetic',
   JUSTGO_AUTH_SECRET_KEY: 's'.repeat(40),
-  BETA_ACCESS_WINDOW: '{"startsAt":"2026-11-01T00:00:00Z"}',
+  BETA_ACCESS_WINDOW:
+    '{"startsAt":"2026-11-01T00:00:00Z","expiresAt":"2026-12-01T00:00:00Z"}',
 };
 const secretText = envFileText(secretValues);
 
@@ -296,6 +345,93 @@ test('the env file keeps every value, the PEM lines included', () => {
   assert.deepEqual(parseEnv(secretText), secretValues);
 });
 
+// #447: fails on main until functionSecrets() checks these values.
+test('function secrets refuse a value the API config rejects', () => {
+  for (const [name, value] of [
+    ['DATABASE_SSL', 'true'],
+    ['API_SENTRY_ENABLED', 'yes'],
+    ['MANAGED_AUTH_ENABLED', '1'],
+    ['NODE_ENV', 'prod'],
+  ]) {
+    assert.throws(
+      () => functionSecrets(envFileText({ ...secretValues, [name]: value })),
+      undefined,
+      name,
+    );
+  }
+});
+
+test('a refused value fails with a code that names its field, not its value', () => {
+  const grant = (fields) =>
+    JSON.stringify([
+      {
+        userId: '6f1c2a7e-3b4d-4e5f-8a9b-0c1d2e3f4a5b',
+        startsAt: '2026-11-01T00:00:00Z',
+        expiresAt: '2026-12-01T00:00:00Z',
+        ...fields,
+      },
+    ]);
+  for (const [name, value, extra = {}] of [
+    ['APP_ENVIRONMENT', 'production'],
+    ['NODE_ENV', 'development'],
+    ['MANAGED_AUTH_ENABLED', 'false'],
+    ['DATABASE_SSL', 'disable'],
+    ['LOG_LEVEL', 'verbose'],
+    ['API_SENTRY_ENABLED', 'TRUE'],
+    [
+      'API_SENTRY_DSN',
+      'https://key@sentry.example/1',
+      { API_SENTRY_ENABLED: 'true' },
+    ],
+    ['IDENTITY_SESSION_HOURS', '721'],
+    ['IDENTITY_TRANSFER_MINUTES', '0'],
+    ['IDENTITY_RECOVERY_RATE_LIMIT', '1.5'],
+    ['ACTIVITY_WRITE_RATE_LIMIT', '10001'],
+    ['ACCOUNT_EXPORT_RATE_LIMIT', 'many'],
+    ['BETA_ACCESS_WINDOW', '{"startsAt":"2026-11-01T00:00:00Z"}'],
+    ['BETA_ACCESS_WINDOW', 'not json'],
+    ['BETA_ACCESS_GRANTS', grant({ userId: 'someone' })],
+    ['BETA_ACCESS_GRANTS', grant({ expiresAt: '2026-10-01T00:00:00Z' })],
+    ['BETA_ACCESS_GRANTS', grant({ startsAt: '2026-11-01T00:00:00+01:00' })],
+    ['BETA_ACCESS_GRANTS', grant({ note: 'extra' })],
+  ]) {
+    const values = { ...secretValues, ...extra, [name]: value };
+    assert.throws(
+      () => functionSecrets(envFileText(values)),
+      (error) =>
+        stagingRunnerFailureCode(error) ===
+          `STAGING_SUPABASE_SECRET_${name}_INVALID` &&
+        !error.message.includes(value),
+      `${name}=${value}`,
+    );
+  }
+  // Enabling Sentry without a DSN names the missing DSN.
+  assert.throws(
+    () =>
+      functionSecrets(
+        envFileText({ ...secretValues, API_SENTRY_ENABLED: 'true' }),
+      ),
+    (error) =>
+      stagingRunnerFailureCode(error) ===
+      'STAGING_SUPABASE_SECRET_API_SENTRY_DSN_INVALID',
+  );
+  for (const change of [
+    { LOG_LEVEL: 'warn', API_SENTRY_ENABLED: 'false', API_SENTRY_DSN: 'x' },
+    {
+      API_SENTRY_ENABLED: 'true',
+      API_SENTRY_DSN: `https://${'a'.repeat(32)}@o1.ingest.us.sentry.io/2`,
+    },
+    {
+      IDENTITY_SESSION_HOURS: '720',
+      IDENTITY_TRANSFER_MINUTES: '1',
+      ACCOUNT_EXPORT_RATE_LIMIT: '10000',
+    },
+    { BETA_ACCESS_WINDOW: 'null', BETA_ACCESS_GRANTS: '[]' },
+    { BETA_ACCESS_GRANTS: grant({ revokedAt: '2026-11-02T00:00:00.123Z' }) },
+  ])
+    functionSecrets(envFileText({ ...secretValues, ...change }));
+});
+
 test('secrets refuse names the platform or the bundle owns, and a database URL outside the pooler', async () => {
   for (const extra of [
     'SUPABASE_URL=https://other.supabase.co',
@@ -316,7 +452,6 @@ test('secrets refuse names the platform or the bundle owns, and a database URL o
         'postgres',
       ),
     },
-    { APP_ENVIRONMENT: 'production' },
     { JUSTGO_AUTH_SECRET_KEY: 'short' },
     { IDENTITY_RATE_LIMIT_KEY: 'x\ny'.repeat(20) },
   ])

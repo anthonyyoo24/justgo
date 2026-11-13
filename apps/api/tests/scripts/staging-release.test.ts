@@ -123,6 +123,69 @@ describe('staging migration target and recovery fences', () => {
       migrationPlan(entries, applied, previous, sha).digest,
     );
   });
+  it('binds a first release to the none marker only while the applied history is empty', () => {
+    const first = migrationPlan(entries, [], sha, 'none');
+    expect(first.pending).toEqual(entries);
+    expect(first.digest).not.toBe(
+      migrationPlan(entries, [], sha, previous).digest,
+    );
+    expect(() => migrationPlan(entries, applied, sha, 'none')).toThrow(
+      expect.objectContaining({ reason: 'serving_function_missing' }),
+    );
+    expect(() =>
+      migrationPlan(
+        entries,
+        entries.map(({ when, hash }) => ({ created_at: when, hash })),
+        sha,
+        'none',
+      ),
+    ).toThrow(expect.objectContaining({ reason: 'serving_function_missing' }));
+    for (const marker of ['', 'NONE', 'None', ' none', 'none\n', 'null'])
+      expect(() => migrationPlan(entries, [], sha, marker)).toThrow(
+        expect.objectContaining({ reason: 'invalid_release_source' }),
+      );
+    expect(() => migrationPlan(entries, [], 'none', previous)).toThrow(
+      expect.objectContaining({ reason: 'invalid_release_source' }),
+    );
+  });
+  it('accepts a first-release waiver only when it names the none marker', () => {
+    const plan = migrationPlan(entries, [], sha, 'none');
+    const waiver = {
+      kind: 'test-data-waiver',
+      version: 1,
+      project: stagingProject,
+      sourceSha: sha,
+      previousApiSha: 'none',
+      historyDigest: plan.historyDigest,
+      planDigest: plan.digest,
+      testDataOnly: true,
+      ownerApprovedAt: new Date(now - 60_000).toISOString(),
+      expiresAt: new Date(now + 60_000).toISOString(),
+    };
+    expect(() =>
+      requireRecoveryAttestation(
+        JSON.stringify(waiver),
+        plan,
+        sha,
+        'none',
+        now,
+      ),
+    ).not.toThrow();
+    for (const previousApiSha of [previous, undefined, null, ''])
+      expect(() =>
+        requireRecoveryAttestation(
+          JSON.stringify({ ...waiver, previousApiSha }),
+          plan,
+          sha,
+          'none',
+          now,
+        ),
+      ).toThrow(
+        expect.objectContaining({
+          reason: 'current_test_data_waiver_required',
+        }),
+      );
+  });
   it('requires explicit source/schema/plan/compatibility-bound current recovery proof; nothing defaults to approved', () => {
     const plan = migrationPlan(entries, applied, sha, previous);
     expect(() =>
@@ -253,6 +316,13 @@ describe('shared release lease and first Worker migration guard', () => {
               },
             ],
           };
+        if (query.includes('to_regclass'))
+          return {
+            rows:
+              failure === 'unreadable'
+                ? []
+                : [{ present: failure !== 'empty' }],
+          };
         if (query.startsWith('select hash'))
           return {
             rows:
@@ -273,7 +343,8 @@ describe('shared release lease and first Worker migration guard', () => {
       await withStagingBootstrap(f.client, config, async () => {
         expect(f.calls[0]).toContain('pg_try_advisory_lock');
         expect(f.calls[1]).toContain('from pg_roles');
-        expect(f.calls[2]).toContain('select hash');
+        expect(f.calls[2]).toContain('to_regclass');
+        expect(f.calls[3]).toContain('select hash');
         expect(
           f.calls.some((query) => query.includes('pg_advisory_unlock')),
         ).toBe(false);
@@ -298,6 +369,70 @@ describe('shared release lease and first Worker migration guard', () => {
       expect(
         f.calls.some((query) => /^(?:begin|insert|alter|create)/i.test(query)),
       ).toBe(false);
+    });
+  it('plans every migration for a first release into a project with no migrations table', async () => {
+    const f = fixture('empty');
+    const pending = await withStagingRelease(
+      f.client,
+      {
+        config,
+        operation: 'prepare',
+        sourceSha: sha,
+        previousApiSha: async () => 'none',
+        expectedDatabase: 'postgres',
+      },
+      async (plan) => plan.pending.map(({ tag }) => tag),
+    );
+    expect(pending).toEqual(migrationEntries(config).map(({ tag }) => tag));
+    expect(f.calls.some((query) => query.startsWith('select hash'))).toBe(
+      false,
+    );
+    expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
+  });
+  it('refuses a migrations table it cannot confirm absent rather than reading it as empty', async () => {
+    const f = fixture('unreadable');
+    let planned = false;
+    await expect(
+      withStagingRelease(
+        f.client,
+        {
+          config,
+          operation: 'prepare',
+          sourceSha: sha,
+          previousApiSha: async () => 'none',
+          expectedDatabase: 'postgres',
+        },
+        async () => {
+          planned = true;
+        },
+      ),
+    ).rejects.toMatchObject({ reason: 'applied_migration_history_unreadable' });
+    expect(planned).toBe(false);
+    expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
+  });
+  for (const failure of [undefined, 'pending'])
+    it(`refuses the none marker for a project with ${failure ?? 'current'} migration history and releases the lock`, async () => {
+      const f = fixture(failure);
+      let deployed = false;
+      for (const operation of ['deploy', 'migrate-deploy'] as const)
+        await expect(
+          withStagingRelease(
+            f.client,
+            {
+              config,
+              operation,
+              sourceSha: sha,
+              previousApiSha: async () => 'none',
+              expectedDatabase: 'postgres',
+              planDigest: operation === 'deploy' ? undefined : 'f'.repeat(64),
+            },
+            async () => {
+              deployed = true;
+            },
+          ),
+        ).rejects.toMatchObject({ reason: 'serving_function_missing' });
+      expect(deployed).toBe(false);
+      expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
     });
   it('releases the lock after failed work and preserves ordinary code-only release behavior', async () => {
     const f = fixture();

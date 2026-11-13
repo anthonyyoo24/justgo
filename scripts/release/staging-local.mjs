@@ -110,7 +110,9 @@ export async function dryRun(
       rmSync(directory, { recursive: true, force: true });
     }
     log(`would dispatch staging-api.yml with operation ${operation}`);
-    log('would read the serving /health as previousApiSha');
+    log(
+      'would read the serving /health as previousApiSha, or none when no api exists',
+    );
     log(
       operation === 'migrate-deploy'
         ? 'would hold the database lock and apply the reviewed migration plan'

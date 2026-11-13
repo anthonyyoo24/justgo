@@ -68,9 +68,12 @@ function receives.
 
 Inside the job, the lane:
 
-1. Reads the serving `/health` source SHA as `previousApiSha`, and refuses to
-   run when `api` does not exist. When `api` already serves the release SHA, it
-   stops with `unchanged`.
+1. Reads the serving `/health` source SHA as `previousApiSha`. When `api` does
+   not exist, `previousApiSha` is the fixed marker `none`, which the guard
+   accepts only for a project with no applied migrations, as
+   [First release](#first-release) describes. A listed `api` that cannot name
+   its source still fails the run. When `api` already serves the release SHA,
+   it stops with `unchanged`.
 2. Holds the database guard in `apps/api/scripts/staging-release-guard.ts`: the
    hosted target, restricted role, trusted TLS and a complete applied Drizzle
    history. One PostgreSQL session advisory lock stays held through the serving
@@ -98,7 +101,12 @@ The lane accepts only the runtime names in `functionSecretNames`, requires the
 staging and managed values, a transaction-pooler `DATABASE_URL` on port 6543 as
 `justgo_runtime.<ref>`, a PEM `DATABASE_CA_CERT` and long random keys. It refuses
 `SUPABASE_*`, `JUSTGO_SOURCE_SHA`, `API_SENTRY_RELEASE` and `PORT`, since the
-platform or the bundle sets those. It writes the file mode 0600 under
+platform or the bundle sets those. `functionSecretRules` refuses each value the
+API's `readConfig()` would refuse at boot, such as `DATABASE_SSL=true`, with a
+code that names the field and not the value, as in
+`STAGING_SUPABASE_SECRET_DATABASE_SSL_INVALID`.
+`apps/api/tests/scripts/staging-function-secrets.test.ts` runs the rules
+against the real `readConfig()`, so a rule that drifts looser fails it. It writes the file mode 0600 under
 `$RUNNER_TEMP`, removes it, confirms the names with `secrets list`, and probes
 `api` when it exists. The receipt holds names only. Never put secret values in
 process arguments, source, receipts or chat.
@@ -179,6 +187,33 @@ PostgreSQL truncates identifiers longer than 63 bytes, so give each long
 generated constraint or foreign-key name an explicit short name in the schema,
 the SQL and the snapshot.
 
+## First release
+
+A new project has no `api` function and no Drizzle journal. The lane then reads
+`previousApiSha` as `none`, and the guard reads the missing
+`drizzle.__drizzle_migrations` table as an empty history, so every migration is
+pending. The guard refuses `none` with `serving_function_missing` once any
+migration is applied, so the first release is one `migrate-deploy` that applies
+every migration and then creates `api`. There is no migrate-only run, and a
+second run cannot name a previous API. In this order:
+
+1. Provision the roles and passwords as [Staging database](#staging-database) describes.
+   Do not run `pnpm run db:migrate` against the project, because the lane
+   applies the migrations.
+2. Install the session-check helper from
+   [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges). It needs
+   only the `justgo_runtime` role, and the candidate's `/ready` probe needs it.
+3. Run the `secrets` operation, and set the `SUPABASE_*` function secrets the
+   lane refuses. With no `api` it probes nothing.
+4. Review the pending SQL, then dispatch `migrate-deploy` with the printed plan
+   digest. Its recovery attestation or test-data waiver names
+   `"previousApiSha": "none"`. The receipt names `previousApiSha` `none` and no
+   previous version.
+
+If that run fails after its migrations commit, the project holds migrations and
+no `api`, and the lane refuses every later run with `serving_function_missing`.
+Recovering it is operator work outside the lane, so bring it to Anthony.
+
 ## Pending migrations and recovery evidence
 
 Choose `migrate-deploy` only after you review the exact pending SQL and its printed
@@ -193,13 +228,13 @@ checks its fields and the 24-hour freshness window. Never create placeholder
 approval values or infer its booleans from a successful upload.
 
 While staging holds only test data, Anthony may approve a test-data waiver in
-place of that recovery proof (2026-11-12, because backups are paused). The
+place of that recovery proof (2026-11-12, while backups were paused). The
 secret then holds `kind: "test-data-waiver"`, `version`, `project`,
 `sourceSha`, `previousApiSha`, `historyDigest`, `planDigest`,
 `testDataOnly: true`, `ownerApprovedAt` and an `expiresAt` at most 24 hours
 after it. The guard binds it to that one plan. A waiver proves no recovery and
 leaves gate #98 open. Retire this path, in code and here, before outside
-testers store real journals, when backups resume.
+testers store real journals. Backups resumed on 2026-11-13.
 
 Encrypted R2 database and ledger receipts and the isolated restore in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation

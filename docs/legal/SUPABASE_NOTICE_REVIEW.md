@@ -1,14 +1,14 @@
-# Supabase notice — text approved, publication pending
+# Supabase notice — published November 13, 2026
 
 This review backs the Phase 15 Privacy Policy version
 `2026-11-13-supabase-edge`, in
 [PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md). The API moved from Vercel and
 a Cloudflare Worker to the Supabase Edge Function `api`
 ([Supabase plan](../implementation-plan/phase-15-supabase-api.md), P15-10).
-Anthony approved the text on November 13, 2026, and [APPROVALS.md](APPROVALS.md)
-records it. It is not published, and publication needs his separate go. The
-published Privacy Policy stays `2026-10-27-essential-errors`, which still names
-Vercel as the API host. Terms need no hosting change.
+Anthony approved the text and its publication on November 13, 2026, and
+[APPROVALS.md](APPROVALS.md) records both. It was published that day and replaced
+`2026-10-27-essential-errors`, which named Vercel as the API host. Terms need no
+hosting change.
 
 The earlier Cloudflare notice candidate (git history keeps it) named Cloudflare as
 the API, database-connection and legal-page host. Its R2 backup wording, which
@@ -35,10 +35,13 @@ stay on Vercel until Anthony moves them.
   holds the P15-2 and P15-9 receipts.
 - **Region.** The database sits in Canada Central (`ca-central-1`). Edge Functions
   [run in the region closest to the caller](https://supabase.com/docs/guides/functions/regional-invocation)
-  unless a request pins one. The pin is undecided until the hosted region lane
-  runs ([#449](https://github.com/anthonyyoo24/justgo/issues/449)). If Anthony pins
-  `ca-central-1`, the region sentence can say so, but network, support and
-  recovery processing still reach outside Canada, so the placement sentence stays.
+  unless a request pins one. On [#449](https://github.com/anthonyyoo24/justgo/issues/449),
+  where Anthony delegated the pick, the decision is to pin `ca-central-1` later,
+  in a separate mobile change and build. Build 7 sends no pin, so the published
+  region sentence is accurate. The pin change carries a one-sentence notice
+  update, which Anthony approves and which is published before the pinned build
+  reaches testers. Network, support and recovery processing still reach outside
+  Canada, so the placement sentence stays.
 - **Network.** The gateway passes `cf-connecting-ip` (P15-2 lane 4), which indicates that Supabase's
   edge network runs behind Cloudflare. That is Supabase's arrangement, covered by the
   existing sentence on hosting and network providers. It is separate from
@@ -67,10 +70,14 @@ The provider bullet keeps only the backup role from the approved Cloudflare
 bullet. The retention paragraphs are the October 30 text, word for word,
 including "Account users must sign in again after a service restore."
 
-- Backups are paused (`JUSTGO_BACKUPS_ENABLED=paused` since November 6, 2026).
-  Publish the backup paragraph only after they resume and one nightly and one
-  hourly run succeed ([#77](https://github.com/anthonyyoo24/justgo/issues/77)).
-  The [backup guide](../operations/CLOUDFLARE_BACKUPS.md) owns the schedule.
+- Backups were paused from November 6 to November 13, 2026. They resumed before
+  publication: database run
+  [43467724155](https://github.com/anthonyyoo24/justgo/actions/runs/43467724155)
+  and ledger run
+  [43467743601](https://github.com/anthonyyoo24/justgo/actions/runs/43467743601)
+  succeeded, and a separate read-only check matched each object's size, checksum
+  and seven-day expiry. The [backup guide](../operations/CLOUDFLARE_BACKUPS.md)
+  owns the schedule and credential dates.
 - Seven-day retention, protection and expiry were approved on October 30, and
   configuration readback and lock enforcement passed. Actual asynchronous expiry
   has not been observed.
@@ -89,21 +96,21 @@ alone does not make them Not Linked. The two unfinished Sentry diagnostic
 categories, Supabase consent and provider-copy questions, and native evidence
 remain Phase 14 work. No Apple answers change here.
 
-## Before publication
+## Publication
 
-- Anthony approved the text on November 13, 2026. The draft carries
-  `2026-11-13-supabase-edge`, effective 2026-11-13. If publication happens
-  later, set the version and effective date to the publication date first,
-  rather than backdating them.
-- Diagnostics beta builds need `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to
-  match the published version, so the beta preflight
-  (`scripts/release/check-beta.mjs`) refuses them until this version is
-  published and that value changes. Plain beta builds pass.
-- No outside tester joins while the published notice names Vercel as the API
-  host. Builds before 7 keep their embedded addresses, so retire them rather than
-  relying on a source change.
-- Backups resume as above before the backup paragraph goes public.
-- Publish by the [legal site guide](../../sites/legal/README.md#publishing-updates),
-  with Anthony's separate go, and verify both pages anonymously on a phone.
+- Published on November 13, 2026, the version's effective date, as Vercel
+  deployment `dpl_7Kgiug8ta2uaBvBwELzxf8dWbcdy` of project `justgo-legal`, by
+  the [legal site guide](../../sites/legal/README.md#publishing-updates). The
+  dry run and the upload held exactly the six allowed files.
+- Anonymous HTTPS reads of `/`, `/privacy/`, `/terms/`, the stylesheet and the
+  logo matched the production build byte for byte. The footer links resolve
+  from every page, and `/.env.local`, `/vercel.json` and the review-record path
+  return 404. At 375 pixels in the browser pane the logo loads and the page has
+  no horizontal scroll. Reading on the signed iPhone remains Phase 14 acceptance.
+- `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` in the `testflight-beta`
+  environment now holds `2026-11-13-supabase-edge`, so the beta preflight
+  (`scripts/release/check-beta.mjs`) accepts diagnostics builds against it.
+- Builds before 7 keep their embedded Vercel addresses, so retire them rather
+  than relying on a source change.
 - Operations watch Supabase's and Cloudflare's sub-processor notices, as each DPA
   provides.
