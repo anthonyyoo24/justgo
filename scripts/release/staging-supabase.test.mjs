@@ -237,11 +237,59 @@ test('a rollback is the same lane on the previous tag', async () => {
   assert.equal(world.state.functions.api.sha, older);
 });
 
-test('with no serving function the lane cannot name the previous API', async () => {
+test('with no serving function the lane names no previous API', async () => {
   const world = project({ functions: {} });
+  assert.deepEqual(await readServing({ cli: world.cli, probe: world.probe }), {
+    sha: 'none',
+  });
+});
+
+test('a first release deploys the candidate, then creates api, and its receipt names no previous function', async () => {
+  const world = project({ functions: {} });
+  const receipt = await release(world, newer);
+  assert.deepEqual(world.events, [
+    'build',
+    'deploy api-candidate',
+    'lease',
+    'deploy api',
+  ]);
+  assert.deepEqual(receipt, {
+    event: 'staging_supabase_release',
+    project: stagingProjectRef,
+    sourceSha: newer,
+    previousApiSha: 'none',
+    status: 'deployed',
+    uploadSha256: 'd'.repeat(64),
+    bytes: 2_200_000,
+    candidateVersion: 1,
+    servingVersion: 1,
+  });
+  assert.deepEqual(world.state.functions.api, { version: 1, sha: newer });
+});
+
+test('a first release whose candidate fails its probes creates no api', async () => {
+  const world = project({ functions: {}, broken: new Set([newer]) });
+  await rejectsWith(release(world, newer), 'STAGING_READINESS_FAILED');
+  assert.deepEqual(world.events, ['build', 'deploy api-candidate']);
+  assert.equal(world.state.functions.api, undefined);
+});
+
+test('an existing api that cannot name its source refuses instead of reading as none', async () => {
+  const world = project({ functions: { api: { version: 3, sha: older } } });
+  world.probe = async () => ({
+    ...response(older, '/health'),
+    status: 503,
+  });
   await rejectsWith(
     readServing({ cli: world.cli, probe: world.probe }),
-    'STAGING_SUPABASE_FUNCTION_MISSING',
+    'STAGING_HEALTH_FAILED',
+  );
+  world.cli.functions = async () => [
+    { slug: 'api', version: 3, status: 'INACTIVE', verify_jwt: false },
+  ];
+  await rejectsWith(
+    readServing({ cli: world.cli, probe: world.probe }),
+    'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
   );
 });
 

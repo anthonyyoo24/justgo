@@ -68,9 +68,12 @@ function receives.
 
 Inside the job, the lane:
 
-1. Reads the serving `/health` source SHA as `previousApiSha`, and refuses to
-   run when `api` does not exist. When `api` already serves the release SHA, it
-   stops with `unchanged`.
+1. Reads the serving `/health` source SHA as `previousApiSha`. When `api` does
+   not exist, `previousApiSha` is the fixed marker `none`, which the guard
+   accepts only for a project with no applied migrations, as
+   [First release](#first-release) describes. A listed `api` that cannot name
+   its source still fails the run. When `api` already serves the release SHA,
+   it stops with `unchanged`.
 2. Holds the database guard in `apps/api/scripts/staging-release-guard.ts`: the
    hosted target, restricted role, trusted TLS and a complete applied Drizzle
    history. One PostgreSQL session advisory lock stays held through the serving
@@ -183,6 +186,33 @@ Give each new owner-scoped table `USING` and `WITH CHECK` policies for
 PostgreSQL truncates identifiers longer than 63 bytes, so give each long
 generated constraint or foreign-key name an explicit short name in the schema,
 the SQL and the snapshot.
+
+## First release
+
+A new project has no `api` function and no Drizzle journal. The lane then reads
+`previousApiSha` as `none`, and the guard reads the missing
+`drizzle.__drizzle_migrations` table as an empty history, so every migration is
+pending. The guard refuses `none` with `serving_function_missing` once any
+migration is applied, so the first release is one `migrate-deploy` that applies
+every migration and then creates `api`. There is no migrate-only run, and a
+second run cannot name a previous API. In this order:
+
+1. Provision the roles and passwords as [Staging database](#staging-database) describes.
+   Do not run `pnpm run db:migrate` against the project, because the lane
+   applies the migrations.
+2. Install the session-check helper from
+   [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges). It needs
+   only the `justgo_runtime` role, and the candidate's `/ready` probe needs it.
+3. Run the `secrets` operation, and set the `SUPABASE_*` function secrets the
+   lane refuses. With no `api` it probes nothing.
+4. Review the pending SQL, then dispatch `migrate-deploy` with the printed plan
+   digest. Its recovery attestation or test-data waiver names
+   `"previousApiSha": "none"`. The receipt names `previousApiSha` `none` and no
+   previous version.
+
+If that run fails after its migrations commit, the project holds migrations and
+no `api`, and the lane refuses every later run with `serving_function_missing`.
+Recovering it is operator work outside the lane, so bring it to Anthony.
 
 ## Pending migrations and recovery evidence
 

@@ -33,7 +33,7 @@ afterAll(async () => {
 });
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
-async function fixture(fails = false) {
+async function fixture(fails = false, previousApiSha = previous) {
   const name = `staging_release_fixture_${randomUUID().replaceAll('-', '')}`;
   const folder = await mkdtemp(join(tmpdir(), 'justgo-release-db-'));
   await mkdir(join(folder, 'meta'));
@@ -56,21 +56,22 @@ async function fixture(fails = false) {
       ? `insert into justgo.${name} values ('private-invalid-integer');`
       : `insert into justgo.${name} values (1);`,
   );
-  await client.query(
-    `create table drizzle.${name} (id serial primary key,hash text not null,created_at bigint)`,
-  );
+  if (previousApiSha !== 'none')
+    await client.query(
+      `create table drizzle.${name} (id serial primary key,hash text not null,created_at bigint)`,
+    );
   const config = {
     migrationsFolder: folder,
     migrationsSchema: 'drizzle',
     migrationsTable: name,
   };
   const now = Date.now();
-  const plan = migrationPlan(migrationEntries(config), [], sha, previous);
+  const plan = migrationPlan(migrationEntries(config), [], sha, previousApiSha);
   const proof = JSON.stringify({
     version: 1,
     project: stagingProject,
     sourceSha: sha,
-    previousApiSha: previous,
+    previousApiSha,
     historyDigest: plan.historyDigest,
     planDigest: plan.digest,
     backupSha256: 'c'.repeat(64),
@@ -87,7 +88,7 @@ async function fixture(fails = false) {
     config,
     operation: 'migrate-deploy' as const,
     sourceSha: sha,
-    previousApiSha: previous,
+    previousApiSha,
     expectedDatabase: 'justgo_test',
     planDigest: plan.digest,
     attestation: proof,
@@ -99,7 +100,7 @@ async function fixture(fails = false) {
     options,
     async cleanup() {
       await client.query(`drop table if exists justgo.${name}`);
-      await client.query(`drop table drizzle.${name}`);
+      await client.query(`drop table if exists drizzle.${name}`);
       await rm(folder, { recursive: true, force: true });
     },
   };
@@ -219,6 +220,32 @@ describe('locked staging release against disposable migration fixtures', () => {
           async () => {},
         ),
       ).rejects.toMatchObject({ reason: 'applied_migration_history_mismatch' });
+    } finally {
+      await f.cleanup();
+    }
+  });
+  it('migrates a first release into a database with no migrations table, then refuses the none marker', async () => {
+    const f = await fixture(false, 'none');
+    try {
+      expect(await appliedHistory(client, f.config)).toEqual([]);
+      let deployed = false;
+      await withStagingRelease(client, f.options, async () => {
+        deployed = true;
+        expect(await appliedHistory(client, f.config)).toHaveLength(2);
+      });
+      expect(deployed).toBe(true);
+      await expect(
+        withStagingRelease(
+          client,
+          {
+            ...f.options,
+            operation: 'deploy',
+            planDigest: undefined,
+            attestation: undefined,
+          },
+          async () => {},
+        ),
+      ).rejects.toMatchObject({ reason: 'serving_function_missing' });
     } finally {
       await f.cleanup();
     }
