@@ -21,10 +21,12 @@ are invited.
 The beta and Dev profiles, the beta preflight and every TestFlight workflow
 command select the staging `api` Edge Function at
 `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, and the preflight
-refuses any other API URL. Installed build 5 and the installed Dev build still
-use `https://justgo-two.vercel.app` until Anthony ships and accepts new builds,
-as P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
-describes. TestFlight submissions need Anthony's go.
+refuses any other API URL. Build 7 is the current TestFlight build and uses the
+function. P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
+its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
+was paused, not deleted. The legal pages stay on Vercel.
+TestFlight submissions need Anthony's go.
 
 Store signing does not select a paid production API. Preview reuses the verified
 public Auth, Google and CloudKit settings. Never put private server credentials in
@@ -51,8 +53,7 @@ The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
 published Privacy version. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
-and dSYM uploads. The Cloudflare candidate needs the approved full-cutover notice
-described below. The approved versions are in the [approval record](../legal/APPROVALS.md).
+and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
 
 An internal TestFlight upload does not pass the open native crash, cache,
 envelope and symbolication checks, or invite anyone. Gate
@@ -64,36 +65,11 @@ instruction.
 
 ## Preflight and release procedure
 
-The three Worker and Cloudflare steps below are retired. Do not build the Phase 15
-candidate from them. P15-9 to P15-11 of the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) replace them
-with the Supabase function, its notice and the build switch. The steps stay here
-as history until P15-11 rewrites this section. The legal pages stay on Vercel, so
-`release:beta:check` no longer asks for the Cloudflare `deployment-host` marker
-below. It still needs the approved, dated Privacy Policy and Terms, and a
-diagnostics build still needs the matching published Privacy version.
-
-Before building the Phase 15 candidate:
-
-- Verify the actual staging Worker through its protected release lane and
-  preserve its source identity and authenticated-data checks.
-- Publish the complete approved [full-cutover notice](../legal/CLOUDFLARE_NOTICE_REVIEW.md)
-  under the [cutover procedure](CLOUDFLARE_CUTOVER.md): complete every required
-  approval and legal-artifact preflight before retiring owner-only old builds
-  and Vercel API/legal roles, then immediately publish/verify Cloudflare legal
-  pages and update ASC/EAS URLs. Anthony accepted the brief legal-URL gap on
-  October 31, 2026.
-  No external-user transition period or legacy redirect is selected; the final
-  Cloudflare-only notice follows the end of Vercel's roles. Its backup statements
-  must match activated and verified recovery services. The new Privacy source
-  needs approved publication/date metadata and
-  `<!-- deployment-host: cloudflare -->`; the existing Vercel notice does not
-  authorize this build.
-- Set EAS preview `EXPO_PUBLIC_PRIVACY_POLICY_URL` and `EXPO_PUBLIC_TERMS_URL`
-  to the actual verified Cloudflare legal addresses, and update the protected
-  `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to the exact published Privacy
-  version. Verify anonymous HTTPS content before treating these settings as
-  publication evidence.
+The legal pages stay on Vercel, so `release:beta:check` asks for no
+`deployment-host` marker. It still needs the approved, dated Privacy Policy and
+Terms, and a diagnostics build still needs the matching published Privacy
+version. P15-10 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+updates the notices for the function before the first outside tester joins.
 
 From `apps/mobile`, check the resolved remote public settings for the
 reporting-enabled candidate:
@@ -161,27 +137,29 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The installed TestFlight build is **0.1.0 (5)**, from merged
-[PR #59](https://github.com/anthonyyoo24/justgo/pull/59), source
-`311f07323fdaacfe868b5a18dce4b2f516923783` and tag `testflight-beta-2026-10-27-2`.
-Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/40587250274)
-and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/40591517008)
-succeeded. The IPA SHA-256 is
-`96ddd076399fac183b16f704d485437a4e9f720a71f72d61dbc43051eff830fa`. Signature,
-store identity, Production CloudKit, public staging and diagnostics configuration
-and all 18 privacy manifests passed inspection. The main native UUID and the
-embedded JavaScript debug ID match the symbols and source maps stored in Sentry.
-The internal **Owner validation** group has one tester and manual distribution.
-No external review or invitation has happened.
+The current TestFlight build is **0.1.0 (7)**, from tag
+`testflight-beta-2026-11-12-3` at source
+`e2ab966807cbba64e0302f13f3ee8f0624825829`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436)
+and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43340902735)
+succeeded, and the build run's signed-app inspection passed. The archive SHA-256
+is `5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`. It calls
+the staging `api` function. The internal **Owner validation** group has one
+tester and manual distribution. No external review or invitation has happened.
 
-Anthony deferred the physical-phone walkthrough on October 26, then reported that
-build 5 "looks fine". Treat that as a general smoke, not a pass of any device gate.
+On November 13, 2026, Anthony reported that Apple sign-in and account deletion
+passed on build 7, and that launch to first sync was fine. He chose to save no
+screenshots and skipped the second-device check, so gate
+[#451](https://github.com/anthonyyoo24/justgo/issues/451) stays open. Treat these
+as owner reports, not a pass of any other device gate.
 
-The legal notices for build 5 are at
+Build 0.1.0 (5), from tag `testflight-beta-2026-10-27-2` at `311f073`, called the
+Vercel API and expired in TestFlight on November 13, 2026.
+
+The legal notices are at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/), and both URLs are set in EAS
-preview. The App Store Connect Privacy Policy URL must move to the verified
-Cloudflare address during the cutover.
+preview. App Store Connect keeps the Vercel Privacy Policy URL.
 
 ## Tester and reviewer package
 
@@ -255,7 +233,8 @@ any other hosted schedule needs Anthony's separate approval.
 ### Readiness monitor
 
 Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
-checks the public staging `/ready` over HTTPS every minute, with a five-second
+checks the function's public `/ready`,
+`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready`, over HTTPS every minute, with a five-second
 timeout and no account credentials. A check passes only on a successful HTTP
 status with JSON `status: ready`. Three failures in a row open an issue, and one
 success resolves it. The API and mobile Sentry projects email Anthony on new

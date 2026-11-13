@@ -109,6 +109,6 @@ Do not deploy this candidate without his go.
 paths. Its build runs `cloudflare.mjs`, which requires the existing publication
 approval and date metadata plus an explicit `deployment-host: cloudflare` marker.
 The current approved Vercel notice does not satisfy that additional gate.
-Review [the exact candidate wording](../../docs/legal/CLOUDFLARE_NOTICE_REVIEW.md)
-and [cutover procedure](../../docs/operations/CLOUDFLARE_CUTOVER.md) first.
+P15-11 deleted the Cloudflare notice review and cutover procedure this candidate
+needed. Git history keeps them.
 No deployment, DNS switch or old-site removal has occurred.
