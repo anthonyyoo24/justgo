@@ -29,7 +29,6 @@ const failureCodes = new Set([
   'STAGING_SOURCE_NOT_TAGGED',
   'INVALID_RELEASE_SOURCE',
   'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
-  'STAGING_SUPABASE_FUNCTION_MISSING',
   'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
   'STAGING_SUPABASE_SECRETS_REJECTED',
   'STAGING_SUPABASE_SECRETS_UNCONFIRMED',
@@ -69,6 +68,11 @@ export function stagingRunnerFailureCode(error) {
 export function requireRelease(condition, code) {
   if (!condition) throw new StagingRunnerFailure(code);
 }
+/**
+ * `previousApiSha` when the project has no `api` function yet. The database
+ * guard accepts it only while the applied migration history is empty.
+ */
+export const noPreviousApi = 'none';
 export function isSourceSha(value) {
   return (
     typeof value === 'string' &&

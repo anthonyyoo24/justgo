@@ -1,7 +1,4 @@
-export type ServingState = {
-  sha: string;
-  version?: number;
-};
+export type ServingState = { sha: string; version: number } | { sha: 'none' };
 export type SupabaseReleaseReceipt = {
   event: 'staging_supabase_release';
   status: 'deployed' | 'unchanged';

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Client, PoolClient } from 'pg';
 import { readMigrationFiles, type MigrationConfig } from 'drizzle-orm/migrator';
+import { noPreviousApi } from '../../../scripts/release/staging-api.mjs';
 import { applyMigrations } from './migration-runner.js';
 
 export const stagingProject = 'kmcpcauaxlgpevkkenwd';
@@ -111,8 +112,15 @@ export function migrationPlan(
   previousApiSha: string,
 ) {
   ensure(
-    /^[a-f0-9]{40}$/.test(sourceSha) && /^[a-f0-9]{40}$/.test(previousApiSha),
+    /^[a-f0-9]{40}$/.test(sourceSha) &&
+      (/^[a-f0-9]{40}$/.test(previousApiSha) ||
+        previousApiSha === noPreviousApi),
     'invalid_release_source',
+  );
+  // Only a project that has never been migrated may lack its serving function.
+  ensure(
+    previousApiSha !== noPreviousApi || applied.length === 0,
+    'serving_function_missing',
   );
   const pending = pendingMigrations(entries, applied);
   const historyDigest = createHash('sha256')
@@ -220,8 +228,17 @@ export async function appliedHistory(
 ) {
   const schema = config.migrationsSchema ?? 'drizzle';
   const table = config.migrationsTable ?? '__drizzle_migrations';
+  const name = `${identifier(schema)}.${identifier(table)}`;
+  // Drizzle creates its journal on the first migration, so a new project has none.
+  const journal = await client.query<{ present: boolean }>(
+    'select to_regclass($1) is not null as present',
+    [name],
+  );
+  const present = journal.rows[0]?.present;
+  ensure(typeof present === 'boolean', 'applied_migration_history_unreadable');
+  if (!present) return [];
   const result = await client.query<AppliedMigration>(
-    `select hash, created_at::text from ${identifier(schema)}.${identifier(table)} order by created_at, id`,
+    `select hash, created_at::text from ${name} order by created_at, id`,
   );
   return result.rows;
 }

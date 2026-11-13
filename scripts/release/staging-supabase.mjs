@@ -11,6 +11,7 @@ import {
 } from './staging-public-probes.mjs';
 import {
   isSourceSha,
+  noPreviousApi,
   releaseContext,
   requireRelease,
   StagingRunnerFailure,
@@ -264,13 +265,13 @@ export function servingSha(response) {
   return sha;
 }
 
-/** Read what staging serves now. Its /health names the previous API. */
+/** Read what staging serves now. Its /health names the previous API, and a project with no `api` names `noPreviousApi`. */
 export async function readServing({ cli, probe }) {
   const serving = listedFunction(
     await cli.functions(),
     stagingFunctions.serving,
   );
-  requireRelease(serving, 'STAGING_SUPABASE_FUNCTION_MISSING');
+  if (!serving) return { sha: noPreviousApi };
   return {
     version: serving.version,
     sha: servingSha(await probe(stagingFunctions.serving, '/health')),
@@ -352,7 +353,7 @@ export async function releaseSupabaseFunction({
   await verify({
     origin: `${target.origin}/functions/v1/${stagingFunctions.serving}`,
     candidateSha: context.sha,
-    previousSha: previous.sha,
+    previousSha: previous.sha === noPreviousApi ? undefined : previous.sha,
     signal,
     probe: (_origin, path, options) =>
       probe(stagingFunctions.serving, path, options),

@@ -11,6 +11,7 @@ export function requireRelease(
   condition: unknown,
   code: string,
 ): asserts condition;
+export const noPreviousApi: 'none';
 export function isSourceSha(value: unknown): value is string;
 export function releaseContext(env?: NodeJS.ProcessEnv): {
   sha: string;
