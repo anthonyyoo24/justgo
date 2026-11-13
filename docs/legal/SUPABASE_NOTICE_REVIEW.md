@@ -66,8 +66,8 @@ stay on Vercel until Anthony moves them.
 ## U.S. region candidate
 
 Candidate `privacy-us-east-candidate` in
-[PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-review-required`
-with no effective date, so the production legal build and the beta preflight
+[PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-approved`
+(text only, November 13, 2026) with no effective date, so the production legal build and the beta preflight
 refuse it. It backs [Phase 15A](../implementation-plan/supabase-us-move.md#us-9),
 which moves the database, Auth and the `api` function to a new Supabase project
 in us-east-1 (North Virginia). Anthony asked on November 13 that the policy

@@ -319,18 +319,8 @@ test('repository public sources use document labels and exclude review records a
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
   for (const [documentSource, status, effectiveDate, version] of [
-    [
-      privacySource,
-      'owner-review-required',
-      'pending',
-      'privacy-us-east-candidate',
-    ],
-    [
-      termsSource,
-      'owner-review-required',
-      'pending',
-      'terms-us-east-candidate',
-    ],
+    [privacySource, 'owner-approved', 'pending', 'privacy-us-east-candidate'],
+    [termsSource, 'owner-approved', 'pending', 'terms-us-east-candidate'],
   ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, status);
@@ -440,7 +430,7 @@ test('the U.S. region candidate keeps the essential-errors scope and refuses pub
     'utf8',
   );
   const document = parseDocument(candidate);
-  assert.equal(document.status, 'owner-review-required');
+  assert.equal(document.status, 'owner-approved');
   assert.equal(document.effectiveDate, 'pending');
   assert.equal(document.version, 'privacy-us-east-candidate');
   assert.match(
