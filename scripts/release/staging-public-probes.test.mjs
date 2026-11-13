@@ -442,9 +442,12 @@ test('probe requests carry no auth header, reject oversized responses and do not
       throw new Error('PRIVATE_PROVIDER_CONTENT');
     },
   ])
-    await assert.rejects(stagingProbe(origin, '/health', { fetch }), (error) => {
-      assert.equal(stagingRunnerFailureCode(error), 'INVALID_STAGING_PROBE');
-      assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
-      return true;
-    });
+    await assert.rejects(
+      stagingProbe(origin, '/health', { fetch }),
+      (error) => {
+        assert.equal(stagingRunnerFailureCode(error), 'INVALID_STAGING_PROBE');
+        assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
+        return true;
+      },
+    );
 });

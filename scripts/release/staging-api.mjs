@@ -67,9 +67,7 @@ export function releaseContext(env = process.env) {
       isSourceSha(env.RELEASE_SHA) &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ID ?? '') &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ATTEMPT ?? '') &&
-      ['deploy', 'migrate-deploy', 'secrets'].includes(
-        env.RELEASE_OPERATION,
-      ),
+      ['deploy', 'migrate-deploy', 'secrets'].includes(env.RELEASE_OPERATION),
     'INVALID_STAGING_RELEASE_CONTEXT',
   );
   return {

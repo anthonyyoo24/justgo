@@ -415,8 +415,7 @@ export function supabaseLane({ env = process.env, root, signal } = {}) {
   const cli = supabaseCli({ target, env, root: repository, signal });
   const probe = functionProbe(target);
   let previous;
-  const preflight = () =>
-    (previous ??= readServing({ cli, probe }));
+  const preflight = () => (previous ??= readServing({ cli, probe }));
   return {
     context,
     target,
