@@ -56,12 +56,11 @@ test('every .github/actions entry is a composite action folder with action.yml',
   assert.ok(actionFolders.length > 0);
 });
 
-test('database CI runs real Worker, Edge and encrypted recovery boundaries after shared prerequisites', () => {
+test('database CI runs real Edge and encrypted recovery boundaries after shared prerequisites', () => {
   const job = jobs.database;
   assert.match(job, /postgresql-client-17 age/);
   const runs = commands(job);
   for (const command of [
-    'pnpm run test:workers',
     'pnpm run test:edge',
     'pnpm run test:backup:recovery',
   ]) {

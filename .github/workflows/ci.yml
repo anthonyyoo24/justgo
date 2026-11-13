@@ -140,8 +140,6 @@ jobs:
       - name: Collect API database coverage
         id: api-database-coverage
         run: node scripts/quality/api-coverage.mjs database
-      - name: Verify Workers runtime against isolated PostgreSQL
-        run: pnpm run test:workers
       - name: Verify the Supabase Edge runtime against isolated PostgreSQL
         run: pnpm run test:edge
       - name: Rehearse encrypted recovery without resurrecting deleted data

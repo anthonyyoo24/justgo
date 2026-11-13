@@ -1,6 +1,6 @@
 import { buildApp } from './build-app.js';
 import type { Config } from './config.js';
-import type { ApiApp, ApiContext } from './http/request.js';
+import type { ApiContext } from './http/request.js';
 import type { ServerErrorReporter } from './http/server-error-reporter.js';
 import {
   checkDatabase,
@@ -18,14 +18,11 @@ export function buildRuntimeApp(
   config: Config,
   database: ReturnType<typeof createDatabase> | undefined,
   runtime: {
-    router?: ApiApp['router'];
     clientAddress?: (context: ApiContext) => string;
     reportServerError?: ServerErrorReporter;
-    checkAdditionalDatabase?: () => Promise<void>;
   } = {},
 ) {
   return buildApp({
-    ...(runtime.router ? { router: runtime.router } : {}),
     logger: loggerOptions(config.LOG_LEVEL),
     reportServerError:
       runtime.reportServerError ?? createServerErrorReporter(config.API_SENTRY),
@@ -88,7 +85,6 @@ export function buildRuntimeApp(
       await checkDatabase(database.pool);
       if (config.MANAGED_AUTH_ENABLED)
         await checkManagedAuthDatabase(database.pool);
-      await runtime.checkAdditionalDatabase?.();
     },
   });
 }

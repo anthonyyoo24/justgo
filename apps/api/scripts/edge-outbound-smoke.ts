@@ -6,11 +6,12 @@ import { createServerErrorReporter } from '../src/http/server-error-reporter.js'
 import { serverDiagnosticConfiguration } from '../src/http/sentry-configuration.js';
 
 /**
- * Exercise production adapters with workerd's native Request validation. These
- * transports stay in memory; synthetic credentials never reach global fetch.
- * Called only from the loopback-fenced smoke entrypoint, never the release Worker.
+ * Exercise production adapters with the Edge runtime's native Request
+ * validation. These transports stay in memory; synthetic credentials never
+ * reach global fetch. Called only from the loopback-fenced Edge smoke wrapper,
+ * never the release bundle.
  */
-export async function checkWorkerOutboundAdapters() {
+export async function checkOutboundAdapters() {
   const origin = 'https://synthetic-auth.invalid';
   const claims = {
     sub: 'f2f76fb3-9709-4805-a25f-48e04b887625',

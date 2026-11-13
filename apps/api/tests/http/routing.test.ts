@@ -2,13 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
-import { WorkerRouter } from '../../src/http/worker-router.js';
 import { IdentityService } from '../../src/identity/service.js';
 import { apiRequest } from '../request.js';
 
-describe.each(['default', 'worker'] as const)(
-  'HTTP router compatibility (%s)',
-  (router) => {
+describe('HTTP routing', () => {
     function setup(legacyIdentityEnabled = true) {
       const identity = new IdentityService(drizzle.mock(), {
         rateKey: 'routing-fixture',
@@ -19,7 +16,6 @@ describe.each(['default', 'worker'] as const)(
         checkDatabase: async () => {},
         identity,
         legacyIdentityEnabled,
-        ...(router === 'worker' ? { router: new WorkerRouter() } : {}),
       });
       return { app, rate, identity };
     }
@@ -232,5 +228,4 @@ describe.each(['default', 'worker'] as const)(
       expect(refusing.bootstrap).not.toHaveBeenCalled();
       expect(refusing.redeem).not.toHaveBeenCalled();
     });
-  },
-);
+});

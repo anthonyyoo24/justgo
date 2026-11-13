@@ -5,8 +5,10 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseEnv, promisify } from 'node:util';
 import { buildEdge } from '../../apps/api/scripts/edge-build.mjs';
-import { workerProbe } from './staging-cloudflare.mjs';
-import { verifyPublicStagingProbes } from './staging-public-probes.mjs';
+import {
+  stagingProbe,
+  verifyPublicStagingProbes,
+} from './staging-public-probes.mjs';
 import {
   isSourceSha,
   releaseContext,
@@ -18,7 +20,7 @@ import {
 
 const executeFile = promisify(execFile);
 
-/** The staging project the Worker already reads Auth from. */
+/** The staging project that serves the API and its Auth. */
 export const stagingProjectRef = 'kmcpcauaxlgpevkkenwd';
 export const stagingFunctions = Object.freeze({
   serving: 'api',
@@ -71,19 +73,9 @@ export function supabaseTarget(env) {
       !/[\r\n]/.test(env.SUPABASE_ACCESS_TOKEN),
     'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
   );
-  let workerOrigin;
-  if (env.STAGING_WORKER_ORIGIN) {
-    const url = new URL(env.STAGING_WORKER_ORIGIN);
-    requireRelease(
-      url.protocol === 'https:' && url.pathname === '/' && !url.search,
-      'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
-    );
-    workerOrigin = url.origin;
-  }
   return Object.freeze({
     ref: stagingProjectRef,
     origin: `https://${stagingProjectRef}.supabase.co`,
-    workerOrigin,
   });
 }
 
@@ -174,7 +166,7 @@ export function listedFunction(list, name) {
 /** Probe one function by name; the gateway serves it under /functions/v1/<name>. */
 export function functionProbe(target, fetch) {
   return (name, path, options = {}) =>
-    workerProbe(target.origin, `/functions/v1/${name}${path}`, {
+    stagingProbe(target.origin, `/functions/v1/${name}${path}`, {
       ...options,
       ...(fetch ? { fetch } : {}),
     });
@@ -188,24 +180,14 @@ export function servingSha(response) {
   return sha;
 }
 
-/**
- * Read what staging serves now. Before the first function deploy the Worker
- * still serves, so its /health names the previous API.
- */
-export async function readServing({ target, cli, probe, workerProbe: worker }) {
+/** Read what staging serves now. Its /health names the previous API. */
+export async function readServing({ cli, probe }) {
   const serving = listedFunction(
     await cli.functions(),
     stagingFunctions.serving,
   );
-  if (!serving) {
-    requireRelease(target.workerOrigin, 'STAGING_SUPABASE_FUNCTION_MISSING');
-    return {
-      host: 'worker',
-      sha: servingSha(await worker(target.workerOrigin, '/health')),
-    };
-  }
+  requireRelease(serving, 'STAGING_SUPABASE_FUNCTION_MISSING');
   return {
-    host: 'function',
     version: serving.version,
     sha: servingSha(await probe(stagingFunctions.serving, '/health')),
   };
@@ -252,10 +234,9 @@ export async function releaseSupabaseFunction({
     project: target.ref,
     sourceSha: context.sha,
     previousApiSha: previous.sha,
-    previousHost: previous.host,
     ...(previous.version ? { previousVersion: previous.version } : {}),
   };
-  if (previous.host === 'function' && previous.sha === context.sha)
+  if (previous.sha === context.sha)
     return {
       ...receipt,
       status: 'unchanged',
@@ -435,12 +416,7 @@ export function supabaseLane({ env = process.env, root, signal } = {}) {
   const probe = functionProbe(target);
   let previous;
   const preflight = () =>
-    (previous ??= readServing({
-      target,
-      cli,
-      probe,
-      workerProbe: (origin, path) => workerProbe(origin, path, { signal }),
-    }));
+    (previous ??= readServing({ cli, probe }));
   return {
     context,
     target,

@@ -1,4 +1,4 @@
-import { checkWorkerOutboundAdapters } from './workers-outbound-smoke.js';
+import { checkOutboundAdapters } from './edge-outbound-smoke.js';
 
 // The local Edge smoke bundles this wrapper beside the production bundle. It
 // sends the synthetic Auth and Sentry origins to loopback stubs, refuses every
@@ -48,7 +48,7 @@ export function createEdgeHandler(
     database: handler.database,
     fetch: async (request: Request) => {
       if (new URL(request.url).pathname === '/api/__smoke/outbound') {
-        await checkWorkerOutboundAdapters();
+        await checkOutboundAdapters();
         return Response.json({ outbound: 'passed', refused });
       }
       const response = await handler.fetch(request);

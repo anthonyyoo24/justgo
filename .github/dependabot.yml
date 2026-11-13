@@ -52,6 +52,4 @@ updates:
       - dependency-name: react-native-svg
       - dependency-name: react-native-web
       - dependency-name: react-native-worklets
-      # scripts/release/staging-worker-build.mjs accepts only the pinned Wrangler.
-      - dependency-name: wrangler
       # END generated

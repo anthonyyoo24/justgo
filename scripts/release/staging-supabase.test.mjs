@@ -22,7 +22,6 @@ const newer = 'b'.repeat(40);
 const target = supabaseTarget({
   SUPABASE_PROJECT_REF: stagingProjectRef,
   SUPABASE_ACCESS_TOKEN: 'synthetic-token',
-  STAGING_WORKER_ORIGIN: 'https://justgo-api-staging.example.workers.dev',
 });
 
 function response(sha, path, { ready = true } = {}) {
@@ -51,13 +50,12 @@ function response(sha, path, { ready = true } = {}) {
     : { status: 503, headers, body: JSON.stringify({ status: 'unavailable' }) };
 }
 
-/** A fake project: deployed functions, the Worker and every CLI call. */
+/** A fake project: deployed functions and every CLI call. */
 function project({
-  functions = {},
-  workerSha = older,
+  functions = { api: { version: 1, sha: older } },
   broken = new Set(),
 } = {}) {
-  const state = { functions: { ...functions }, workerSha };
+  const state = { functions: { ...functions } };
   const events = [];
   let lose;
   const cli = {
@@ -94,13 +92,11 @@ function project({
     if (!item) throw new Error('missing function');
     return response(item.sha, path, { ready: !broken.has(item.sha) });
   };
-  const worker = async (_origin, path) => response(state.workerSha, path);
   return {
     state,
     events,
     cli,
     probe,
-    worker,
     loseNext: (name) => {
       lose = name;
     },
@@ -109,12 +105,7 @@ function project({
 
 async function release(world, sha, options = {}) {
   world.state.building = sha;
-  const previous = await readServing({
-    target,
-    cli: world.cli,
-    probe: world.probe,
-    workerProbe: world.worker,
-  });
+  const previous = await readServing({ cli: world.cli, probe: world.probe });
   return releaseSupabaseFunction({
     context: { sha },
     target,
@@ -139,7 +130,7 @@ async function rejectsWith(promise, code) {
   });
 }
 
-test('the first deploy reads the Worker, then probes the candidate before the serving function changes', async () => {
+test('a deploy reads the serving function, then probes the candidate before the serving function changes', async () => {
   const world = project();
   const receipt = await release(world, newer);
   assert.deepEqual(world.events, [
@@ -153,12 +144,12 @@ test('the first deploy reads the Worker, then probes the candidate before the se
     project: stagingProjectRef,
     sourceSha: newer,
     previousApiSha: older,
-    previousHost: 'worker',
+    previousVersion: 1,
     status: 'deployed',
     uploadSha256: 'd'.repeat(64),
     bytes: 2_200_000,
     candidateVersion: 1,
-    servingVersion: 1,
+    servingVersion: 2,
   });
   assert.equal(world.state.functions.api.sha, newer);
 });
@@ -242,20 +233,14 @@ test('a rollback is the same lane on the previous tag', async () => {
   const receipt = await release(world, older);
   assert.equal(receipt.status, 'deployed');
   assert.equal(receipt.previousApiSha, newer);
-  assert.equal(receipt.previousHost, 'function');
   assert.equal(receipt.servingVersion, 6);
   assert.equal(world.state.functions.api.sha, older);
 });
 
-test('with no function and no Worker origin the lane cannot name the previous API', async () => {
-  const world = project();
+test('with no serving function the lane cannot name the previous API', async () => {
+  const world = project({ functions: {} });
   await rejectsWith(
-    readServing({
-      target: { ...target, workerOrigin: undefined },
-      cli: world.cli,
-      probe: world.probe,
-      workerProbe: world.worker,
-    }),
+    readServing({ cli: world.cli, probe: world.probe }),
     'STAGING_SUPABASE_FUNCTION_MISSING',
   );
 });
@@ -420,11 +405,6 @@ test('the target is pinned to the staging project', () => {
     },
     { SUPABASE_PROJECT_REF: stagingProjectRef },
     { SUPABASE_PROJECT_REF: stagingProjectRef, SUPABASE_ACCESS_TOKEN: 'x\ny' },
-    {
-      SUPABASE_PROJECT_REF: stagingProjectRef,
-      SUPABASE_ACCESS_TOKEN: 'x',
-      STAGING_WORKER_ORIGIN: 'http://worker.example',
-    },
   ])
     assert.throws(
       () => supabaseTarget(env),

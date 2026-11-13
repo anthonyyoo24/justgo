@@ -3,7 +3,6 @@ import { pathToFileURL } from 'node:url';
 
 export const stagingTarget = Object.freeze({
   repository: 'anthonyyoo24/justgo',
-  worker: 'justgo-api-staging',
   environment: 'justgo-staging',
   reviewer: '51426358',
 });
@@ -12,18 +11,11 @@ const failureCodes = new Set([
   'STAGING_RUNNER_FAILED',
   'INVALID_STAGING_RELEASE_CONTEXT',
   'INVALID_LOCAL_STAGING_CONTEXT',
-  'INVALID_LOCAL_STAGING_CONFIGURATION',
-  'LOCAL_STAGING_DATABASE_CONNECTION_REQUIRED',
   'FOUNDATION_MAIN_PUSH_REQUIRED',
   'STAGING_OWNER_MAIN_PROTECTION_REQUIRED',
   'INVALID_API_UPLOAD',
   'API_UPLOAD_PATH_MISMATCH',
   'UNSAFE_API_UPLOAD',
-  'API_UPLOAD_HASH_MISMATCH',
-  'WRONG_STAGING_DEPLOYMENT',
-  'UNSAFE_DEPLOYMENT_URL',
-  'STAGING_DEPLOYMENT_PROVENANCE_MISMATCH',
-  'INVALID_CANDIDATE_RECEIPT',
   'INVALID_STAGING_PROBE',
   'INVALID_STAGING_PROBE_HEADERS',
   'STAGING_AUTH_FENCE_FAILED',
@@ -32,29 +24,9 @@ const failureCodes = new Set([
   'STAGING_READINESS_FAILED',
   'INVALID_STAGING_GUARD_ARGUMENTS',
   'STAGING_COMMAND_FAILED',
-  'STAGING_CLOUDFLARE_CONFIGURATION_REQUIRED',
-  'STAGING_PROVIDER_REQUEST_FAILED',
-  'STAGING_VERSION_UPLOAD_UNCONFIRMED',
-  'STAGING_LATEST_VERSION_CHANGED',
-  'STAGING_ABANDONED_VERSION_REJECTED',
-  'STAGING_BINDINGS_MISMATCH',
-  'STAGING_WORKER_CONFIGURATION_MISMATCH',
-  'STAGING_WORKER_NOT_BOOTSTRAPPED',
-  'STAGING_HYPERDRIVE_CONFIGURATION_MISMATCH',
   'STAGING_DATABASE_LEASE_LOST',
-  'STAGING_BASELINE_SOURCE_REQUIRED',
   'STAGING_SOURCE_NOT_CLEAN',
   'STAGING_SOURCE_NOT_TAGGED',
-  'STAGING_BASELINE_CHANGED',
-  'PINNED_WRANGLER_REQUIRED',
-  'STAGING_PROJECT_CONFIGURATION_MISMATCH',
-  'CANDIDATE_RECEIPT_PROVENANCE_MISMATCH',
-  'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
-  'STAGING_ALIAS_CHANGED_BEFORE_PROMOTION',
-  'STAGING_PROMOTION_UNCONFIRMED',
-  'STAGING_BOOTSTRAP_UNCONFIRMED',
-  'STAGING_BOOTSTRAP_REQUIRES_EMPTY_WORKER',
-  'STAGING_BOOTSTRAP_BINDINGS_REQUIRED',
   'INVALID_RELEASE_SOURCE',
   'STAGING_SUPABASE_CONFIGURATION_REQUIRED',
   'STAGING_SUPABASE_FUNCTION_MISSING',
@@ -63,42 +35,18 @@ const failureCodes = new Set([
   'STAGING_SUPABASE_SECRETS_UNCONFIRMED',
 ]);
 const trustedFailures = new WeakMap();
-const promotionPhases = new Set([
-  'promotion-request',
-  'deployment-readback',
-  'candidate-provenance',
-  'public-probes',
-]);
 
 /** A closed diagnostic vocabulary, independent of any provider error text. */
 export class StagingRunnerFailure extends Error {
-  constructor(code, promotion) {
+  constructor(code) {
     const safeCode = failureCodes.has(code) ? code : 'STAGING_RUNNER_FAILED';
     super(safeCode);
-    const phase = promotion?.phase;
-    const causeCode = stagingRunnerFailureCode(promotion?.cause);
-    trustedFailures.set(this, {
-      code: safeCode,
-      ...(safeCode === 'STAGING_PROMOTION_UNCONFIRMED' &&
-      promotionPhases.has(phase)
-        ? { promotionPhase: phase, ...(causeCode ? { causeCode } : {}) }
-        : {}),
-    });
+    trustedFailures.set(this, { code: safeCode });
   }
 }
 
 export function stagingRunnerFailureCode(error) {
   return trustedFailures.get(error)?.code;
-}
-
-/** Return only closed promotion context, never mutable provider/error fields. */
-export function stagingRunnerPromotionDiagnostic(error) {
-  const failure = trustedFailures.get(error);
-  if (!failure?.promotionPhase) return undefined;
-  return {
-    promotionPhase: failure.promotionPhase,
-    ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
-  };
 }
 
 export function requireRelease(condition, code) {
@@ -119,7 +67,7 @@ export function releaseContext(env = process.env) {
       isSourceSha(env.RELEASE_SHA) &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ID ?? '') &&
       /^[1-9][0-9]*$/.test(env.GITHUB_RUN_ATTEMPT ?? '') &&
-      ['deploy', 'migrate-deploy', 'bootstrap', 'secrets'].includes(
+      ['deploy', 'migrate-deploy', 'secrets'].includes(
         env.RELEASE_OPERATION,
       ),
     'INVALID_STAGING_RELEASE_CONTEXT',
@@ -162,45 +110,6 @@ export function validateStagingEnvironment(environment, policies, reviewerId) {
   );
 }
 
-/**
- * Validate authoritative /script-settings rather than version metadata.
- * Omitted/null observability, nested telemetry and tail consumers are disabled
- * provider defaults; explicit settings must remain disabled with no destinations.
- * Malformed responses or enabled collectors throw a safe configuration code.
- */
-export function validateWorkerSettings(settings) {
-  const object = (value) =>
-    value !== null && typeof value === 'object' && !Array.isArray(value);
-  const disabled = (value) => value === undefined || value === false;
-  const empty = (value) =>
-    value === undefined || (Array.isArray(value) && value.length === 0);
-  requireRelease(
-    object(settings) &&
-      disabled(settings.logpush) &&
-      // The script-settings API returns null when no tail consumers exist.
-      (settings.tail_consumers === null || empty(settings.tail_consumers)),
-    'STAGING_WORKER_CONFIGURATION_MISMATCH',
-  );
-  const observability = settings.observability;
-  // Cloudflare returns null/omits disabled observability. Pinned Wrangler 4.155.0
-  // normalizeObservability uses the same disabled default for remote settings.
-  if (observability === undefined || observability === null) return;
-  requireRelease(
-    object(observability) && observability.enabled === false,
-    'STAGING_WORKER_CONFIGURATION_MISMATCH',
-  );
-  for (const name of ['logs', 'traces', 'issues']) {
-    const telemetry = observability[name];
-    if (telemetry === undefined || telemetry === null) continue;
-    requireRelease(
-      object(telemetry) &&
-        disabled(telemetry.enabled) &&
-        empty(telemetry.destinations),
-      'STAGING_WORKER_CONFIGURATION_MISMATCH',
-    );
-  }
-}
-
 export function productionPath(path) {
   if (
     typeof path !== 'string' ||
@@ -223,8 +132,6 @@ export function productionPath(path) {
       'tsconfig.base.json',
       'apps/api/package.json',
       'apps/api/tsconfig.json',
-      'apps/api/cloudflare-config.mjs',
-      'apps/api/wrangler.jsonc',
       'apps/mobile/package.json',
       'packages/contracts/package.json',
       'packages/contracts/tsconfig.json',
@@ -232,176 +139,6 @@ export function productionPath(path) {
     ].includes(path) ||
     path.startsWith('apps/api/src/') ||
     path.startsWith('packages/contracts/src/')
-  );
-}
-const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-export function isVersionId(value) {
-  return typeof value === 'string' && value.length === 36 && uuid.test(value);
-}
-export function cloudflareTarget(env) {
-  requireRelease(
-    typeof env.CLOUDFLARE_ACCOUNT_ID === 'string' &&
-      /^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID) &&
-      env.CLOUDFLARE_ACCOUNT_ID.length === 32 &&
-      typeof env.CLOUDFLARE_WORKERS_SUBDOMAIN === 'string' &&
-      env.CLOUDFLARE_WORKERS_SUBDOMAIN.length <= 63 &&
-      !/[\r\n]/.test(env.CLOUDFLARE_WORKERS_SUBDOMAIN) &&
-      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
-        env.CLOUDFLARE_WORKERS_SUBDOMAIN,
-      ) &&
-      /^[a-f0-9]{32}$/.test(env.STAGING_HYPERDRIVE_ID ?? '') &&
-      env.STAGING_HYPERDRIVE_ID.length === 32 &&
-      typeof env.CLOUDFLARE_API_TOKEN === 'string' &&
-      env.CLOUDFLARE_API_TOKEN.length > 0 &&
-      !/[\r\n]/.test(env.CLOUDFLARE_API_TOKEN),
-    'STAGING_CLOUDFLARE_CONFIGURATION_REQUIRED',
-  );
-  return {
-    accountId: env.CLOUDFLARE_ACCOUNT_ID,
-    worker: stagingTarget.worker,
-    subdomain: env.CLOUDFLARE_WORKERS_SUBDOMAIN,
-    hyperdriveId: env.STAGING_HYPERDRIVE_ID,
-    origin: `https://${stagingTarget.worker}.${env.CLOUDFLARE_WORKERS_SUBDOMAIN}.workers.dev`,
-  };
-}
-export function versionOrigin(id, target) {
-  requireRelease(isVersionId(id), 'UNSAFE_DEPLOYMENT_URL');
-  return `https://${id.slice(0, 8)}-${target.worker}.${target.subdomain}.workers.dev`;
-}
-export function validateDeployment(value) {
-  const current = value?.deployments?.[0];
-  requireRelease(
-    isVersionId(current?.id) &&
-      current.strategy === 'percentage' &&
-      current.versions?.length === 1 &&
-      current.versions[0].percentage === 100 &&
-      isVersionId(current.versions[0].version_id),
-    'WRONG_STAGING_DEPLOYMENT',
-  );
-  return { id: current.id, versionId: current.versions[0].version_id };
-}
-export const releaseBindings = Object.freeze([
-  'JUSTGO_SOURCE_SHA',
-  'APP_ENVIRONMENT',
-  'API_SENTRY_RELEASE',
-  'JUSTGO_RELEASE_RUN_ID',
-  'JUSTGO_RELEASE_RUN_ATTEMPT',
-]);
-const secretNames = new Set([
-  'IDENTITY_RATE_LIMIT_KEY',
-  'SUPABASE_AUTH_SECRET_KEY',
-  'LOCK_DATABASE_URL',
-  'DATABASE_CA_CERT',
-  'SUPABASE_PUBLISHABLE_KEY',
-  'API_SENTRY_DSN',
-  'BETA_ACCESS_GRANTS',
-  'BETA_ACCESS_WINDOW',
-]);
-const textNames = new Set([
-  ...releaseBindings,
-  'NODE_ENV',
-  'SUPABASE_URL',
-  'MANAGED_AUTH_ENABLED',
-  'API_SENTRY_ENABLED',
-  'CORS_ORIGINS',
-  'LOG_LEVEL',
-  'IDENTITY_SESSION_HOURS',
-  'IDENTITY_TRANSFER_MINUTES',
-  'IDENTITY_RECOVERY_RATE_LIMIT',
-  'ACTIVITY_WRITE_RATE_LIMIT',
-  'ACCOUNT_EXPORT_RATE_LIMIT',
-  'BETA_ACCESS_GRANTS',
-  'BETA_ACCESS_WINDOW',
-]);
-export function validateVersion(value, target, context) {
-  const bindings = value?.resources?.bindings;
-  requireRelease(
-    isVersionId(value?.id) && Array.isArray(bindings),
-    'STAGING_BINDINGS_MISMATCH',
-  );
-  const names = new Set();
-  for (const binding of bindings) {
-    requireRelease(!names.has(binding.name), 'STAGING_BINDINGS_MISMATCH');
-    names.add(binding.name);
-    requireRelease(
-      (binding.type === 'secret_text' && secretNames.has(binding.name)) ||
-        (binding.type === 'plain_text' &&
-          textNames.has(binding.name) &&
-          typeof binding.text === 'string') ||
-        (binding.type === 'hyperdrive' &&
-          binding.name === 'HYPERDRIVE' &&
-          binding.id === target.hyperdriveId),
-      'STAGING_BINDINGS_MISMATCH',
-    );
-  }
-  const text = (name) =>
-    bindings.find((binding) => binding.name === name)?.text;
-  for (const name of [
-    'IDENTITY_RATE_LIMIT_KEY',
-    'SUPABASE_AUTH_SECRET_KEY',
-    'LOCK_DATABASE_URL',
-    'SUPABASE_PUBLISHABLE_KEY',
-  ])
-    requireRelease(
-      bindings.some(
-        (binding) => binding.name === name && binding.type === 'secret_text',
-      ),
-      'STAGING_BINDINGS_MISMATCH',
-    );
-  requireRelease(
-    names.has('HYPERDRIVE') &&
-      text('APP_ENVIRONMENT') === 'staging' &&
-      text('NODE_ENV') === 'production' &&
-      text('MANAGED_AUTH_ENABLED') === 'true' &&
-      isSourceSha(text('JUSTGO_SOURCE_SHA')) &&
-      text('SUPABASE_URL') === 'https://kmcpcauaxlgpevkkenwd.supabase.co',
-    'STAGING_BINDINGS_MISMATCH',
-  );
-  if (context)
-    requireRelease(
-      (value.metadata?.has_preview === true ||
-        value.metadata?.hasPreview === true) &&
-        text('JUSTGO_SOURCE_SHA') === context.sha &&
-        text('API_SENTRY_RELEASE') === context.sha &&
-        text('JUSTGO_RELEASE_RUN_ID') === context.runId &&
-        text('JUSTGO_RELEASE_RUN_ATTEMPT') === context.attempt,
-      'STAGING_DEPLOYMENT_PROVENANCE_MISMATCH',
-    );
-  return { id: value.id, sourceSha: text('JUSTGO_SOURCE_SHA'), bindings };
-}
-export function uploadBindings(baseline, context) {
-  return [
-    ...baseline.bindings
-      .filter((binding) => !releaseBindings.includes(binding.name))
-      .map((binding) =>
-        binding.type === 'secret_text'
-          ? { name: binding.name, type: 'inherit' }
-          : binding,
-      ),
-    ...Object.entries({
-      APP_ENVIRONMENT: 'staging',
-      JUSTGO_SOURCE_SHA: context.sha,
-      API_SENTRY_RELEASE: context.sha,
-      JUSTGO_RELEASE_RUN_ID: context.runId,
-      JUSTGO_RELEASE_RUN_ATTEMPT: context.attempt,
-    }).map(([name, text]) => ({ name, type: 'plain_text', text })),
-  ];
-}
-export function validateBindingPreservation(baseline, candidate) {
-  const stable = (bindings) =>
-    bindings
-      .filter((binding) => !releaseBindings.includes(binding.name))
-      .map(({ name, type, id, text }) => ({
-        name,
-        type,
-        ...(id ? { id } : {}),
-        ...(type === 'plain_text' ? { text } : {}),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  requireRelease(
-    JSON.stringify(stable(baseline.bindings)) ===
-      JSON.stringify(stable(candidate.bindings)),
-    'STAGING_BINDINGS_MISMATCH',
   );
 }
 export function validateProbe({ status, headers, body }, kind, sha) {

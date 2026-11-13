@@ -18,13 +18,7 @@ export const begin =
 export const end = '      # END generated';
 
 // Skipped for a reason outside Expo. Each entry says why.
-export const otherSkips = [
-  {
-    name: 'wrangler',
-    reason:
-      'scripts/release/staging-worker-build.mjs accepts only the pinned Wrangler.',
-  },
-];
+export const otherSkips = [];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));

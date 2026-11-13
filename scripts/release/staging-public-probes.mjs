@@ -1,6 +1,6 @@
 import { setTimeout as pause } from 'node:timers/promises';
-import { workerProbe } from './staging-cloudflare.mjs';
 import {
+  requireRelease,
   StagingRunnerFailure,
   stagingRunnerFailureCode,
   validateProbe,
@@ -14,6 +14,45 @@ const endpoints = [
   ['/v1/journal-sync?limit=1', 'unauthorized'],
   ['/v1/completion-restores?limit=1', 'unauthorized'],
 ];
+
+/** Probes carry no user credentials and never follow a redirect to an old host. */
+export async function stagingProbe(
+  origin,
+  path,
+  { signal, fetch: send = globalThis.fetch } = {},
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const response = await send(new URL(path, origin), {
+      redirect: 'error',
+      signal: signal
+        ? AbortSignal.any([signal, controller.signal])
+        : controller.signal,
+    });
+    const reader = response.body?.getReader();
+    requireRelease(reader, 'INVALID_STAGING_PROBE');
+    let length = 0;
+    const chunks = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      requireRelease(length <= 4096, 'INVALID_STAGING_PROBE');
+      chunks.push(value);
+    }
+    return {
+      status: response.status,
+      headers: Object.fromEntries(response.headers),
+      body: Buffer.concat(chunks).toString('utf8'),
+    };
+  } catch {
+    throw new StagingRunnerFailure('INVALID_STAGING_PROBE');
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
+  }
+}
 
 /** Accept a previous response only when its complete endpoint contract is valid. */
 function previousResponse(response, kind, candidateSha, previousSha) {
@@ -47,7 +86,7 @@ export async function verifyPublicStagingProbes({
   candidateSha,
   previousSha,
   signal,
-  probe = workerProbe,
+  probe = stagingProbe,
   wait = pause,
   now = () => performance.now(),
   schedule = setTimeout,

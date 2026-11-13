@@ -16,10 +16,8 @@
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",
     "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage",
     "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false",
-    "test:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts --smoke",
     "build:edge": "node scripts/edge-build.mjs",
-    "test:edge": "tsx --env-file-if-exists=.env scripts/edge-smoke.ts",
-    "profile:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts --profile"
+    "test:edge": "tsx --env-file-if-exists=.env scripts/edge-smoke.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.6",
@@ -31,7 +29,6 @@
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
-    "drizzle-kit": "0.31.11",
-    "wrangler": "4.155.0"
+    "drizzle-kit": "0.31.11"
   }
 }
