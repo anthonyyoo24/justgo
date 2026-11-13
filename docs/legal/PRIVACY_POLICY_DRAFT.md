@@ -5,7 +5,7 @@
 <!-- effective-date: pending -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the candidate for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It changes the two international-processing paragraphs: the database and the server run in the United States, with a U.S. storage disclosure. It waits for Anthony's review of the text. Publication happens only together with build 8, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists what must be true first. The published version is still `2026-11-13-supabase-edge`, approved, effective and published November 13, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the candidate for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It describes the service as it runs now, with no history of earlier hosts or regions: the database and the server run in the United States, with a U.S. storage disclosure. It also drops the operator's name and province, the Canada-only wording and the Canadian regulator link. It waits for Anthony's review of the text. Publication happens only together with build 8, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists what must be true first. The published version is still `2026-11-13-supabase-edge`, approved, effective and published November 13, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
@@ -24,7 +24,7 @@ You choose where your saved challenge history, feelings and reflections go:
 
 Product analytics is disabled. We use limited technical error reporting as described below; your journal is excluded from those reports. The sections below explain each choice, the providers involved and how to delete data.
 
-JustGO is operated by Youngshin Yoo in Ontario, Canada. For privacy questions, requests or support, email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com). We do not sell your personal information.
+For privacy questions, requests or support, email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com). We do not sell your personal information.
 
 ## Guest use and optional accounts
 
@@ -104,7 +104,7 @@ If you email us, we receive your address and the message and attachments you cho
 
 Our database and the server run in the United States, in Supabase's us-east-1 region in Virginia. We store and process your account, history, journal and sign-in information in the United States, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Database placement does not mean all processing or recovery copies stay in the United States.
 
-Providers may process information outside Canada, including through their networks and support operations. Information processed abroad, including in the United States, may be subject to foreign laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
+Providers may also process information in other countries, including through their networks and support operations. Information processed in another country may be subject to that country's laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
 
 ## Retention and deletion
 
@@ -126,7 +126,7 @@ Deleting the app does not close your cloud account. Neither deletion action can 
 
 You can continue without signing in, choose sign-in after the cloud-storage explanation, sign out while keeping the same phone journal, leave feelings and reflections blank, keep iCloud Sync off, download or import data, delete the selected journal’s data, or close the account. Account and data controls remain available independently of paid challenge access. Restoring an older file after deleting data is an explicit import choice; it does not recreate a deleted account.
 
-Email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) to request access, correction or deletion, or ask about processing. We may need to verify that a request concerns your account, but will not ask you to email an authentication secret. Depending on applicable law, you may also have rights to portability, restriction, objection, withdrawal of consent and a complaint to a privacy regulator. Withdrawing consent does not change the lawfulness of earlier processing. We will explain any applicable limits or necessary retention when responding. For Canadian privacy concerns, you may contact the [Office of the Privacy Commissioner of Canada](https://www.priv.gc.ca/en/report-a-concern/).
+Email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) to request access, correction or deletion, or ask about processing. We may need to verify that a request concerns your account, but will not ask you to email an authentication secret. Depending on applicable law, you may also have rights to portability, restriction, objection, withdrawal of consent and a complaint to a privacy regulator. Withdrawing consent does not change the lawfulness of earlier processing. We will explain any applicable limits or necessary retention when responding.
 
 ## Age and changes
 

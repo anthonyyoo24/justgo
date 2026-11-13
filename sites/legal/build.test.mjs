@@ -374,9 +374,12 @@ test('repository public sources use document labels and exclude review records a
   );
   assert.match(
     privacy,
-    /Information processed abroad, including in the United States/,
+    /Information processed in another country may be subject to that country&#39;s laws/,
   );
-  assert.doesNotMatch(privacy, /Canada Central|region closest/);
+  assert.doesNotMatch(
+    privacy,
+    /Canada|Ontario|Youngshin|region closest|Privacy Commissioner/,
+  );
   assert.match(privacy, /They do not record request bodies, sign-in tokens/);
   assert.match(
     privacy,
