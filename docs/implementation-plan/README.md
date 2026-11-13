@@ -24,6 +24,7 @@ and [App Store release][store] milestones.
 | 13 — Local data, optional accounts and cloud sync                   | One continuous journal, optional Apple and Google accounts, cloud sync and concise Account and Data controls.   | 07–12                                       | Merged                                      |
 | 14 — Release validation & launch                                    | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–13 for beta; accepted 16 for paid launch | Internal TestFlight build 5 delivered       |
 | [15 — API hosting & recovery](phase-15-supabase-api.md)             | Move the Hono API to one Supabase Edge Function, keeping PostgreSQL, Auth and the R2 recovery path.             | 14 internal beta; before 14 external beta   | Serving staging                             |
+| [15A — Move to Supabase us-east-1](supabase-us-move.md)             | Move the database, Auth and API to a new free Supabase project in us-east-1, then retire Canada.                | 15; before 14 external beta                 | Planned; waits for Anthony's review         |
 | [16 — Native subscriptions & reliable billing](phase-16-billing.md) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta              | Local work in progress; activation deferred |
 
 [beta]: https://github.com/anthonyyoo24/justgo/milestone/1
@@ -35,12 +36,13 @@ The remaining phases run in this order:
 
 1. 14 internal beta.
 2. 15 API hosting and recovery.
-3. 14 external free beta.
-4. 16 billing activation and acceptance.
-5. 14 paid launch.
-6. 17 analytics.
+3. 15A move to Supabase us-east-1.
+4. 14 external free beta.
+5. 16 billing activation and acceptance.
+6. 14 paid launch.
+7. 17 analytics.
 
-Phase 15 must close before outside testers store real journals. Anthony
+Phase 15 must close before outside testers store real journals. The [us-east-1 move](supabase-us-move.md) must also finish first, so outside testers' journals start in the U.S. project. Anthony
 confirmed Supabase Edge Functions as the API host and retired the Cloudflare
 Workers rollout. The [Supabase plan](phase-15-supabase-api.md) waits for his go
 and does not authorize a Pro upgrade. Its P15-11 step deleted the superseded
