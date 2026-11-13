@@ -70,9 +70,9 @@ test('only a complete staging policy enables the parameter and all other drift r
     ledgerDays: 7,
     lockDays: 7,
     ageRecipient: `age1${'a'.repeat(58)}`,
-    sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+    sourceHost: 'db.gcjmvtsisivxxorstvkb.supabase.co',
     sourceDatabase: 'postgres',
-    sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+    sourceProjectRef: 'gcjmvtsisivxxorstvkb',
     allowCronJobRunDetailsDelete: true,
   };
   let calls = 0;
