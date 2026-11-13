@@ -34,3 +34,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Progress](./progress.md) covers rep totals, the calendar day sheet and inline reflections.
 - [Account](./account.md) covers fixture sign-in, the Account screen and logout.
 - [Data download](./data.md) covers the Data screen and the ZIP download.
+- [API region pin](./region.md) covers the `x-region` header on every API request.
