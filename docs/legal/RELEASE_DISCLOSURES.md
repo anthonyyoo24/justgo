@@ -97,7 +97,11 @@ are not a legal opinion or proof of worldwide compliance.
   profiling, advertising or AI use of the journal. OPC
   [cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
   allows accountable outsourcing for the disclosed purpose, so Canada-only
-  hosting and separate transfer consent are not required. Not asking for a name
+  hosting and separate transfer consent are not required. The same guidance
+  expects notice that information held in another country may be accessed by
+  its courts, law enforcement and national security authorities, so the U.S.
+  region candidate says so. A lawyer should review the cross-border wording
+  before the paid launch. Not asking for a name
   does not make the journal anonymous. No rule found requires publishing a home
   address.
 - **UK, Norway, Iceland and Liechtenstein.** Anthony excluded these at first on
@@ -153,9 +157,11 @@ Sources: [Apple privacy labels](https://developer.apple.com/app-store/app-privac
 
 ## Phase 15 provider change candidate
 
-The API runs on the Supabase Edge Function `api`. Supabase processes API
-connection metadata and signed-in journal requests in the region closest to each
-request, and the database stays in Canada Central. Its function logs keep method,
+The API runs on the Supabase Edge Function `api`. From build 8, which sends
+`x-region: us-east-1`, Supabase processes API connection metadata and signed-in
+journal requests beside the database in us-east-1 (Virginia, United States).
+Build 7 and earlier reach the Canada project, whose function runs in the region
+closest to each request ([Phase 15A](../implementation-plan/supabase-us-move.md)). Its function logs keep method,
 path, status and timing, not bodies, tokens or writing. R2 stores encrypted app
 and Auth snapshots and encrypted deletion and revocation records. Encryption does
 not remove those copies from the inventory or prove Not Linked. Vercel keeps only

@@ -1,11 +1,11 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-11-13-supabase-edge -->
-<!-- publication-status: owner-approved -->
-<!-- effective-date: 2026-11-13 -->
+<!-- legal-version: privacy-us-east-candidate -->
+<!-- publication-status: owner-review-required -->
+<!-- effective-date: pending -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the Phase 15 notice for Supabase Edge Functions (P15-10). It names Supabase as the API host, keeps Cloudflare R2 for encrypted backups and keeps Vercel for these legal pages. Anthony approved the text and its publication on November 13, 2026, and it was published that day, as the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md) records. It replaced `2026-10-27-essential-errors`, effective October 27, 2026. Git history keeps that text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the candidate for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It changes the two international-processing paragraphs: the database and the server run in the United States, with a U.S. storage disclosure. It waits for Anthony's review of the text. Publication happens only together with build 8, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists what must be true first. The published version is still `2026-11-13-supabase-edge`, approved, effective and published November 13, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
@@ -102,9 +102,9 @@ If you email us, we receive your address and the message and attachments you cho
 - **Google** provides Google sign-in. **Google Gmail** hosts the support inbox; messages also pass through your email provider.
 - Other file destinations you choose handle the copies you save or share with them.
 
-Our primary database remains in Canada Central. Supabase runs the server in the region closest to each request, so requests and connection information may be processed outside Canada. Database placement does not mean all processing or recovery copies stay in Canada.
+Our database and the server run in the United States, in Supabase's us-east-1 region in Virginia. We store and process your account, history, journal and sign-in information in the United States, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Database placement does not mean all processing or recovery copies stay in the United States.
 
-Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
+Providers may process information outside Canada, including through their networks and support operations. Information processed abroad, including in the United States, may be subject to foreign laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
 
 ## Retention and deletion
 
