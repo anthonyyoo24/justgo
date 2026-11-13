@@ -20,6 +20,7 @@ export function supabaseLane(options?: {
     beforeServing: () => Promise<void>;
   }): Promise<SupabaseReleaseReceipt>;
 };
+export const stagingProjectRef: string;
 export const functionSecretNames: readonly string[];
 export const functionSecretRules: Readonly<
   Record<string, (value: string, values: Record<string, string>) => boolean>
