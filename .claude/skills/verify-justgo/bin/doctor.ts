@@ -9,6 +9,7 @@ import {
   journeyAppUrl,
   journeyEnvironment,
 } from '../../../../e2e/support/environment';
+import { ownedListener } from './ownership';
 
 const root = process.cwd();
 const problems: string[] = [];
@@ -134,7 +135,7 @@ const serving = existsSync(statePath)
       servers: { pid: number }[];
     })
   : undefined;
-const ownedGroups = new Set(serving?.servers.map(({ pid }) => pid));
+const recorded = new Set(serving?.servers.map(({ pid }) => pid));
 
 function hostedOrigins() {
   // Saved mobile dotenv origins, including .env.local, that must never be served.
@@ -197,7 +198,7 @@ const report: Record<string, unknown> = {
 if (!busy && !serving) report.state = 'idle';
 else {
   const foreign = [...services.api, ...services.app].filter(
-    ({ group, cwd }) => !ownedGroups.has(group) || !cwd?.startsWith(root),
+    (listener) => !ownedListener(listener, recorded, root),
   );
   if (foreign.length)
     problems.push(
