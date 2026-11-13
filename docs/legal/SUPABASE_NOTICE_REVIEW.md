@@ -36,12 +36,12 @@ stay on Vercel until Anthony moves them.
 - **Region.** The database sits in Canada Central (`ca-central-1`). Edge Functions
   [run in the region closest to the caller](https://supabase.com/docs/guides/functions/regional-invocation)
   unless a request pins one. On [#449](https://github.com/anthonyyoo24/justgo/issues/449),
-  where Anthony delegated the pick, the decision is to pin `ca-central-1` later,
-  in a separate mobile change and build. Build 7 sends no pin, so the published
-  region sentence is accurate. The pin change carries a one-sentence notice
-  update, which Anthony approves and which is published before the pinned build
-  reaches testers. Network, support and recovery processing still reach outside
-  Canada, so the placement sentence stays.
+  where Anthony delegated the pick, the decision is to pin `ca-central-1` in a
+  separate mobile change and build. Build 7 sends no pin, so the published
+  region sentence is accurate for it. The
+  [region pin candidate](#region-pin-candidate) below carries the one-sentence
+  update. Network, support and recovery processing still reach outside Canada,
+  so the placement sentence stays.
 - **Network.** The gateway passes `cf-connecting-ip` (P15-2 lane 4), which indicates that Supabase's
   edge network runs behind Cloudflare. That is Supabase's arrangement, covered by the
   existing sentence on hosting and network providers. It is separate from
@@ -63,6 +63,42 @@ stay on Vercel until Anthony moves them.
   condition. Journal traffic through Edge Functions falls under the same DPA as
   the database. Issue [#95](https://github.com/anthonyyoo24/justgo/issues/95)
   carries the restated provider review.
+
+## Region pin candidate
+
+Candidate `privacy-supabase-region-pin-candidate` in
+[PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-review-required`
+with no effective date, so the production legal build and the beta preflight
+refuse it. It changes one sentence of the international-processing paragraph:
+
+|                                        | Sentence                                                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Published (`2026-11-13-supabase-edge`) | Supabase runs the server in the region closest to each request, so requests and connection information may be processed outside Canada. |
+| Candidate                              | Supabase runs the server in Canada, next to the database.                                                                               |
+
+The sentences before and after it, and the next paragraph on provider networks
+and support outside Canada, stay word for word.
+
+- **What makes it true.** The mobile HTTP client
+  (`apps/mobile/src/lib/network/http.ts`) sends `x-region: ca-central-1` on
+  every API request. Supabase then runs the `api` function in `ca-central-1`,
+  beside the `aws-0-ca-central-1` pooler. P15-2 lane 7 read
+  `x-sb-edge-region: ca-central-1` on all 51 pinned staging requests
+  ([#449](https://github.com/anthonyyoo24/justgo/issues/449)). The gateway still
+  receives each request through Supabase's edge network, which the unchanged
+  provider-network sentence covers.
+- **Builds.** Only builds made from that change send the pin. Build 7 and
+  earlier send none, so for them the function still runs in the region closest
+  to each request.
+- **Before publication.** Anthony approves the text, and a build that sends the
+  pin is the one testers are told to use. Retire unpinned builds rather than
+  relying on the new sentence for them, as with the builds before 7. Then
+  publish by the [legal site guide](../../sites/legal/README.md#publishing-updates),
+  record the approval in [APPROVALS.md](APPROVALS.md), and set
+  `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to the published version.
+- **Inventory.** The [data inventory](DATA_INVENTORY.md) and
+  [release disclosures](RELEASE_DISCLOSURES.md) record the pin for pinned
+  builds. The data collected and App Privacy answers do not change.
 
 ## Approved R2 wording and its conditions
 

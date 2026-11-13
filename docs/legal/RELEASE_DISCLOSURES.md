@@ -154,8 +154,9 @@ Sources: [Apple privacy labels](https://developer.apple.com/app-store/app-privac
 ## Phase 15 provider change candidate
 
 The API runs on the Supabase Edge Function `api`. Supabase processes API
-connection metadata and signed-in journal requests in the region closest to each
-request, and the database stays in Canada Central. Its function logs keep method,
+connection metadata and signed-in journal requests beside the database in Canada
+Central for builds after 7, which send `x-region: ca-central-1`, and in the
+region closest to each request for build 7 and earlier (#449). Its function logs keep method,
 path, status and timing, not bodies, tokens or writing. R2 stores encrypted app
 and Auth snapshots and encrypted deletion and revocation records. Encryption does
 not remove those copies from the inventory or prove Not Linked. Vercel keeps only
