@@ -48,8 +48,8 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [x] Backups. R2, the backup clock Worker and the Cloudflare account that holds them stay.
   - [x] Plan tier. The project stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
   - [x] Local tools. Edge runtime lanes run in GitHub Actions, and nothing new is installed on the Mac.
-- [ ] While backups are paused, the backup clock's November 29 token expiry needs no renewal. Renew it with the R2 credentials when backups resume.
-- [ ] Backups are paused. On November 6, 2026, Anthony set `JUSTGO_BACKUPS_ENABLED` to `paused` because staging holds only test data. Before outside testers store real journals, renew the R2 credentials and the backup clock token, set the variable back to `approved`, confirm one nightly and one hourly run succeed, record the new expiry dates on issue #77, then close it.
+- [x] The backup clock token was renewed on November 13, 2026. The new token stops passing the clock's expiry check at 23:40 UTC on December 12, 2026.
+- [x] Backups resumed on November 13, 2026. The R2 credentials and the clock token were renewed, `JUSTGO_BACKUPS_ENABLED` went back to `approved`, and one database run and one ledger run passed. The [backup runbook](../operations/CLOUDFLARE_BACKUPS.md#credential-dates) and issue #77 record the new expiry dates. The R2 credentials expire on November 20, 2026, and gate #474 tracks the next renewal.
 - [ ] On Anthony's hold or stand-down, send every owner a zero-writes order at once.
 
 ### Spawn owners
@@ -931,7 +931,7 @@ Anthony also expired builds 3 and 4 that day. App Store Connect shows builds 3, 
 | A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
 | Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |
 | A deploy or a secret change replaces serving code at once, with no rollback   | P15-8         | Candidate first, readback, and rollback by redeploying the previous tag.                      |
-| The backup clock token stops passing its expiry check on November 29          | Arm, P15-4    | Backups are paused. Renew the token with the R2 credentials when they resume.                 |
+| The backup clock token stops passing its expiry check on December 12          | Arm, P15-4    | Renewed on November 13, 2026. Renew it again before December 12 at 23:40 UTC.                 |
 | Retiring Workers stops the backups                                            | P15-5, P15-11 | The file boundary. The backup clock, R2 and the Cloudflare account stay.                      |
 | A Git-connected Vercel project deploys on merge                               | P15-3         | Anthony confirms Git deployments are off before merge.                                        |
 | The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                                             |
