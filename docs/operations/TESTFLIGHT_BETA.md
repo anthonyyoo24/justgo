@@ -51,10 +51,9 @@ disposition.
 
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
-published Privacy version. While the approved `2026-11-13-supabase-edge` notice
-is unpublished, the preflight refuses diagnostics builds, because the draft
-version no longer matches the published `2026-10-27-essential-errors`. Publish
-it and set the value to the new version first. It also holds the Sentry `org:ci` token that Anthony
+published Privacy version. It holds `2026-11-13-supabase-edge`, published and
+set on November 13, 2026. Change it only after a new Privacy version is
+published, or the preflight refuses diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
 
@@ -71,8 +70,10 @@ instruction.
 The legal pages stay on Vercel, so `release:beta:check` asks for no
 `deployment-host` marker. It still needs the approved, dated Privacy Policy and
 Terms, and a diagnostics build still needs the matching published Privacy
-version. P15-10 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
-updates the notices for the function before the first outside tester joins.
+version. The Privacy Policy published on November 13, 2026 names the Supabase
+Edge Function as the API host, as P15-10 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) required
+before the first outside tester joins.
 
 From `apps/mobile`, check the resolved remote public settings for the
 reporting-enabled candidate:

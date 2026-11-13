@@ -5,7 +5,7 @@
 <!-- effective-date: 2026-11-13 -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the Phase 15 notice for Supabase Edge Functions (P15-10). It names Supabase as the API host, keeps Cloudflare R2 for encrypted backups and keeps Vercel for these legal pages. Anthony approved the text on November 13, 2026. It is not published yet. Publication needs his separate go, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md) lists what must be true first. The published version is still `2026-10-27-essential-errors`, approved and effective October 27, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the Phase 15 notice for Supabase Edge Functions (P15-10). It names Supabase as the API host, keeps Cloudflare R2 for encrypted backups and keeps Vercel for these legal pages. Anthony approved the text and its publication on November 13, 2026, and it was published that day, as the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md) records. It replaced `2026-10-27-essential-errors`, effective October 27, 2026. Git history keeps that text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
