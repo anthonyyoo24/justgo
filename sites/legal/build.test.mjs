@@ -318,17 +318,12 @@ test('repository public sources use document labels and exclude review records a
       html,
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
-  for (const [documentSource, status, effectiveDate, version] of [
-    [
-      privacySource,
-      'owner-review-required',
-      'pending',
-      'privacy-supabase-edge-candidate',
-    ],
-    [termsSource, 'owner-approved', '2026-10-25', '2026-10-25-beta'],
+  for (const [documentSource, effectiveDate, version] of [
+    [privacySource, '2026-11-13', '2026-11-13-supabase-edge'],
+    [termsSource, '2026-10-25', '2026-10-25-beta'],
   ]) {
     const document = parseDocument(documentSource);
-    assert.equal(document.status, status);
+    assert.equal(document.status, 'owner-approved');
     assert.equal(document.effectiveDate, effectiveDate);
     assert.equal(document.version, version);
   }
@@ -381,22 +376,8 @@ test('repository public sources use document labels and exclude review records a
     /<strong>Vercel<\/strong> hosts these public legal pages\./,
   );
   assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
-  assert.throws(
-    () => renderSite({ privacySource, termsSource, production: true }),
-    /explicit owner approval/,
-  );
-  // Synthetic approval of the candidate text only; it records no real approval.
-  const approvedCandidate = privacySource
-    .replace(
-      '<!-- publication-status: owner-review-required -->',
-      '<!-- publication-status: owner-approved -->',
-    )
-    .replace(
-      '<!-- effective-date: pending -->',
-      '<!-- effective-date: 2026-11-13 -->',
-    );
   const published = renderSite({
-    privacySource: approvedCandidate,
+    privacySource,
     termsSource,
     production: true,
   });
@@ -404,34 +385,37 @@ test('repository public sources use document labels and exclude review records a
     assert.doesNotMatch(html, /noindex,nofollow/);
 });
 
-test('the Supabase candidate keeps the essential-errors scope and refuses publication until approved', async () => {
-  const candidate = await readFile(
+test('the approved Supabase Edge notice keeps the essential-errors scope and strict publication boundaries', async () => {
+  const approved = await readFile(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   );
-  const document = parseDocument(candidate);
-  assert.equal(document.status, 'owner-review-required');
-  assert.equal(document.effectiveDate, 'pending');
-  assert.equal(document.version, 'privacy-supabase-edge-candidate');
+  const document = parseDocument(approved, true);
+  assert.equal(document.status, 'owner-approved');
+  assert.equal(document.effectiveDate, '2026-11-13');
+  assert.equal(document.version, '2026-11-13-supabase-edge');
   assert.match(
-    candidate,
+    approved,
     /^<!-- diagnostics-scope: essential-errors-only -->$/m,
   );
   assert.throws(
-    () => parseDocument(candidate, true),
+    () =>
+      parseDocument(
+        approved.replace('owner-approved', 'owner-review-required'),
+        true,
+      ),
     /explicit owner approval/,
   );
-  const approved = candidate.replace(
-    'publication-status: owner-review-required',
-    'publication-status: owner-approved',
-  );
-  assert.throws(() => parseDocument(approved, true), /effective date/);
-  assert.equal(
-    parseDocument(
-      approved.replace('effective-date: pending', 'effective-date: 2026-11-13'),
-      true,
-    ).status,
-    'owner-approved',
+  assert.throws(
+    () =>
+      parseDocument(
+        approved.replace(
+          'effective-date: 2026-11-13',
+          'effective-date: pending',
+        ),
+        true,
+      ),
+    /effective date/,
   );
   assert.match(document.html, /App versions with crash reporting enabled/);
   assert.match(document.html, /Sanitized server error reports/);

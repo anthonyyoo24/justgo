@@ -247,7 +247,7 @@ snapshots and encrypted deletion and revocation records. Encryption does not
 remove those copies from the inventory or prove Not Linked. Vercel keeps only
 the legal pages. No new product analytics or mobile data collection is added.
 
-The [notice candidate](SUPABASE_NOTICE_REVIEW.md) awaits Anthony's review. The
+The [Supabase notice](SUPABASE_NOTICE_REVIEW.md) is approved but not published. The
 published October 27 Privacy Policy still names Vercel as the API host. Supabase
 consent and copy retention, Sentry diagnostic disclosure and device acceptance
 remain open Phase 14 responsibilities. No Apple answers or public notices were

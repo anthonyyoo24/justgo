@@ -162,8 +162,8 @@ not remove those copies from the inventory or prove Not Linked. Vercel keeps onl
 the legal pages. No new product analytics or mobile data collection is added, so
 the App Privacy categories above do not change.
 
-The [notice candidate](SUPABASE_NOTICE_REVIEW.md) and
-[backup policy](../operations/CLOUDFLARE_BACKUPS.md) require Anthony's approval,
-resumed backups and his publication go. Supabase consent and copy retention,
+The [Supabase notice](SUPABASE_NOTICE_REVIEW.md), approved on November 13, and
+the [backup policy](../operations/CLOUDFLARE_BACKUPS.md) still need resumed
+backups and Anthony's publication go. Supabase consent and copy retention,
 Sentry diagnostic disclosure and device acceptance remain open Phase 14
 responsibilities. No Apple answers or public notices were changed.

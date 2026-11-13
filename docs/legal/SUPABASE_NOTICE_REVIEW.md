@@ -1,12 +1,12 @@
-# Supabase notice candidate — awaiting review
+# Supabase notice — text approved, publication pending
 
-This review backs the Phase 15 Privacy Policy candidate,
-`privacy-supabase-edge-candidate`, in
+This review backs the Phase 15 Privacy Policy version
+`2026-11-13-supabase-edge`, in
 [PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md). The API moved from Vercel and
 a Cloudflare Worker to the Supabase Edge Function `api`
 ([Supabase plan](../implementation-plan/phase-15-supabase-api.md), P15-10). The
-candidate waits for Anthony's review of the text. It is not published, has no
-effective date, and changes nothing in [APPROVALS.md](APPROVALS.md). The
+Anthony approved the text on November 13, 2026, and [APPROVALS.md](APPROVALS.md)
+records it. It is not published, and publication needs his separate go. The
 published Privacy Policy stays `2026-10-27-essential-errors`, which still names
 Vercel as the API host. Terms need no hosting change.
 
@@ -15,7 +15,7 @@ the API, database-connection and legal-page host. Its R2 backup wording, which
 Anthony approved on October 30, 2026, carries over unchanged. Its API, Hyperdrive
 and legal-page clauses do not.
 
-## What the candidate changes
+## What the notice changes
 
 | Section                                        | Change                                                                                                                                                                                                       |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -91,12 +91,14 @@ remain Phase 14 work. No Apple answers change here.
 
 ## Before publication
 
-- Anthony approves the exact public text. Then set `legal-version`,
-  `publication-status: owner-approved` and `effective-date` in the draft, with the
-  real publication date, and add a row to [APPROVALS.md](APPROVALS.md).
-- Until then the beta preflight (`scripts/release/check-beta.mjs`) refuses beta
-  builds, because it reads the draft in production mode. Merge this candidate
-  only together with that approval.
+- Anthony approved the text on November 13, 2026. The draft carries
+  `2026-11-13-supabase-edge`, effective 2026-11-13. If publication happens
+  later, set the version and effective date to the publication date first,
+  rather than backdating them.
+- Diagnostics beta builds need `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to
+  match the published version, so the beta preflight
+  (`scripts/release/check-beta.mjs`) refuses them until this version is
+  published and that value changes. Plain beta builds pass.
 - No outside tester joins while the published notice names Vercel as the API
   host. Builds before 7 keep their embedded addresses, so retire them rather than
   relying on a source change.
