@@ -38,6 +38,7 @@ const failureCodes = new Set([
     'APP_ENVIRONMENT',
     'MANAGED_AUTH_ENABLED',
     'DATABASE_SSL',
+    'IDENTITY_RATE_LIMIT_KEY',
     'LOG_LEVEL',
     'API_SENTRY_ENABLED',
     'API_SENTRY_DSN',
