@@ -319,7 +319,7 @@ test('repository public sources use document labels and exclude review records a
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
   for (const [documentSource, effectiveDate, version] of [
-    [privacySource, '2026-10-27', '2026-10-27-essential-errors'],
+    [privacySource, '2026-11-13', '2026-11-13-supabase-edge'],
     [termsSource, '2026-10-25', '2026-10-25-beta'],
   ]) {
     const document = parseDocument(documentSource);
@@ -355,6 +355,27 @@ test('repository public sources use document labels and exclude review records a
   assert.match(privacy, /Sentry/);
   assert.match(privacy, /Product analytics remains disabled/);
   assert.match(privacy, /App versions with crash reporting enabled/);
+  assert.match(
+    privacy,
+    /runs the server that handles synchronized account data, including feelings and reflections, on Supabase Edge Functions/,
+  );
+  assert.match(privacy, /Supabase runs the server in the region closest/);
+  assert.match(privacy, /primary database remains in Canada Central/);
+  assert.match(privacy, /They do not record request bodies, sign-in tokens/);
+  assert.match(
+    privacy,
+    /<strong>Cloudflare<\/strong> stores encrypted backups of account, journal and sign-in information/,
+  );
+  assert.match(privacy, /scheduled to expire seven days after creation/);
+  assert.match(
+    privacy,
+    /Account users must sign in again after a service restore\./,
+  );
+  assert.match(
+    privacy,
+    /<strong>Vercel<\/strong> hosts these public legal pages\./,
+  );
+  assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
   const published = renderSite({
     privacySource,
     termsSource,
@@ -364,15 +385,15 @@ test('repository public sources use document labels and exclude review records a
     assert.doesNotMatch(html, /noindex,nofollow/);
 });
 
-test('the approved canonical essential-errors notice retains strict publication boundaries', async () => {
+test('the approved Supabase Edge notice keeps the essential-errors scope and strict publication boundaries', async () => {
   const approved = await readFile(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   );
   const document = parseDocument(approved, true);
   assert.equal(document.status, 'owner-approved');
-  assert.equal(document.effectiveDate, '2026-10-27');
-  assert.equal(document.version, '2026-10-27-essential-errors');
+  assert.equal(document.effectiveDate, '2026-11-13');
+  assert.equal(document.version, '2026-11-13-supabase-edge');
   assert.match(
     approved,
     /^<!-- diagnostics-scope: essential-errors-only -->$/m,
@@ -389,7 +410,7 @@ test('the approved canonical essential-errors notice retains strict publication 
     () =>
       parseDocument(
         approved.replace(
-          'effective-date: 2026-10-27',
+          'effective-date: 2026-11-13',
           'effective-date: pending',
         ),
         true,
