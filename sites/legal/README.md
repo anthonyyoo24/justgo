@@ -8,10 +8,11 @@ project and publishes nothing.
 The October 25 owner-directed publication is live at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. The October 27 privacy update is published as
-`2026-10-27-essential-errors`, owner-approved and effective October 27, 2026.
-It describes the approved minimal Sentry app and server reports and the local iOS
-crash cache. Terms retain `2026-10-25-beta` and their October 25 effective date.
+`justgo-legal`. The current Privacy Policy is `2026-11-13-supabase-edge`,
+owner-approved, effective and published November 13, 2026. It names Supabase
+Edge Functions as the API host and Cloudflare R2 for encrypted backups, and keeps
+the October 27 description of the minimal Sentry app and server reports and the
+local iOS crash cache. Terms retain `2026-10-25-beta` and their October 25 effective date.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
 
@@ -90,10 +91,10 @@ must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
 Never upload the source repository, review records or environment files.
 
 After an authorized deploy, verify both stable HTTPS routes anonymously, the
-original logo bytes and footer navigation. The October 27 privacy update passed
-anonymous byte checks for both documents and the root Privacy page. Terms were
-unchanged. The publication also confirmed that `/.env.local` and the internal
-review-record path returned 404. The project's model-training sharing is
+original logo bytes and footer navigation. The November 13 privacy update passed
+anonymous byte checks for both documents, the root Privacy page, the stylesheet
+and the logo. Terms were unchanged. The publication also confirmed that
+`/.env.local`, `/vercel.json` and the internal review-record path returned 404. The project's model-training sharing is
 disabled. EAS preview public legal URLs and App Store Connect's Privacy Policy
 URL use the published destinations. Opening and accessibility on the actual
 signed iPhone remain Phase 14 acceptance.
