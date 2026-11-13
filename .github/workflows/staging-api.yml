@@ -104,7 +104,6 @@ jobs:
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          STAGING_WORKER_ORIGIN: ${{ vars.STAGING_WORKER_ORIGIN }}
           DO_NOT_TRACK: '1'
           SUPABASE_TELEMETRY_DISABLED: '1'
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}

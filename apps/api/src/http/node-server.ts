@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import type { ServerType } from '@hono/node-server';
 import type { ApiApp } from './request.js';
 
-/** Node owns its socket lifetime; Workers call the same app's fetch entrypoint. */
+/** Node owns its socket lifetime; the Edge entry calls the same app's fetch entrypoint. */
 export async function listen(
   app: ApiApp,
   options: { port: number; host: string },

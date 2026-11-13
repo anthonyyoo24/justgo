@@ -1,5 +1,4 @@
 export type ServingState = {
-  host: 'function' | 'worker';
   sha: string;
   version?: number;
 };
@@ -9,7 +8,6 @@ export type SupabaseReleaseReceipt = {
   project: string;
   sourceSha: string;
   previousApiSha: string;
-  previousHost: 'function' | 'worker';
   servingVersion: number;
   uploadSha256?: string;
   bytes?: number;

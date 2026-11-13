@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
 import { setTimeout as pause } from 'node:timers/promises';
 import test from 'node:test';
-import { verifyPublicStagingProbes } from './staging-public-probes.mjs';
+import {
+  stagingProbe,
+  verifyPublicStagingProbes,
+} from './staging-public-probes.mjs';
 import { stagingRunnerFailureCode } from './staging-api.mjs';
 
 const origin = 'https://justgo-api-staging.fixture.workers.dev';
@@ -418,4 +421,33 @@ test('lease cancellation also cleans up the real abortable propagation timer', a
   await rejected;
   await assert.rejects(pendingWait, { name: 'AbortError' });
   assert.deepEqual(f.calls, paths);
+});
+
+test('probe requests carry no auth header, reject oversized responses and do not follow redirects', async () => {
+  const result = await stagingProbe(origin, '/health', {
+    fetch: async (_url, options) => {
+      assert.equal(options.redirect, 'error');
+      assert.equal(options.headers, undefined);
+      return Response.json(
+        { status: 'ok' },
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.headers['cache-control'], 'no-store');
+  for (const fetch of [
+    async () => new Response('x'.repeat(4097)),
+    async () => {
+      throw new Error('PRIVATE_PROVIDER_CONTENT');
+    },
+  ])
+    await assert.rejects(
+      stagingProbe(origin, '/health', { fetch }),
+      (error) => {
+        assert.equal(stagingRunnerFailureCode(error), 'INVALID_STAGING_PROBE');
+        assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
+        return true;
+      },
+    );
 });

@@ -39,7 +39,7 @@ test('staging release is manual, serialized, main-only and checks protection bef
   assert.doesNotMatch(workflow, /VERCEL_|vercel-cli/);
   assert.doesNotMatch(
     workflow,
-    /CLOUDFLARE_|wrangler|WRANGLER_|HYPERDRIVE|abandoned|bootstrap/i,
+    /CLOUDFLARE_|STAGING_WORKER_|wrangler|WRANGLER_|HYPERDRIVE|abandoned|bootstrap/i,
   );
   assert.doesNotMatch(
     workflow,

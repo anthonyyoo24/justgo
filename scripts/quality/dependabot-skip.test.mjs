@@ -36,7 +36,6 @@ test('the skip list holds Expo pins and native packages, not plain JavaScript on
     assert.ok(skipped.includes(name), `${name} should be skipped`);
   for (const name of ['@supabase/supabase-js', '@tanstack/react-query'])
     assert.ok(!skipped.includes(name), `${name} should stay in the batch`);
-  assert.match(renderBlock(), /- dependency-name: wrangler$/m);
 });
 
 test('the generated entries sit inside the npm ignore list after the major-version rule', () => {

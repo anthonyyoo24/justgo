@@ -8,16 +8,13 @@ the same bundle as `api`. `pnpm run release:staging:local` only dispatches that
 workflow and prints its receipt, so the Mac deploys nothing. Every deploy,
 migration and secret change needs Anthony's go.
 
-The beta keeps its current API until the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) moves the app to
-the function. This lane never deploys or changes the retired Cloudflare Worker. Its release modules
-(`staging-api-runner.mjs`, `staging-api-deployment.mjs`, `staging-cloudflare.mjs`,
-`staging-bootstrap.mjs` and `staging-worker-build.mjs` in `scripts/release/`)
-stay unused until P15-5 removes them.
+The Cloudflare Worker that served staging before the function is retired, and
+P15-5 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+removed its code and release lane. Git history keeps them and the earlier Worker
+evidence.
 
 Release probes do not establish real managed-account, performance,
-alert-delivery or native acceptance. Git history keeps the earlier Worker
-evidence.
+alert-delivery or native acceptance.
 
 ## Fixed target
 
@@ -64,16 +61,16 @@ function receives.
 4. Review the source and operation, then approve the protected environment job.
    Provider credentials reach only its release step.
 5. Read the receipt. A `staging_supabase_release` receipt names the source SHA,
-   the previous SHA and host, the bundle SHA-256 and size, and the candidate and
+   the previous SHA and function version, the bundle SHA-256 and size, and the candidate and
    serving function versions. A failed or cancelled run is not a receipt.
 
 `--operation` is `deploy`, `migrate-deploy` with `--plan <sha256>`, or `secrets`.
 
 Inside the job, the lane:
 
-1. Reads the serving `/health` source SHA as `previousApiSha`. Before `api`
-   exists, it reads the Worker at `STAGING_WORKER_ORIGIN` instead. When `api`
-   already serves the release SHA, it stops with `unchanged`.
+1. Reads the serving `/health` source SHA as `previousApiSha`, and refuses to
+   run when `api` does not exist. When `api` already serves the release SHA, it
+   stops with `unchanged`.
 2. Holds the database guard in `apps/api/scripts/staging-release-guard.ts`: the
    hosted target, restricted role, trusted TLS and a complete applied Drizzle
    history. One PostgreSQL session advisory lock stays held through the serving
@@ -119,8 +116,7 @@ secret is copied into source, the bundle or a build child.
 | `STAGING_RECOVERY_ATTESTATION` | Reviewed current recovery evidence, required only for pending migrations.                |
 | `STAGING_FUNCTION_SECRETS`     | The function's runtime secrets, read only by the `secrets` operation.                    |
 
-Protected variables are `SUPABASE_PROJECT_REF` and `STAGING_WORKER_ORIGIN`. The
-Worker origin is read only while `api` does not exist yet.
+The one protected variable is `SUPABASE_PROJECT_REF`.
 
 The Supabase CLI comes from the SHA-pinned `supabase/setup-cli` action at CLI
 version 3.1.0, not from npm, so nothing new installs on the Mac. Its telemetry is
@@ -166,8 +162,7 @@ To provision a database, follow this order:
 3. Apply the application migrations with `pnpm run db:migrate`.
 4. Connect the runtime role with its own password through the **transaction**
    pooler on port 6543 as `justgo_runtime.<project-ref>`. The `api` function and
-   the Vercel API that build 5 still uses both connect this way. The retired
-   Worker connects through Hyperdrive.
+   the Vercel API that build 5 still uses both connect this way.
 
 Supabase records the administrative provisioning as its own migration,
 `foundation_roles`. Drizzle's journal in schema `drizzle` records the application
