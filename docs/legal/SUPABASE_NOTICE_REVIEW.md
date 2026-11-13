@@ -4,7 +4,7 @@ This review backs the Phase 15 Privacy Policy version
 `2026-11-13-supabase-edge`, in
 [PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md). The API moved from Vercel and
 a Cloudflare Worker to the Supabase Edge Function `api`
-([Supabase plan](../implementation-plan/phase-15-supabase-api.md), P15-10). The
+([Supabase plan](../implementation-plan/phase-15-supabase-api.md), P15-10).
 Anthony approved the text on November 13, 2026, and [APPROVALS.md](APPROVALS.md)
 records it. It is not published, and publication needs his separate go. The
 published Privacy Policy stays `2026-10-27-essential-errors`, which still names
