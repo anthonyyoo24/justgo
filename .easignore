@@ -22,7 +22,11 @@ apps/mobile/android/
 /docs/
 /design/
 /.github/
-/scripts/
+# metro.config.mjs imports the local Dev environment check, so upload that one file.
+/scripts/*
+!/scripts/development/
+/scripts/development/*
+!/scripts/development/configuration.mjs
 /apps/api/*
 !/apps/api/package.json
 **/*.test.ts
