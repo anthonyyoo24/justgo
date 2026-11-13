@@ -87,8 +87,9 @@ and support outside Canada, stay word for word.
   ([#449](https://github.com/anthonyyoo24/justgo/issues/449)). The gateway still
   receives each request through Supabase's edge network, which the unchanged
   provider-network sentence covers.
-- **Builds.** Only builds made from that change send the pin. Build 7 and
-  earlier send none, so for them the function still runs in the region closest
+- **Builds.** Only builds made after
+  [#479](https://github.com/anthonyyoo24/justgo/pull/479) merges send the pin.
+  Earlier builds, including build 7, send none, so for them the function still runs in the region closest
   to each request.
 - **Before publication.** Anthony approves the text, and a build that sends the
   pin is the one testers are told to use. Retire unpinned builds rather than
