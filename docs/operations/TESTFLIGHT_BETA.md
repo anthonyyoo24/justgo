@@ -23,10 +23,9 @@ command select the staging `api` Edge Function at
 `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, and the preflight
 refuses any other API URL. Build 7 is the current TestFlight build and uses the
 function. P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
-retired the old hosts on November 13, 2026: build 5 expired, the API Worker and
+retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
 its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
-was paused, not deleted. Builds 3 and 4 are still in TestFlight and name the
-paused Vercel API, so they cannot sync. The legal pages stay on Vercel.
+was paused, not deleted. The legal pages stay on Vercel.
 TestFlight submissions need Anthony's go.
 
 Store signing does not select a paid production API. Preview reuses the verified

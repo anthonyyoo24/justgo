@@ -2,7 +2,7 @@
 
 # Phase 15 plan to move the API to one Supabase Edge Function
 
-**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging, at `fdd410d` since that evening. On November 13, 2026, P15-11 switched TestFlight to build 7, which uses the function, expired build 5, deleted the API Worker and its Hyperdrive configuration, and paused the Vercel API project. [Appendix A](#appendix-a-prototype-evidence) records the receipts.
+**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging, at `fdd410d` since that evening. On November 13, 2026, P15-11 switched TestFlight to build 7, which uses the function, expired builds 3, 4 and 5, deleted the API Worker and its Hyperdrive configuration, and paused the Vercel API project. [Appendix A](#appendix-a-prototype-evidence) records the receipts.
 
 The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. The steps are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The fast path below runs them in a different order. Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
 
@@ -59,7 +59,7 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [x] P15-1, P15-3, P15-4 and P15-7 are done.
   - [x] P15-6, which carries P15-8, branches from `main` now. It merged as #445.
   - [x] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go. It ran on November 12, 2026, and #456 recorded it.
-  - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026.
+  - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026. Lanes 4, 5, 6 and 10 and the perf rule stay unchecked, because they passed on Anthony's report alone, were skipped or wait for backups.
   - [ ] P15-5 after the new TestFlight build passes P15-11. Build 7 passed, so P15-5 can run.
   - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
 - [ ] Hold the file boundaries.
@@ -904,7 +904,7 @@ The trials answered the questions above.
 - Lane 10 waits until backups resume.
 - Perf passed on Anthony's report that launch to first sync was fine. No timings were recorded.
 
-Builds 3 and 4 are still in TestFlight and name the paused Vercel API, so they cannot sync.
+Anthony also expired builds 3 and 4 that day. App Store Connect shows builds 3, 4 and 5 Expired and build 7 Ready to Submit, in the Owner validation group only.
 
 ## Appendix B. Alternatives rejected
 
