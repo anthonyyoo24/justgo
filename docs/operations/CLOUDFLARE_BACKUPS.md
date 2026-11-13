@@ -1,8 +1,8 @@
 # Encrypted Cloudflare recovery copies
 
-Moving the API to Supabase Edge Functions does not change these backups. Keep R2,
-the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`
-when the API Worker retires.
+Moving the API to Supabase Edge Functions does not change these backups. The API
+Worker and its Hyperdrive configuration were deleted on November 13, 2026. Keep
+R2, the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`.
 
 Backups are paused. On November 6, 2026, Anthony set the repository variable
 `JUSTGO_BACKUPS_ENABLED` to `paused`, because staging holds only test data. The
@@ -56,8 +56,8 @@ Timeout-specific behavior, complete recovery and actual expiry remain open.
 On November 1, Anthony accepted the current-account, DPA and
 private-consumer-journal assessment with its residual interpretation. It adds no
 provider-confirmation or external-counsel prerequisite. The
-[Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
-approvals. The [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate)
+[provider agreements](../legal/DATA_INVENTORY.md#provider-agreements) record that
+acceptance. The [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate)
 hold the independent privacy and device gates. This guide does not authorize
 those actions.
 

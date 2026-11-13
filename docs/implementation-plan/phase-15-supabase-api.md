@@ -2,7 +2,7 @@
 
 # Phase 15 plan to move the API to one Supabase Edge Function
 
-**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging, at `fdd410d` since that evening. No build points at it yet. [Appendix A](#appendix-a-prototype-evidence) records the receipts.
+**Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. P15-1 recorded `Decision: stop` on November 7 (#218). P15-3 (#201), P15-4 (#203) and P15-7 (#264, #265) have merged. On November 11, 2026, Anthony overrode the stop and chose the [fast path](#fast-path), which sets the order of the remaining work. On November 12, 2026, the hosted window ran P15-2 and P15-9, and the `api` function now serves staging, at `fdd410d` since that evening. On November 13, 2026, P15-11 switched TestFlight to build 7, which uses the function, expired builds 3, 4 and 5, deleted the API Worker and its Hyperdrive configuration, and paused the Vercel API project. [Appendix A](#appendix-a-prototype-evidence) records the receipts.
 
 The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. The steps are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The fast path below runs them in a different order. Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
 
@@ -29,7 +29,7 @@ The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from th
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), which stays until P15-11 deletes it. Phase 16 remains billing. Phase 14 privacy, release and device gates stay open.
+This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history keeps it. Phase 16 remains billing. Phase 14 privacy, release and device gates stay open.
 
 ## Program checklist
 
@@ -57,10 +57,10 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners run at `high` effort, the cap that [Agent effort](../../AGENTS.md#agent-effort) sets, including the P15-1 owner whose trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
   - [x] P15-1, P15-3, P15-4 and P15-7 are done.
-  - [ ] P15-6, which carries P15-8, branches from `main` now.
-  - [ ] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go.
-  - [ ] P15-11 after the hosted window passes and its docs PR merges.
-  - [ ] P15-5 after the new TestFlight build passes P15-11.
+  - [x] P15-6, which carries P15-8, branches from `main` now. It merged as #445.
+  - [x] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go. It ran on November 12, 2026, and #456 recorded it.
+  - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026. Lanes 4, 5, 6 and 10 and the perf rule stay unchecked, because they passed on Anthony's report alone, were skipped or wait for backups.
+  - [ ] P15-5 after the new TestFlight build passes P15-11. Build 7 passed, so P15-5 can run.
   - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
 - [ ] Hold the file boundaries.
   - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
@@ -630,7 +630,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 **Files.**
 
 - [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
-- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` (planned) from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`.
+- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` (planned) from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
 - [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
 
 **Build.**
@@ -686,51 +686,51 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Files.**
 
-- [ ] Edit `apps/mobile/eas.json`, `scripts/release/check-beta.mjs`, `scripts/release/check-beta.test.mjs`, `.github/workflows/testflight-beta.yml` and `scripts/quality/testflight-workflow.test.mjs`.
-- [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
-- [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
-- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md` and `docs/operations/DEVELOPMENT_BUILDS.md`.
-- [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
-- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
-- [ ] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/operations/TESTFLIGHT_BETA.md`, `docs/legal/APPROVALS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
+- [x] Edit `apps/mobile/eas.json`, `scripts/release/check-beta.mjs`, `scripts/release/check-beta.test.mjs`, `.github/workflows/testflight-beta.yml` and `scripts/quality/testflight-workflow.test.mjs`.
+- [x] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
+- [x] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
+- [x] Edit `docs/operations/TESTFLIGHT_BETA.md` and `docs/operations/DEVELOPMENT_BUILDS.md`.
+- [x] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
+- [x] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
+- [x] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/operations/TESTFLIGHT_BETA.md`, `docs/legal/APPROVALS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
 
 **Build.**
 
-- [ ] Point the Dev and beta profiles at `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`.
-- [ ] Let `check-beta.mjs` accept that base path in place of its `pathname === '/'` rule.
-- [ ] Point `staging-health.yml` at the function's `/ready`. Anthony points the Sentry uptime monitor there too.
-- [ ] Anthony ships a TestFlight build from the beta profile and retires build 5. Installed builds reach the function only through this separately approved build. A redirect from Vercel would not prove that private request payloads stopped reaching Vercel.
-- [ ] After the new build passes, Anthony deletes the `justgo-api-staging` Worker and its Hyperdrive configuration, and turns off the Vercel API project.
-- [ ] Keep the backup clock Worker, R2 and the Cloudflare account.
+- [x] Point the Dev and beta profiles at `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`.
+- [x] Let `check-beta.mjs` accept that base path in place of its `pathname === '/'` rule.
+- [x] Point `staging-health.yml` at the function's `/ready`. Anthony points the Sentry uptime monitor there too.
+- [x] Anthony ships a TestFlight build from the beta profile and retires build 5. Installed builds reach the function only through this separately approved build. A redirect from Vercel would not prove that private request payloads stopped reaching Vercel.
+- [x] After the new build passes, Anthony deletes the `justgo-api-staging` Worker and its Hyperdrive configuration, and turns off the Vercel API project. The Vercel project `justgo` is paused, not deleted, so it can be resumed.
+- [x] Keep the backup clock Worker, R2 and the Cloudflare account.
 
 **You see.**
 
-- [ ] The installed TestFlight build's requests reach `/functions/v1/api/v1/`, and the Worker URL returns no JustGO response.
+- [x] The installed TestFlight build's requests reach `/functions/v1/api/v1/`, and the Worker URL returns no JustGO response. Build 7 embeds only the function URL (lane 2), and the Worker returns Cloudflare's 1042 error (lane 8).
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `check-beta.test.mjs` accepts the function URL and rejects the Worker URL, another project and any other path. Run `node --test scripts/release/check-beta.test.mjs`.
-- [ ] Run `pnpm run test:architecture` and the full `pnpm run check`, because the Expo configuration changed.
+- [x] `check-beta.test.mjs` accepts the function URL and rejects the Worker URL, another project and any other path. Run `node --test scripts/release/check-beta.test.mjs`.
+- [x] Run `pnpm run test:architecture` and the full `pnpm run check`, because the Expo configuration changed.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. Lanes 1 to 3 run locally. Lanes 4 to 10 run on the iPhone or against hosted services after Anthony's go.
 
-- [ ] Lane 1. Regression lane against trunk. Run `node scripts/release/check-beta.mjs` on the trunk and head configurations. Save `check-beta.txt`. Pass when trunk accepts the Worker URL and head accepts only the function URL.
-- [ ] Lane 2. Run `pnpm --filter @justgo/mobile run export:ios` and search the bundle for API URLs. Save `bundle-url.txt`. Pass when only the function URL appears.
-- [ ] Lane 3. Run the `staging-health.yml` check logic locally against the function. Save `health-check.json`. Pass when it reports ready.
-- [ ] Lane 4. Sign in with Apple on the new TestFlight build. Save `tf-apple.png`. Pass when the journal loads.
-- [ ] Lane 5. Save writing on the new build and load it on a second device. Save `tf-sync.png`. Pass when both show the entry.
-- [ ] Lane 6. Delete the account on the new build. Save `tf-delete.png`. Pass when the deletion receipt completes.
-- [ ] Lane 7. Open the Sentry uptime monitor. Save `uptime.png`. Pass when it targets the function and its latest check passed.
-- [ ] Lane 8. After the Worker deletion, request the Worker's `/ready`. Save `worker-gone.txt`. Pass when no JustGO response returns.
-- [ ] Lane 9. After the Vercel API retirement, request `https://justgo-two.vercel.app/ready` and the legal pages. Save `vercel-gone.txt`. Pass when no JustGO API response returns and the legal pages still load.
-- [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backups-after.json`. Pass when both succeed from the backup clock.
+- [x] Lane 1. Regression lane against trunk. Run `node scripts/release/check-beta.mjs` on the trunk and head configurations. Save `check-beta.txt`. Pass when trunk accepts the Worker URL and head accepts only the function URL.
+- [x] Lane 2. Run `pnpm --filter @justgo/mobile run export:ios` and search the bundle for API URLs. Save `bundle-url.txt`. Pass when only the function URL appears.
+- [x] Lane 3. Run the `staging-health.yml` check logic locally against the function. Save `health-check.json`. Pass when it reports ready.
+- [ ] Lane 4. Sign in with Apple on the new TestFlight build. Save `tf-apple.png`. Pass when the journal loads. Passed on November 13, 2026, on Anthony's report, with no screenshot by his choice.
+- [ ] Lane 5. Save writing on the new build and load it on a second device. Save `tf-sync.png`. Pass when both show the entry. Anthony skipped it on November 13, 2026. Gate #451 stays open.
+- [ ] Lane 6. Delete the account on the new build. Save `tf-delete.png`. Pass when the deletion receipt completes. Passed on November 13, 2026, on Anthony's report, with no screenshot by his choice.
+- [x] Lane 7. Open the Sentry uptime monitor. Save `uptime.png`. Pass when it targets the function and its latest check passed.
+- [x] Lane 8. After the Worker deletion, request the Worker's `/ready`. Save `worker-gone.txt`. Pass when no JustGO response returns.
+- [x] Lane 9. After the Vercel API retirement, request `https://justgo-two.vercel.app/ready` and the legal pages. Save `vercel-gone.txt`. Pass when no JustGO API response returns and the legal pages still load.
+- [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backups-after.json`. Pass when both succeed from the backup clock. Waits until backups resume, because they are paused.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] Metric. Time on the iPhone from app launch to the first successful journal sync.
 - [ ] Probe. Launch build 5 and the new build five times each, alternating, before build 5 retires.
 - [ ] Baseline. Record build 5 first.
-- [ ] Rule. The new build fails if its median exceeds build 5's by more than 1,000 ms.
+- [ ] Rule. The new build fails if its median exceeds build 5's by more than 1,000 ms. Passed on Anthony's report that launch to first sync on build 7 was fine. No timings were recorded, and build 5 has expired, so the probe and baseline cannot run.
 
 **Review gate.** None. P15-11 is not review-gated.
 
@@ -890,6 +890,22 @@ The trials answered the questions above.
 9. Not answered. Gate #450.
 10. The `api` upload was 2,206,518 bytes. The first request after idle took 525 ms on `justgo-trial` and 603 ms on `api`.
 
+### P15-11 switch and retirement
+
+#462 pointed the beta and Dev profiles, the beta preflight and the staging health check at the function, #463 dropped the Cloudflare host marker from the preflight, and #464 fixed the EAS upload. TestFlight build 0.1.0 (7) came from tag `testflight-beta-2026-11-12-3` at `e2ab966807cbba64e0302f13f3ee8f0624825829`, with diagnostics on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436) resolved `EXPO_PUBLIC_API_URL` to the function from the profile over the EAS preview value, and the inspection step passed. Its [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43340902735) succeeded. On November 13, 2026, with Anthony's go, build 5 expired in TestFlight, the API Worker and its Hyperdrive configuration were deleted, and the Vercel API project was paused.
+
+- Lane 1 passed in #462. Trunk's preflight accepted the Worker URL and rejected the function URL, and the head's preflight did the reverse.
+- Lane 2 passed. With the beta profile's variables and `EXPO_NO_DOTENV=1`, a local `export:ios` of `e2ab966` embeds `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api` and neither `justgo-two.vercel.app` nor any `workers.dev` host. The bundle's `http://localhost:3000` comes from Expo Router's URL helper, and its `.vercel.app` fragments name no JustGO host.
+- Lane 3 passed. `GET https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready` returned 200 `{"status":"ready"}` in #462 and again at 15:52:48 UTC on November 13.
+- Lanes 4 and 6 passed on build 7 on Anthony's report, with no screenshots by his choice. Lane 5 was skipped, and gate #451 stays open.
+- Lane 7 passed. Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/) targets `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready` and was renamed to match. A test check passed, and every check-in from 15:29 to 15:38 UTC returned HTTP 200.
+- Lane 8 passed. At 15:48:13 UTC, `GET https://justgo-api-staging.anthonyyoo24.workers.dev/ready` returned 404 with body `error code: 1042`, after the Worker and the Hyperdrive configuration `justgo-staging` (`43680896c69f4596804be7fba6bf9f0d`) were deleted. The backup clock Worker has no bindings and stays.
+- Lane 9 passed. At 15:49:11 UTC, `https://justgo-two.vercel.app/ready` returned 503 `DEPLOYMENT_PAUSED`, and `https://justgo-legal.vercel.app/privacy/` and `/terms/` returned 200. The Vercel project `justgo` is paused, not deleted. The same three requests returned the same results at 15:52:48 UTC.
+- Lane 10 waits until backups resume.
+- Perf passed on Anthony's report that launch to first sync was fine. No timings were recorded.
+
+Anthony also expired builds 3 and 4 that day. App Store Connect shows builds 3, 4 and 5 Expired and build 7 Ready to Submit, in the Owner validation group only.
+
 ## Appendix B. Alternatives rejected
 
 - **Resume the Worker.** Anthony retired it.
@@ -929,7 +945,7 @@ The trials answered the questions above.
 - Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
 - Before you edit, read the [AGENTS.md rules list](../../AGENTS.md#rules-and-what-enforces-them). It owns the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
-- History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
+- P15-11 deleted the Cloudflare plan, the cutover checklist and the Cloudflare notice review. Git history keeps them at `e2ab966`.
 - Run pstack's `how` skill before P15-6 and P15-8.
 - Keep a decision trail per PR at `.local/decision-trails/phase-15-<pr-id>.tsv`, per pstack's `show-me-your-work` skill and the Stop hook in `.claude/hooks/require-trail-review.mjs`.
 - Recheck these Supabase references before P15-1. Agents read them on November 6, 2026. [Functions](https://supabase.com/docs/guides/functions), [routing](https://supabase.com/docs/guides/functions/routing), [gateway authentication](https://supabase.com/docs/guides/functions/auth-headers), [Postgres from functions](https://supabase.com/docs/guides/functions/connect-to-postgres), [secrets](https://supabase.com/docs/guides/functions/secrets), [limits](https://supabase.com/docs/guides/functions/limits), [deploy](https://supabase.com/docs/guides/functions/deploy), [regional invocation](https://supabase.com/docs/guides/functions/regional-invocation), [logging](https://supabase.com/docs/guides/functions/logging), [function pricing](https://supabase.com/docs/guides/functions/pricing), [project pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) and [data residency](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq).

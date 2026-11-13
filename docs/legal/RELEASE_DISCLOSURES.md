@@ -159,7 +159,7 @@ snapshots and encrypted deletion and revocation records. Encryption does not rem
 copies from the inventory or prove Not Linked. No new product analytics or mobile
 data collection is added.
 
-The [exact notice candidate](CLOUDFLARE_NOTICE_REVIEW.md) and
+The notice candidate that [P15-10](../implementation-plan/phase-15-supabase-api.md#update-the-notices-for-supabase-edge-functions-p15-10) prepares and
 [backup policy](../operations/CLOUDFLARE_BACKUPS.md) require approval and evidence
 of the actual account, configuration and expiry before publication. Supabase
 consent and copy retention, Sentry diagnostic disclosure and device acceptance
