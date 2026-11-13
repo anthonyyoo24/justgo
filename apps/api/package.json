@@ -24,7 +24,7 @@
     "@justgo/contracts": "workspace:*",
     "@supabase/supabase-js": "2.119.0",
     "drizzle-orm": "0.45.4",
-    "hono": "4.13.16",
+    "hono": "4.13.17",
     "pg": "8.23.1"
   },
   "devDependencies": {
