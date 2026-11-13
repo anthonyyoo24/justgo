@@ -318,12 +318,17 @@ test('repository public sources use document labels and exclude review records a
       html,
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
-  for (const [documentSource, effectiveDate, version] of [
-    [privacySource, '2026-10-27', '2026-10-27-essential-errors'],
-    [termsSource, '2026-10-25', '2026-10-25-beta'],
+  for (const [documentSource, status, effectiveDate, version] of [
+    [
+      privacySource,
+      'owner-review-required',
+      'pending',
+      'privacy-supabase-edge-candidate',
+    ],
+    [termsSource, 'owner-approved', '2026-10-25', '2026-10-25-beta'],
   ]) {
     const document = parseDocument(documentSource);
-    assert.equal(document.status, 'owner-approved');
+    assert.equal(document.status, status);
     assert.equal(document.effectiveDate, effectiveDate);
     assert.equal(document.version, version);
   }
@@ -355,8 +360,43 @@ test('repository public sources use document labels and exclude review records a
   assert.match(privacy, /Sentry/);
   assert.match(privacy, /Product analytics remains disabled/);
   assert.match(privacy, /App versions with crash reporting enabled/);
+  assert.match(
+    privacy,
+    /runs the server that handles synchronized account data, including feelings and reflections, on Supabase Edge Functions/,
+  );
+  assert.match(privacy, /Supabase runs the server in the region closest/);
+  assert.match(privacy, /primary database remains in Canada Central/);
+  assert.match(privacy, /They do not record request bodies, sign-in tokens/);
+  assert.match(
+    privacy,
+    /<strong>Cloudflare<\/strong> stores encrypted backups of account, journal and sign-in information/,
+  );
+  assert.match(privacy, /scheduled to expire seven days after creation/);
+  assert.match(
+    privacy,
+    /Account users must sign in again after a service restore\./,
+  );
+  assert.match(
+    privacy,
+    /<strong>Vercel<\/strong> hosts these public legal pages\./,
+  );
+  assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
+  assert.throws(
+    () => renderSite({ privacySource, termsSource, production: true }),
+    /explicit owner approval/,
+  );
+  // Synthetic approval of the candidate text only; it records no real approval.
+  const approvedCandidate = privacySource
+    .replace(
+      '<!-- publication-status: owner-review-required -->',
+      '<!-- publication-status: owner-approved -->',
+    )
+    .replace(
+      '<!-- effective-date: pending -->',
+      '<!-- effective-date: 2026-11-13 -->',
+    );
   const published = renderSite({
-    privacySource,
+    privacySource: approvedCandidate,
     termsSource,
     production: true,
   });
@@ -364,37 +404,34 @@ test('repository public sources use document labels and exclude review records a
     assert.doesNotMatch(html, /noindex,nofollow/);
 });
 
-test('the approved canonical essential-errors notice retains strict publication boundaries', async () => {
-  const approved = await readFile(
+test('the Supabase candidate keeps the essential-errors scope and refuses publication until approved', async () => {
+  const candidate = await readFile(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   );
-  const document = parseDocument(approved, true);
-  assert.equal(document.status, 'owner-approved');
-  assert.equal(document.effectiveDate, '2026-10-27');
-  assert.equal(document.version, '2026-10-27-essential-errors');
+  const document = parseDocument(candidate);
+  assert.equal(document.status, 'owner-review-required');
+  assert.equal(document.effectiveDate, 'pending');
+  assert.equal(document.version, 'privacy-supabase-edge-candidate');
   assert.match(
-    approved,
+    candidate,
     /^<!-- diagnostics-scope: essential-errors-only -->$/m,
   );
   assert.throws(
-    () =>
-      parseDocument(
-        approved.replace('owner-approved', 'owner-review-required'),
-        true,
-      ),
+    () => parseDocument(candidate, true),
     /explicit owner approval/,
   );
-  assert.throws(
-    () =>
-      parseDocument(
-        approved.replace(
-          'effective-date: 2026-10-27',
-          'effective-date: pending',
-        ),
-        true,
-      ),
-    /effective date/,
+  const approved = candidate.replace(
+    'publication-status: owner-review-required',
+    'publication-status: owner-approved',
+  );
+  assert.throws(() => parseDocument(approved, true), /effective date/);
+  assert.equal(
+    parseDocument(
+      approved.replace('effective-date: pending', 'effective-date: 2026-11-13'),
+      true,
+    ).status,
+    'owner-approved',
   );
   assert.match(document.html, /App versions with crash reporting enabled/);
   assert.match(document.html, /Sanitized server error reports/);

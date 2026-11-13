@@ -187,10 +187,28 @@ test('the approved notice passes with no hosting marker and needs a matching dia
   const value = diagnosticsCandidate();
   // The legal pages stay on Vercel, so the approved notice carries no
   // Cloudflare deployment-host marker and the preflight must not ask for one.
-  value.documents['PRIVACY_POLICY_DRAFT.md'] = readFileSync(
+  const draft = readFileSync(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   ).replace(/^<!-- deployment-host: [^\r\n]+ -->\r?\n?/gm, '');
+  value.documents['PRIVACY_POLICY_DRAFT.md'] = draft;
+  if (!/^<!-- publication-status: owner-approved -->$/m.test(draft)) {
+    // A candidate under review blocks beta builds, even with a matching attestation.
+    value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = draft.match(
+      /^<!-- legal-version: (.+) -->$/m,
+    )[1];
+    assert.ok(checkBetaRelease(value).length);
+    // Synthetic approval of the candidate text only; it records no real approval.
+    value.documents['PRIVACY_POLICY_DRAFT.md'] = draft
+      .replace(
+        /^<!-- publication-status: [^\r\n]+ -->$/m,
+        '<!-- publication-status: owner-approved -->',
+      )
+      .replace(
+        /^<!-- effective-date: pending -->$/m,
+        '<!-- effective-date: 2026-11-13 -->',
+      );
+  }
   for (const version of [undefined, '', 'mismatched-synthetic-notice']) {
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = version;
     assert.ok(checkBetaRelease(value).length);

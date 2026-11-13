@@ -1,11 +1,11 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-10-27-essential-errors -->
-<!-- publication-status: owner-approved -->
-<!-- effective-date: 2026-10-27 -->
+<!-- legal-version: privacy-supabase-edge-candidate -->
+<!-- publication-status: owner-review-required -->
+<!-- effective-date: pending -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-Anthony approved the exact essential-errors candidate wording and authorized publication at the existing Privacy Policy URL on October 27, 2026, with that date effective. The Terms wording remains unchanged. This record establishes content and publication authorization; it does not establish completed publication, provider suitability, actual diagnostics activation or signed-device acceptance. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the Phase 15 candidate for Supabase Edge Functions (P15-10). It names Supabase as the API host, keeps Cloudflare R2 for encrypted backups and keeps Vercel for these legal pages. It waits for Anthony's review of the text. Publication needs his separate go, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md) lists what must be true first. The published version is still `2026-10-27-essential-errors`, approved and effective October 27, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
@@ -70,6 +70,8 @@ We use this information to save and display your activity, synchronize the copie
 
 Hosting and network providers also process connection and request information, which may include IP addresses, request paths and browser or device information. That processing is separate from product analytics.
 
+Supabase runs the server that handles account requests. Its function logs record each request's method, path, status and timing. They do not record request bodies, sign-in tokens or journal text. Supabase keeps these logs for a limited period set by our service plan.
+
 When you visit these legal pages, Vercel receives ordinary connection information, such as your IP address, requested page and browser information. We do not add product analytics or tracking cookies to these pages. Vercel describes its handling of service and network information in its [Privacy Notice](https://vercel.com/legal/privacy-notice).
 
 ## Analytics and error reporting
@@ -92,12 +94,15 @@ If you email us, we receive your address and the message and attachments you cho
 
 ## Service providers and international processing
 
-- **Vercel** hosts these public legal pages and the API that processes authenticated account data, including synchronized feelings and reflections.
-- **Supabase** provides managed authentication and hosts account, completion and journal records.
+- **Supabase** provides managed authentication, hosts account, completion and journal records, and runs the server that handles synchronized account data, including feelings and reflections, on Supabase Edge Functions.
+- **Cloudflare** stores encrypted backups of account, journal and sign-in information, along with records used to preserve deletions and revoked sign-in access after recovery.
+- **Vercel** hosts these public legal pages.
 - **Sentry** processes the limited technical error reports described above in the United States.
 - **Apple** provides Apple sign-in, protected native credential storage and optional private CloudKit synchronization. Apple also handles files you choose to save to iCloud Drive under your Apple settings.
 - **Google** provides Google sign-in. **Google Gmail** hosts the support inbox; messages also pass through your email provider.
 - Other file destinations you choose handle the copies you save or share with them.
+
+Our primary database remains in Canada Central. Supabase runs the server in the region closest to each request, so requests and connection information may be processed outside Canada. Database placement does not mean all processing or recovery copies stay in Canada.
 
 Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
 
@@ -111,7 +116,9 @@ Settings → Account → Delete account asks for confirmation, then closes the J
 
 We retain limited security records, such as account and authentication identifiers, deletion/revocation dates and cryptographic digests, to prevent deleted account data or revoked sessions from becoming active again. They contain no journal content, feelings or challenge history, but persistent identifiers may still be personal information.
 
-Provider-controlled recovery copies may retain older information under their retention processes. Before a restored service becomes active, deletion and revocation records must be reconciled so deleted data does not return. We do not promise that deleting active records immediately erases every provider backup.
+We make encrypted backups for service recovery. They are scheduled to expire seven days after creation; automatic deletion normally completes within the following day, but this is not a guaranteed deadline. These backups are unavailable through the app and used only for recovery. Before a restored service reopens, we make sure deleted information and revoked sign-in access stay unavailable. If we cannot confirm this, we keep that restored service closed. Backups may not include changes made since the last successful copy. Account users must sign in again after a service restore. Backup encryption does not make ordinary account synchronization end-to-end encrypted.
+
+Other providers' backups may retain older information under their own retention and deletion processes. Deleting active records does not immediately erase every provider backup.
 
 Deleting the app does not close your cloud account. Neither deletion action can remotely erase user-saved files or a disconnected device immediately. Files saved to Files, iCloud Drive or another chosen destination remain under your control; protect them and delete them separately where appropriate. Operational logs are kept for troubleshooting and security under configured provider retention. Support emails are deleted after 12 months unless a request remains open or a specific legal obligation requires longer retention.
 
