@@ -51,7 +51,10 @@ disposition.
 
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
-published Privacy version. It also holds the Sentry `org:ci` token that Anthony
+published Privacy version. While the approved `2026-11-13-supabase-edge` notice
+is unpublished, the preflight refuses diagnostics builds, because the draft
+version no longer matches the published `2026-10-27-essential-errors`. Publish
+it and set the value to the new version first. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
 
