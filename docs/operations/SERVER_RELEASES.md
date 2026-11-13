@@ -98,7 +98,12 @@ The lane accepts only the runtime names in `functionSecretNames`, requires the
 staging and managed values, a transaction-pooler `DATABASE_URL` on port 6543 as
 `justgo_runtime.<ref>`, a PEM `DATABASE_CA_CERT` and long random keys. It refuses
 `SUPABASE_*`, `JUSTGO_SOURCE_SHA`, `API_SENTRY_RELEASE` and `PORT`, since the
-platform or the bundle sets those. It writes the file mode 0600 under
+platform or the bundle sets those. `functionSecretRules` refuses each value the
+API's `readConfig()` would refuse at boot, such as `DATABASE_SSL=true`, with a
+code that names the field and not the value, as in
+`STAGING_SUPABASE_SECRET_DATABASE_SSL_INVALID`.
+`apps/api/tests/scripts/staging-function-secrets.test.ts` runs the rules
+against the real `readConfig()`, so a rule that drifts looser fails it. It writes the file mode 0600 under
 `$RUNNER_TEMP`, removes it, confirms the names with `secrets list`, and probes
 `api` when it exists. The receipt holds names only. Never put secret values in
 process arguments, source, receipts or chat.

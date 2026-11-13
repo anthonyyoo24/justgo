@@ -33,6 +33,23 @@ const failureCodes = new Set([
   'STAGING_SUPABASE_DEPLOY_UNCONFIRMED',
   'STAGING_SUPABASE_SECRETS_REJECTED',
   'STAGING_SUPABASE_SECRETS_UNCONFIRMED',
+  // One per rule in functionSecretRules, so a refusal names its field.
+  ...[
+    'NODE_ENV',
+    'APP_ENVIRONMENT',
+    'MANAGED_AUTH_ENABLED',
+    'DATABASE_SSL',
+    'LOG_LEVEL',
+    'API_SENTRY_ENABLED',
+    'API_SENTRY_DSN',
+    'IDENTITY_SESSION_HOURS',
+    'IDENTITY_TRANSFER_MINUTES',
+    'IDENTITY_RECOVERY_RATE_LIMIT',
+    'ACTIVITY_WRITE_RATE_LIMIT',
+    'ACCOUNT_EXPORT_RATE_LIMIT',
+    'BETA_ACCESS_WINDOW',
+    'BETA_ACCESS_GRANTS',
+  ].map((name) => `STAGING_SUPABASE_SECRET_${name}_INVALID`),
 ]);
 const trustedFailures = new WeakMap();
 
