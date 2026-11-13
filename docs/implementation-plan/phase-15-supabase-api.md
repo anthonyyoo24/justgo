@@ -59,7 +59,7 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [x] P15-1, P15-3, P15-4 and P15-7 are done.
   - [x] P15-6, which carries P15-8, branches from `main` now. It merged as #445.
   - [x] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go. It ran on November 12, 2026, and #456 recorded it.
-  - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026. Lanes 4, 5, 6 and 10 and the perf rule stay unchecked, because they passed on Anthony's report alone, were skipped or wait for backups.
+  - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026. Lanes 4, 5, 6 and 10 and the perf rule stay unchecked, because they passed on Anthony's report alone, were skipped or wait for the first clock-dispatched nightly database run (#476).
   - [ ] P15-5 after the new TestFlight build passes P15-11. Build 7 passed, so P15-5 can run.
   - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
 - [ ] Hold the file boundaries.
@@ -574,7 +574,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Depends on.** P15-6 merged, with P15-8's lane, and Anthony's one go for the hosted window, which P15-9 shares with P15-2.
 
-**Fast path.** Run lanes 1, 2, 4 and 9 and the perf rule in the hosted window. Lane 3 runs there only when P15-2 predicts a worst-case sync above 4,000 ms. Lanes 5 to 8 run before the first outside tester joins, except where P15-11 lanes 4 to 6 cover them. Lane 10 waits until backups resume. P15-2's docs PR records these receipts too.
+**Fast path.** Run lanes 1, 2, 4 and 9 and the perf rule in the hosted window. Lane 3 runs there only when P15-2 predicts a worst-case sync above 4,000 ms. Lanes 5 to 8 run before the first outside tester joins, except where P15-11 lanes 4 to 6 cover them. Lane 10 passed on November 13, 2026, after backups resumed. P15-2's docs PR records these receipts too.
 
 **Files.**
 
@@ -605,7 +605,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [ ] Lane 7. Write offline on the iPhone, then reconnect. Save `offline-reconnect.png`. Pass when the queued writes sync.
 - [ ] Lane 8. Delete the account, then retry the receipt after Auth erasure. Save `delete-account.png`. Pass when the retry returns the same receipt and iCloud cleanup leaves nothing.
 - [x] Lane 9. Read the function logs for the lane 3 to 8 window. Save `logs-review.json`. Pass when no token, body or reflection text appears.
-- [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backup-runs.json`. Pass when both succeed after the release.
+- [x] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backup-runs.json`. Pass when both succeed after the release. Passed on November 13, 2026, after backups resumed. The database copy was a manual dispatch of the nightly workflow, and the clock dispatched ledger run [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285).
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -723,7 +723,7 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 - [x] Lane 7. Open the Sentry uptime monitor. Save `uptime.png`. Pass when it targets the function and its latest check passed.
 - [x] Lane 8. After the Worker deletion, request the Worker's `/ready`. Save `worker-gone.txt`. Pass when no JustGO response returns.
 - [x] Lane 9. After the Vercel API retirement, request `https://justgo-two.vercel.app/ready` and the legal pages. Save `vercel-gone.txt`. Pass when no JustGO API response returns and the legal pages still load.
-- [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backups-after.json`. Pass when both succeed from the backup clock. Waits until backups resume, because they are paused.
+- [ ] Lane 10. Read the next nightly backup and hourly ledger runs. Save `backups-after.json`. Pass when both succeed from the backup clock. Backups resumed on November 13, 2026, and clock ledger run [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285) passed. The first clock-dispatched nightly database run is due at 04:43 UTC on November 14, and gate #476 tracks it.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -869,9 +869,10 @@ P15-9 ran on November 12, 2026, against the `api` function at version 1, serving
 - Lane 3 imported a 23.7 MB archive of 260 completions and 260 journal entries with 10,000-character reflections on the iPhone. The 14 sync POSTs all returned 200, and the slowest took 1,098 ms of wall time against the 8,000 ms limit. The function logs carry no CPU time, so the 1,000 ms CPU part is Inconclusive (#455).
 - Lanes 4 and 5 passed on Anthony's report, with no screenshots. Apple and Google stayed separate accounts.
 - The first request after about 15 minutes 20 seconds idle took 603 ms against the 2,000 ms limit.
-- Lanes 6, 7 and 8 are deferred to gates #451, #452 and #453, and lane 10 to #454 until backups resume.
+- Lanes 6, 7 and 8 are deferred to gates #451, #452 and #453.
+- Lane 10 waited on #454 until backups resumed. On November 13, 2026, database run [43467724155](https://github.com/anthonyyoo24/justgo/actions/runs/43467724155) (manual dispatch) and ledger runs [43467743601](https://github.com/anthonyyoo24/justgo/actions/runs/43467743601) (manual) and [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285) (clock) succeeded, and a read-only R2 HEAD matched each object's size, checksum and seven-day expiry.
 
-The release took three steps. Anthony chose the owner test-data waiver, because staging holds only test data and backups are paused, and PR #446 added it. The migrate-deploy run applied 0024 and 0025, but its health check failed, because the `DATABASE_SSL` secret was `true` and `apps/api/src/config.ts` accepts only `verify-full` or `disable`. Anthony re-set it to `verify-full`, [run 43254426042](https://github.com/anthonyyoo24/justgo/actions/runs/43254426042) re-set the secrets, and the code-only deploy found no pending migrations and served `/health` and `/ready`. Before the waiver run, a manual check found 0024 and 0025 compatible with the live Worker, which shares the database, because both add only `AFTER UPDATE` triggers.
+The release took three steps. Anthony chose the owner test-data waiver, because staging held only test data and backups were paused, and PR #446 added it. The migrate-deploy run applied 0024 and 0025, but its health check failed, because the `DATABASE_SSL` secret was `true` and `apps/api/src/config.ts` accepts only `verify-full` or `disable`. Anthony re-set it to `verify-full`, [run 43254426042](https://github.com/anthonyyoo24/justgo/actions/runs/43254426042) re-set the secrets, and the code-only deploy found no pending migrations and served `/health` and `/ready`. Before the waiver run, a manual check found 0024 and 0025 compatible with the live Worker, which shares the database, because both add only `AFTER UPDATE` triggers.
 
 Later that day, [run 43300067542](https://github.com/anthonyyoo24/justgo/actions/runs/43300067542) released `fdd410d` to `api` as version 2, so rate limits key on `cf-connecting-ip`. Anthony set `BETA_ACCESS_WINDOW` (November 1 to December 31, 2026) in the Supabase dashboard's function secrets. It is not in the `STAGING_FUNCTION_SECRETS` bundle, and the secrets operation never unsets a name, so it stays.
 
@@ -901,7 +902,7 @@ The trials answered the questions above.
 - Lane 7 passed. Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/) targets `https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready` and was renamed to match. A test check passed, and every check-in from 15:29 to 15:38 UTC returned HTTP 200.
 - Lane 8 passed. At 15:48:13 UTC, `GET https://justgo-api-staging.anthonyyoo24.workers.dev/ready` returned 404 with body `error code: 1042`, after the Worker and the Hyperdrive configuration `justgo-staging` (`43680896c69f4596804be7fba6bf9f0d`) were deleted. The backup clock Worker has no bindings and stays.
 - Lane 9 passed. At 15:49:11 UTC, `https://justgo-two.vercel.app/ready` returned 503 `DEPLOYMENT_PAUSED`, and `https://justgo-legal.vercel.app/privacy/` and `/terms/` returned 200. The Vercel project `justgo` is paused, not deleted. The same three requests returned the same results at 15:52:48 UTC.
-- Lane 10 waits until backups resume.
+- Lane 10 is half done. Clock ledger run [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285) passed on November 13. The first clock-dispatched nightly database run is due at 04:43 UTC on November 14, and gate #476 tracks it.
 - Perf passed on Anthony's report that launch to first sync was fine. No timings were recorded.
 
 Anthony also expired builds 3 and 4 that day. App Store Connect shows builds 3, 4 and 5 Expired and build 7 Ready to Submit, in the Owner validation group only.

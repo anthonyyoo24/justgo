@@ -14,7 +14,11 @@ database run
 [43467724155](https://github.com/anthonyyoo24/justgo/actions/runs/43467724155)
 and ledger run
 [43467743601](https://github.com/anthonyyoo24/justgo/actions/runs/43467743601)
-passed. The clock token was renewed at 17:05 UTC.
+passed. The clock token was renewed at 17:05 UTC, and the clock's 17:23 UTC
+dispatch, ledger run [43472290285](https://github.com/anthonyyoo24/justgo/actions/runs/43472290285),
+passed. The first clock-dispatched nightly database run is due at 04:43 UTC on
+November 14, and gate [#476](https://github.com/anthonyyoo24/justgo/issues/476)
+tracks it.
 [Credential dates](#credential-dates) and
 [#77](https://github.com/anthonyyoo24/justgo/issues/77) hold the new expiry dates.
 
