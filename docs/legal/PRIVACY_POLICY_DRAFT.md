@@ -1,11 +1,11 @@
 # Privacy Policy — free beta
 
 <!-- legal-version: privacy-us-east-candidate -->
-<!-- publication-status: owner-review-required -->
+<!-- publication-status: owner-approved -->
 <!-- effective-date: pending -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the candidate for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It describes the service as it runs now, with no history of earlier hosts or regions: the database and the server run in the United States, with a U.S. storage disclosure. It also drops the operator's name and province, the Canada-only wording and the Canadian regulator link. It waits for Anthony's review of the text. Publication happens only together with build 8, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists what must be true first. The published version is still `2026-11-13-supabase-edge`, approved, effective and published November 13, 2026. Git history keeps its text. The Terms wording remains unchanged. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the candidate for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It describes the service as it runs now, with no history of earlier hosts or regions: the database and the server run in the United States, with a U.S. storage disclosure. It also drops the operator's name and province, the Canada-only wording and the Canadian regulator link. Anthony approved this text on November 13, 2026. It publishes only together with build 8, on the day its version and effective date name, and the [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists what must be true first. The published version is still `2026-11-13-supabase-edge`, approved, effective and published November 13, 2026. Git history keeps its text. The Terms candidate drops the same operator details and publishes with it. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 

@@ -192,8 +192,8 @@ test('the approved notice passes with no hosting marker and needs a matching dia
     'utf8',
   ).replace(/^<!-- deployment-host: [^\r\n]+ -->\r?\n?/gm, '');
   value.documents['PRIVACY_POLICY_DRAFT.md'] = draft;
-  if (!/^<!-- publication-status: owner-approved -->$/m.test(draft)) {
-    // A candidate under review blocks beta builds, even with a matching attestation.
+  if (/^<!-- effective-date: pending -->$/m.test(draft)) {
+    // A notice with no effective date blocks beta builds, even with a matching attestation.
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = draft.match(
       /^<!-- legal-version: (.+) -->$/m,
     )[1];
