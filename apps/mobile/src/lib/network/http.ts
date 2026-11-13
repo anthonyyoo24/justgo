@@ -49,6 +49,13 @@ function retryAfterDelay(header: string | null | undefined) {
   return Number.isFinite(delay) && delay >= 0 ? delay : undefined;
 }
 export type HttpClient = ReturnType<typeof createHttpClient>;
+/**
+ * Supabase runs the `api` function in the region this header names, beside the
+ * `ca-central-1` database pooler. Unpinned, a caller far from Canada would pay a
+ * cross-region database round trip on every query (#449). The Privacy Policy
+ * says the server runs in Canada, so keep the two in step.
+ */
+export const apiRegionHeaders = { 'x-region': 'ca-central-1' } as const;
 function localDevelopmentHost(hostname: string) {
   if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) return true;
   // Physical phones reach Metro's API through the Mac's private LAN address.
@@ -145,6 +152,7 @@ export function createHttpClient(
             method,
             signal: controller.signal,
             headers: {
+              ...apiRegionHeaders,
               ...(body === undefined
                 ? {}
                 : { 'content-type': 'application/json' }),
