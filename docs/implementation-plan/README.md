@@ -43,8 +43,8 @@ The remaining phases run in this order:
 Phase 15 must close before outside testers store real journals. Anthony
 confirmed Supabase Edge Functions as the API host and retired the Cloudflare
 Workers rollout. The [Supabase plan](phase-15-supabase-api.md) waits for his go
-and does not authorize a Pro upgrade. The [Cloudflare plan](phase-15-cloudflare-api.md)
-is superseded and stays as history.
+and does not authorize a Pro upgrade. Its P15-11 step deleted the superseded
+Cloudflare plan, which git history keeps.
 Planning this move does not commit the app to a commercial launch. Prepared
 billing code can be reviewed while activation waits.
 

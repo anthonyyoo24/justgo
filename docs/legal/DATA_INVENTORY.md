@@ -85,8 +85,8 @@ No additional app encryption or end-to-end encryption guarantee is made.
 
 | Service                                          | Candidate role and open gate                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vercel                                           | A separate Hobby project hosts the public legal pages under the October 25 owner direction. The API separately handles authenticated completion AND journal content. Eligible processor and sensitive-content scope remains open before external testers. Model-training sharing is off for the JustGO API and legal projects. Do not contact Vercel. Anthony declined to send the prepared privacy inquiry on October 20 and October 27, 2026.                                         |
-| Cloudflare Workers, Hyperdrive and R2            | Staging API, its database connection and encrypted recovery copies, on Youngshin Yoo's personal account (Workers Free). On November 1, 2026, Anthony accepted the account, Canadian coverage under DPA v6.4 and the private-journal assessment, including its residual interpretation. Reassess if the terms or processing change, including a move into HIPAA-regulated services. Do not contact Cloudflare without a new instruction from Anthony.                                    |
+| Vercel                                           | A separate Hobby project hosts the public legal pages under the October 25 owner direction. The paused API project handled completion and journal content until November 13, 2026. Eligible processor and sensitive-content scope remains open before external testers. Model-training sharing is off for the JustGO API and legal projects. Do not contact Vercel. Anthony declined to send the prepared privacy inquiry on October 20 and October 27, 2026.                           |
+| Cloudflare R2 and backup clock Worker            | Encrypted recovery copies and their backup clock, on Youngshin Yoo's personal account (Workers Free). The API Worker and Hyperdrive were deleted on November 13, 2026. [Provider agreements](#provider-agreements) records the November 1 acceptance. Reassess if the terms or processing change, including a move into HIPAA-regulated services. Do not contact Cloudflare without a new instruction from Anthony.                                                                     |
 | Supabase PostgreSQL and Auth                     | Private storage of accounts, completions and journals, plus managed processing of provider identities, sessions and profiles. The staging project and provider configuration and the Canada Central placement are recorded. The current paid-production configuration, backup expiry, profile retention and full managed-user deletion acceptance remain separate gates.                                                                                                                |
 | Apple sign-in, SecureStore and private CloudKit  | Native identity, OS-protected tokens and a separate, off-by-default private iCloud sync. Build 5's signed identity and Production CloudKit entitlements were inspected. The extended matrix for device, secure-session and data-safety checks remains unverified. iCloud Drive downloads and system backups are separate.                                                                                                                                                               |
 | Google sign-in                                   | The free, original native Google SDK's ID token is exchanged through Supabase Auth. The web uses a PKCE callback adapter. Verify exact audiences, the URL scheme, refreshed provider identities, linking, unlinking and final-method protection, revocation and actual device cancellation. The paid universal SDK was not selected. Skip nonce checks is on for Google only, under the owner's [accepted exception](../operations/ACCOUNT_SYNC_SETUP.md#accepted-security-exceptions). |
@@ -118,6 +118,28 @@ No additional app encryption or end-to-end encryption guarantee is made.
   not HIPAA data by default. Canada Central database placement does not make all
   processing Canadian, because support, network and recovery copies have their
   own scope.
+- **Cloudflare.** On November 1, 2026 (America/Toronto), Anthony accepted the
+  existing personal account (customer Youngshin Yoo), Canadian coverage under DPA
+  v6.4 and the private-consumer-journal assessment, including its residual
+  contractual interpretation. The [Self-Serve Subscription Agreement](https://www.cloudflare.com/terms/)
+  permits a personal counterparty. On October 30, 2026, the signed-in account's
+  **Manage account → Configurations → Preferences → Data processing addendum**
+  section stated that the DPA is incorporated into that agreement, linked
+  [DPA v6.4](https://www.cloudflare.com/cloudflare-customer-dpa/) (effective
+  April 3, 2026) and showed no separate acceptance action. That is incorporation,
+  not a separate signature. DPA §9.1 gives its processing terms priority over
+  conflicting main terms, and with actual incorporation that supports the
+  Canadian/PIPEDA reading. The [Developer Platform terms](https://www.cloudflare.com/service-specific-terms-developer-platform/)
+  cover Workers and R2. Section 8(c)'s sensitive-disclosure wording, read with
+  Cloudflare's [abuse approach](https://www.cloudflare.com/trust-hub/abuse-approach/),
+  finds no blanket prohibition on lawful, authorized private journal sync and
+  encrypted recovery storage. That is an interpretation, not an express safe
+  harbor. SSA §2.2.1(i) restricts HIPAA protected health information, and the
+  consumer app is assessed as a personal-use app, not a regulated healthcare
+  service. No provider confirmation, negotiated exception or new agreement is
+  claimed, and Cloudflare was not contacted. Reassess if the terms or the
+  processing change. Since November 13, 2026, Cloudflare holds only the backup
+  clock Worker and the encrypted R2 copies.
 
 These provider facts do not establish a current production configuration. They do not authorize contact, upgrades, agreement acceptance, rollout or publication. JustGO's project-specific model-training opt-out was verified earlier. Do not treat it as proof of every provider payload and system-data exclusion.
 
@@ -222,7 +244,7 @@ snapshots and encrypted deletion and revocation records. Encryption does not rem
 copies from the inventory or prove Not Linked. No new product analytics or mobile
 data collection is added.
 
-The [exact notice candidate](CLOUDFLARE_NOTICE_REVIEW.md) and
+The notice candidate that [P15-10](../implementation-plan/phase-15-supabase-api.md#update-the-notices-for-supabase-edge-functions-p15-10) prepares and
 [backup policy](../operations/CLOUDFLARE_BACKUPS.md) require approval and evidence
 of the actual account, configuration and expiry before publication. Supabase
 consent and copy retention, Sentry diagnostic disclosure and device acceptance
