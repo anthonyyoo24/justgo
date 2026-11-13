@@ -102,7 +102,8 @@ staging and managed values, a transaction-pooler `DATABASE_URL` on port 6543 as
 `justgo_runtime.<ref>`, a PEM `DATABASE_CA_CERT` and long random keys. It refuses
 `SUPABASE_*`, `JUSTGO_SOURCE_SHA`, `API_SENTRY_RELEASE` and `PORT`, since the
 platform or the bundle sets those. `functionSecretRules` refuses each value the
-API's `readConfig()` would refuse at boot, such as `DATABASE_SSL=true`, with a
+API's `readConfig()` would refuse at boot, such as `DATABASE_SSL=true` or the
+API's local default `IDENTITY_RATE_LIMIT_KEY`, with a
 code that names the field and not the value, as in
 `STAGING_SUPABASE_SECRET_DATABASE_SSL_INVALID`.
 `apps/api/tests/scripts/staging-function-secrets.test.ts` runs the rules

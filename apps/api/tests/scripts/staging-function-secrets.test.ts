@@ -4,7 +4,7 @@ import {
   functionSecretNames,
   functionSecrets,
 } from '../../../../scripts/release/staging-supabase.mjs';
-import { readConfig } from '../../src/config.js';
+import { localDevelopmentRateKey, readConfig } from '../../src/config.js';
 import { edgeConfigEnvironment } from '../../src/edge.js';
 
 // #447: the release lane checks function secrets by hand. These cases hold it
@@ -88,6 +88,9 @@ const probes = [
   'debug',
   'verbose',
   'r'.repeat(32),
+  'r'.repeat(31),
+  // The API's own default, which it refuses in production.
+  localDevelopmentRateKey,
   dsn,
   'https://key@sentry.example/1',
   JSON.stringify(window),

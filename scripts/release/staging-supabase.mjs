@@ -121,6 +121,10 @@ export const functionSecretRules = Object.freeze({
   APP_ENVIRONMENT: oneOf(['staging']),
   MANAGED_AUTH_ENABLED: oneOf(['true']),
   DATABASE_SSL: oneOf(['verify-full']),
+  // readConfig() refuses its own local default in production (#478 note 1).
+  IDENTITY_RATE_LIMIT_KEY: (value) =>
+    value.length >= 32 &&
+    value !== 'local-development-rate-key-not-for-deployment',
   LOG_LEVEL: oneOf(['silent', 'error', 'warn', 'info', 'debug']),
   API_SENTRY_ENABLED: oneOf(['true', 'false']),
   // The bundle supplies the release, so only the DSN is checked here.
@@ -411,8 +415,7 @@ export function functionSecrets(text) {
       requiredSecretNames.every((name) => names.includes(name)) &&
       poolerUrl(values.DATABASE_URL) &&
       values.DATABASE_CA_CERT.includes('-----BEGIN CERTIFICATE-----') &&
-      values.JUSTGO_AUTH_SECRET_KEY.length >= 32 &&
-      values.IDENTITY_RATE_LIMIT_KEY.length >= 32,
+      values.JUSTGO_AUTH_SECRET_KEY.length >= 32,
     'STAGING_SUPABASE_SECRETS_REJECTED',
   );
   for (const [name, accepts] of Object.entries(functionSecretRules))

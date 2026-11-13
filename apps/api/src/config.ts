@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
+/** The default rate key for local runs. Production refuses it at boot. */
+export const localDevelopmentRateKey =
+  'local-development-rate-key-not-for-deployment';
+
 const databaseSchema = z.object({
   DATABASE_URL: z.url().optional(),
   DATABASE_SSL: z.enum(['verify-full', 'disable']).default('verify-full'),
@@ -39,10 +43,7 @@ const configSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
-  IDENTITY_RATE_LIMIT_KEY: z
-    .string()
-    .min(32)
-    .default('local-development-rate-key-not-for-deployment'),
+  IDENTITY_RATE_LIMIT_KEY: z.string().min(32).default(localDevelopmentRateKey),
   IDENTITY_SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
   IDENTITY_TRANSFER_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
   IDENTITY_RECOVERY_RATE_LIMIT: z.coerce
@@ -114,8 +115,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error('DATABASE_URL is required in production');
   if (
     config.NODE_ENV === 'production' &&
-    config.IDENTITY_RATE_LIMIT_KEY ===
-      'local-development-rate-key-not-for-deployment'
+    config.IDENTITY_RATE_LIMIT_KEY === localDevelopmentRateKey
   )
     throw new Error('IDENTITY_RATE_LIMIT_KEY is required in production');
   validateDatabase(config);

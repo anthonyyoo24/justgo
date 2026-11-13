@@ -388,6 +388,11 @@ test('a refused value fails with a code that names its field, not its value', ()
     ['IDENTITY_RECOVERY_RATE_LIMIT', '1.5'],
     ['ACTIVITY_WRITE_RATE_LIMIT', '10001'],
     ['ACCOUNT_EXPORT_RATE_LIMIT', 'many'],
+    [
+      'IDENTITY_RATE_LIMIT_KEY',
+      'local-development-rate-key-not-for-deployment',
+    ],
+    ['IDENTITY_RATE_LIMIT_KEY', 'r'.repeat(31)],
     ['BETA_ACCESS_WINDOW', '{"startsAt":"2026-11-01T00:00:00Z"}'],
     ['BETA_ACCESS_WINDOW', 'not json'],
     ['BETA_ACCESS_GRANTS', grant({ userId: 'someone' })],
