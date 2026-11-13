@@ -325,7 +325,12 @@ test('repository public sources use document labels and exclude review records a
       'pending',
       'privacy-us-east-candidate',
     ],
-    [termsSource, 'owner-approved', '2026-10-25', '2026-10-25-beta'],
+    [
+      termsSource,
+      'owner-review-required',
+      'pending',
+      'terms-us-east-candidate',
+    ],
   ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, status);
@@ -334,6 +339,7 @@ test('repository public sources use document labels and exclude review records a
   }
   const privacy = output.get('privacy/index.html');
   const terms = output.get('terms/index.html');
+  assert.doesNotMatch(terms, /Canada|Ontario|Youngshin/);
   assert.match(privacy, /does not create a JustGO server account/);
   assert.match(
     privacy,
@@ -399,19 +405,29 @@ test('repository public sources use document labels and exclude review records a
     () => renderSite({ privacySource, termsSource, production: true }),
     /explicit owner approval/,
   );
-  // Synthetic approval of the candidate text only; it records no real approval.
-  const approvedCandidate = privacySource
-    .replace(
-      '<!-- publication-status: owner-review-required -->',
-      '<!-- publication-status: owner-approved -->',
-    )
-    .replace(
-      '<!-- effective-date: pending -->',
-      '<!-- effective-date: 2026-11-13 -->',
-    );
+  // Synthetic approval of the candidate texts only; it records no real approval.
+  const approve = (candidate) =>
+    candidate
+      .replace(
+        '<!-- publication-status: owner-review-required -->',
+        '<!-- publication-status: owner-approved -->',
+      )
+      .replace(
+        '<!-- effective-date: pending -->',
+        '<!-- effective-date: 2026-11-13 -->',
+      );
+  assert.throws(
+    () =>
+      renderSite({
+        privacySource: approve(privacySource),
+        termsSource,
+        production: true,
+      }),
+    /explicit owner approval/,
+  );
   const published = renderSite({
-    privacySource: approvedCandidate,
-    termsSource,
+    privacySource: approve(privacySource),
+    termsSource: approve(termsSource),
     production: true,
   });
   for (const html of published.values())
