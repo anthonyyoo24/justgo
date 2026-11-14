@@ -11,9 +11,18 @@ const { diagnosticConfiguration } = createRequire(import.meta.url)(
 );
 
 const root = new URL('../../', import.meta.url);
-const authOrigin = 'https://kmcpcauaxlgpevkkenwd.supabase.co';
-// The staging `api` Edge Function, which passed the Phase 15 hosted window.
+const authOrigin = 'https://gcjmvtsisivxxorstvkb.supabase.co';
+// The staging `api` Edge Function in the us-east-1 project (Phase 15A). The
+// app pins every request to that region with `x-region`.
 export const betaApiUrl = `${authOrigin}/functions/v1/api`;
+/**
+ * The Privacy version that ships with the first build on the us-east-1 project.
+ * It says the database and the server run in the United States (Phase 15A,
+ * US-7 and US-9). Replace `DD` with the day Anthony publishes it. Until then
+ * the preflight refuses every beta build, so no build that targets this
+ * project ships beside the Canada notice.
+ */
+export const betaPrivacyVersion = '2026-11-DD-us-east';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 
@@ -80,6 +89,7 @@ export function checkBetaRelease({
   documents,
   operation = 'build',
   diagnostics = false,
+  privacyVersion = betaPrivacyVersion,
 }) {
   const errors = [];
   const check = (condition, message) => {
@@ -151,7 +161,7 @@ export function checkBetaRelease({
   const auth = publicUrl(env.EXPO_PUBLIC_SUPABASE_URL);
   check(
     auth?.origin === authOrigin && auth.pathname === '/',
-    'EXPO_PUBLIC_SUPABASE_URL must select the existing staging Auth project.',
+    'EXPO_PUBLIC_SUPABASE_URL must select the us-east-1 staging Auth project.',
   );
   check(
     publicAuthKey(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
@@ -222,6 +232,19 @@ export function checkBetaRelease({
     try {
       // Reuse the site's actual publication boundary, including dates and placeholders.
       const document = parseDocument(documents[filename], true);
+      if (filename === 'PRIVACY_POLICY_DRAFT.md') {
+        const pinned = /^(\d{4}-\d{2}-\d{2})-us-east$/.exec(privacyVersion);
+        check(
+          pinned,
+          'Set betaPrivacyVersion to the published U.S. Privacy version before a beta build.',
+        );
+        check(
+          pinned &&
+            document.version === privacyVersion &&
+            document.effectiveDate === pinned[1],
+          'PRIVACY_POLICY_DRAFT.md must be the U.S. notice betaPrivacyVersion names, effective on its date.',
+        );
+      }
       if (diagnostics && filename === 'PRIVACY_POLICY_DRAFT.md') {
         const scopes = documents[filename].match(
           /^<!-- diagnostics-scope: [^\r\n]+ -->$/gm,

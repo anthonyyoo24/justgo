@@ -100,7 +100,10 @@ it('uses bodyless DELETE for a credential resource without a JSON content type',
     'https://example.com/v1/credentials/00000000-0000-4000-8000-000000000001',
     expect.objectContaining({
       method: 'DELETE',
-      headers: { authorization: 'Bearer test-session' },
+      headers: {
+        authorization: 'Bearer test-session',
+        'x-region': 'us-east-1',
+      },
     }),
   );
   expect(fetcher.mock.calls[0]![1]).not.toHaveProperty('body');

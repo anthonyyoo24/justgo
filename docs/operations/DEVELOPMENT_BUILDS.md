@@ -148,10 +148,13 @@ pnpm run dev:mobile --clear
 ```
 
 The launcher first validates the saved development environment and the pinned
-native profile. Both must name the staging `api` Edge Function,
-`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, so a saved file
-that still names the retired Vercel or Worker API stops the launch. Update
-`EXPO_PUBLIC_API_URL` in the EAS `development` environment, then pull it again.
+native profile. Both must name the staging `api` Edge Function in the us-east-1
+project, `https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api`, and the
+Auth origin `https://gcjmvtsisivxxorstvkb.supabase.co`. A saved file that still
+names the Canada project `kmcpcauaxlgpevkkenwd` or the retired Vercel or Worker
+API stops the launch. Update `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`
+and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS `development`
+environment, then pull it again.
 Identity, Auth and provider pairing, Sentry-off mode, current legal URLs and
 fixture rejection stay enforced. Arbitrary API origins are not accepted, and the
 launcher takes no API option.

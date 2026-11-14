@@ -4,13 +4,16 @@ import test from 'node:test';
 import {
   betaApiUrl,
   betaDiagnosticsMode,
+  betaPrivacyVersion,
   checkBetaRelease,
 } from './check-beta.mjs';
 
 const eas = JSON.parse(
   readFileSync(new URL('../../apps/mobile/eas.json', import.meta.url)),
 );
-const document = `<!-- legal-version: synthetic-beta -->
+// A synthetic U.S. notice. The real pin is `betaPrivacyVersion`.
+const syntheticVersion = '2026-10-24-us-east';
+const document = `<!-- legal-version: ${syntheticVersion} -->
 <!-- publication-status: owner-approved -->
 <!-- effective-date: 2026-10-24 -->
 <!-- public:start -->
@@ -26,8 +29,9 @@ function candidate() {
   return {
     eas: structuredClone(eas),
     documents: { ...documents },
+    privacyVersion: syntheticVersion,
     environment: {
-      EXPO_PUBLIC_SUPABASE_URL: 'https://kmcpcauaxlgpevkkenwd.supabase.co',
+      EXPO_PUBLIC_SUPABASE_URL: 'https://gcjmvtsisivxxorstvkb.supabase.co',
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_disposable',
       EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:
         '12345-disposable-ios.apps.googleusercontent.com',
@@ -55,7 +59,7 @@ function diagnosticsCandidate() {
   Object.assign(value.environment, {
     EXPO_PUBLIC_SENTRY_DSN:
       'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/4512279181459456',
-    BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION: 'synthetic-beta',
+    BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION: syntheticVersion,
     SENTRY_AUTH_TOKEN: 'disposable-private-upload-token',
   });
   return value;
@@ -127,7 +131,7 @@ test('diagnostics cannot use an unapproved, unpublished or unrelated notice', ()
     (value) => {
       value.documents['PRIVACY_POLICY_DRAFT.md'] = value.documents[
         'PRIVACY_POLICY_DRAFT.md'
-      ].replace('2026-10-24', 'pending');
+      ].replace('effective-date: 2026-10-24', 'effective-date: pending');
     },
     (value) => {
       value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = '';
@@ -183,29 +187,86 @@ test('diagnostics cannot bypass the original profile or inherited capability gua
   }
 });
 
-test('the approved notice passes with no hosting marker and needs a matching diagnostics publication attestation', () => {
+test('every beta build needs the pinned, dated U.S. Privacy notice', () => {
+  const pinError =
+    'Set betaPrivacyVersion to the published U.S. Privacy version before a beta build.';
+  for (const make of [candidate, diagnosticsCandidate]) {
+    for (const [privacyVersion, expected] of [
+      // The placeholder left until publication day (Phase 15A, US-7).
+      ['2026-11-DD-us-east', pinError],
+      // The Canada notice that build 7 shipped with.
+      ['2026-11-13-supabase-edge', pinError],
+      ['', pinError],
+    ]) {
+      const value = make();
+      value.privacyVersion = privacyVersion;
+      value.documents['PRIVACY_POLICY_DRAFT.md'] = value.documents[
+        'PRIVACY_POLICY_DRAFT.md'
+      ].replace(syntheticVersion, privacyVersion || 'empty');
+      if (value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION)
+        value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION =
+          privacyVersion;
+      assert.ok(checkBetaRelease(value).includes(expected), privacyVersion);
+    }
+    const mismatch =
+      'PRIVACY_POLICY_DRAFT.md must be the U.S. notice betaPrivacyVersion names, effective on its date.';
+    for (const mutate of [
+      // A Privacy version other than the pinned one.
+      (value) => {
+        value.privacyVersion = '2026-10-25-us-east';
+      },
+      // The pinned version with another effective date.
+      (value) => {
+        value.documents['PRIVACY_POLICY_DRAFT.md'] = value.documents[
+          'PRIVACY_POLICY_DRAFT.md'
+        ].replace('effective-date: 2026-10-24', 'effective-date: 2026-10-23');
+      },
+    ]) {
+      const value = make();
+      mutate(value);
+      assert.ok(checkBetaRelease(value).includes(mismatch));
+    }
+  }
+});
+
+test('the real Privacy draft passes only as the pinned U.S. notice with a matching diagnostics attestation', () => {
   const value = diagnosticsCandidate();
+  // Use the real pin, not the synthetic one.
+  delete value.privacyVersion;
   // The legal pages stay on Vercel, so the approved notice carries no
   // Cloudflare deployment-host marker and the preflight must not ask for one.
   value.documents['PRIVACY_POLICY_DRAFT.md'] = readFileSync(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   ).replace(/^<!-- deployment-host: [^\r\n]+ -->\r?\n?/gm, '');
+  const draftVersion = value.documents['PRIVACY_POLICY_DRAFT.md'].match(
+    /^<!-- legal-version: (.+) -->$/m,
+  )[1];
+  // Synthetic attestation only; this unit test performs no publication or activation.
+  value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = draftVersion;
+  if (!/^\d{4}-\d{2}-\d{2}-us-east$/.test(betaPrivacyVersion)) {
+    // Until the U.S. notice is published, the placeholder refuses every beta
+    // build, with or without diagnostics.
+    assert.equal(betaPrivacyVersion, '2026-11-DD-us-east');
+    assert.ok(checkBetaRelease(value).length);
+    const plain = candidate();
+    delete plain.privacyVersion;
+    assert.ok(checkBetaRelease(plain).length);
+    return;
+  }
+  assert.equal(draftVersion, betaPrivacyVersion);
   for (const version of [undefined, '', 'mismatched-synthetic-notice']) {
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = version;
     assert.ok(checkBetaRelease(value).length);
   }
-  // Synthetic attestation only; this unit test performs no publication or activation.
-  value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = value.documents[
-    'PRIVACY_POLICY_DRAFT.md'
-  ].match(/^<!-- legal-version: (.+) -->$/m)[1];
+  value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = draftVersion;
   assert.deepEqual(checkBetaRelease(value), []);
 });
 
 test('admits a store-signed staging candidate and the verified App Store upload target', () => {
   assert.equal(
     betaApiUrl,
-    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
+    'https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api',
   );
   assert.equal(eas.build.beta.env.EXPO_PUBLIC_API_URL, betaApiUrl);
   assert.deepEqual(checkBetaRelease(candidate()), []);
@@ -485,12 +546,12 @@ test('rejects different API/Auth owners and preserves native account capabilitie
     [
       'profile',
       'EXPO_PUBLIC_API_URL',
-      'https://kmcpcauaxlgpevkkenwd.supabase.co',
+      'https://gcjmvtsisivxxorstvkb.supabase.co',
     ],
     [
       'profile',
       'EXPO_PUBLIC_API_URL',
-      'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/other',
+      'https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/other',
     ],
     [
       'profile',
@@ -543,7 +604,7 @@ test('rejects missing, local, credential-bearing and draft legal destinations', 
     'https://notices.vercel.app/privacy/?token=private',
     'https://notices.vercel.app/privacy/#fragment',
     'https://notices.vercel.app/terms/',
-    'https://kmcpcauaxlgpevkkenwd.supabase.co/privacy/',
+    'https://gcjmvtsisivxxorstvkb.supabase.co/privacy/',
     `${betaApiUrl}/privacy/`,
     'invalid',
   ]) {
@@ -560,8 +621,11 @@ test('rejects missing, local, credential-bearing and draft legal destinations', 
 test('reuses actual publication validation, never treating preview wording as approval', () => {
   for (const source of [
     document.replace('owner-approved', 'owner-review-required'),
-    document.replace('2026-10-24', 'pending'),
-    document.replace('2026-10-24', '2026-02-30'),
+    document.replace('effective-date: 2026-10-24', 'effective-date: pending'),
+    document.replace(
+      'effective-date: 2026-10-24',
+      'effective-date: 2026-02-30',
+    ),
     document.replace('Disposable release configuration test.', '[TODO]'),
     '',
     undefined,
