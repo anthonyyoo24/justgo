@@ -22,7 +22,7 @@ import {
 const executeFile = promisify(execFile);
 
 /** The staging project that serves the API and its Auth. */
-export const stagingProjectRef = 'kmcpcauaxlgpevkkenwd';
+export const stagingProjectRef = 'gcjmvtsisivxxorstvkb';
 export const stagingFunctions = Object.freeze({
   serving: 'api',
   candidate: 'api-candidate',

@@ -3,13 +3,13 @@ import {
   envFileText,
   functionSecretNames,
   functionSecrets,
+  stagingProjectRef as ref,
 } from '../../../../scripts/release/staging-supabase.mjs';
 import { localDevelopmentRateKey, readConfig } from '../../src/config.js';
 import { edgeConfigEnvironment } from '../../src/edge.js';
 
 // #447: the release lane checks function secrets by hand. These cases hold it
 // to the real boot path, so a value the lane accepts never fails readConfig().
-const ref = 'kmcpcauaxlgpevkkenwd';
 const sha = 'a'.repeat(40);
 const dsn = `https://${'b'.repeat(32)}@o1.ingest.us.sentry.io/2`;
 const window = {
@@ -24,7 +24,7 @@ const base: Record<string, string> = {
   NODE_ENV: 'production',
   APP_ENVIRONMENT: 'staging',
   MANAGED_AUTH_ENABLED: 'true',
-  DATABASE_URL: `postgresql://justgo_runtime.${ref}:synthetic-password@aws-0-ca-central-1.pooler.supabase.com:6543/postgres`,
+  DATABASE_URL: `postgresql://justgo_runtime.${ref}:synthetic-password@aws-1-us-east-1.pooler.supabase.com:6543/postgres`,
   DATABASE_SSL: 'verify-full',
   DATABASE_CA_CERT:
     '-----BEGIN CERTIFICATE-----\nMIIBsynthetic\n-----END CERTIFICATE-----',

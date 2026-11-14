@@ -1,7 +1,7 @@
 # Staging API and database releases
 
 The staging API is one Supabase Edge Function, `api`, in the Supabase project
-**JustGo**. The manual
+**JustGo US**. The manual
 [Staging API release workflow](../../.github/workflows/staging-api.yml) builds
 the reviewed tag, deploys it as `api-candidate`, probes it, and only then deploys
 the same bundle as `api`. `pnpm run release:staging:local` only dispatches that
@@ -20,8 +20,13 @@ alert-delivery or native acceptance.
 
 `stagingProjectRef` in
 [`scripts/release/staging-supabase.mjs`](../../scripts/release/staging-supabase.mjs)
-pins the project ref `kmcpcauaxlgpevkkenwd`, and `stagingFunctions` pins the
-function names `api` and `api-candidate`. `stagingTarget` in
+pins the project ref `gcjmvtsisivxxorstvkb`, and `stagingFunctions` pins the
+function names `api` and `api-candidate`. `stagingProject` and
+`hostedMigrationOptions()` in
+[`apps/api/scripts/staging-release-guard.ts`](../../apps/api/scripts/staging-release-guard.ts)
+pin the same ref and its session pooler host, and a test keeps the two refs
+equal. [Staging readiness diagnostic](../../.github/workflows/staging-health.yml)
+reads that project's `/ready`. `stagingTarget` in
 [`scripts/release/staging-api.mjs`](../../scripts/release/staging-api.mjs) pins the
 repository, the protected environment and its sole reviewer. The lane refuses a
 `SUPABASE_PROJECT_REF` that differs from the pinned ref, so it cannot select
@@ -150,11 +155,13 @@ not hosted CPU, latency or account acceptance.
 
 ## Staging database
 
-The staging database is the Supabase project **JustGo**, project ref
-`kmcpcauaxlgpevkkenwd`, in Canada Central, under the organization
-**anthonyyoo corp**. Anthony approved its creation after Supabase quoted $0 a
-month. That quote does not guarantee a future budget. Production is not
-provisioned.
+The staging database is the Supabase project **JustGo US**, project ref
+`gcjmvtsisivxxorstvkb`, in `us-east-1` on the free plan, under the organization
+**anthonyyoo corp**. Anthony created it on 2026-11-13. The
+[move plan](../implementation-plan/supabase-us-move.md) owns the move from the
+Canada project `kmcpcauaxlgpevkkenwd`, which served staging before it and stays
+until that plan's US-10. The lane can no longer release to Canada. Production
+is not provisioned.
 
 To provision a database, follow this order:
 
@@ -165,12 +172,12 @@ To provision a database, follow this order:
    a password in a migration.
 2. Connect the migration role directly or through the **session** pooler, which
    listens on port 5432. Staging uses host
-   `aws-0-ca-central-1.pooler.supabase.com` and username
+   `aws-1-us-east-1.pooler.supabase.com` and username
    `justgo_migrator.<project-ref>`. Supply the project's CA and keep certificate
    and hostname verification on.
 3. Apply the application migrations with `pnpm run db:migrate`.
 4. Connect the runtime role with its own password through the **transaction**
-   pooler on port 6543 as `justgo_runtime.<project-ref>`. The `api` function and
+   pooler, the same host on port 6543, as `justgo_runtime.<project-ref>`. The `api` function and
    the Vercel API that build 5 still uses both connect this way.
 
 Supabase records the administrative provisioning as its own migration,
@@ -210,6 +217,12 @@ second run cannot name a previous API. In this order:
    digest. Its recovery attestation or test-data waiver names
    `"previousApiSha": "none"`. The receipt names `previousApiSha` `none` and no
    previous version.
+5. Schedule the identity retention job. As `postgres`, run
+   [`apps/api/scripts/beta-identity-retention.sql`](../../apps/api/scripts/beta-identity-retention.sql)
+   once in the SQL editor. It needs the migrated function, so it runs after the
+   release. It enables `pg_cron` and schedules the job that
+   [TESTFLIGHT_BETA.md](TESTFLIGHT_BETA.md#identity-retention-job) describes, and
+   its last query shows `justgo-identity-retention` at `17 * * * *`.
 
 If that run fails after its migrations commit, the project holds migrations and
 no `api`, and the lane refuses every later run with `serving_function_missing`.
