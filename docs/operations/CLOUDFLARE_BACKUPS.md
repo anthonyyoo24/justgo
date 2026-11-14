@@ -4,6 +4,19 @@ Moving the API to Supabase Edge Functions does not change these backups. The API
 Worker and its Hyperdrive configuration were deleted on November 13, 2026. Keep
 R2, the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`.
 
+The [Supabase US move](../implementation-plan/supabase-us-move.md#us-6) changes
+the backup source at its step US-6. The source moves from the Canada project
+`kmcpcauaxlgpevkkenwd` (ca-central-1) to the "JustGo US" project
+`gcjmvtsisivxxorstvkb` (us-east-1), read through the session pooler
+`aws-1-us-east-1.pooler.supabase.com:5432` as
+`justgo_backup.gcjmvtsisivxxorstvkb`. The bucket, the `staging/` prefixes, the
+retention and the backup clock stay the same. The code accepts the cron-history
+exception only for the new project. A policy that opts in for Canada no longer
+parses, so every run fails until Anthony's new policy and secrets are in place.
+That is why US-6 pauses the backups before the code change merges. New receipts name
+`gcjmvtsisivxxorstvkb@aws-1-us-east-1.pooler.supabase.com/postgres`. Canada's final
+backups stay in R2 until retention removes them.
+
 Backups resumed on November 13, 2026. They had been paused since November 6,
 when Anthony set the repository variable `JUSTGO_BACKUPS_ENABLED` to `paused`
 because staging held only test data. The last copy before the pause, ledger run
@@ -286,7 +299,7 @@ lane.
    capability for the small beta and requests backup activation. The opt-in is
    the optional policy field `allowCronJobRunDetailsDelete: true`. If the field is
    absent or `false`, the guard keeps rejecting. The opt-in is restricted to
-   `environment: "staging"`, `sourceProjectRef: "kmcpcauaxlgpevkkenwd"`,
+   `environment: "staging"`, `sourceProjectRef: "gcjmvtsisivxxorstvkb"`,
    `sourceDatabase: "postgres"` and the matching accepted direct or session-pooler
    source. The exact approved policy bytes and digest bind the exception, and the
    role-verification boundary must receive and revalidate that policy. Only DELETE
@@ -294,6 +307,14 @@ lane.
    table, relation and column mutations elsewhere, ownership, memberships and
    privileged functions remain rejected. The exception does not grant app or Auth
    deletion or authorize deleting scheduler history.
+
+   Until US-6 of the Supabase US move, the exception named the Canada project
+   `kmcpcauaxlgpevkkenwd`, and Anthony's acceptance, the probe, the support
+   request and the access probes below were all made there. The approved move plan
+   carries the exception to the new project. Nobody has yet read whether the new
+   project's `cron.job_run_details` has the same PUBLIC DELETE grant. The opt-in
+   tolerates that one grant whether or not it is present, and any other privilege
+   still fails the first US-6 run's role check.
 
    A rollback-only `postgres` probe could not revoke the `supabase_admin` owner's
    grant, so the existing ACLs are unchanged. The sole scheduled job runs as
@@ -337,8 +358,12 @@ lane.
    newline, so it held 581 bytes instead of the approved 582. When you set the
    variable through a structured API body, preserve the exact bytes. Then read it
    back and run the policy verifier. Do not normalize the policy or weaken its
-   raw-byte hash check. The approved SHA-256 remains
-   `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`.
+   raw-byte hash check. The approved SHA-256 of the Canada policy is
+   `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`. At US-6
+   Anthony replaces that policy with one whose `sourceHost` is
+   `aws-1-us-east-1.pooler.supabase.com`, whose `sourceProjectRef` is
+   `gcjmvtsisivxxorstvkb` and whose `approvalReference` names the move plan. Record
+   its digest here once he approves it.
 
    Policy fields are `version: 1`, `approvalReference`, `accountId`, `bucket`,
    `environment` (`staging` or `production`), `jurisdiction` (`default`, `eu`,
