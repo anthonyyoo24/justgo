@@ -1,10 +1,10 @@
 # Terms of Use — free beta
 
-<!-- legal-version: terms-us-east-candidate -->
+<!-- legal-version: 2026-11-14-us-east -->
 <!-- publication-status: owner-approved -->
-<!-- effective-date: pending -->
+<!-- effective-date: 2026-11-14 -->
 
-This is the candidate that drops the operator's name and province from About JustGO, at Anthony's request on November 13, 2026. Nothing else changes. Anthony approved this text on November 13, 2026. It publishes together with build 8 and the U.S. region Privacy candidate, on the day its version and effective date name. The published version is still `2026-10-25-beta`, effective October 25, 2026, and Git history keeps its text. Anthony authorized that version's final wording and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
+This version drops the operator's name and province from About JustGO, at Anthony's request on November 13, 2026. Nothing else changes. Anthony approved this text on November 13, 2026. It takes effect November 14, 2026, the day it publishes together with build 8 and the U.S. region Privacy notice. Until it publishes, the live version is `2026-10-25-beta`, effective October 25, 2026, and Git history keeps its text. Anthony authorized that version's final wording and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 

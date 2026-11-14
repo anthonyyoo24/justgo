@@ -22,7 +22,7 @@ export const betaApiUrl = `${authOrigin}/functions/v1/api`;
  * the preflight refuses every beta build, so no build that targets this
  * project ships beside the Canada notice.
  */
-export const betaPrivacyVersion = '2026-11-DD-us-east';
+export const betaPrivacyVersion = '2026-11-14-us-east';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 
