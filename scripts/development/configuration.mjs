@@ -15,7 +15,7 @@ export const developmentIdentity = Object.freeze({
 export const releaseGoogleIosClientId =
   '881166911699-nnplpatgdvqogjlnfed198jlbqslj3cn.apps.googleusercontent.com';
 export const developmentApiUrl =
-  'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api';
+  'https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api';
 
 export function developmentLaunchOptions(args) {
   if (args.some((arg) => !['--clear', '--web'].includes(arg))) {
@@ -48,7 +48,7 @@ export function validateDevelopmentEnvironment(environment) {
   );
   check(
     environment.EXPO_PUBLIC_SUPABASE_URL ===
-      'https://kmcpcauaxlgpevkkenwd.supabase.co',
+      'https://gcjmvtsisivxxorstvkb.supabase.co',
     'EXPO_PUBLIC_SUPABASE_URL',
   );
   check(

@@ -19,10 +19,16 @@ are invited.
 
 `build.beta` is a store-signed release build that uses EAS **preview** variables.
 The beta and Dev profiles, the beta preflight and every TestFlight workflow
-command select the staging `api` Edge Function at
-`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, and the preflight
-refuses any other API URL. Build 7 is the current TestFlight build and uses the
-function. P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+command select the staging `api` Edge Function in the us-east-1 project
+`gcjmvtsisivxxorstvkb`, at
+`https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api`, and the preflight
+refuses any other API URL or Auth project. Every API request sends
+`x-region: us-east-1`, so Supabase runs the function beside the database
+(`apiRegionHeaders` in `apps/mobile/src/lib/network/http.ts`). Build 8 is the
+first build on this project. Build 7 still points at the Canada project
+`kmcpcauaxlgpevkkenwd` until step US-10 of the
+[Supabase us-east-1 move](../implementation-plan/supabase-us-move.md) retires it.
+P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
 retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
 its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
 was paused, not deleted. The legal pages stay on Vercel.
@@ -49,11 +55,23 @@ Phase 15 build run and its submit run, to keep build 5's approved essential-erro
 reporting. The default off path would change that behavior and needs its own
 disposition.
 
+Every beta build, with or without diagnostics, needs the U.S. Privacy notice
+that `betaPrivacyVersion` in
+[`scripts/release/check-beta.mjs`](../../scripts/release/check-beta.mjs) names.
+It must read `<yyyy>-<mm>-<dd>-us-east`, and the Privacy draft must carry that
+version with the same effective date. Until publication day it holds the
+placeholder `2026-11-DD-us-east`, which the preflight refuses, so no beta
+build can ship beside the Canada notice. On the day Anthony publishes the U.S.
+notice (US-7), replace `DD` with that day in the same change that sets the
+draft's version.
+
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
 published Privacy version. It holds `2026-11-13-supabase-edge`, published and
-set on November 13, 2026. Change it only after a new Privacy version is
-published, or the preflight refuses diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
+set on November 13, 2026, for build 7. Anthony sets it to the published U.S.
+version on publication day, after the pages go live and before build 8. Change
+it only after a new Privacy version is published, or the preflight refuses
+diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
 
@@ -70,7 +88,8 @@ instruction.
 The legal pages stay on Vercel, so `release:beta:check` asks for no
 `deployment-host` marker. It still needs the approved, dated Privacy Policy and
 Terms, and a diagnostics build still needs the matching published Privacy
-version. The Privacy Policy published on November 13, 2026 names the Supabase
+version. Every beta build needs the U.S. notice that `betaPrivacyVersion` pins.
+The Privacy Policy published on November 13, 2026 names the Supabase
 Edge Function as the API host, as P15-10 of the
 [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) required
 before the first outside tester joins.
@@ -238,7 +257,7 @@ any other hosted schedule needs Anthony's separate approval.
 
 Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
 checks the function's public `/ready`,
-`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready`, over HTTPS every minute, with a five-second
+`https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api/ready`, over HTTPS every minute, with a five-second
 timeout and no account credentials. A check passes only on a successful HTTP
 status with JSON `status: ready`. Three failures in a row open an issue, and one
 success resolves it. The API and mobile Sentry projects email Anthony on new

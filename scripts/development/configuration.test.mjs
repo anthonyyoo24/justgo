@@ -42,7 +42,7 @@ test('launch options forward only the fixed Expo flags', () => {
 test('Dev accepts only the Edge Function base path', () => {
   assert.equal(
     developmentApiUrl,
-    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api',
+    'https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api',
   );
   assert.equal(
     validateDevelopmentEnvironment(publicEnvironment()).EXPO_PUBLIC_API_URL,
@@ -50,8 +50,8 @@ test('Dev accepts only the Edge Function base path', () => {
   );
   for (const EXPO_PUBLIC_API_URL of [
     `${developmentApiUrl}/`,
-    'https://kmcpcauaxlgpevkkenwd.supabase.co',
-    'https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/other',
+    'https://gcjmvtsisivxxorstvkb.supabase.co',
+    'https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/other',
     'https://justgo-two.vercel.app',
     'https://justgo-api-staging.anthonyyoo24.workers.dev',
   ])

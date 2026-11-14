@@ -67,7 +67,7 @@ test('only manual dispatch from main can reach a separately approved build or up
   assert.match(workflow, /^ {4}needs: validate$/m);
   assert.match(
     workflow,
-    /^ {4}environment:\n {6}name: testflight-beta\n {6}url: https:\/\/kmcpcauaxlgpevkkenwd\.supabase\.co\/functions\/v1\/api$/m,
+    /^ {4}environment:\n {6}name: testflight-beta\n {6}url: https:\/\/gcjmvtsisivxxorstvkb\.supabase\.co\/functions\/v1\/api$/m,
   );
   assert.match(workflow, /^ {2}cancel-in-progress: false$/m);
   assert.match(
