@@ -240,6 +240,11 @@ test('provisioning and rehearsal use only the approved reader membership and ret
   );
   assert.equal((role.match(/^grant /gm) ?? []).length, 1);
   assert.doesNotMatch(role, /grant (?:usage|select|create)|password\s+'/i);
+  // Supabase's PUBLIC-executable definer helper is revoked only where it exists.
+  assert.match(
+    role,
+    /if to_regprocedure\('public\.rls_auto_enable\(\)'\) is not null then\s+revoke execute on function public\.rls_auto_enable\(\) from public;/,
+  );
   const rehearsal = await readFile(
     new URL('./rehearse.mjs', import.meta.url),
     'utf8',
