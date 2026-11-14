@@ -44,7 +44,7 @@ export const policySchema = z
     (p) =>
       p.allowCronJobRunDetailsDelete !== true ||
       (p.environment === 'staging' &&
-        p.sourceProjectRef === 'kmcpcauaxlgpevkkenwd' &&
+        p.sourceProjectRef === 'gcjmvtsisivxxorstvkb' &&
         p.sourceDatabase === 'postgres'),
     'Cron history DELETE exception is limited to the approved staging source',
   );

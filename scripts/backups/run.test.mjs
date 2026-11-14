@@ -17,9 +17,9 @@ const policy = {
   ledgerDays: 7,
   lockDays: 7,
   ageRecipient: `age1${'a'.repeat(58)}`,
-  sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+  sourceHost: 'db.gcjmvtsisivxxorstvkb.supabase.co',
   sourceDatabase: 'postgres',
-  sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+  sourceProjectRef: 'gcjmvtsisivxxorstvkb',
   allowCronJobRunDetailsDelete: true,
 };
 const raw = JSON.stringify(policy);
