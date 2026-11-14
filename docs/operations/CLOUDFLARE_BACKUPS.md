@@ -13,9 +13,18 @@ the backup source at its step US-6. The source moves from the Canada project
 retention and the backup clock stay the same. The code accepts the cron-history
 exception only for the new project. A policy that opts in for Canada no longer
 parses, so every run fails until Anthony's new policy and secrets are in place.
-That is why US-6 pauses the backups before the code change merges. New receipts name
-`gcjmvtsisivxxorstvkb@aws-1-us-east-1.pooler.supabase.com/postgres`. Canada's final
-backups stay in R2 until retention removes them.
+That is why US-6 pauses the backups before the code change merges. The logged
+receipt hides the source, so the logged policy's `sourceProjectRef` shows which
+project a run read. Inside its encryption, each ledger copy keeps the full source,
+`gcjmvtsisivxxorstvkb@aws-1-us-east-1.pooler.supabase.com/postgres`. Canada's final backups stay in R2 until retention removes them.
+The first US backups ran on November 14, 2026, as database run
+[43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and
+ledger run
+[43635341677](https://github.com/anthonyyoo24/justgo/actions/runs/43635341677).
+New Supabase projects ship `public.rls_auto_enable()`, a definer function that
+`PUBLIC` may run, and the role check refuses it.
+[backup-role.sql](../../scripts/backups/backup-role.sql) revokes that right
+wherever the function exists.
 
 Backups resumed on November 13, 2026. They had been paused since November 6,
 when Anthony set the repository variable `JUSTGO_BACKUPS_ENABLED` to `paused`
@@ -358,12 +367,12 @@ lane.
    newline, so it held 581 bytes instead of the approved 582. When you set the
    variable through a structured API body, preserve the exact bytes. Then read it
    back and run the policy verifier. Do not normalize the policy or weaken its
-   raw-byte hash check. The approved SHA-256 of the Canada policy is
-   `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`. At US-6
-   Anthony replaces that policy with one whose `sourceHost` is
-   `aws-1-us-east-1.pooler.supabase.com`, whose `sourceProjectRef` is
-   `gcjmvtsisivxxorstvkb` and whose `approvalReference` names the move plan. Record
-   its digest here once he approves it.
+   raw-byte hash check. At US-6 Anthony replaced the Canada policy with one whose
+   `sourceHost` is `aws-1-us-east-1.pooler.supabase.com`, whose `sourceProjectRef`
+   is `gcjmvtsisivxxorstvkb` and whose `approvalReference` names the move plan.
+   `BACKUP_POLICY_SHA256` holds its digest. A rollback restores the Canada policy,
+   whose approved SHA-256 is
+   `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`.
 
    Policy fields are `version: 1`, `approvalReference`, `accountId`, `bucket`,
    `environment` (`staging` or `production`), `jurisdiction` (`default`, `eu`,

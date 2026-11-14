@@ -14,4 +14,14 @@ alter role justgo_backup set idle_in_transaction_session_timeout = '12min';
 alter role justgo_backup set search_path = pg_catalog;
 -- No direct Auth grants or managed-role membership: Supabase does not support
 -- them for custom roles. Do not change global PUBLIC ACLs to make verification pass.
+-- One narrow exception: Supabase projects created since late 2026 ship
+-- public.rls_auto_enable(), a SECURITY DEFINER event-trigger function that PUBLIC
+-- may execute, so verifyBackupRole refuses the reader. Its event trigger does not
+-- need that grant, so revoking it keeps auto-RLS on and removes a definer path.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable() from public;
+  end if;
+end $$;
 -- Run verifyBackupRole as this login before any snapshot; fail closed on drift.

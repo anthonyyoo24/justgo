@@ -112,18 +112,18 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-2, PR A merged, the freeze in force.
 
-- [ ] Anthony runs `apps/api/scripts/provision.sql` in the new project's SQL editor as `postgres`. It creates `justgo_migrator`, `justgo_runtime`, the `justgo` and `drizzle` schemas, and the Supabase migration `foundation_roles`. It sets no passwords, by design.
-- [ ] Anthony sets the `justgo_migrator` and `justgo_runtime` passwords with a secure prompt, as [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) describes for Canada.
-- [ ] Anthony runs `apps/api/scripts/managed-auth/session-check-v1.sql` as `postgres`, as [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) describes. It needs only the `justgo_runtime` role, and the first release's `/ready` probe in US-5 needs it.
-- [ ] Anthony runs `scripts/backups/backup-role.sql` as `postgres` and sets the `justgo_backup` password.
-- [ ] PR B merges. It repins the release lane and guard to the new ref and pooler host. Canada releases stop from this point, which the freeze already covers.
-- [ ] Anthony updates the `justgo-staging` environment. Set the variable `SUPABASE_PROJECT_REF` to the new ref. Replace `MIGRATION_DATABASE_URL` with the session pooler on port 5432 as `justgo_migrator.<new-ref>`. Keep or replace `DATABASE_CA_CERT` after checking that the new pooler presents a chain it signs.
-- [ ] Nobody runs `pnpm run db:migrate` against the new project. The first release in US-5 applies the migrations, and it needs an empty history.
+- [x] Anthony runs `apps/api/scripts/provision.sql` in the new project's SQL editor as `postgres`. It creates `justgo_migrator`, `justgo_runtime`, the `justgo` and `drizzle` schemas, and the Supabase migration `foundation_roles`. It sets no passwords, by design.
+- [x] Anthony sets the `justgo_migrator` and `justgo_runtime` passwords with a secure prompt, as [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) describes for Canada.
+- [x] Anthony runs `apps/api/scripts/managed-auth/session-check-v1.sql` as `postgres`, as [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) describes. It needs only the `justgo_runtime` role, and the first release's `/ready` probe in US-5 needs it.
+- [x] Anthony runs `scripts/backups/backup-role.sql` as `postgres` and sets the `justgo_backup` password.
+- [x] PR B merges. It repins the release lane and guard to the new ref and pooler host. Canada releases stop from this point, which the freeze already covers.
+- [x] Anthony updates the `justgo-staging` environment. Set the variable `SUPABASE_PROJECT_REF` to the new ref. Replace `MIGRATION_DATABASE_URL` with the session pooler on port 5432 as `justgo_migrator.<new-ref>`. Keep or replace `DATABASE_CA_CERT` after checking that the new pooler presents a chain it signs.
+- [x] Nobody runs `pnpm run db:migrate` against the new project. The first release in US-5 applies the migrations, and it needs an empty history.
 
 **Check.**
 
-- [ ] The session-check checks pass. The helper returns false for random UUIDs, and direct Auth reads and writes fail for `justgo_runtime`.
-- [ ] `select to_regclass('drizzle.__drizzle_migrations')` returns null, so no migration has run.
+- [x] The session-check checks pass. The helper returns false for random UUIDs, and direct Auth reads and writes fail for `justgo_runtime`.
+- [x] `select to_regclass('drizzle.__drizzle_migrations')` returns null, so no migration has run.
 
 **Rollback.** Revert PR B and restore the old `justgo-staging` values. Canada never changed. Anthony may delete the new project and start US-2 again.
 
@@ -135,11 +135,11 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-2.
 
-- [ ] Apple provider on. The bundle ID `com.anthonyyoo.justgo` is the Client ID and token audience. Users without email allowed. Nonce validation on. Native sign-in needs no secret.
-- [ ] Google provider on, with the existing web client ID and secret from project `justgo-512319` and the iOS client ID as an extra audience. Skip nonce checks on, for Google only, as the accepted exception in [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) records.
-- [ ] Add the new project's `https://<new-ref>.supabase.co/auth/v1/callback` to the Google web client's authorized redirect URIs. Keep the Canada callback until US-10.
-- [ ] Manual identity linking on. Site URL and redirect allowlist copied from Canada, as [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins) lists them.
-- [ ] Create the server Auth secret key with hard-deletion permission for `SUPABASE_AUTH_SECRET_KEY`.
+- [x] Apple provider on. The bundle ID `com.anthonyyoo.justgo` is the Client ID and token audience. Users without email allowed. Nonce validation on. Native sign-in needs no secret.
+- [x] Google provider on, with the existing web client ID and secret from project `justgo-512319` and the iOS client ID as an extra audience. Skip nonce checks on, for Google only, as the accepted exception in [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) records.
+- [x] Add the new project's `https://<new-ref>.supabase.co/auth/v1/callback` to the Google web client's authorized redirect URIs. Keep the Canada callback until US-10.
+- [x] Manual identity linking on. Site URL and redirect allowlist copied from Canada, as [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins) lists them.
+- [x] Create the server Auth secret key with hard-deletion permission for `SUPABASE_AUTH_SECRET_KEY`.
 
 **Check.**
 
@@ -156,26 +156,26 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-3 and US-4.
 
-- [ ] Anthony rebuilds `STAGING_FUNCTION_SECRETS` for the new project. The runtime `DATABASE_URL` uses the transaction pooler on port 6543 as `justgo_runtime.<new-ref>`, with `DATABASE_SSL=verify-full`. The other values copy from Canada, except long random keys, which are new.
-- [ ] Anthony dispatches the `secrets` operation. With no `api` it probes nothing. The lane refuses `SUPABASE_*` names, so Anthony sets `SUPABASE_AUTH_SECRET_KEY` and `BETA_ACCESS_WINDOW` in the function's secret store the way he did on Canada. All secrets must be set before the next box, because the candidate's `/ready` probe needs them.
-- [ ] Anthony approves a test-data waiver for the first release, bound to the new project, the empty history and `"previousApiSha": "none"` ([decision 8](#decisions)). The new database holds no data, so a recovery attestation has nothing to prove.
-- [ ] Anthony reviews the pending SQL and its plan digest, then dispatches one `migrate-deploy` through PR A's path. It applies 0000 to 0025 as `justgo_migrator`, deploys `api-candidate`, probes it, then creates `api`. There is no migrate-only run. Once any migration is applied, the lane refuses `none`, so migrations and the first deploy must be one run.
-- [ ] Anthony recreates the retention job, after the release because it reads the migrated tables. Enable `pg_cron`, then schedule `justgo-identity-retention` hourly at minute 17 exactly as [TESTFLIGHT_BETA.md](../operations/TESTFLIGHT_BETA.md) describes it, with `apps/api/scripts/beta-identity-retention.sql`. PR B wrote that file from the description, so the next project does not depend on prose. Before running it, Anthony compares it with Canada's `select schedule, command from cron.job where jobname = 'justgo-identity-retention'`.
-- [ ] Anthony repoints Sentry uptime monitor 10773615 to `https://<new-ref>.supabase.co/functions/v1/api/ready`. The free Sentry plan includes only that one monitor, so Canada goes unmonitored from here. Anthony is its only user.
+- [x] Anthony rebuilds `STAGING_FUNCTION_SECRETS` for the new project. The runtime `DATABASE_URL` uses the transaction pooler on port 6543 as `justgo_runtime.<new-ref>`, with `DATABASE_SSL=verify-full`. The other values copy from Canada, except long random keys, which are new.
+- [x] Anthony dispatches the `secrets` operation. With no `api` it probes nothing. The lane refuses `SUPABASE_*` names, so Anthony sets `SUPABASE_AUTH_SECRET_KEY` and `BETA_ACCESS_WINDOW` in the function's secret store the way he did on Canada. All secrets must be set before the next box, because the candidate's `/ready` probe needs them.
+- [x] Anthony approves a test-data waiver for the first release, bound to the new project, the empty history and `"previousApiSha": "none"` ([decision 8](#decisions)). The new database holds no data, so a recovery attestation has nothing to prove.
+- [x] Anthony reviews the pending SQL and its plan digest, then dispatches one `migrate-deploy` through PR A's path. It applies 0000 to 0025 as `justgo_migrator`, deploys `api-candidate`, probes it, then creates `api`. There is no migrate-only run. Once any migration is applied, the lane refuses `none`, so migrations and the first deploy must be one run.
+- [x] Anthony recreates the retention job, after the release because it reads the migrated tables. Enable `pg_cron`, then schedule `justgo-identity-retention` hourly at minute 17 exactly as [TESTFLIGHT_BETA.md](../operations/TESTFLIGHT_BETA.md) describes it, with `apps/api/scripts/beta-identity-retention.sql`. PR B wrote that file from the description, so the next project does not depend on prose. Before running it, Anthony compares it with Canada's `select schedule, command from cron.job where jobname = 'justgo-identity-retention'`.
+- [x] Anthony repoints Sentry uptime monitor 10773615 to `https://<new-ref>.supabase.co/functions/v1/api/ready`. The free Sentry plan includes only that one monitor, so Canada goes unmonitored from here. Anthony is its only user.
 
 **Check.**
 
-- [ ] The `staging_supabase_release` receipt names the new ref, the source SHA, `previousApiSha` `none` with no previous version, and candidate and serving versions.
-- [ ] Anthony runs `select hash, created_at from drizzle.__drizzle_migrations order by created_at` and pastes the result. The agent compares each row's hash and `when` with `applied-migration-hashes.json`. All 26 match in order.
-- [ ] `git diff origin/main -- apps/api/tests/db/fixtures/applied-migration-hashes.json` is empty. The fixture records migration files, and the same files applied to a new database leave it unchanged.
-- [ ] Anthony runs the hosted catalog query from gate #212 on the new project. No `justgo` schema, table, column or routine grants anything to `anon`, `authenticated`, `PUBLIC` or any role but its owner and `justgo_runtime`. Every `justgo` table forces RLS.
-- [ ] `select jobname, schedule from cron.job` shows `justgo-identity-retention` at `17 * * * *`.
-- [ ] `curl -s https://<new-ref>.supabase.co/functions/v1/api/ready` returns exactly `{"status":"ready"}`.
-- [ ] `curl -sI -H 'x-region: us-east-1' https://<new-ref>.supabase.co/functions/v1/api/health` shows `x-sb-edge-region: us-east-1` and the expected `x-justgo-source-sha`.
-- [ ] Record which region serves the same request without the header. Any region but `us-east-1` shows why build 8 needs the pin.
-- [ ] `GET /v1/access` with a fresh guest grants the free beta, which proves `BETA_ACCESS_WINDOW`.
-- [ ] The Sentry monitor shows a passing check on the new URL.
-- [ ] **Perf.** Thirty warm guest catalog requests with the pin. The p50 stays near Phase 15's 91 ms and the p95 near its 137 ms. A much larger number means the function is not next to the database.
+- [x] The `staging_supabase_release` receipt names the new ref, the source SHA, `previousApiSha` `none` with no previous version, and candidate and serving versions.
+- [x] Anthony runs `select hash, created_at from drizzle.__drizzle_migrations order by created_at` and pastes the result. The agent compares each row's hash and `when` with `applied-migration-hashes.json`. All 26 match in order.
+- [x] `git diff origin/main -- apps/api/tests/db/fixtures/applied-migration-hashes.json` is empty. The fixture records migration files, and the same files applied to a new database leave it unchanged.
+- [x] Anthony runs the hosted catalog query from gate #212 on the new project. No `justgo` schema, table, column or routine grants anything to `anon`, `authenticated`, `PUBLIC` or any role but its owner and `justgo_runtime`. Every `justgo` table forces RLS.
+- [x] `select jobname, schedule from cron.job` shows `justgo-identity-retention` at `17 * * * *`.
+- [x] `curl -s https://<new-ref>.supabase.co/functions/v1/api/ready` returns exactly `{"status":"ready"}`.
+- [x] `curl -sI -H 'x-region: us-east-1' https://<new-ref>.supabase.co/functions/v1/api/health` shows `x-sb-edge-region: us-east-1` and the expected `x-justgo-source-sha`.
+- [x] Record which region serves the same request without the header. Any region but `us-east-1` shows why build 8 needs the pin. On November 14 it ran in `ca-central-1`.
+- [x] `GET /v1/access` with a fresh guest grants the free beta, which proves `BETA_ACCESS_WINDOW`.
+- [x] The Sentry monitor shows a passing check on the new URL.
+- [x] **Perf.** Thirty warm guest catalog requests with the pin. The p50 stays near Phase 15's 91 ms and the p95 near its 137 ms. A much larger number means the function is not next to the database. On November 14 the function took about 48 ms typically and 87 ms at the slow end. From the Mac the requests took 136 ms and 169 ms, against 134 ms for Canada.
 
 **Rollback.**
 
@@ -191,17 +191,17 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-5 and gate #476 passed.
 
-- [ ] Anthony dispatches one final Canada run of `database-backups.yml` for both kinds, database and ledger. Record both receipts.
-- [ ] Anthony sets `JUSTGO_BACKUPS_ENABLED` to anything but `approved`, so no scheduled run fires between the merge and the new policy.
-- [ ] PR C merges. It moves the cron-history DELETE exception and the rehearsal pin to the new ref.
-- [ ] Anthony writes and approves a new backup policy with the new `sourceHost`, `sourceProjectRef` and an `approvalReference` that names this plan. He replaces `BACKUP_POLICY_JSON`, `BACKUP_POLICY_SHA256`, `BACKUP_DATABASE_URL` (as `justgo_backup.<new-ref>` on the session pooler, port 5432) and, if US-3 changed it, `BACKUP_DATABASE_CA_CERT`.
-- [ ] Anthony sets `JUSTGO_BACKUPS_ENABLED` back to `approved` and dispatches one run of each kind.
-- [ ] The backup clock Worker needs no change, because it dispatches the workflow and names no project.
+- [x] Anthony dispatches one final Canada run of `database-backups.yml` for both kinds, database and ledger. Record both receipts.
+- [x] Anthony sets `JUSTGO_BACKUPS_ENABLED` to anything but `approved`, so no scheduled run fires between the merge and the new policy.
+- [x] PR C merges. It moves the cron-history DELETE exception and the rehearsal pin to the new ref.
+- [x] Anthony writes and approves a new backup policy with the new `sourceHost`, `sourceProjectRef` and an `approvalReference` that names this plan. He replaces `BACKUP_POLICY_JSON`, `BACKUP_POLICY_SHA256`, `BACKUP_DATABASE_URL` (as `justgo_backup.<new-ref>` on the session pooler, port 5432) and, if US-3 changed it, `BACKUP_DATABASE_CA_CERT`.
+- [x] Anthony sets `JUSTGO_BACKUPS_ENABLED` back to `approved` and dispatches one run of each kind.
+- [x] The backup clock Worker needs no change, because it dispatches the workflow and names no project.
 
 **Check.**
 
-- [ ] The final Canada receipts name `kmcpcauaxlgpevkkenwd@` in their source.
-- [ ] The first new receipts name `<new-ref>@<new-pooler-host>/postgres` in their source.
+- [x] The final Canada runs, database [43633779138](https://github.com/anthonyyoo24/justgo/actions/runs/43633779138) and ledger [43633781515](https://github.com/anthonyyoo24/justgo/actions/runs/43633781515), passed with `kmcpcauaxlgpevkkenwd` as the logged policy's source. The logged receipt hides the source.
+- [x] The first US runs, database [43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and ledger [43635341677](https://github.com/anthonyyoo24/justgo/actions/runs/43635341677), passed with `gcjmvtsisivxxorstvkb` as the logged policy's source. The first two attempts failed the role check on `public.rls_auto_enable()`, which new projects ship with `PUBLIC` execute. Anthony approved revoking that right, and [backup-role.sql](../../scripts/backups/backup-role.sql) now does it.
 - [ ] The next hourly ledger run at minute 23 passes on its own.
 - [ ] A restore rehearsal from the first new database backup passes into loopback `justgo_test`, as [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) describes.
 
