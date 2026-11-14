@@ -200,7 +200,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Check.**
 
-- [x] The final Canada runs, database [43633779138](https://github.com/anthonyyoo24/justgo/actions/runs/43633779138) and ledger [43633781515](https://github.com/anthonyyoo24/justgo/actions/runs/43633781515), passed with `kmcpcauaxlgpevkkenwd` as the logged policy's source. Receipts do not name the source.
+- [x] The final Canada runs, database [43633779138](https://github.com/anthonyyoo24/justgo/actions/runs/43633779138) and ledger [43633781515](https://github.com/anthonyyoo24/justgo/actions/runs/43633781515), passed with `kmcpcauaxlgpevkkenwd` as the logged policy's source. The logged receipt hides the source.
 - [x] The first US runs, database [43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and ledger [43635341677](https://github.com/anthonyyoo24/justgo/actions/runs/43635341677), passed with `gcjmvtsisivxxorstvkb` as the logged policy's source. The first two attempts failed the role check on `public.rls_auto_enable()`, which new projects ship with `PUBLIC` execute. Anthony approved revoking that right, and [backup-role.sql](../../scripts/backups/backup-role.sql) now does it.
 - [ ] The next hourly ledger run at minute 23 passes on its own.
 - [ ] A restore rehearsal from the first new database backup passes into loopback `justgo_test`, as [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) describes.

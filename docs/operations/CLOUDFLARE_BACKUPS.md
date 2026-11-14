@@ -13,9 +13,10 @@ the backup source at its step US-6. The source moves from the Canada project
 retention and the backup clock stay the same. The code accepts the cron-history
 exception only for the new project. A policy that opts in for Canada no longer
 parses, so every run fails until Anthony's new policy and secrets are in place.
-That is why US-6 pauses the backups before the code change merges. Receipts do
-not name the source, so each run's logged policy shows it through
-`sourceProjectRef`. Canada's final backups stay in R2 until retention removes them.
+That is why US-6 pauses the backups before the code change merges. The logged
+receipt hides the source, so the logged policy's `sourceProjectRef` shows which
+project a run read. Inside its encryption, each ledger copy keeps the full source,
+`gcjmvtsisivxxorstvkb@aws-1-us-east-1.pooler.supabase.com/postgres`. Canada's final backups stay in R2 until retention removes them.
 The first US backups ran on November 14, 2026, as database run
 [43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and
 ledger run
