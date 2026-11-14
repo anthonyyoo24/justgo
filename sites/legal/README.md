@@ -12,7 +12,9 @@ The October 25 owner-directed publication is live at
 owner-approved, effective and published November 13, 2026. It names Supabase
 Edge Functions as the API host and Cloudflare R2 for encrypted backups, and keeps
 the October 27 description of the minimal Sentry app and server reports and the
-local iOS crash cache. Terms retain `2026-10-25-beta` and their October 25 effective date.
+local iOS crash cache. The published Terms are `2026-10-25-beta`, effective October 25.
+The source now holds the unapproved `privacy-us-east-candidate` and
+`terms-us-east-candidate`, which publish together with build 8.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
 

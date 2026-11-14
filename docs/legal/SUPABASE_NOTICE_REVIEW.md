@@ -33,15 +33,14 @@ stay on Vercel until Anthony moves them.
   `kmcpcauaxlgpevkkenwd` serves staging, and TestFlight build 7 points at it.
   [Appendix A](../implementation-plan/phase-15-supabase-api.md#appendix-a-prototype-evidence)
   holds the P15-2 and P15-9 receipts.
-- **Region.** The database sits in Canada Central (`ca-central-1`). Edge Functions
+- **Region.** At publication the database sat in Canada Central
+  (`ca-central-1`). Edge Functions
   [run in the region closest to the caller](https://supabase.com/docs/guides/functions/regional-invocation)
-  unless a request pins one. On [#449](https://github.com/anthonyyoo24/justgo/issues/449),
-  where Anthony delegated the pick, the decision is to pin `ca-central-1` later,
-  in a separate mobile change and build. Build 7 sends no pin, so the published
-  region sentence is accurate. The pin change carries a one-sentence notice
-  update, which Anthony approves and which is published before the pinned build
-  reaches testers. Network, support and recovery processing still reach outside
-  Canada, so the placement sentence stays.
+  unless a request pins one. Build 7 sends no pin, so the published region
+  sentence is accurate for it. The planned `ca-central-1` pin
+  ([#449](https://github.com/anthonyyoo24/justgo/issues/449)) was dropped when
+  Anthony chose to move to us-east-1. The
+  [U.S. region candidate](#us-region-candidate) below carries that change.
 - **Network.** The gateway passes `cf-connecting-ip` (P15-2 lane 4), which indicates that Supabase's
   edge network runs behind Cloudflare. That is Supabase's arrangement, covered by the
   existing sentence on hosting and network providers. It is separate from
@@ -63,6 +62,54 @@ stay on Vercel until Anthony moves them.
   condition. Journal traffic through Edge Functions falls under the same DPA as
   the database. Issue [#95](https://github.com/anthonyyoo24/justgo/issues/95)
   carries the restated provider review.
+
+## U.S. region candidate
+
+Candidate `privacy-us-east-candidate` in
+[PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-approved`
+(text only, November 13, 2026) with no effective date, so the production legal build and the beta preflight
+refuse it. It backs [Phase 15A](../implementation-plan/supabase-us-move.md#us-9),
+which moves the database, Auth and the `api` function to a new Supabase project
+in us-east-1 (North Virginia). Anthony asked on November 13 that the policy
+describe the service as it runs now, with no history of earlier hosts or
+regions and no personal details of the operator. It changes these sentences
+and nothing else:
+
+| Section   | Published (`2026-11-13-supabase-edge`)                                                                                                                                                                                                                                     | Candidate                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| About     | JustGO is operated by Youngshin Yoo in Ontario, Canada. For privacy questions, requests or support, email the support address.                                                                                                                                             | For privacy questions, requests or support, email the support address.                                                                                                                                                                                                                                                                                                                               |
+| Placement | Our primary database remains in Canada Central. Supabase runs the server in the region closest to each request, so requests and connection information may be processed outside Canada. Database placement does not mean all processing or recovery copies stay in Canada. | Our database and the server run in the United States, in Supabase's us-east-1 region in Virginia. We store and process your account, history, journal and sign-in information in the United States, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Database placement does not mean all processing or recovery copies stay in the United States. |
+| Providers | Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements.                                                                     | Providers may also process information in other countries, including through their networks and support operations. Information processed in another country may be subject to that country's laws and lawful-access requirements.                                                                                                                                                                   |
+| Requests  | For Canadian privacy concerns, you may contact the Office of the Privacy Commissioner of Canada.                                                                                                                                                                           | Removed. The general right to complain to a privacy regulator stays.                                                                                                                                                                                                                                                                                                                                 |
+
+The other sentences stay word for word. The Terms candidate
+`terms-us-east-candidate` drops the operator's name and province the same way
+and publishes with it. The support address is still a personal Gmail account,
+which waits for Anthony's choice.
+
+- **What makes it true.** Build 8 points at the new project and sends
+  `x-region: us-east-1` on every API request, so Supabase runs the `api`
+  function beside the database. US-7 reads `x-sb-edge-region: us-east-1` back
+  from build 8's code path.
+- **Disclosure.** OPC cross-border guidance, cited in the
+  [release disclosures](RELEASE_DISCLOSURES.md#regional-assessment), expects
+  notice that information held in another country may be accessed by its
+  courts, law enforcement and national security authorities. The new placement
+  paragraph says so for the United States.
+- **Builds.** Build 7 and earlier keep the Canada project until US-10 retires it.
+  Publish only together with build 8, never while build 7 is the build testers
+  use.
+- **Before publication.** Anthony approves the text. At publication, set
+  `legal-version` to `2026-11-<dd>-us-east`, where `<dd>` is the publication
+  day, with `publication-status: owner-approved` and the same `effective-date`.
+  Publish by the [legal site guide](../../sites/legal/README.md#publishing-updates),
+  record it in [APPROVALS.md](APPROVALS.md), and set
+  `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to the published version.
+- **Legal review.** A lawyer should review the cross-border wording before the
+  paid launch at the latest.
+- **Inventory.** The [data inventory](DATA_INVENTORY.md) and
+  [release disclosures](RELEASE_DISCLOSURES.md) record the move by build. The
+  data collected and the App Privacy answers do not change.
 
 ## Approved R2 wording and its conditions
 
