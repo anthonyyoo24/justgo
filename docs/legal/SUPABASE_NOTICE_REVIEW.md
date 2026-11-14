@@ -65,10 +65,12 @@ stay on Vercel until Anthony moves them.
 
 ## U.S. region candidate
 
-Candidate `privacy-us-east-candidate` in
+Privacy `2026-11-14-us-east` in
 [PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-approved`
-(text only, November 13, 2026) with no effective date, so the production legal build and the beta preflight
-refuse it. It backs [Phase 15A](../implementation-plan/supabase-us-move.md#us-9),
+(text only, November 13, 2026) and effective November 14, 2026, the day it
+publishes with build 8. Until then the drafts held the candidate names
+`privacy-us-east-candidate` and `terms-us-east-candidate` with no effective
+date, so the production legal build and the beta preflight refused them. It backs [Phase 15A](../implementation-plan/supabase-us-move.md#us-9),
 which moves the database, Auth and the `api` function to a new Supabase project
 in us-east-1 (North Virginia). Anthony asked on November 13 that the policy
 describe the service as it runs now, with no history of earlier hosts or
@@ -82,8 +84,8 @@ and nothing else:
 | Providers | Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements.                                                                     | Providers may also process information in other countries, including through their networks and support operations. Information processed in another country may be subject to that country's laws and lawful-access requirements.                                                                                                                                                                   |
 | Requests  | For Canadian privacy concerns, you may contact the Office of the Privacy Commissioner of Canada.                                                                                                                                                                           | Removed. The general right to complain to a privacy regulator stays.                                                                                                                                                                                                                                                                                                                                 |
 
-The other sentences stay word for word. The Terms candidate
-`terms-us-east-candidate` drops the operator's name and province the same way
+The other sentences stay word for word. The Terms
+`2026-11-14-us-east` drops the operator's name and province the same way
 and publishes with it. The support address is still a personal Gmail account,
 which waits for Anthony's choice.
 

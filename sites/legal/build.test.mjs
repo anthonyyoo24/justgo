@@ -319,8 +319,8 @@ test('repository public sources use document labels and exclude review records a
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
   for (const [documentSource, status, effectiveDate, version] of [
-    [privacySource, 'owner-approved', 'pending', 'privacy-us-east-candidate'],
-    [termsSource, 'owner-approved', 'pending', 'terms-us-east-candidate'],
+    [privacySource, 'owner-approved', '2026-11-14', '2026-11-14-us-east'],
+    [termsSource, 'owner-approved', '2026-11-14', '2026-11-14-us-east'],
   ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, status);
@@ -391,67 +391,52 @@ test('repository public sources use document labels and exclude review records a
     /<strong>Vercel<\/strong> hosts these public legal pages\./,
   );
   assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
-  assert.throws(
-    () => renderSite({ privacySource, termsSource, production: true }),
-    /explicit owner approval/,
-  );
-  // Synthetic approval of the candidate texts only; it records no real approval.
-  const approve = (candidate) =>
-    candidate
-      .replace(
-        '<!-- publication-status: owner-review-required -->',
-        '<!-- publication-status: owner-approved -->',
-      )
-      .replace(
-        '<!-- effective-date: pending -->',
-        '<!-- effective-date: 2026-11-13 -->',
-      );
-  assert.throws(
-    () =>
-      renderSite({
-        privacySource: approve(privacySource),
-        termsSource,
-        production: true,
-      }),
-    /explicit owner approval/,
-  );
+  // The dated sources publish together; either one without its date is refused.
+  const undate = (dated) =>
+    dated.replace(
+      '<!-- effective-date: 2026-11-14 -->',
+      '<!-- effective-date: pending -->',
+    );
+  for (const [privacy, terms] of [
+    [undate(privacySource), termsSource],
+    [privacySource, undate(termsSource)],
+  ])
+    assert.throws(
+      () =>
+        renderSite({
+          privacySource: privacy,
+          termsSource: terms,
+          production: true,
+        }),
+      /explicit owner approval/,
+    );
   const published = renderSite({
-    privacySource: approve(privacySource),
-    termsSource: approve(termsSource),
+    privacySource,
+    termsSource,
     production: true,
   });
   for (const html of published.values())
     assert.doesNotMatch(html, /noindex,nofollow/);
 });
 
-test('the U.S. region candidate keeps the essential-errors scope and refuses publication until approved', async () => {
-  const candidate = await readFile(
+test('the U.S. region notice keeps the essential-errors scope and passes the production build once dated', async () => {
+  const notice = await readFile(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
   );
-  const document = parseDocument(candidate);
+  const document = parseDocument(notice, true);
   assert.equal(document.status, 'owner-approved');
-  assert.equal(document.effectiveDate, 'pending');
-  assert.equal(document.version, 'privacy-us-east-candidate');
-  assert.match(
-    candidate,
-    /^<!-- diagnostics-scope: essential-errors-only -->$/m,
-  );
+  assert.equal(document.effectiveDate, '2026-11-14');
+  assert.equal(document.version, '2026-11-14-us-east');
+  assert.match(notice, /^<!-- diagnostics-scope: essential-errors-only -->$/m);
+  // Without its effective date the same text is refused in production.
   assert.throws(
-    () => parseDocument(candidate, true),
-    /explicit owner approval/,
-  );
-  const approved = candidate.replace(
-    'publication-status: owner-review-required',
-    'publication-status: owner-approved',
-  );
-  assert.throws(() => parseDocument(approved, true), /effective date/);
-  assert.equal(
-    parseDocument(
-      approved.replace('effective-date: pending', 'effective-date: 2026-11-13'),
-      true,
-    ).status,
-    'owner-approved',
+    () =>
+      parseDocument(
+        notice.replace('effective-date: 2026-11-14', 'effective-date: pending'),
+        true,
+      ),
+    /effective date/,
   );
   assert.match(document.html, /App versions with crash reporting enabled/);
   assert.match(document.html, /Sanitized server error reports/);
