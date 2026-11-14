@@ -117,8 +117,8 @@ test('policy requires exact separately approved bytes and compatible ledger/expi
 test('cron history DELETE requires explicit approved bytes for the current staging source', () => {
   const approved = {
     ...policy,
-    sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
-    sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+    sourceHost: 'db.gcjmvtsisivxxorstvkb.supabase.co',
+    sourceProjectRef: 'gcjmvtsisivxxorstvkb',
     allowCronJobRunDetailsDelete: true,
   };
   const raw = JSON.stringify(approved);
@@ -128,12 +128,28 @@ test('cron history DELETE requires explicit approved bytes for the current stagi
   );
   const pooler = JSON.stringify({
     ...approved,
-    sourceHost: 'aws-0-ca-central-1.pooler.supabase.com',
+    sourceHost: 'aws-1-us-east-1.pooler.supabase.com',
   });
   assert.equal(
     cronJobRunDetailsDeleteAllowed(readPolicy(pooler, digest(pooler))),
     true,
   );
+  // The retired Canada project keeps no exception after the US move.
+  const canada = 'kmcpcauaxlgpevkkenwd';
+  for (const sourceHost of [
+    `db.${canada}.supabase.co`,
+    'aws-0-ca-central-1.pooler.supabase.com',
+  ]) {
+    const retired = JSON.stringify({
+      ...approved,
+      sourceHost,
+      sourceProjectRef: canada,
+    });
+    assert.throws(
+      () => readPolicy(retired, digest(retired)),
+      /Cron history DELETE exception/,
+    );
+  }
   assert.throws(
     () => readPolicy(raw, digest(JSON.stringify(policy))),
     /not approved/,

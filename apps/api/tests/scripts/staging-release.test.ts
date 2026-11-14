@@ -14,9 +14,9 @@ import {
   watchReleaseConnection,
   assertReleaseLease,
   migrationEntries,
-  withStagingBootstrap,
   withStagingRelease,
 } from '../../scripts/staging-release-guard.js';
+import { stagingProjectRef } from '../../../../scripts/release/staging-supabase.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -69,7 +69,9 @@ describe('staging migration target and recovery fences', () => {
     });
   });
   it('requires this project session pooler, restricted role, explicit verified TLS and trusted CA', () => {
-    const good = `postgresql://justgo_migrator.${stagingProject}:private-fixture@aws-0-ca-central-1.pooler.supabase.com:5432/postgres`;
+    // The guard and the release lane must name the same project.
+    expect(stagingProject).toBe(stagingProjectRef);
+    const good = `postgresql://justgo_migrator.${stagingProject}:private-fixture@aws-1-us-east-1.pooler.supabase.com:5432/postgres`;
     expect(
       hostedMigrationOptions(good, rootCertificates[0]).ssl.rejectUnauthorized,
     ).toBe(true);
@@ -78,7 +80,10 @@ describe('staging migration target and recovery fences', () => {
       good.replace('5432', '6543'),
       good.replace(stagingProject, 'other'),
       good.replace('justgo_migrator', 'postgres'),
-      good.replace('aws-0-ca-central-1.pooler.supabase.com', '127.0.0.1'),
+      good.replace('aws-1-us-east-1.pooler.supabase.com', '127.0.0.1'),
+      // The retired Canada project's pooler and ref.
+      good.replace('aws-1-us-east-1', 'aws-0-ca-central-1'),
+      good.replace(stagingProject, 'kmcpcauaxlgpevkkenwd'),
       `${good}?sslmode=disable`,
       `${good}#override`,
     ])
@@ -291,7 +296,7 @@ describe('staging migration target and recovery fences', () => {
   });
 });
 
-describe('shared release lease and first Worker migration guard', () => {
+describe('release lease and first-release migration guard', () => {
   const config = {
     migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url)),
     migrationsSchema: 'drizzle',
@@ -337,32 +342,52 @@ describe('shared release lease and first Worker migration guard', () => {
     } as unknown as Client;
     return { client, calls };
   }
-  it('uses the same restricted-role session and exact current history before the first upload', async () => {
+  it('holds one restricted-role session and reads the current history before code-only work', async () => {
     const f = fixture();
     expect(
-      await withStagingBootstrap(f.client, config, async () => {
-        expect(f.calls[0]).toContain('pg_try_advisory_lock');
-        expect(f.calls[1]).toContain('from pg_roles');
-        expect(f.calls[2]).toContain('to_regclass');
-        expect(f.calls[3]).toContain('select hash');
-        expect(
-          f.calls.some((query) => query.includes('pg_advisory_unlock')),
-        ).toBe(false);
-        return 'uploaded';
-      }),
-    ).toBe('uploaded');
+      await withStagingRelease(
+        f.client,
+        {
+          config,
+          operation: 'deploy',
+          sourceSha: sha,
+          previousApiSha: previous,
+          expectedDatabase: 'postgres',
+        },
+        async () => {
+          expect(f.calls[0]).toContain('pg_try_advisory_lock');
+          expect(f.calls[1]).toContain('from pg_roles');
+          expect(f.calls[2]).toContain('to_regclass');
+          expect(f.calls[3]).toContain('select hash');
+          expect(
+            f.calls.some((query) => query.includes('pg_advisory_unlock')),
+          ).toBe(false);
+          return 'deployed';
+        },
+      ),
+    ).toBe('deployed');
     expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
   });
   for (const failure of ['busy', 'role', 'database', 'pending', 'history'])
-    it(`refuses ${failure} before first upload and releases an acquired lock`, async () => {
+    it(`refuses a code-only deploy on ${failure} and releases an acquired lock`, async () => {
       const f = fixture(failure);
-      let uploads = 0;
+      let deploys = 0;
       await expect(
-        withStagingBootstrap(f.client, config, async () => {
-          uploads++;
-        }),
+        withStagingRelease(
+          f.client,
+          {
+            config,
+            operation: 'deploy',
+            sourceSha: sha,
+            previousApiSha: previous,
+            expectedDatabase: 'postgres',
+          },
+          async () => {
+            deploys++;
+          },
+        ),
       ).rejects.toThrow('Staging release guard failed');
-      expect(uploads).toBe(0);
+      expect(deploys).toBe(0);
       expect(
         f.calls.some((query) => query.includes('pg_advisory_unlock')),
       ).toBe(failure !== 'busy');

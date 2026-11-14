@@ -279,9 +279,9 @@ export async function rehearse(env = process.env) {
       ledgerDays: 7,
       lockDays: 7,
       ageRecipient: recipient,
-      sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+      sourceHost: 'db.gcjmvtsisivxxorstvkb.supabase.co',
       sourceDatabase: 'postgres',
-      sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+      sourceProjectRef: 'gcjmvtsisivxxorstvkb',
       allowCronJobRunDetailsDelete: true,
     });
     const backupPolicy = readPolicy(
