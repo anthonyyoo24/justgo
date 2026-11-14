@@ -67,8 +67,8 @@ stay on Vercel until Anthony moves them.
 
 Privacy `2026-11-14-us-east` in
 [PRIVACY_POLICY_DRAFT.md](PRIVACY_POLICY_DRAFT.md) is `owner-approved`
-(text only, November 13, 2026) and effective November 14, 2026, the day it
-publishes with build 8. Until then the drafts held the candidate names
+(text on November 13, 2026, publication on November 14) and was published on
+November 14, 2026, the day it took effect, for build 8. Before that the drafts held the candidate names
 `privacy-us-east-candidate` and `terms-us-east-candidate` with no effective
 date, so the production legal build and the beta preflight refused them. It backs [Phase 15A](../implementation-plan/supabase-us-move.md#us-9),
 which moves the database, Auth and the `api` function to a new Supabase project

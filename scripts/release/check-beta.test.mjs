@@ -192,7 +192,7 @@ test('every beta build needs the pinned, dated U.S. Privacy notice', () => {
     'Set betaPrivacyVersion to the published U.S. Privacy version before a beta build.';
   for (const make of [candidate, diagnosticsCandidate]) {
     for (const [privacyVersion, expected] of [
-      // The placeholder left until publication day (Phase 15A, US-7).
+      // An undated placeholder.
       ['2026-11-DD-us-east', pinError],
       // The Canada notice that build 7 shipped with.
       ['2026-11-13-supabase-edge', pinError],
@@ -244,16 +244,6 @@ test('the real Privacy draft passes only as the pinned U.S. notice with a matchi
   )[1];
   // Synthetic attestation only; this unit test performs no publication or activation.
   value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = draftVersion;
-  if (!/^\d{4}-\d{2}-\d{2}-us-east$/.test(betaPrivacyVersion)) {
-    // Until the U.S. notice is published, the placeholder refuses every beta
-    // build, with or without diagnostics.
-    assert.equal(betaPrivacyVersion, '2026-11-DD-us-east');
-    assert.ok(checkBetaRelease(value).length);
-    const plain = candidate();
-    delete plain.privacyVersion;
-    assert.ok(checkBetaRelease(plain).length);
-    return;
-  }
   assert.equal(draftVersion, betaPrivacyVersion);
   for (const version of [undefined, '', 'mismatched-synthetic-notice']) {
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = version;

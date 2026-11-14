@@ -59,10 +59,8 @@ Every beta build, with or without diagnostics, needs the U.S. Privacy notice
 that `betaPrivacyVersion` in
 [`scripts/release/check-beta.mjs`](../../scripts/release/check-beta.mjs) names.
 It must read `<yyyy>-<mm>-<dd>-us-east`, and the Privacy draft must carry that
-version with the same effective date. It holds `2026-11-14-us-east`, the
-publication day of the U.S. notice (US-7). Before that day it held the
-placeholder `2026-11-DD-us-east`, which the preflight refuses, so no beta
-build could ship beside the Canada notice.
+version with the same effective date. It holds `2026-11-14-us-east`, the U.S.
+notice published on November 14, 2026 (US-7).
 
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
