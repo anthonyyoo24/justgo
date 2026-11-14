@@ -3,10 +3,20 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { requireCloudflareNotice } from './cloudflare.mjs';
 
+// Synthetic approval of the draft text only; it records no real approval.
+// It keeps this host check independent of whether the draft is a candidate.
 const privacy = readFileSync(
   new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
   'utf8',
-);
+)
+  .replace(
+    /<!-- publication-status: [^\n]+ -->/,
+    '<!-- publication-status: owner-approved -->',
+  )
+  .replace(
+    /<!-- effective-date: [^\n]+ -->/,
+    '<!-- effective-date: 2026-11-13 -->',
+  );
 test('Cloudflare publication needs its own approved notice and explicit host disposition', () => {
   assert.throws(
     () =>
