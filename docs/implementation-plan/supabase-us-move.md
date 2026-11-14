@@ -91,16 +91,16 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Who.** Anthony.
 
-- [ ] Create a new project in the existing organization, on the free plan, region **East US (North Virginia)**, named as [decision 1](#decisions) says.
-- [ ] Generate the database password in the dashboard and store it where the Canada one is kept. It never goes into chat, an issue or a file in the repository.
-- [ ] Turn off the Data API's exposure of everything but what [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md#keep-private-tables-off-the-data-api) allows, before any schema exists.
-- [ ] Give the agent the new project ref, the session pooler host and the transaction pooler host from the dashboard's Connect panel. None of these is a secret.
+- [x] Create a new project in the existing organization, on the free plan, region **East US (North Virginia)**, named as [decision 1](#decisions) says. Anthony created "JustGo US" on November 13.
+- [ ] Generate the database password in the dashboard and store it where the Canada one is kept. It never goes into chat, an issue or a file in the repository. The password generated at creation was not saved, so Anthony resets it in Database settings and stores it before anything needs it.
+- [x] Turn off the Data API's exposure of everything but what [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md#keep-private-tables-off-the-data-api) allows, before any schema exists. The exposed schemas stay at the defaults, which do not include `justgo`. Automatic exposure of new tables is off and automatic RLS is on.
+- [x] Give the agent the new project ref, the session pooler host and the transaction pooler host from the dashboard's Connect panel. None of these is a secret. Ref `gcjmvtsisivxxorstvkb`. Session pooler `aws-1-us-east-1.pooler.supabase.com:5432`, transaction pooler `aws-1-us-east-1.pooler.supabase.com:6543`.
 
 **Check.**
 
 - [ ] Project Settings shows region `us-east-1` and the free plan. Anthony sends a screenshot with no keys on it.
-- [ ] `curl -s -o /dev/null -w '%{http_code}' https://<new-ref>.supabase.co/auth/v1/health` answers, which proves the ref is live. A 401 without an API key is expected.
-- [ ] The pooler host matches `aws-<n>-us-east-1.pooler.supabase.com`. Do not assume the `aws-0` prefix.
+- [x] `curl -s -o /dev/null -w '%{http_code}' https://<new-ref>.supabase.co/auth/v1/health` answers, which proves the ref is live. A 401 without an API key is expected. It answered 401 on November 13.
+- [x] The pooler host matches `aws-<n>-us-east-1.pooler.supabase.com`. Do not assume the `aws-0` prefix. It is `aws-1`.
 
 **Rollback.** Anthony deletes the empty project.
 
@@ -160,7 +160,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 - [ ] Anthony dispatches the `secrets` operation. With no `api` it probes nothing. The lane refuses `SUPABASE_*` names, so Anthony sets `SUPABASE_AUTH_SECRET_KEY` and `BETA_ACCESS_WINDOW` in the function's secret store the way he did on Canada. All secrets must be set before the next box, because the candidate's `/ready` probe needs them.
 - [ ] Anthony approves a test-data waiver for the first release, bound to the new project, the empty history and `"previousApiSha": "none"` ([decision 8](#decisions)). The new database holds no data, so a recovery attestation has nothing to prove.
 - [ ] Anthony reviews the pending SQL and its plan digest, then dispatches one `migrate-deploy` through PR A's path. It applies 0000 to 0025 as `justgo_migrator`, deploys `api-candidate`, probes it, then creates `api`. There is no migrate-only run. Once any migration is applied, the lane refuses `none`, so migrations and the first deploy must be one run.
-- [ ] Anthony recreates the retention job, after the release because it reads the migrated tables. Enable `pg_cron`, then schedule `justgo-identity-retention` hourly at minute 17 exactly as [TESTFLIGHT_BETA.md](../operations/TESTFLIGHT_BETA.md) describes it. That SQL is not in the repository. PR B adds it as `apps/api/scripts/beta-identity-retention.sql` (planned), copied from the Canada job's definition, so the next project does not depend on a description.
+- [ ] Anthony recreates the retention job, after the release because it reads the migrated tables. Enable `pg_cron`, then schedule `justgo-identity-retention` hourly at minute 17 exactly as [TESTFLIGHT_BETA.md](../operations/TESTFLIGHT_BETA.md) describes it, with `apps/api/scripts/beta-identity-retention.sql`. PR B wrote that file from the description, so the next project does not depend on prose. Before running it, Anthony compares it with Canada's `select schedule, command from cron.job where jobname = 'justgo-identity-retention'`.
 - [ ] Anthony repoints Sentry uptime monitor 10773615 to `https://<new-ref>.supabase.co/functions/v1/api/ready`. The free Sentry plan includes only that one monitor, so Canada goes unmonitored from here. Anthony is its only user.
 
 **Check.**
