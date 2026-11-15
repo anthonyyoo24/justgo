@@ -59,13 +59,14 @@ Every beta build, with or without diagnostics, needs the U.S. Privacy notice
 that `betaPrivacyVersion` in
 [`scripts/release/check-beta.mjs`](../../scripts/release/check-beta.mjs) names.
 It must read `<yyyy>-<mm>-<dd>-us-east`, and the Privacy draft must carry that
-version with the same effective date. It holds `2026-11-14-us-east`, the U.S.
-notice published on November 14, 2026 (US-7).
+version with the same effective date. It holds `2026-11-15-us-east`, the
+plain-language U.S. notice published on November 15, 2026. It replaced
+`2026-11-14-us-east`, published on November 14, 2026 (US-7).
 
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
-published Privacy version. It holds `2026-11-14-us-east`, published and set on
-November 14, 2026, for build 8. Change it only after a new Privacy version is published, or the preflight refuses
+published Privacy version. It holds `2026-11-15-us-east`, published and set on
+November 15, 2026, after build 9. Build 9 shipped beside `2026-11-14-us-east`. Change it only after a new Privacy version is published, or the preflight refuses
 diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).

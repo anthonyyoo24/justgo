@@ -319,8 +319,8 @@ test('repository public sources use document labels and exclude review records a
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
   for (const [documentSource, status, effectiveDate, version] of [
-    [privacySource, 'owner-approved', '2026-11-14', '2026-11-14-us-east'],
-    [termsSource, 'owner-approved', '2026-11-14', '2026-11-14-us-east'],
+    [privacySource, 'owner-approved', '2026-11-15', '2026-11-15-us-east'],
+    [termsSource, 'owner-approved', '2026-11-15', '2026-11-15-us-east'],
   ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, status);
@@ -432,7 +432,7 @@ test('repository public sources use document labels and exclude review records a
   // The dated sources publish together; either one without its date is refused.
   const undate = (dated) =>
     dated.replace(
-      '<!-- effective-date: 2026-11-14 -->',
+      '<!-- effective-date: 2026-11-15 -->',
       '<!-- effective-date: pending -->',
     );
   for (const [privacy, terms] of [
@@ -464,14 +464,14 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
   );
   const document = parseDocument(notice, true);
   assert.equal(document.status, 'owner-approved');
-  assert.equal(document.effectiveDate, '2026-11-14');
-  assert.equal(document.version, '2026-11-14-us-east');
+  assert.equal(document.effectiveDate, '2026-11-15');
+  assert.equal(document.version, '2026-11-15-us-east');
   assert.match(notice, /^<!-- diagnostics-scope: essential-errors-only -->$/m);
   // Without its effective date the same text is refused in production.
   assert.throws(
     () =>
       parseDocument(
-        notice.replace('effective-date: 2026-11-14', 'effective-date: pending'),
+        notice.replace('effective-date: 2026-11-15', 'effective-date: pending'),
         true,
       ),
     /effective date/,
