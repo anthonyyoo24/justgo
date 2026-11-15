@@ -193,30 +193,28 @@ it('keeps selected data read-only when preview is cancelled', async () => {
   expect(mockActivity.importData).not.toHaveBeenCalled();
   expect(apply).not.toHaveBeenCalled();
 });
-it('rejects another account’s backup before any data or preference changes', async () => {
+it('adds another account’s backup to this phone’s data', async () => {
   pick.mockResolvedValueOnce(backup('account', otherOwner));
   const screen = await render(<SettingsDataScreen />);
   await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  await screen.findByRole('header', { name: 'Import this data?' });
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
   await screen.findByText(
-    'Sign in to the account that owns this backup before importing it.',
+    'Your data was imported. Existing differing journal entries were kept.',
   );
-  expect(mockActivity.importData).not.toHaveBeenCalled();
-  expect(apply).not.toHaveBeenCalled();
+  expect(mockActivity.importData).toHaveBeenCalledWith(
+    expect.objectContaining({
+      owner: { id: owner, kind: 'guest' },
+      journal: expect.objectContaining({
+        entries: [expect.objectContaining({ accountId: owner })],
+      }),
+    }),
+  );
 });
-it('authenticates the retained owner before asking for an import file', async () => {
+it('imports into the signed-out account’s phone data without asking for sign-in', async () => {
   mockKind = 'account';
   pick.mockResolvedValueOnce(backup('account'));
   const screen = await render(<SettingsDataScreen />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
-  expect(mockRouter.push).toHaveBeenCalledWith({
-    pathname: '/account/sign-in',
-    params: { returnTo: 'data', ownerId: owner },
-  });
-  expect(pick).not.toHaveBeenCalled();
-  expect(mockActivity.importData).not.toHaveBeenCalled();
-  await act(() => mockBlur?.());
-  mockSignedIn = true;
-  await screen.rerender(<SettingsDataScreen />);
   await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByRole('header', { name: 'Import this data?' });
   expect(pick).toHaveBeenCalledTimes(1);
@@ -224,7 +222,10 @@ it('authenticates the retained owner before asking for an import file', async ()
   await screen.findByText(
     'Your data was imported. Existing differing journal entries were kept.',
   );
-  expect(mockActivity.importData).toHaveBeenCalledTimes(1);
+  expect(mockActivity.importData).toHaveBeenCalledWith(
+    expect.objectContaining({ owner: { id: owner, kind: 'account' } }),
+  );
+  expect(mockRouter.push).not.toHaveBeenCalled();
 });
 it('waits for the durable data commit before saving preferences and announcing success', async () => {
   const commit = deferred<void>();

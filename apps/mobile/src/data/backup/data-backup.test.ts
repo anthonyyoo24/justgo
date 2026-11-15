@@ -135,18 +135,22 @@ it('rejects orphan alternatives that change historical identity before confirmin
   ).toThrow();
 });
 
-it('allows guest imports into a chosen collection but requires the same account for account-owned files', () => {
-  const destination = { id: otherOwner, kind: 'account' as const };
-  expect(() =>
-    readDataBackup(createDataBackup(snapshot()).bytes, destination),
-  ).toThrow('Sign in to the account');
-  const guest = { ...snapshot(), owner: { id: owner, kind: 'guest' as const } };
-  expect(
-    readDataBackup(createDataBackup(guest).bytes, destination),
-  ).toMatchObject({
-    owner: destination,
-    journal: { entries: [{ accountId: otherOwner }] },
-  });
+it('adds any backup to the chosen collection, whoever owned the file', () => {
+  for (const destination of [
+    { id: otherOwner, kind: 'account' as const },
+    { id: otherOwner, kind: 'guest' as const },
+  ])
+    for (const source of [
+      snapshot(),
+      { ...snapshot(), owner: { id: owner, kind: 'guest' as const } },
+    ])
+      expect(
+        readDataBackup(createDataBackup(source).bytes, destination),
+      ).toMatchObject({
+        owner: destination,
+        attempts: [attempt()],
+        journal: { entries: [{ ...entry, accountId: otherOwner }] },
+      });
 });
 
 it.each([
@@ -195,6 +199,11 @@ it('supports older journal-only files and does not pretend they contain challeng
     legacyJournalOnly: true,
     journal: { entries: [entry] },
   });
+  const destination = { id: otherOwner, kind: 'guest' as const };
+  expect(readDataBackup(old.bytes, destination)).toMatchObject({
+    owner: destination,
+    journal: { entries: [{ ...entry, accountId: otherOwner }] },
+  });
 });
 
 it('restores the original account export while preserving rejected writing without counting it as a rep', () => {
@@ -233,32 +242,26 @@ it('restores the original account export while preserving rejected writing witho
 });
 
 it.each([1, 2] as const)(
-  'restores a valid legacy v%s export only into its owning account',
+  'restores a valid legacy v%s export into any collection',
   (formatVersion) => {
     const bytes = legacyArchive(formatVersion);
-    expect(readDataBackup(bytes, snapshot().owner)).toMatchObject({
-      owner: snapshot().owner,
-      attempts: [attempt()],
-      journal: { entries: [entry] },
-      preferences: snapshot().preferences,
-      legacyJournalOnly: false,
-    });
     for (const destination of [
+      snapshot().owner,
       { id: otherOwner, kind: 'account' as const },
-      { id: owner, kind: 'guest' as const },
-    ]) {
-      expect(() => readDataBackup(bytes, destination)).toThrow(
-        expect.objectContaining({ code: 'WRONG_ACCOUNT' }),
-      );
-      expect(() => readDataBackup(bytes, destination)).toThrow(
-        'Sign in to the account that owns this backup before importing it.',
-      );
-    }
+      { id: otherOwner, kind: 'guest' as const },
+    ])
+      expect(readDataBackup(bytes, destination)).toMatchObject({
+        owner: destination,
+        attempts: [attempt()],
+        journal: { entries: [{ ...entry, accountId: destination.id }] },
+        preferences: snapshot().preferences,
+        legacyJournalOnly: false,
+      });
   },
 );
 
 it.each([1, 2] as const)(
-  'reports malformed legacy v%s data as invalid before checking ownership',
+  'reports malformed legacy v%s data as invalid',
   (formatVersion) => {
     const bytes = legacyArchive(formatVersion, (data) => {
       data.attempts = [{ id: 'malformed-attempt' }];

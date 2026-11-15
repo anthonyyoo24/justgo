@@ -104,13 +104,6 @@ function DataSession() {
       router.push('/acceptance');
       return;
     }
-    if (owner.kind === 'account' && !client.ownsAccount(owner.id)) {
-      router.push({
-        pathname: '/account/sign-in',
-        params: { returnTo: 'data', ownerId: owner.id },
-      });
-      return;
-    }
     const controller = new AbortController();
     active.current = controller;
     setBusy('import');
@@ -151,13 +144,6 @@ function DataSession() {
       deletionPending
     )
       return;
-    if (owner.kind === 'account' && !client.ownsAccount(owner.id)) {
-      router.push({
-        pathname: '/account/sign-in',
-        params: { returnTo: 'data', ownerId: owner.id },
-      });
-      return;
-    }
     const controller = new AbortController();
     active.current = controller;
     setBusy('import');

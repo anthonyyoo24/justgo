@@ -73,8 +73,15 @@ function server() {
   let epoch = 0;
   const attempts = new Map<string, CompletionAttempt>();
   const versions = new Map<string, JournalSyncVersion>();
-  const check = (expected: number) => {
+  const tombstones = new Set<string>();
+  const check = (
+    expected: number,
+    ids: string[] = [],
+    restoreDeleted?: boolean,
+  ) => {
     if (expected !== epoch) throw new ApiError('DATA_EPOCH_CHANGED');
+    if (!restoreDeleted && ids.some((id) => tombstones.has(id)))
+      throw new ApiError('DATA_DELETED');
   };
   const transport: DataSyncTransport = {
     completions: jest.fn(async () => ({
@@ -88,7 +95,11 @@ function server() {
       nextCursor: null,
     })),
     putCompletions: jest.fn(async (request) => {
-      check(request.expectedEpoch);
+      check(
+        request.expectedEpoch,
+        request.attempts.map((attempt) => attempt.id),
+        request.restoreDeleted,
+      );
       let added = 0;
       for (const attempt of request.attempts)
         if (!attempts.has(attempt.id)) {
@@ -103,7 +114,11 @@ function server() {
       };
     }),
     putVersions: jest.fn(async (request) => {
-      check(request.expectedEpoch);
+      check(
+        request.expectedEpoch,
+        request.versions.map((version) => version.attemptId),
+        request.restoreDeleted,
+      );
       let saved = 0;
       for (const version of request.versions)
         if (!versions.has(version.versionId)) {
@@ -125,7 +140,7 @@ function server() {
       return { dataEpoch: epoch, deletedAt: '2026-10-20T12:00:00.000Z' };
     }),
   };
-  return { transport, attempts, versions };
+  return { transport, attempts, versions, tombstones };
 }
 
 function apple() {
@@ -344,23 +359,48 @@ it('runs optional iCloud delivery from guest local saves without a JustGO sessio
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-it('rejects signed-out account imports while retaining the account-owned local collection', async () => {
+it('imports while signed out and restores the import, deleted records included, at the next sign-in', async () => {
   const { runtime, activate } = setup();
-  const repository = await activate(owner, 'local', 'account');
-  await repository.complete(input(), card);
-  const snapshot = await repository.snapshotData();
+  const phone = await activate(otherOwner, 'local', 'guest');
+  await phone.complete(input(), card);
+  await phone.submitReflection(uuid(1), uuid(2), {
+    text: 'Imported while signed out',
+  });
+  const snapshot = await phone.snapshotData();
   const backup: RestorableData = {
     owner: { id: owner, kind: 'account' },
     exportedAt: '2026-10-20T14:00:00.000Z',
-    ...snapshot,
+    attempts: snapshot.attempts,
+    journal: {
+      entries: snapshot.journal.entries.map((entry) => ({
+        ...entry,
+        accountId: owner,
+      })),
+      alternatives: [],
+    },
     preferences: null,
     legacyJournalOnly: false,
   };
-  await expect(runtime.importData(backup)).rejects.toMatchObject({
-    code: 'UNAUTHORIZED',
-  });
+  const repository = await activate(owner, 'local', 'account');
+  const remote = servers.get(owner)!;
+  remote.tombstones.add(uuid(1));
+  await runtime.importData(backup);
   expect((await repository.snapshotData()).attempts).toHaveLength(1);
-  expect(cloud.transport.write).not.toHaveBeenCalled();
+  expect((await repository.snapshotJournal()).entries[0]?.reflection.text).toBe(
+    'Imported while signed out',
+  );
+  expect(remote.transport.putCompletions).not.toHaveBeenCalled();
+  await activate(owner, 'cloud', 'account');
+  runtime.setEnvironment({ active: true, online: true });
+  await repository.synchronize();
+  expect([...remote.attempts.keys()]).toEqual([uuid(1)]);
+  expect(
+    [...remote.versions.values()].map((version) => version.reflection.text),
+  ).toEqual(['Imported while signed out']);
+  expect(remote.transport.putCompletions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ restoreDeleted: true }),
+    expect.anything(),
+  );
 });
 
 it('adopts phone writing once, retires its source and syncs later signed-out edits to the same account', async () => {
