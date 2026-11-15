@@ -1,35 +1,33 @@
 # JustGO Dev on a physical iPhone
 
-The manual `development-ios.yml` workflow prepares an independent development app
-that installs alongside TestFlight. It compiles on GitHub's standard `macos-26`
-runner with Xcode 26.6 and EAS 25.3.0. Compilation does not use the Expo
-cloud-build allowance. `eas upload` hosts the finished IPA and uses the separate
-uploaded-build allowance. Nothing is submitted to the App Store or TestFlight.
+JustGO Dev is a separate development app that installs beside TestFlight and
+loads JavaScript from Metro on the Mac. The manual `development-ios.yml`
+workflow builds it on GitHub's `macos-26` runner and hosts the IPA with
+`eas upload`. Nothing goes to the App Store or TestFlight.
 
-Keep the app's source-build setting when you generate a native project. The
-generated Podfile properties disable precompiled Expo modules, and the SDK
-template forces that setting off even if the incoming EAS environment enables
-it. React Native core keeps its matching prebuilt framework. ExpoModulesJSI
-builds its framework against the current Pods headers. This policy requires a
-new binary. Metro reloads and JavaScript exports do not validate it. Sentry's
-Cocoa 9.29 prebuilt framework and its attachment-clearing Swift callback also need
-the static linkage that `apps/mobile/app.config.test.ts` pins. A build under this
-policy needs its own signed-device privacy acceptance, because earlier signed-build
-receipts cover only their own inputs.
+## When to use Dev and when to use TestFlight
 
-To rebuild locally with an existing `apps/mobile/ios/` directory, use the intended
-variant and public build environment for every step:
+Test JavaScript-only changes in JustGO Dev, loaded from Metro on the Mac. That
+covers screens, copy, navigation, providers and data logic. A change reaches
+the phone in minutes and needs no build. Agents start and stop the development
+server themselves. Anthony only opens JustGO Dev on the phone.
 
-1. From `apps/mobile`, run `pnpm exec expo prebuild --platform ios`. Omit `--clean` to
-   update the generated files in place.
-2. From `apps/mobile/ios`, run `pod install`. Run this CocoaPods step even when
-   package dependencies are unchanged.
-3. Rebuild the app.
+Build a new Dev binary, with Anthony's go, only when native code or native
+configuration changes. A TestFlight build is needed only for:
 
-For an existing project, prebuild and `expo run:ios` can both skip CocoaPods
-synchronization when dependencies are unchanged, and `expo run:ios` also skips
-prebuild. The explicit steps make sure the generated settings reach the rebuilt
-app.
+- native modules, config plugins, `app.config.ts`, entitlements, permissions,
+  icons or fonts, and Expo SDK or native package upgrades, which also need a new
+  Dev binary first;
+- the release build's own setup, such as the `preview` EAS environment, the
+  `beta` profile, the production bundle ID, CloudKit container, Keychain and
+  Sentry delivery;
+- release acceptance and the `gate` issues that name a TestFlight build.
+
+To tell whether a change is JavaScript-only, compare these in `apps/mobile`
+between the installed Dev binary's source and the change: `package.json`,
+`app.config.ts`, `eas.json`, `plugins/`, `modules/`, the icon and splash images
+and fonts the config builds in, and the lockfile's native packages. If none
+differ, Metro can serve it.
 
 ## App and data boundaries
 
@@ -40,210 +38,94 @@ app.
 | Private CloudKit container | `iCloud.com.anthonyyoo.justgo.dev` | `iCloud.com.anthonyyoo.justgo` |
 | EAS environment/profile    | development/development            | preview/beta                   |
 
-Both use Apple team `NPDYTJS425` and the existing Expo project
-`@anthonyyoos-team/justgo` (`53cf0560-8ab5-446a-9bc6-deb193b337b5`). Dev has a
-distinct app name and disables the generated `exp+justgo` scheme. Expo registers
-the Dev bundle ID as another callback. The inspector checks these two callbacks
-and its dedicated Google scheme.
+Both use Apple team `NPDYTJS425` and Expo project `@anthonyyoos-team/justgo`
+(`53cf0560-8ab5-446a-9bc6-deb193b337b5`). Phone storage, Keychain and CloudKit
+are separate. Both apps use the same staging API and Auth project, so **signing
+into the same account shares server history and account deletion.** Use a
+disposable Apple or Google account and synthetic writing for sync and deletion
+tests.
 
-Phone storage, default Keychain groups and private CloudKit containers are
-separate. Both apps use the existing staging API and Auth. **Signing into the same
-account shares server history and account-deletion effects.** Use disposable
-accounts for destructive testing. Separate app IDs do not create a separate backend.
+## Account configuration
 
-## One-time configuration
+These live outside the repository. Keep them when you change anything else.
 
-Preserve the existing app, provider clients and secrets, nonce settings and EAS
-preview environment. The separate app installs without deleting TestFlight.
+- **Apple.** The Dev App ID has Sign in with Apple, grouped under the TestFlight
+  app, and the Dev CloudKit container, which only it uses. Its Production
+  environment has the private schema from
+  [account sync setup](ACCOUNT_SYNC_SETUP.md), with `JustGoValue.value` as
+  Encrypted String and no public access. Ad hoc profile `6934C4555G` covers the
+  Dev bundle and Anthony's registered iPhone, signed by distribution certificate
+  `GTLA7CW372`.
+- **Google.** Project `justgo-512319` has the iOS client **JustGO Dev iPhone**
+  for the Dev bundle. Dev rejects the TestFlight iOS client and its scheme.
+- **Supabase.** The US project `gcjmvtsisivxxorstvkb` accepts Apple audiences
+  `com.anthonyyoo.justgo,com.anthonyyoo.justgo.dev`. Its Google client list
+  keeps the web client first, then the TestFlight iOS client, then the Dev
+  client. Read back on 2026-11-15. Change these only with Anthony's go.
+- **EAS `development` environment.** It names the Dev bundle and container, the
+  Dev Google iOS client and its reversed scheme, the web client, the staging
+  API `https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api`, the Auth
+  origin and publishable key of the same project, the notice URLs, and Sentry
+  off. It holds no secrets. The `preview` and `production` environments are
+  separate.
 
-1. Register the Dev bundle in the existing Apple team with Sign in with Apple,
-   grouped under the existing primary app for shared staging account identity.
-   Append the Dev audience to Supabase Apple, and keep the existing IDs and nonce
-   validation. If a browser Services ID is present, it stays first. Native token
-   sign-in needs no new browser OAuth secret.
-2. Create a dedicated **iOS** client for the Dev bundle in Google project
-   `justgo-512319`. Keep the existing web/server client first in Supabase's
-   accepted Google client list, and append the new iOS client. Preserve the
-   approved Google-only nonce setting, secret, scopes and test-user allowlist.
-   Dev rejects the original iOS client and its callback scheme.
-3. Assign the Dev CloudKit container only to the Dev App ID. In both
-   environments, deploy the private encrypted schema from
-   [account sync setup](ACCOUNT_SYNC_SETUP.md). The schema has `JustGoCollection`
-   and `JustGoValue`, with `JustGoValue.value` created as **Encrypted String**.
-   Grant no public access. Ad hoc distribution requires **Production** CloudKit.
-4. Update only the EAS **development** environment. Set the Dev bundle and
-   container, the dedicated Google iOS client and its reversed scheme, the existing
-   staging API and Auth public inputs, the existing web client and the approved
-   notice URLs. Disable ordinary Sentry delivery. Keep provider and server secrets
-   out of public mobile variables.
-5. Configure a new ad hoc profile for the Dev App ID and the registered iPhone with
-   the existing distribution certificate. Preserve the TestFlight profile. With the
-   pinned EAS installed, run this from `apps/mobile`:
+To set up signing again, run this from `apps/mobile` with the pinned EAS CLI.
+It is interactive and compiles nothing:
 
-   ```sh
-   EXPO_NO_DOTENV=1 eas env:exec development 'eas credentials:configure-build --platform ios --profile development' --non-interactive
-   ```
-
-   The child credential setup is interactive and runs no cloud compilation.
-   Verify its registered phone and capabilities. Automated builds freeze
-   credentials.
-
-Account and Git changes still need the owner approvals that apply to them.
-References:
-[variants](https://docs.expo.dev/build-reference/variants/),
-[Apple](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple),
-[Google](https://supabase.com/docs/guides/auth/social-sign-in/auth-google),
-[internal distribution](https://docs.expo.dev/build/internal-distribution/),
-[upload command](https://docs.expo.dev/eas/cli/#eas-upload).
+```sh
+EXPO_NO_DOTENV=1 eas env:exec development 'eas credentials:configure-build --platform ios --profile development' --non-interactive
+```
 
 ## Build and install
 
-1. Complete the publication checks, and get the separate push, PR and merge
-   permissions under [AGENTS.md](../../AGENTS.md). The owner reviews before
-   authorizing the merge.
-2. Publish a reviewed tag on `main`.
-3. Wait for that tag's exact Foundation main-push checks.
-4. Dispatch **iPhone development build** from `main` with that tag.
+1. Get Anthony's go. Use a reviewed tag on `main` whose Foundation main-push
+   checks passed. A current TestFlight tag works.
+2. Dispatch **iPhone development build** from `main` with that tag.
+3. The run waits on the `testflight-beta` environment. Approve it for that run
+   only. It shares that environment's concurrency group with the TestFlight
+   job, so one waits for the other.
+4. The job summary shows the installation URL. Anthony opens it on the iPhone
+   and installs **JustGO Dev** beside TestFlight.
 
-The job reuses the existing `testflight-beta` environment's protected token and
-owner approval, and shares signing concurrency with the beta job. It needs no new
-repository-wide token and no paid or larger runner. It inspects the actual signed
-identity, ad hoc provisioning, native launchers, callbacks, Keychain, CloudKit,
-Apple permissions, fonts and icon without logging device IDs or profile contents.
+The job inspects the signed IPA's identity, profile, callbacks, Keychain,
+CloudKit, permissions, fonts and icon, and masks device identifiers. If an
+upload's outcome is uncertain, check the existing uploaded builds before you
+retry.
 
-EAS itself prints device identifiers during ad hoc credential preparation. Before
-that command, the workflow reads the registered devices into its private
-temporary folder and masks their identifiers and names in GitHub. A missing,
-malformed or capped device list stops the job before the signing summary. The
-existing cleanup removes the file.
-
-`manifest.json` records the source and tag, the workflow, run and attempt, and
-the IPA SHA-256 and size. The job verifies the exact file again before
-`eas upload`. `install.json` must contain one installation URL for the existing
-Expo project, and the job summary shows that URL. The IPA and public receipts
-remain as a GitHub artifact for seven days. Signing files and temporary keychains
-are cleaned on both failure and success. The TestFlight metadata gate stays
-separate. The archive extraction, signature and cleanup code is shared.
-
-Open the new installation URL or its QR code on the registered iPhone, and install
-**JustGO Dev** alongside TestFlight. If requested, check Developer Mode. A
-`devicectl` launch needs the phone unlocked. If the Mac cannot reach the paired
-phone, install from the installation link instead. If an upload has an uncertain
-outcome, inspect the existing uploaded builds before you retry, because another
-upload can use another slot. A link does not establish installation.
+The current Dev binary is 0.1.0 (3), built from tag
+`testflight-beta-2026-11-15-3` on 2026-11-15 in
+[run 43749549470](https://github.com/anthonyyoo24/justgo/actions/runs/43749549470).
 
 ## Run the development server
 
-Pull the configured public environment once, and again after each provider
-change. From `apps/mobile`, run:
+From `apps/mobile`, pull the public environment once, and again after each EAS
+change:
 
 ```sh
 EXPO_NO_DOTENV=1 eas env:pull development --path .env.development.local --non-interactive
 ```
 
-From the repository root, run:
+From the repository root, start Metro:
 
 ```sh
 pnpm run dev:mobile --clear
 ```
 
-The launcher first validates the saved development environment and the pinned
-native profile. Both must name the staging `api` Edge Function in the us-east-1
-project, `https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api`, and the
-Auth origin `https://gcjmvtsisivxxorstvkb.supabase.co`. A saved file that still
-names the Canada project `kmcpcauaxlgpevkkenwd` or the retired Vercel or Worker
-API stops the launch. Update `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`
-and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS `development`
-environment, then pull it again.
-Identity, Auth and provider pairing, Sentry-off mode, current legal URLs and
-fixture rejection stay enforced. Arbitrary API origins are not accepted, and the
-launcher takes no API option.
+The launcher refuses to start unless the pulled file and the pinned profile
+name the US staging API and Auth origin above. It reads only the ignored
+`.env.development.local`, never the release `.env.local`, and serves on LAN
+port 8081 with scheme `justgo-dev`. Add `--web` for a browser preview.
 
-The first phone screen and navigation check can use guest mode. Dev shares the
-staging database. Before account synchronization or deletion checks, use a
-genuinely disposable Apple or Google identity and synthetic writing. An existing secondary
-provider account is enough. A new email is not required. Before
-loading current source, verify that the Dev binary is compatible. The recorded
-October 26 build predates the current native patches and source-build policy, and
-it is not accepted as compatible.
+Put the phone and the Mac on the same Wi-Fi, open JustGO Dev, and scan the
+**server** QR code, which differs from the installation QR code. If the phone
+cannot reach Metro, allow JustGO Dev's Local Network access in iOS Settings.
+JavaScript changes reload. After you change provider lifecycle effects, fully
+reload the app. After a configuration or module-path change, restart with
+`--clear`.
 
-The launcher reads only the ignored `.env.development.local`, validates the Dev
-identity and provider pairing, and sets `EXPO_NO_DOTENV=1`. Expo 58's development
-virtual environment still merges saved dotenv modules after that CLI setting. So
-the explicit local-launcher marker selects a separate public adapter for every
-Metro platform. That adapter reads the validated API, provider, diagnostics and
-notice values together from Expo's runtime prelude. It exports no private values
-or fixture authorization. Marked production, CI, EAS-build and fixture contexts
-are rejected. Ordinary release and guarded journey resolution stay unchanged.
-After you change this resolver, restart with `--clear` and verify the actual
-served consumers, not only the launcher's process values. It never falls back to
-the release `.env.local`. Metro uses one worker, LAN port 8081 and the explicit
-scheme `justgo-dev`. Add `--web` for a browser preview. `pnpm run dev:web` is
-unchanged.
-
-Put the phone and the Mac on the same Wi-Fi, and scan the current **server** QR
-code. This code differs from the **installation** QR code. If the phone cannot
-reach Metro, allow JustGO's Local Network access in iOS Settings and retry.
-Ordinary UI and JavaScript changes reload. After you change provider lifecycle
-effects, fully reload the app, because Fast Refresh can keep a disposed runtime. A
-preview with file watching off serves an edit only after a restart. Native module
-and configuration changes require another Dev binary. After configuration or
-module-path changes, restart with `--clear` and verify the LAN host in the iOS
-manifest.
-
-Browser, simulator and component checks cannot prove native launch configuration,
-notched-layout insets on first and repeated challenge openings, or `DayEntryList`
-row expansion and scrolling. Check them on the phone, and file each deferred check
-as a `gate` issue.
-
-## Configured account prerequisites
-
-The October 26 setup registered the Dev App ID under the existing team and grouped
-its Apple sign-in identity with the original primary app. Supabase Apple keeps
-the original audience and now also accepts the Dev bundle. The dedicated Google
-client **JustGO Dev iPhone** is registered for that bundle and team in
-`justgo-512319`. Supabase keeps the web client first and the original iOS client,
-with the Dev client appended. Existing provider secrets, email options and nonce
-settings are unchanged. Console readback and the public Auth settings endpoint
-confirm the configured providers. Actual native sign-in is still unverified.
-
-The separate container is assigned only to the Dev App ID. The existing schema
-definitions were imported without records and deployed to its Production
-environment. Production readback confirms that `JustGoValue.value` is Encrypted
-String. Both custom types grant only creator writes, with no public custom-type
-access. The original app and container were preserved.
-
-Ad hoc profile `6934C4555G` is active for the Dev bundle and the existing registered
-iPhone, with the existing distribution certificate `GTLA7CW372`. EAS reports all
-credentials ready. Only the development environment was updated. Before-and-after
-comparisons verified that the preview and production variables were unchanged.
-The remote and pulled local Dev public configurations pass preflight. Keep the new
-signing profile separate from the TestFlight profile. Freeze credentials during
-builds.
-
-## Acceptance still required
-
-The latest approved [Dev compile/upload](https://github.com/anthonyyoo24/justgo/actions/runs/41348697942)
-succeeded from reviewed `d66c42d3daa2cc990f347fbf674b661845f1c603`, tag
-`staging-cloudflare-2026-11-01`, and produced Dev 0.1.0 (2). Signed inspection,
-exact upload and cleanup passed. The downloaded IPA's 31,074,881-byte size and
-SHA-256 `704051dcd4c1db7adcbd3ceba7fd9d4d7711cc06fbbdc578728bcb0d375b1043`
-match its source and run manifest. Its [installation page](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/c1f43ed8-066a-413e-b196-647588a1296f)
-shows Succeeded and the phone QR code. This build supersedes the October 26
-build-1 artifact for current testing. No older build or TestFlight installation
-was retired.
-
-Anthony reports that he scanned both the install and connect QR codes and that the
-app appears to work on his iPhone. He confirms that both app variants remain
-present, and he confirms signed-out guest mode. He also confirmed that a synthetic
-"Phone test" reflection remains in Progress after he fully closed and reopened
-Dev. These are owner-reported launch and guest-persistence results. The installed
-build number was not read independently from the device. Detailed physical phone
-acceptance remains open: both providers' first and returning sign-in and
-cancellation, retained TestFlight data, and the Dev-container iCloud round trip.
-Use a disposable provider account for synchronization and deletion checks. Local
-bundle inspection, account configuration and browser previews do not establish
-native acceptance or close Phase 14 gates.
+Browser, simulator and component checks cannot prove native launch
+configuration, notched-layout insets or `DayEntryList` scrolling. Check them on
+the phone, and file each deferred check as a `gate` issue.
 
 ## Expo SDK and native package upgrades
 
@@ -260,5 +142,14 @@ Those packages move together, as one scoped task per SDK:
    native packages outside Expo's list, such as Google sign-in and
    `react-native-pulsar`, by hand.
 3. Run `node scripts/quality/dependabot-skip.mjs --write` from the root.
-4. Run the full `pnpm run check`, then build Dev and repeat the physical-phone
-   acceptance above. A JavaScript export does not prove a native upgrade.
+4. Run the full `pnpm run check`, then build Dev and check it on the phone. A
+   JavaScript export does not prove a native upgrade.
+
+To rebuild a local native project, run prebuild with the Dev environment, since
+`app.config.ts` reads the bundle ID, container and Google scheme from it. From
+`apps/mobile`, run
+`EXPO_NO_DOTENV=1 eas env:exec development 'pnpm exec expo prebuild --platform ios' --non-interactive`,
+then `pod install` from `apps/mobile/ios`, even when dependencies are
+unchanged, then rebuild. The generated Podfile keeps Expo
+modules building from source, and `apps/mobile/app.config.test.ts` pins
+Sentry's static linkage.
