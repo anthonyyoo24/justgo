@@ -532,13 +532,6 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Hooks are frozen to cut usage (Anthony, 2026-11-11). Change a hook in
-  `.claude/hooks/` only when it blocks or misfires in real use, shown by the
-  command it got wrong, or when Anthony asks. This holds for `/pstack:correct`
-  too: it fixes a repeated mistake with a written rule, not a new hook check,
-  unless Anthony asks for one. A shell form agents do not write,
-  such as unusual quoting, expansions or heredocs, stays caught only in review.
-  Open no issue or PR for one.
 - Start a session on the Mac mini (the `Mac mini` SSH connection) with `cwd`
   `/Users/anthony/Documents/apps/justgo` or a worktree inside it, never the
   home folder. Outside the repository, JustGO's `.claude/settings.json` does
