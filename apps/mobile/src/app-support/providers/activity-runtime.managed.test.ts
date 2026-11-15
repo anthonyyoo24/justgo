@@ -448,45 +448,50 @@ it('adopts phone writing once, retires its source and syncs later signed-out edi
   ).toBe(true);
 });
 
-it('never copies guest admission metadata into the adopting account', async () => {
-  const { runtime, activate, storage } = setup();
-  const guest = await activate(otherOwner, 'local', 'guest');
-  await guest.complete(input(), card);
-  await guest.submitReflection(uuid(1), uuid(2), { text: 'Adopted' });
-  const origin = 'https://admission-sentinel.test';
-  await storage.setItem(
-    `justgo:v1:${otherOwner}:access:guest:${encodeURIComponent(origin)}`,
-    JSON.stringify({
-      version: 1,
-      origin,
-      owner: { id: otherOwner, kind: 'guest' },
-      receivedAt: Date.now(),
-    }),
-  );
-  await runtime.mergeGuestData(otherOwner, owner, {
-    userId: owner,
-    token: 'fixture-session',
-  });
-  const target = await activate(owner, 'cloud', 'account');
-  expect(
-    (await target.snapshotJournal()).entries[0]?.reflection.text,
-  ).toContain('Adopted');
-  // The guest's own key stays until retirement; nothing else may hold admission.
-  expect(
-    [...storage.values].filter(
-      ([key, value]) =>
-        !key.startsWith(`justgo:v1:${otherOwner}:`) &&
-        (key.includes(':access:') || value.includes('admission-sentinel')),
-    ),
-  ).toEqual([]);
-  const server = servers.get(owner)!;
-  const uploaded = JSON.stringify([
-    ...server.attempts.values(),
-    ...server.versions.values(),
-  ]);
-  expect(uploaded).toContain('Adopted');
-  expect(uploaded).not.toContain('admission-sentinel');
-});
+it.each(['guest', 'account'] as const)(
+  'never copies %s admission metadata into the adopting account',
+  async (kind) => {
+    const { runtime, activate, storage } = setup();
+    const guest = await activate(otherOwner, 'local', kind);
+    await guest.complete(input(), card);
+    await guest.submitReflection(uuid(1), uuid(2), { text: 'Adopted' });
+    const origin = 'https://admission-sentinel.test';
+    await storage.setItem(
+      `justgo:v1:${otherOwner}:access:${kind}:${encodeURIComponent(origin)}`,
+      JSON.stringify({
+        version: 1,
+        origin,
+        owner: { id: otherOwner, kind },
+        receivedAt: Date.now(),
+      }),
+    );
+    await runtime.mergeGuestData(
+      otherOwner,
+      owner,
+      { userId: owner, token: 'fixture-session' },
+      kind,
+    );
+    const target = await activate(owner, 'cloud', 'account');
+    expect(
+      (await target.snapshotJournal()).entries[0]?.reflection.text,
+    ).toContain('Adopted');
+    // The guest's own key stays until retirement; nothing else may hold admission.
+    expect(
+      [...storage.values].filter(
+        ([key, value]) =>
+          !key.startsWith(`justgo:v1:${otherOwner}:`) &&
+          (key.includes(':access:') || value.includes('admission-sentinel')),
+      ),
+    ).toEqual([]);
+    const server = servers.get(owner)!;
+    const uploaded = JSON.stringify([
+      ...server.attempts.values(),
+      ...server.versions.values(),
+    ]);
+    expect(uploaded).toContain('Adopted');
+    expect(uploaded).not.toContain('admission-sentinel');
+  },
+);
 
 it('keeps source writing through adoption failure and fences concurrent new submissions until retry', async () => {
   const { runtime, activate } = setup();
@@ -911,6 +916,198 @@ it('adopts parked guest writing into another account without moving the previous
     (await previousAccount.snapshotJournal()).entries[0]?.reflection.text,
   ).toBe('Private writing from the previous account');
   expect(servers.get(owner)?.transport.putCompletions).not.toHaveBeenCalled();
+});
+
+it('adopts a signed-out account collection into whichever account signs in next (#492)', async () => {
+  const { runtime, activate, storage } = setup();
+  await cloud.transport.setEnabled(false);
+  const previous = await activate(owner, 'local', 'account');
+  await previous.complete(input(), card);
+  await previous.submitReflection(uuid(1), uuid(2), {
+    text: 'Phone writing saved under the first account',
+  });
+  const nextOwner = uuid(900);
+  await runtime.mergeGuestData(
+    owner,
+    nextOwner,
+    { userId: nextOwner, token: 'fixture-session' },
+    'account',
+  );
+  // The copy is final, so no late source write can slip in before retirement.
+  await expect(previous.complete(input(2), card)).rejects.toMatchObject({
+    code: 'ACCOUNT_CHANGED',
+  });
+  const next = await activate(nextOwner, 'cloud', 'account');
+  await runtime.retireGuestData(owner);
+  expect((await next.snapshotData()).attempts.map(({ id }) => id)).toEqual([
+    uuid(1),
+  ]);
+  expect((await next.snapshotJournal()).entries[0]?.reflection.text).toBe(
+    'Phone writing saved under the first account',
+  );
+  expect([...servers.get(nextOwner)!.attempts.keys()]).toEqual([uuid(1)]);
+  expect(servers.get(owner)?.transport.putCompletions).not.toHaveBeenCalled();
+  expect(
+    [...storage.values.keys()].some((key) =>
+      key.startsWith(`justgo:v1:${owner}:`),
+    ),
+  ).toBe(false);
+});
+
+it.each(['guest', 'account'] as const)(
+  'keeps the phone deck on the phone when a %s collection moves into the account that signs in',
+  async (sourceKind) => {
+    const { runtime, activate, storage } = setup();
+    await cloud.transport.setEnabled(false);
+    const source = await activate(otherOwner, 'local', sourceKind);
+    await source.complete(input(), card);
+    const deck = { selected: 'gym' as const, orders: { gym: [card.id] } };
+    source.deckPreferences.save(deck);
+    await source.deckPreferences.settled();
+    await runtime.mergeGuestData(
+      otherOwner,
+      owner,
+      { userId: owner, token: 'fixture-session' },
+      sourceKind,
+    );
+    const target = await activate(owner, 'cloud', 'account');
+    await runtime.retireGuestData(otherOwner);
+    expect(await target.deckPreferences.read()).toEqual(deck);
+    expect(
+      JSON.parse(storage.values.get(`justgo:v1:${owner}:decks`) ?? 'null'),
+    ).toEqual({ version: 1, accountId: owner, ...deck });
+    expect(storage.values.has(`justgo:v1:${otherOwner}:decks`)).toBe(false);
+  },
+);
+
+it('refuses an account collection with a pending delete-all before binding any owner, then finishes the deletion under its own account', async () => {
+  const { runtime, activate, storage } = setup();
+  const source = await activate(owner, 'cloud', 'account');
+  await source.complete(input(), card);
+  runtime.setEnvironment({ active: true, online: true });
+  await source.synchronize();
+  jest
+    .spyOn(servers.get(owner)!.transport, 'deleteData')
+    .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
+  await expect(runtime.deleteAllData()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  // The person logs out and another account signs in.
+  runtime.changeAccount(owner, 'local', 'account');
+  const nextOwner = uuid(900);
+  const destination = server();
+  servers.set(nextOwner, destination);
+  const beforeCopy = jest.fn(async () => {});
+  await expect(
+    runtime.mergeGuestData(
+      owner,
+      nextOwner,
+      { userId: nextOwner, token: 'fixture-session' },
+      'account',
+      beforeCopy,
+    ),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  expect(beforeCopy).not.toHaveBeenCalled();
+  expect(destination.transport.putCompletions).not.toHaveBeenCalled();
+  // Signing back into the source account finishes its deletion.
+  await activate(owner, 'cloud', 'account');
+  await runtime.deleteAllData();
+  expect(storage.values.has(`justgo:v1:${owner}:delete-all-pending`)).toBe(
+    false,
+  );
+  expect(servers.get(owner)!.attempts.size).toBe(0);
+});
+
+it('binds the copy before any of the account collection leaves the phone', async () => {
+  const { runtime, activate } = setup();
+  await cloud.transport.setEnabled(false);
+  const source = await activate(owner, 'local', 'account');
+  await source.complete(input(), card);
+  const nextOwner = uuid(900);
+  const destination = server();
+  servers.set(nextOwner, destination);
+  const uploadsAtBind: number[] = [];
+  await runtime.mergeGuestData(
+    owner,
+    nextOwner,
+    { userId: nextOwner, token: 'fixture-session' },
+    'account',
+    async () => {
+      uploadsAtBind.push(
+        (destination.transport.putCompletions as jest.Mock).mock.calls.length,
+      );
+    },
+  );
+  expect(uploadsAtBind).toEqual([0]);
+  expect([...destination.attempts.keys()]).toEqual([uuid(1)]);
+});
+
+it("finishes the source account's accepted delete-all clear before copying its collection into another account", async () => {
+  const { runtime, activate, storage } = setup();
+  await cloud.transport.setEnabled(false);
+  const source = await activate(owner, 'cloud', 'account');
+  runtime.setEnvironment({ active: true, online: true });
+  await source.complete(input(), card);
+  await source.synchronize();
+  await jest.advanceTimersByTimeAsync(0);
+  // Another device deletes the first account's data.
+  await servers
+    .get(owner)!
+    .transport.deleteData(0, new AbortController().signal);
+
+  const clearing = deferred<void>();
+  const releaseClear = deferred<void>();
+  const write = storage.setItem.bind(storage);
+  let blockNextClear = true;
+  jest.spyOn(storage, 'setItem').mockImplementation(async (key, value) => {
+    if (
+      blockNextClear &&
+      key === `justgo:v1:${owner}:cloud-sync` &&
+      (JSON.parse(value) as { clearing?: boolean }).clearing
+    ) {
+      blockNextClear = false;
+      clearing.resolve();
+      await releaseClear.promise;
+    }
+    await write(key, value);
+  });
+  const acceptedClear = source.synchronize().catch((error: unknown) => error);
+  await clearing.promise;
+  // The person signs out while that clear is still saving.
+  runtime.changeAccount(owner, 'local', 'account');
+  const nextOwner = uuid(900);
+  const destination = server();
+  servers.set(nextOwner, destination);
+  let copied = false;
+  const adoption = runtime
+    .mergeGuestData(
+      owner,
+      nextOwner,
+      { userId: nextOwner, token: 'fixture-session' },
+      'account',
+    )
+    .then(() => {
+      copied = true;
+    });
+  let copiedWhileClearing: boolean;
+  let uploadsWhileClearing: number;
+  try {
+    await jest.advanceTimersByTimeAsync(0);
+    copiedWhileClearing = copied;
+    uploadsWhileClearing = jest.mocked(destination.transport.putCompletions)
+      .mock.calls.length;
+  } finally {
+    releaseClear.resolve();
+  }
+  await acceptedClear;
+  await adoption;
+  expect(copiedWhileClearing).toBe(false);
+  expect(uploadsWhileClearing).toBe(0);
+  const next = await activate(nextOwner, 'cloud', 'account');
+  await runtime.retireGuestData(owner);
+  // Entries the first account's own delete-all removed never reach the next one.
+  expect((await next.snapshotData()).attempts).toEqual([]);
+  expect(destination.attempts.size).toBe(0);
 });
 
 it('deletes an earlier iCloud copy while sync is off and does not restore it when re-enabled', async () => {

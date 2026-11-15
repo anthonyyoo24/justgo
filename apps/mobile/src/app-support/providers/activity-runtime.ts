@@ -184,12 +184,17 @@ export class ActivityRuntime {
     const owner = this.getRepository()?.accountId;
     return owner ? (this.apple.get(owner) ?? null) : null;
   };
+  // Copies the phone's collection, a guest one or another account's, into the
+  // account that signed in. The source is retired only after the copy saves.
   mergeGuestData = async (
     guestId: string,
     accountId: string,
     session: AccountSession,
+    sourceKind: 'guest' | 'account' = 'guest',
+    beforeCopy?: () => Promise<void>,
   ) => {
-    if (session.userId !== accountId) throw new ApiError('ACCOUNT_CHANGED');
+    if (session.userId !== accountId || guestId === accountId)
+      throw new ApiError('ACCOUNT_CHANGED');
     const selectedAtStart = this.getRepository();
     const guest = this.accounts.get(guestId);
     this.pendingGuestId = guestId;
@@ -197,10 +202,16 @@ export class ActivityRuntime {
     if (guest.store.getState().hydrationError) throw new ApiError('STORAGE');
     if (guest.store.getState().dataDeletionPending)
       throw new ApiError('UNAVAILABLE');
+    // An account source keeps its iCloud records under its own account, so
+    // only a guest source hands iCloud over.
     const sourceApple =
       this.apple.get(guestId) ??
-      new ICloudDataCoordinator(guest, this.storage, iCloudSync, 'guest');
-    sourceApple.stop();
+      (sourceKind === 'guest'
+        ? new ICloudDataCoordinator(guest, this.storage, iCloudSync, 'guest')
+        : undefined);
+    const sourceCloud = this.cloud.get(guestId);
+    sourceApple?.stop();
+    sourceCloud?.stop();
     guest.setAccountCurrent(true);
     const target = this.accounts.get(accountId);
     const previousCloud = this.cloud.get(accountId);
@@ -227,7 +238,8 @@ export class ActivityRuntime {
       // An already accepted sync can still finish a durable clear after stop.
       // Drain it before copying, then discard its cached pre-adoption metadata.
       await Promise.all([
-        sourceApple.settled(),
+        sourceApple?.settled(),
+        sourceCloud?.settled(),
         previousCloud?.settled(),
         previousApple?.settled(),
       ]);
@@ -235,28 +247,43 @@ export class ActivityRuntime {
       this.apple.delete(accountId);
       guest.setEnvironment({ active: true, online: true });
       target.setEnvironment({ active: true, online: true });
-      await guest.withDataMigration(async () => {
-        await sourceApple.handoverGuest(accountId, async (snapshot) => {
-          if (this.getRepository() !== selectedAtStart)
-            throw new ApiError('ACCOUNT_CHANGED');
-          await sync.adoptData({
-            attempts: snapshot.attempts,
-            journal: {
-              entries: snapshot.journal.entries.map((entry) => ({
-                ...entry,
-                accountId,
-              })),
-              alternatives: snapshot.journal.alternatives.map((entry) => ({
-                ...entry,
-                accountId,
-              })),
-            },
-          });
-          if (this.getRepository() !== selectedAtStart)
-            throw new ApiError('ACCOUNT_CHANGED');
+      const copy = async (
+        snapshot: Awaited<ReturnType<AccountRepository['snapshotData']>>,
+      ) => {
+        if (this.getRepository() !== selectedAtStart)
+          throw new ApiError('ACCOUNT_CHANGED');
+        await sync.adoptData({
+          attempts: snapshot.attempts,
+          journal: {
+            entries: snapshot.journal.entries.map((entry) => ({
+              ...entry,
+              accountId,
+            })),
+            alternatives: snapshot.journal.alternatives.map((entry) => ({
+              ...entry,
+              accountId,
+            })),
+          },
         });
         if (this.getRepository() !== selectedAtStart)
           throw new ApiError('ACCOUNT_CHANGED');
+      };
+      // The source passed its checks; let the caller bind the copy before any
+      // of it leaves the phone.
+      await beforeCopy?.();
+      await guest.withDataMigration(async () => {
+        if (sourceKind === 'guest' && sourceApple)
+          await sourceApple.handoverGuest(accountId, copy);
+        else await copy(await guest.snapshotData());
+        if (this.getRepository() !== selectedAtStart)
+          throw new ApiError('ACCOUNT_CHANGED');
+        // The deck is phone-only state, so it moves with the phone's journal
+        // and never uploads. Retiring the source erases its copy.
+        const deck = await guest.deckPreferences.read();
+        if (deck) {
+          target.deckPreferences.save(deck);
+          await target.deckPreferences.settled();
+        }
         // Keep the old source fenced through the controller's durable switch.
         // A failed identity write reconciles/reactivates it for a safe retry.
         guest.setAccountCurrent(false);

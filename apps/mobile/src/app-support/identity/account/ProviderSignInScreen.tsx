@@ -1,6 +1,5 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { z } from 'zod';
 import { useIdentity, useRuntime } from '../../providers/AppProvider';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
@@ -15,11 +14,8 @@ export function ProviderSignInScreen() {
   const params = useLocalSearchParams<{
     provider?: string;
     returnTo?: string;
-    ownerId?: string;
     switchProvider?: string;
   }>();
-  const parsedOwner = z.uuid().safeParse(params.ownerId);
-  const expectedOwnerId = parsedOwner.success ? parsedOwner.data : undefined;
   const returnToData = params.returnTo === 'data';
   const switchProvider = params.switchProvider === '1';
   const links = useAcceptanceLinks();
@@ -32,7 +28,6 @@ export function ProviderSignInScreen() {
     'directSignInFailure' in state ? state : null,
     {
       provider,
-      expectedOwnerId,
       returnToData,
       switchProvider,
       clearLinkError: links.clearLinkError,
@@ -40,7 +35,6 @@ export function ProviderSignInScreen() {
   );
   if (!('signIn' in identity)) return <Redirect href="/recovery" />;
   if (signIn.destination) return <Redirect href={signIn.destination} />;
-  const guest = 'collectionKind' in state && state.collectionKind === 'guest';
   return (
     <SettingsPage
       title="Sign in"
@@ -54,18 +48,10 @@ export function ProviderSignInScreen() {
           Signing in saves your challenge history, feelings and reflections to
           JustGO’s cloud service so they can sync across your signed-in devices.
         </Text>
-        {guest ? (
-          <Text style={styles.body}>
-            Your saved entries on this phone will be included. You’ll keep the
-            same journal when you sign in or log out.
-          </Text>
-        ) : (
-          <Text style={styles.body}>
-            {expectedOwnerId
-              ? 'Sign in to the account that owns this phone’s saved data to continue.'
-              : 'Sign back in to sync your saved entries. Choosing a different account opens that account’s journal and keeps the previous account’s entries on this phone.'}
-          </Text>
-        )}
+        <Text style={styles.body}>
+          Your saved entries on this phone will be included. You’ll keep the
+          same journal when you sign in or log out.
+        </Text>
         <ProviderButtons
           provider={provider}
           disabled={state.busy || !state.initialized}

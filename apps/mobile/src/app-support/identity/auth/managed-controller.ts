@@ -87,6 +87,21 @@ const errorMessage = (error: unknown) =>
               ? 'The deletion request could not be accepted. Your account has not been deleted.'
               : 'Couldn’t finish connecting. Please try again. Your saved data was kept.';
 
+/**
+ * Copies a phone collection into the signed-in account. The guest source is
+ * the default; `'account'` names an account collection that a different
+ * account's sign-in adopts. The merger calls `beforeCopy` once the source can
+ * be copied and before any of it leaves the phone, so a refused source binds
+ * no owner.
+ */
+export type PhoneDataMerger = (
+  source: string,
+  owner: string,
+  session: { userId: string; token: string },
+  sourceKind?: 'account',
+  beforeCopy?: () => Promise<void>,
+) => Promise<void>;
+
 export class ManagedIdentityController {
   private data: ManagedIdentityState | null = null;
   private providerSession: ProviderSession | null = null;
@@ -102,13 +117,7 @@ export class ManagedIdentityController {
   private readonly listeners = new Set<() => void>();
   private removeData: ((owner: string) => Promise<void>) | null = null;
   private retireGuest: ((guest: string) => Promise<void>) | null = null;
-  private mergeGuest:
-    | ((
-        guest: string,
-        owner: string,
-        session: { userId: string; token: string },
-      ) => Promise<void>)
-    | null = null;
+  private mergeGuest: PhoneDataMerger | null = null;
   private readonly unsubscribeAuth: () => void;
   private snapshot: ManagedIdentitySnapshot = {
     busy: false,
@@ -193,13 +202,7 @@ export class ManagedIdentityController {
   setAccountDataRemover = (remove: (owner: string) => Promise<void>) => {
     this.removeData = remove;
   };
-  setGuestDataMerger = (
-    merge: (
-      guest: string,
-      owner: string,
-      session: { userId: string; token: string },
-    ) => Promise<void>,
-  ) => {
+  setGuestDataMerger = (merge: PhoneDataMerger) => {
     this.mergeGuest = merge;
   };
   setGuestDataRetirer = (retire: (guest: string) => Promise<void>) => {
@@ -297,6 +300,7 @@ export class ManagedIdentityController {
         !!state.pendingSignIn ||
         !!state.pendingLink ||
         state.guestAdoption?.status === 'copied' ||
+        state.collectionAdoption?.status === 'copied' ||
         state.logoutPending ||
         !!state.deletion,
       deletionStatus: state.deletion
@@ -424,6 +428,7 @@ export class ManagedIdentityController {
       deviceId: legacy?.deviceId ?? id(),
       guestId,
       guestAdoption: null,
+      collectionAdoption: null,
       collection: {
         kind: priorOwner ? 'account' : 'guest',
         id: priorOwner ?? guestId,
@@ -482,10 +487,7 @@ export class ManagedIdentityController {
       });
       this.reconcile();
     });
-  signIn = (
-    provider: SignInProvider,
-    options: { expectedOwnerId?: string } = {},
-  ) => {
+  signIn = (provider: SignInProvider) => {
     const connection: ConnectionTrace = {
       phase: 'phone-prepare',
       direct: true,
@@ -515,7 +517,7 @@ export class ManagedIdentityController {
             guestId:
               state.guestAdoption?.status === 'consumed' ? null : state.guestId,
             mappedOwnerId: null,
-            expectedOwnerId: options.expectedOwnerId ?? null,
+            expectedOwnerId: null,
             ...(switching ? { switching: true, authenticated: false } : {}),
           },
         });
@@ -833,8 +835,7 @@ export class ManagedIdentityController {
     if (
       this.disposed ||
       account.authUserId !== session.authUserId ||
-      (intent.mappedOwnerId && intent.mappedOwnerId !== account.userId) ||
-      (intent.expectedOwnerId && intent.expectedOwnerId !== account.userId)
+      (intent.mappedOwnerId && intent.mappedOwnerId !== account.userId)
     )
       throw new ApiError('ACCOUNT_CHANGED');
     connection.phase = 'save-mapping';
@@ -852,6 +853,17 @@ export class ManagedIdentityController {
       previousAdoption.ownerId !== account.userId
     )
       throw new ApiError('CONFLICT');
+    // One person uses the phone, so its journal joins whichever account signs
+    // in. A copy that began stays bound to the owner it started with.
+    const collection = this.state().collection;
+    const previousMove = this.state().collectionAdoption;
+    if (
+      previousMove?.status === 'pending' &&
+      previousMove.ownerId !== account.userId
+    )
+      throw new ApiError('CONFLICT');
+    const adoptCollection =
+      collection.kind === 'account' && collection.id !== account.userId;
     const adoptGuest =
       intent.mergeGuest &&
       intent.guestId &&
@@ -869,6 +881,28 @@ export class ManagedIdentityController {
         token: session.accessToken,
       });
     }
+    if (adoptCollection) {
+      connection.phase = 'adopt-guest';
+      if (!this.mergeGuest) throw new ProviderAuthError('STORAGE');
+      // Bind the copy to this owner only once data can start to move. A source
+      // refused first, such as one with a delete-all pending, binds nobody, so
+      // its own account can still sign in and finish that deletion.
+      await this.mergeGuest(
+        collection.id,
+        account.userId,
+        { userId: account.userId, token: session.accessToken },
+        'account',
+        () =>
+          this.save({
+            ...this.state(),
+            collectionAdoption: {
+              sourceId: collection.id,
+              ownerId: account.userId,
+              status: 'pending',
+            },
+          }),
+      );
+    }
     connection.phase = 'save-account';
     await this.save({
       ...this.state(),
@@ -878,6 +912,9 @@ export class ManagedIdentityController {
       guestAdoption: adoptGuest
         ? { ownerId: account.userId, status: 'copied' }
         : this.state().guestAdoption,
+      collectionAdoption: adoptCollection
+        ? { sourceId: collection.id, ownerId: account.userId, status: 'copied' }
+        : this.state().collectionAdoption,
       pendingSignIn: null,
       // A verified sign-in supersedes a link an older build left unfinished;
       // Account no longer offers linking, so nothing else would clear it.
@@ -903,13 +940,20 @@ export class ManagedIdentityController {
   }
   private async finishGuestRetirement() {
     const adoption = this.state().guestAdoption;
-    if (adoption?.status !== 'copied') return;
-    if (!this.retireGuest) throw new ProviderAuthError('STORAGE');
-    await this.retireGuest(this.state().guestId);
-    await this.save({
-      ...this.state(),
-      guestAdoption: { ...adoption, status: 'consumed' },
-    });
+    if (adoption?.status === 'copied') {
+      if (!this.retireGuest) throw new ProviderAuthError('STORAGE');
+      await this.retireGuest(this.state().guestId);
+      await this.save({
+        ...this.state(),
+        guestAdoption: { ...adoption, status: 'consumed' },
+      });
+    }
+    const moved = this.state().collectionAdoption;
+    if (moved?.status === 'copied') {
+      if (!this.retireGuest) throw new ProviderAuthError('STORAGE');
+      await this.retireGuest(moved.sourceId);
+      await this.save({ ...this.state(), collectionAdoption: null });
+    }
   }
   private async verify() {
     const session = this.providerSession;
@@ -1160,6 +1204,11 @@ export class ManagedIdentityController {
       // Never reopen a previously adopted guest source after account deletion.
       guestId,
       guestAdoption: null,
+      // A copied source still needs erasing; its data was in the deleted account.
+      collectionAdoption:
+        this.state().collectionAdoption?.status === 'copied'
+          ? this.state().collectionAdoption
+          : null,
       collection: { kind: 'guest', id: guestId },
       deletion: null,
       pendingSignIn: null,

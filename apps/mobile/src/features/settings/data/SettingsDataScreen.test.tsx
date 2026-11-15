@@ -405,7 +405,7 @@ it('authenticates before deleting an account journal while signed out', async ()
   await confirmDeletion();
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/account/sign-in',
-    params: { returnTo: 'data', ownerId: owner },
+    params: { returnTo: 'data' },
   });
   expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
   await act(() => mockBlur?.());

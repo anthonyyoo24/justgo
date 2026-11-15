@@ -14,13 +14,11 @@ export function useProviderSignIn(
   snapshot: ManagedIdentitySnapshot | null,
   {
     provider,
-    expectedOwnerId,
     returnToData = false,
     switchProvider = false,
     clearLinkError,
   }: {
     provider?: SignInProvider | undefined;
-    expectedOwnerId?: string | undefined;
     returnToData?: boolean;
     switchProvider?: boolean;
     clearLinkError?: () => void;
@@ -52,7 +50,6 @@ export function useProviderSignIn(
       visit.current = {
         identity,
         provider,
-        expectedOwnerId,
         returnToData,
         switchProvider,
       };
@@ -61,7 +58,7 @@ export function useProviderSignIn(
       return () => {
         visit.current = null;
       };
-    }, [identity, provider, expectedOwnerId, returnToData, switchProvider]),
+    }, [identity, provider, returnToData, switchProvider]),
   );
   const signIn = async (selected: SignInProvider) => {
     const submittedVisit = visit.current;
@@ -83,7 +80,7 @@ export function useProviderSignIn(
     submitting.current = submittedVisit;
     cancelWelcomeEntry();
     setPendingProvider(selected);
-    await identity.signIn(selected, expectedOwnerId ? { expectedOwnerId } : {});
+    await identity.signIn(selected);
     if (submitting.current === submittedVisit) submitting.current = null;
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);
