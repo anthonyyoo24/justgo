@@ -81,7 +81,7 @@ const providerAccountNames: Record<SignInProvider, string> = {
   google: 'Google account',
 };
 const identityExistsMessage = (provider: SignInProvider) =>
-  `That ${providerAccountNames[provider]} already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.`;
+  `That ${providerAccountNames[provider]} already has its own JustGO account, so it can’t be added to this one.`;
 const isIdentityExists = (error: unknown) =>
   error instanceof ProviderAuthError && error.code === 'IDENTITY_EXISTS';
 const errorMessage = (error: unknown, provider?: SignInProvider) =>
