@@ -403,12 +403,16 @@ it.each(['cancel', 'failure', 'success'] as const)(
       .spyOn(mockController, 'getSnapshot')
       .mockReturnValue(current);
     let finish = () => {};
-    const signIn = jest.spyOn(mockController, 'signIn').mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
+    const signIn = jest.spyOn(mockController, 'signIn');
+    // A switch links the provider to this account before it signs in.
+    const switchProvider = jest
+      .spyOn(mockController, 'switchProvider')
+      .mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      );
     mockProvider = 'google';
     mockSwitchProvider = true;
     mockAccess.isPending = false;
@@ -420,8 +424,9 @@ it.each(['cancel', 'failure', 'success'] as const)(
     expect(screen.queryByRole('progressbar')).toBeNull();
     await fireEvent.press(button);
     await fireEvent.press(button);
-    expect(signIn).toHaveBeenCalledTimes(1);
-    expect(signIn).toHaveBeenCalledWith('google');
+    expect(switchProvider).toHaveBeenCalledTimes(1);
+    expect(switchProvider).toHaveBeenCalledWith('google');
+    expect(signIn).not.toHaveBeenCalled();
     expect(screen.getByRole('progressbar')).toBeTruthy();
     await act(async () => {
       snapshot.mockReturnValue(
