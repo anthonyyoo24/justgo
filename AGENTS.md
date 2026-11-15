@@ -622,9 +622,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
      the sessions still running with their links, the next steps and the
      decision trail path.
   2. Start the new session with `start_session`, `context: "fresh"` and the
-     note as its brief, in the same checkout or the Mac mini checkout this one
-     uses. Never fork it, which copies the long context, and never set its
-     `model`. When the app refuses the start, such as on a turn another
+     note as its `background`, in this session's checkout. A Mac mini session
+     keeps the `cwd` rule above. Never fork it, which copies the long context,
+     and never set its `model`. When the app refuses the start, such as on a turn another
      session's message began, propose it as a card instead.
   3. Tell Anthony in one line with the new session's link, and then start no
      more work here. Reports from sessions this one started still arrive here,
