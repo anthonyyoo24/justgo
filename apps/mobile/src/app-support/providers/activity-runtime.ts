@@ -323,8 +323,6 @@ export class ActivityRuntime {
       !this.client.ownsCollection(repository.accountId)
     )
       throw new ApiError('ACCOUNT_CHANGED');
-    if (this.collectionKind === 'account' && this.mode !== 'cloud')
-      throw new ApiError('UNAUTHORIZED');
     if (
       await this.storage.getItem(
         `justgo:v1:${repository.accountId}:delete-all-pending`,
@@ -339,6 +337,12 @@ export class ActivityRuntime {
         if (!cloud) throw new ApiError('UNAVAILABLE');
         await cloud.importData(data);
       } else {
+        // A signed-out account import is uploaded as an import at the next sign-in.
+        if (this.collectionKind === 'account') {
+          const cloud = this.cloud.get(repository.accountId);
+          if (!cloud) throw new ApiError('UNAVAILABLE');
+          await cloud.markImportPending();
+        }
         await repository.mergeCompletions(data.attempts);
         await repository.restoreJournal(
           data.journal.entries,
