@@ -21,8 +21,7 @@ const mockRouter = {
 const mockIdentity = {
   signIn: jest.fn(),
   signOut: jest.fn(),
-  linkProvider: jest.fn(),
-  unlinkProvider: jest.fn(),
+  switchProvider: jest.fn(),
   retry: jest.fn(),
   deleteAccount: jest.fn(),
   getSnapshot: () => mockState,
@@ -129,11 +128,12 @@ it('shows two branded login switches while signed out without a separate guest o
     pathname: '/account/sign-in',
     params: { provider: 'google' },
   });
-  expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
+  expect(mockIdentity.signIn).not.toHaveBeenCalled();
+  expect(mockIdentity.switchProvider).not.toHaveBeenCalled();
 });
 
 it.each(['apple', 'google'] as const)(
-  'shows only the active %s login even when both methods are linked, and opens the other provider sign-in',
+  'turns on only the active %s login even when both methods are linked, and opens the other provider sign-in to switch',
   async (provider) => {
     mockState.account = { userId: 'owner' };
     mockState.provider = provider;
@@ -160,8 +160,8 @@ it.each(['apple', 'google'] as const)(
       pathname: '/account/sign-in',
       params: { provider: other, switchProvider: '1' },
     });
-    expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
-    expect(mockIdentity.unlinkProvider).not.toHaveBeenCalled();
+    // The sign-in screen links and switches after its disclosure.
+    expect(mockIdentity.switchProvider).not.toHaveBeenCalled();
     expect(screen.getByRole('switch', { name: label })).toHaveProp(
       'accessibilityState',
       expect.objectContaining({ checked: true }),
@@ -333,7 +333,7 @@ it('disables operations while busy and keeps provider failure feedback contextua
   mockState.busy = true;
   const screen = await render(<RecoveryRoute />);
   await fireEvent.press(screen.getByRole('switch', { name: 'Google' }));
-  expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
+  expect(mockRouter.push).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeDisabled();
   mockState.busy = false;
   mockState.message =
@@ -442,4 +442,23 @@ it('closes a confirmation when the selected account changes', async () => {
   await screen.rerender(<RecoveryRoute />);
   expect(screen.queryByLabelText('Delete your account?')).toBeNull();
   expect(mockIdentity.deleteAccount).not.toHaveBeenCalled();
+});
+
+it('keeps the active switch on and explains a provider that already has its own account', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
+  mockState.provider = 'apple';
+  mockState.linkedProviders = ['apple'];
+  mockState.message =
+    'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+  const screen = await render(<RecoveryRoute />);
+  expect(screen.getByRole('alert')).toHaveTextContent(mockState.message);
+  expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({ checked: true }),
+  );
+  expect(screen.getByRole('switch', { name: 'Google' })).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({ checked: false }),
+  );
+  expect(screen.getByText('You’re signed in with Apple.')).toBeTruthy();
 });

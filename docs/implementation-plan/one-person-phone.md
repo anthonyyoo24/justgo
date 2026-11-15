@@ -1,6 +1,6 @@
 # Phase 13A plan for one journal per phone
 
-**Status.** Planned on November 14, 2026. Anthony made its [decisions](#anthonys-decisions) the same day. PR 2 landed in #494. PR 3 makes every sign-in bring the phone's journal along and fixes #492. PRs 4 and 5 have not started. It changes no provider setting, database, legal text or build by itself.
+**Status.** Planned on November 14, 2026. Anthony made its [decisions](#anthonys-decisions) the same day. PR 2 landed in #494, PR 3 in #497 and PR 5 in #498 and #500. PR 4 turns the Login methods switches into one account with two ways in. It changes no provider setting, database, legal text or build by itself.
 
 Phase 13 gave the phone one journal and optional Apple and Google accounts, but it still treats each account as a separate person. Signing in with a different account opens that account's journal and parks the phone's entries. Import asks for the account that owns the file, and the Apple and Google switches on Account change which account is active instead of joining them. On November 14 this blocked Anthony on build 8: the phone's journal belonged to his Google account, so import sent him to sign in, and his Apple sign-in was refused with an error that vanished.
 
@@ -11,7 +11,7 @@ This plan assumes one person uses the phone, whether as a guest, with Apple or w
 - **One journal per phone.** Guest, Apple and Google all see and change the same history. Signing in, signing out and switching providers never lock it.
 - **Signing in brings the journal along.** Whichever provider the user signs in with, the phone's history attaches to that account and syncs.
 - **A new phone gets the history back.** On a new phone, signing in with Apple or Google downloads the account's saved history. This is the main acceptance test.
-- **Apple and Google become one account.** Turning on the second provider's switch on Account links it to the same account.
+- **Apple and Google become one account.** Turning on the other provider's switch on Account links it to the same account and signs in with it.
 - **Import always works**, signed in or not.
 - **Signing out keeps the history on the phone, unlocked.**
 
@@ -21,7 +21,7 @@ Anthony made these choices on November 14, 2026.
 
 - **One person.** "We're assuming the same person owns all. Whether they're a guest or they're logged in with Apple or Google, it's the same person."
 - **New phone.** "They can just sign in with their Google or Apple account, and it'll have all their saved history. They can see it in the app on the new phone."
-- **Linking.** The Login methods switches are enough, with no separate Add Apple or Add Google button. Turning on the second switch while signed in links that provider, and both switches show on. Turning off one of two linked switches unlinks it. Turning off the only one logs out. This replaces the November 2, 2026 decision in [Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins) that the switches show only the active provider and never link.
+- **Linking.** On November 15, 2026, Anthony replaced his November 14 choice. Apple and Google are one account with two ways in, and the Login methods switches show how the user is signed in now. Exactly one switch is on, for the provider of the current sign-in, and as a guest both are off. Turning on the other switch while signed in links that provider if it is not linked yet, then signs in with it, so the switch flips to it. Either way it is the same JustGO account and nothing is copied. Turning on a switch while signed out signs in, which brings the phone's journal along. Turning off the on switch opens the logout dialog, and the journal stays on the phone. The app has no unlink. This replaces the November 2, 2026 decision in [Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins) that the switches never link.
 - **Merge.** When the phone has history and the account it signs into already has server history, the app keeps both. The phone's entries are added to the account's.
 - **Delete-all.** Delete-all still asks the user to sign in when signed out. Import, export and viewing need no sign-in.
 
@@ -41,13 +41,13 @@ The phone keeps one current collection, stored under `justgo:v1:<ownerId>` (`app
 
 ### Linking Apple and Google
 
-Linking uses Supabase's manual identity linking, which [Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins) already enables. The signed-in user calls `linkIdentity` for the second provider, so both identities belong to one Auth user. `managed_auth_accounts` maps one Auth user to one JustGO user, so a linked identity signs in to the same JustGO account with no server or database change. `linkProvider` and `unlinkProvider` already exist in `managed-controller.ts` and `managed-auth.ts`, and no screen calls them yet.
+Linking uses Supabase's manual identity linking, which must be on in the hosted project ([Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md#link-identities-and-allow-browser-origins)). The signed-in user calls `linkIdentity` for the other provider, so both identities belong to one Auth user. `managed_auth_accounts` maps one Auth user to one JustGO user, so a linked identity signs in to the same JustGO account with no server or database change.
 
+- The Login methods switches show the provider of the current sign-in. Exactly one is on when signed in, and none as a guest. The "Signed in with" line stays.
+- Turning on the other switch runs the existing switch-provider path (`switchProvider=1` and its switch proof) through `ManagedIdentityController.switchProvider()`. When the provider is not linked yet, it links first. Auth's native link returns a new session for the same Auth user, and the controller registers it with `POST /v1/auth/session` after it revokes the old app session, as any switch does. When the provider is already linked, it signs in with it. A switch already saved on a phone finishes after a restart, and a browser link finishes after its callback.
 - Linking happens only from a signed-in session, by the user's tap. Nothing links by email, and API code still never reads one.
-- The Login methods switches show linked identities, not the active provider.
-- Unlinking keeps at least one identity. Turning off the last one opens the existing logout dialog.
-- **Conflict.** An Apple ID or Google account that already has its own JustGO account cannot be linked, because Supabase refuses an identity that belongs to another Auth user. The switch stays off and says the account already exists separately. Combining two existing accounts on the server is out of scope here ([open question 1](#open-questions)).
-- The switch-provider path (`switchProvider=1` and its switch proof) leaves the switches. The controller keeps finishing a switch already saved on a phone, as the logout rule in `AGENTS.md` requires.
+- The app has no unlink. Turning off the on switch opens the existing logout dialog.
+- **Conflict.** An Apple ID or Google account that already has its own JustGO account cannot be linked, because Supabase refuses an identity that belongs to another Auth user (`identity_already_exists`). The previous switch stays on, nothing changes, and the sign-in screen says the account already exists separately. Combining two existing accounts on the server is out of scope here ([open question 1](#open-questions)).
 
 ### What stays
 
@@ -66,7 +66,7 @@ Each PR carries its code, tests and doc updates, and lands on its own. PRs that 
 | 1. This plan                  | This file and its row in the [plan index](README.md).                                                                                                                                                                                                                                                                                | No        |
 | 2. Import always works        | Drop the sign-in gate for import in `SettingsDataScreen.tsx`. `ActivityRuntime.importData()` accepts any valid backup into the current collection while signed out, and the next sign-in uploads it. `apps/mobile/src/data/backup/data-backup.ts` stops binding an account backup to the same account id. Delete-all keeps its gate. | Yes       |
 | 3. Sign-in brings the journal | Adopt the current collection, guest or account, into whichever account signs in. Remove the `expectedOwnerId` check and the `ownerId` sign-in parameter, and change the sign-in copy. Run [`verify-delete-all-retry`](../../.claude/skills/verify-delete-all-retry/SKILL.md), since the change touches `mergeGuestData`.             | Yes       |
-| 4. Switches link              | The Login methods switches call `linkProvider` and `unlinkProvider` and show linked identities, with the conflict message. Replace the November 2 decision in [Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md).                                                                                                             | Yes       |
+| 4. Switches link              | The Login methods switches show the active provider. Turning on the other one links it if needed and signs in with it, through the switch-provider path, with the conflict message. Replace the November 2 decision in [Account sync setup](../operations/ACCOUNT_SYNC_SETUP.md).                                                    | Yes       |
 | 5. Legal text                 | Privacy Policy clauses on signing into another account and on account-owned import files, plus `DATA_INVENTORY.md` and `apps/api/src/http/legal-drafts.ts`. Anthony approves the text, and it publishes with the build that carries PRs 2 to 4.                                                                                      | Yes       |
 
 PRs 2 and 4 can run side by side. PR 3 follows PR 2, because both touch `activity-runtime.ts` and the import path. PR 4 and PR 3 both touch `managed-controller.ts`, so the second of them rebases on the first.
@@ -78,7 +78,7 @@ These cases pin today's behavior and change with the PR that changes it:
 - `apps/mobile/src/app-support/identity/auth/managed-controller.test.ts`: the cases for a different account opening its own collection, the `expectedOwnerId` refusal and the switch-provider path.
 - `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`: guest-only adoption, and import refused for an account collection outside cloud mode.
 - `apps/mobile/src/features/settings/data/SettingsDataScreen.test.tsx`: import sending the user to sign in. The delete-all sign-in return case stays.
-- `apps/mobile/src/app-support/identity/account/ManagedAccountScreen.test.tsx`: switches showing the active provider.
+- `apps/mobile/src/app-support/identity/account/ManagedAccountScreen.test.tsx`: switches showing the active provider, which PR 4 keeps and adds the conflict message to.
 - `e2e/identity-catalog.spec.ts`: the journeys that sign into a second account and expect a separate journal.
 
 These `AGENTS.md` rules change with them: "Data actions wait for the user" (import no longer needs the owner's sign-in), the two guest adoption rules (they cover any phone collection). The logout, `accountKey()`, email and admission rules stay.
@@ -97,10 +97,10 @@ PR 5 proposes the replacement sentences. The rest of the policy stays.
 Each PR proves its own behavior with focused tests and a `verify-justgo` drive. The build that carries PRs 2 to 5 then passes these on a physical iPhone, filed as a `gate` issue:
 
 1. **New phone.** With history saved under Google, delete the app, reinstall it and sign in with Google. The full history shows.
-2. **Linked provider.** Link Apple on Account, sign out, sign in with Apple. The same history shows, and Account shows both switches on.
+2. **Linked provider.** Signed in with Google, turn on Apple on Account. The Apple switch turns on and Google off, and the same history shows. Sign out, sign in with Google, and the same history shows again.
 3. **Signed-out import.** Sign out, import a build 7 export, then sign in. The entries show and reach the server. Read the counts back from `justgo.attempts` and `justgo.journal_versions`.
 4. **Merge.** On a phone with guest history, sign in to an account with server history. Both sets show, with no duplicates.
-5. **Conflict.** Turn on a provider whose identity already has its own JustGO account. The switch stays off with the conflict message, and nothing is lost.
+5. **Conflict.** Turn on a provider whose identity already has its own JustGO account. The previous switch stays on with the conflict message, and nothing is lost.
 
 ## Risks
 

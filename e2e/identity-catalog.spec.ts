@@ -7,6 +7,7 @@ import {
   signInFixture,
 } from './support/managed-account';
 import { localJournalEntries } from './support/journal';
+import { managedSessionResponseSchema } from '@justgo/contracts';
 
 async function signOut(page: Page) {
   await page.goto('/recovery');
@@ -361,7 +362,7 @@ test('guest writing remains the same journal through automatic sign-in, logout a
     .toBe(1);
 });
 
-test('login switches show one active provider, switch through sign-in and keep logout cancellable', async ({
+test('login switches show one active provider, link the other through sign-in to the same account and keep logout cancellable', async ({
   page,
   fixtureDatabase,
 }) => {
@@ -379,9 +380,26 @@ test('login switches show one active provider, switch through sign-in and keep l
   ).toHaveCount(0);
   await google.click();
   await expect(page).toHaveURL(/account\/sign-in/);
+  const link = page.waitForResponse(
+    (r) =>
+      r.url() === `${journeyApiUrl}/__fixtures/provider-links` &&
+      r.request().method() === 'POST',
+  );
+  const exchange = page.waitForResponse(
+    (r) =>
+      r.url() === `${journeyApiUrl}/v1/auth/session` &&
+      r.request().method() === 'POST',
+  );
   await page
     .getByRole('button', { name: 'Sign in with Google', exact: true })
     .click();
+  expect((await link).ok()).toBe(true);
+  const linked = managedSessionResponseSchema.parse(
+    await (await exchange).json(),
+  );
+  // Google now signs in to the same JustGO account through a new session.
+  expect(linked.userId).toBe(account.userId);
+  expect(linked.sessionId).not.toBe(account.sessionId);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
@@ -411,6 +429,73 @@ test('login switches show one active provider, switch through sign-in and keep l
   await expect(google).toBeChecked();
   await expect(apple).not.toBeChecked();
   await signOut(page);
+});
+
+test('a provider that already has its own account cannot be linked, and the active switch stays on', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const google = await signInFixture(page, { provider: 'google' });
+  await signOut(page);
+  const apple = await signInFixture(page, {
+    provider: 'apple',
+    subjectHandle: null,
+  });
+  expect(apple.userId).not.toBe(google.userId);
+  await page.goto('/recovery');
+  const appleSwitch = page.getByRole('switch', { name: 'Apple', exact: true });
+  const googleSwitch = page.getByRole('switch', {
+    name: 'Google',
+    exact: true,
+  });
+  // The fixture loads with the identity runtime, which the switches wait for.
+  await expect(appleSwitch).toBeChecked();
+  await page.evaluate((handle) => {
+    if (!globalThis.justgoProviderFixture)
+      throw new Error('Provider fixture not loaded');
+    globalThis.justgoProviderFixture.selectLinkIdentity(handle);
+  }, google.subjectHandle);
+  await googleSwitch.click();
+  await expect(page).toHaveURL(/account\/sign-in/);
+  const exchanges: string[] = [];
+  page.on('request', (request) => {
+    if (
+      request.url() === `${journeyApiUrl}/v1/auth/session` ||
+      request.url() === `${journeyApiUrl}/v1/auth/logout` ||
+      request.url() === `${journeyApiUrl}/__fixtures/provider-sessions`
+    )
+      exchanges.push(`${request.method()} ${request.url()}`);
+  });
+  const refused = page.waitForResponse(
+    (r) => r.url() === `${journeyApiUrl}/__fixtures/provider-links`,
+  );
+  await page
+    .getByRole('button', { name: 'Sign in with Google', exact: true })
+    .click();
+  expect((await refused).status()).toBe(409);
+  const conflict =
+    'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+  await expect(page.getByRole('alert')).toHaveText(conflict);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page).toHaveURL(/\/recovery$/);
+  await expect(appleSwitch).toBeChecked();
+  await expect(googleSwitch).not.toBeChecked();
+  await expect(
+    page.getByText('You’re signed in with Apple.', { exact: true }),
+  ).toBeVisible();
+  // Nothing was revoked or registered, and both accounts stay separate.
+  expect(exchanges.filter((entry) => !entry.startsWith('GET '))).toEqual([]);
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select revoked_at is null as live from justgo.managed_auth_sessions where id=$1',
+        [apple.sessionId],
+      )
+    ).rows[0].live,
+  ).toBe(true);
+  await page.reload();
+  await expect(appleSwitch).toBeChecked();
+  await expect(googleSwitch).not.toBeChecked();
 });
 
 for (const width of [320, 390]) {

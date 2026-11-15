@@ -1172,37 +1172,6 @@ it('finishes an existing legacy deletion receipt without any bootstrap or provid
   });
 });
 
-it('links providers only within the verified canonical owner and rejects a different returned Auth subject', async () => {
-  const ctx = setup();
-  await ctx.controller.initialize();
-  await ctx.controller.signIn('apple');
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['apple', 'google'],
-  });
-  await ctx.controller.linkProvider('google');
-  expect(ctx.controller.getSnapshot()).toMatchObject({
-    account,
-    hasPending: false,
-  });
-  expect(
-    ctx.calls.filter(
-      (call) => call.method === 'POST' && call.path === '/auth/session',
-    ),
-  ).toHaveLength(1);
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    authUserId: uuid(999),
-  });
-  await ctx.controller.linkProvider('google');
-  expect(ctx.controller.currentSession()).toBeNull();
-  expect(ctx.controller.getSnapshot()).toMatchObject({
-    account: null,
-    collectionId: account.userId,
-    mode: 'signed-out',
-  });
-});
-
 it('shows a retryable startup error without replacing unreadable saved ownership, then recovers after unlocking', async () => {
   const ctx = setup();
   ctx.storage.read.mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
@@ -1401,34 +1370,269 @@ it('deleting an adopted account creates a fresh empty guest identity rather than
   expect(ctx.saved()?.collection.id).toBe(ctx.saved()?.guestId);
 });
 
-it('reflects verified provider links, protects the last method and clears switches on logout', async () => {
+const conflictMessage =
+  'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+const linked: ProviderSession = {
+  ...session,
+  accessToken: 'synthetic-linked-token',
+  linkedProviders: ['apple', 'google'],
+};
+
+it('links a new provider to the signed-in account, then signs in with it to the same account and copies nothing', async () => {
   const ctx = setup();
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['apple']);
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['apple', 'google'],
+  const merge = jest.fn(async () => {});
+  ctx.controller.setGuestDataMerger(merge);
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    ctx.auth.subscribe.mock.calls[0]![0](linked);
+    return linked;
   });
-  await ctx.controller.linkProvider('google');
+  const offset = ctx.calls.length;
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).toHaveBeenCalledWith('google');
+  expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+    message: '',
+  });
+  // The old app session is revoked before the linked session registers.
+  expect(
+    ctx.calls
+      .slice(offset)
+      .map(({ method, path, token }) => [method, path, token]),
+  ).toEqual([
+    ['POST', '/auth/logout', session.accessToken],
+    ['POST', '/auth/session', linked.accessToken],
+  ]);
+  expect(merge).not.toHaveBeenCalled();
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('signs in with a provider already linked to the account without linking it again', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    const both = { ...session, linkedProviders: ['apple', 'google'] as const };
+    ctx.setProvider({ ...both, linkedProviders: [...both.linkedProviders] });
+    return { ...both, linkedProviders: [...both.linkedProviders] };
+  });
+  await ctx.controller.signIn('apple');
   expect(ctx.controller.getSnapshot().linkedProviders).toEqual([
     'apple',
     'google',
   ]);
-  ctx.auth.unlinkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['google'],
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    ctx.auth.subscribe.mock.calls[0]![0](linked);
+    return linked;
   });
-  await ctx.controller.unlinkProvider('apple');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['google']);
-  ctx.auth.unlinkIdentity.mockRejectedValueOnce(
-    new ProviderAuthError('LAST_PROVIDER'),
+  const offset = ctx.calls.length;
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).not.toHaveBeenCalled();
+  expect(ctx.auth.signIn).toHaveBeenLastCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  expect(
+    ctx.calls.slice(offset).map(({ path, token }) => [path, token]),
+  ).toEqual([
+    ['/auth/logout', session.accessToken],
+    ['/auth/session', linked.accessToken],
+  ]);
+  ctx.controller.dispose();
+});
+
+it('signs in when Auth reports the identity was linked elsewhere since the last verification', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // Auth's adapter returns the unchanged session for an identity already linked.
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => session);
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    return linked;
+  });
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.signIn).toHaveBeenLastCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  ctx.controller.dispose();
+});
+
+it('turns on a provider while signed out with an ordinary sign-in', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).not.toHaveBeenCalled();
+  expect(ctx.auth.signIn).toHaveBeenCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  ctx.controller.dispose();
+});
+
+it('keeps the account, provider and app session when the identity already has its own account', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const before = ctx.controller.getSnapshot();
+  ctx.auth.linkIdentity.mockRejectedValueOnce(
+    new ProviderAuthError('IDENTITY_EXISTS'),
   );
-  await ctx.controller.unlinkProvider('google');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['google']);
-  expect(ctx.controller.getSnapshot().message).toContain('Use Log out');
-  await ctx.controller.signOut();
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual([]);
+  const offset = ctx.calls.length;
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account: { userId: account.userId },
+    collectionId: before.collectionId,
+    linkedProviders: ['apple'],
+    message: conflictMessage,
+  });
+  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+  // Nothing was revoked or registered, and no switch proof is left behind.
+  expect(ctx.calls.slice(offset)).toEqual([]);
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account: { userId: account.userId },
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('returns to the account with the conflict message after a browser link Auth refused', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+  await ctx.controller.switchProvider('google');
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    provider: 'google',
+    switching: true,
+  });
+  ctx.setProvider({ ...session, identityExists: true });
+  const offset = ctx.calls.length;
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'apple',
+    account: { userId: account.userId },
+    message: conflictMessage,
+    switchCancelled: true,
+  });
+  expect(
+    ctx.calls.slice(offset).filter(({ path }) => path === '/auth/logout'),
+  ).toEqual([]);
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('finishes a browser link after its callback, revoking the old app session first', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+  await ctx.controller.switchProvider('google');
+  ctx.setProvider({ ...linked, freshSignIn: true });
+  const offset = ctx.calls.length;
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+  });
+  const paths = ctx.calls
+    .slice(offset)
+    .map(({ method, path, token }) => [method, path, token]);
+  const logout = paths.findIndex(
+    ([, path, token]) =>
+      path === '/auth/logout' && token === session.accessToken,
+  );
+  const register = paths.findIndex(
+    ([method, path, token]) =>
+      method === 'POST' &&
+      path === '/auth/session' &&
+      token === linked.accessToken,
+  );
+  expect(logout).toBeGreaterThanOrEqual(0);
+  expect(register).toBeGreaterThan(logout);
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('finishes a saved link switch after restart once the old app session can be revoked', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    return linked;
+  });
+  ctx.setFailure(new ApiError('UNAVAILABLE'));
+  await ctx.controller.switchProvider('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    collectionId: account.userId,
+    hasPending: true,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    provider: 'google',
+    switching: true,
+    authenticated: true,
+  });
+  ctx.setFailure(null);
+  const offset = ctx.calls.length;
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+  });
+  const logout = ctx.calls.findIndex(
+    ({ path, token }, index) =>
+      index >= offset &&
+      path === '/auth/logout' &&
+      token === session.accessToken,
+  );
+  const register = ctx.calls.findIndex(
+    ({ method, path, token }, index) =>
+      index >= offset &&
+      method === 'POST' &&
+      path === '/auth/session' &&
+      token === linked.accessToken,
+  );
+  expect(logout).toBeGreaterThanOrEqual(offset);
+  expect(register).toBeGreaterThan(logout);
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
 });
 
 it('switches the active provider for one linked subject only after fresh auth and revokes the old app session', async () => {

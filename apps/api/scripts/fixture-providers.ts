@@ -28,6 +28,16 @@ const linkRequest = z
     accessToken: z.string().min(1).max(1000),
   })
   .strict();
+const identityLinkRequest = linkRequest
+  .extend({
+    // The subject whose provider identity is being linked. Unset, the
+    // identity is new to the fixture.
+    identityHandle: z
+      .string()
+      .regex(/^[a-f0-9]{32}$/)
+      .optional(),
+  })
+  .strict();
 const signOutRequest = z
   .object({ accessToken: z.string().min(1).max(1000) })
   .strict();
@@ -76,6 +86,9 @@ export class FixtureProviders {
       this.subjects.set(handle, subject);
     }
     subject.providers.add(input.provider);
+    return this.view(this.open(subject));
+  }
+  private open(subject: Subject) {
     const session: Session = {
       id: randomUUID(),
       subject,
@@ -84,15 +97,30 @@ export class FixtureProviders {
       live: true,
     };
     this.sessions.set(session.accessToken, session);
-    return this.view(session);
+    return session;
   }
+  /**
+   * Links a provider identity to the session's subject and, as Auth's native
+   * id-token link does, returns a new session for that same subject. An
+   * identity that already signs in to another live subject is refused.
+   */
   link(value: unknown) {
-    const input = parse(linkRequest, value),
+    const input = parse(identityLinkRequest, value),
       session = this.sessions.get(input.accessToken);
     if (!session || !session.live || session.subject.deleted)
       throw new ApiError('UNAUTHORIZED');
+    const owner = input.identityHandle
+      ? this.subjects.get(input.identityHandle)
+      : undefined;
+    if (
+      owner &&
+      owner !== session.subject &&
+      !owner.deleted &&
+      owner.providers.has(input.provider)
+    )
+      throw new ApiError('CONFLICT', 409);
     session.subject.providers.add(input.provider);
-    return this.view(session);
+    return this.view(this.open(session.subject));
   }
   unlink(value: unknown) {
     const input = parse(linkRequest, value),
