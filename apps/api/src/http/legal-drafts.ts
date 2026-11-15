@@ -3,7 +3,7 @@ import type { ApiApp } from './request.js';
 const notice =
   '<p><strong>Development draft — not final release documents.</strong> These pages are for local document testing. Phase 12 owns legal review, effective dates and public publication. They do not publish the legal website or enable diagnostics. JustGO does not record document views or legal agreement.</p>';
 const journalStorageNotice =
-  '<p>Guest and signed-out journals stay on this phone unless you separately enable iCloud Sync or share a downloaded backup. When signed in, challenge history, feelings and written reflections synchronize with your JustGO account. Entries waiting to synchronize can exist only on this phone. Signing out stops JustGO account sync and keeps the same journal on this phone. Signing back into the same account can restore history and journal entries that reached that account.</p>';
+  '<p>Guest and signed-out journals stay on this phone unless you separately enable iCloud Sync or share a downloaded backup. When signed in, challenge history, feelings and written reflections synchronize with your JustGO account. Entries waiting to synchronize can exist only on this phone. Signing out stops JustGO account sync and keeps the same journal on this phone. Signing back into the same account can restore history and journal entries that reached that account. When you sign in, the journal on this phone is saved to that account.</p>';
 const drafts = {
   terms: {
     title: 'Terms of Service',
