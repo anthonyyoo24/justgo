@@ -449,7 +449,7 @@ it('keeps the active switch on and explains a provider that already has its own 
   mockState.provider = 'apple';
   mockState.linkedProviders = ['apple'];
   mockState.message =
-    'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+    'That Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
   const screen = await render(<RecoveryRoute />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.message);
   expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(

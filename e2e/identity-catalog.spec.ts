@@ -474,7 +474,7 @@ test('a provider that already has its own account cannot be linked, and the acti
     .click();
   expect((await refused).status()).toBe(409);
   const conflict =
-    'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+    'That Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
   await expect(page.getByRole('alert')).toHaveText(conflict);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page).toHaveURL(/\/recovery$/);

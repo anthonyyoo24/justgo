@@ -89,7 +89,7 @@ const id = (value: number) =>
   `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
 const userId = id(1);
 const conflict =
-  'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+  'That Apple ID already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },
@@ -175,6 +175,7 @@ beforeEach(async () => {
     auth,
     storage,
     legacyVault: createMemoryVault(),
+    connectionDiagnostics: true,
     api: createIdentityApi('http://localhost:3000', (...args) =>
       fetch(...args),
     ),
@@ -265,10 +266,12 @@ it('keeps the identity-exists refusal on the switch screen after the app returns
     throw new ProviderAuthError('IDENTITY_EXISTS');
   });
   expect(screen.getByRole('alert')).toHaveTextContent(conflict);
+  expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
 
   await foreground();
 
   expect(screen.getByRole('alert')).toHaveTextContent(conflict);
+  expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
   expect(controller.getSnapshot()).toMatchObject({
     account: { userId },
     provider: 'google',
@@ -285,10 +288,16 @@ it('keeps another refused switch on screen after the foreground return', async (
   expect(message).not.toBe('');
   expect(message).not.toBe(conflict);
   expect(screen.getByRole('alert')).toHaveTextContent(message);
+  expect(
+    screen.getByText('Dev sign-in reference: provider-auth / AUTH'),
+  ).toBeTruthy();
 
   await foreground();
 
   expect(screen.getByRole('alert')).toHaveTextContent(message);
+  expect(
+    screen.getByText('Dev sign-in reference: provider-auth / AUTH'),
+  ).toBeTruthy();
 });
 
 it('keeps a cancelled Apple sheet silent through the foreground return', async () => {
