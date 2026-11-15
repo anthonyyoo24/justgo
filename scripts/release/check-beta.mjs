@@ -16,13 +16,13 @@ const authOrigin = 'https://gcjmvtsisivxxorstvkb.supabase.co';
 // app pins every request to that region with `x-region`.
 export const betaApiUrl = `${authOrigin}/functions/v1/api`;
 /**
- * The Privacy version that ships with the first build on the us-east-1 project.
- * It says the database and the server run in the United States (Phase 15A,
- * US-7 and US-9). Replace `DD` with the day Anthony publishes it. Until then
- * the preflight refuses every beta build, so no build that targets this
- * project ships beside the Canada notice.
+ * The published U.S. Privacy version that beta builds ship with. It says the
+ * database and the server run in the United States (Phase 15A, US-7 and US-9).
+ * `2026-11-15-us-east` is the plain-language rewrite (Phase 13A PR 5). A new
+ * version must keep the `<yyyy>-<mm>-<dd>-us-east` form and change only after
+ * Anthony publishes it, or the preflight refuses every beta build.
  */
-export const betaPrivacyVersion = '2026-11-14-us-east';
+export const betaPrivacyVersion = '2026-11-15-us-east';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 

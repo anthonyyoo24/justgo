@@ -8,12 +8,12 @@ project and publishes nothing.
 The October 25 owner-directed publication is live at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. The current Privacy Policy and Terms are `2026-11-14-us-east`,
-owner-approved, effective and published November 14, 2026 for build 8.
-The Privacy Policy places the database and the server in Supabase us-east-1,
-names Cloudflare R2 for encrypted backups and keeps the minimal Sentry app and
-server reports and the local iOS crash cache. The Terms drop the operator's name
-and province.
+`justgo-legal`. The current Privacy Policy and Terms are `2026-11-15-us-east`,
+the plain-language rewrite, owner-approved, effective and published November 15, 2026. The Privacy Policy says the database and the server run in the United
+States, names only Apple and Google and describes the other providers by role.
+The [data inventory](../../docs/legal/DATA_INVENTORY.md#detail-the-public-notices-leave-out)
+keeps the detail the shorter text leaves out. The Terms no longer describe a free
+beta.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
 
@@ -92,8 +92,8 @@ must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
 Never upload the source repository, review records or environment files.
 
 After an authorized deploy, verify both stable HTTPS routes anonymously, the
-original logo bytes and footer navigation. The November 14 U.S. region update
-passed anonymous byte checks for both documents, the root Privacy page, the
+original logo bytes and footer navigation. The November 15 plain-language update
+and the November 14 U.S. region update passed anonymous byte checks for both documents, the root Privacy page, the
 stylesheet and the logo, and the publication confirmed that `/.env.local`,
 `/vercel.json` and the internal review-record path returned 404. The staging
 folder needed no link: `deploy --prod --project justgo-legal --scope ...` from it

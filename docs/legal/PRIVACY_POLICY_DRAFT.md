@@ -1,13 +1,11 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-11-14-us-east -->
+<!-- legal-version: 2026-11-15-us-east -->
 <!-- publication-status: owner-approved -->
-<!-- effective-date: 2026-11-14 -->
+<!-- effective-date: 2026-11-15 -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the notice for the move of the database and the `api` function to Supabase us-east-1 ([Phase 15A](../implementation-plan/supabase-us-move.md#us-9), US-9). It describes the service as it runs now, with no history of earlier hosts or regions: the database and the server run in the United States, with a U.S. storage disclosure. It also drops the operator's name and province, the Canada-only wording and the Canadian regulator link. Anthony approved this text on November 13, 2026. Anthony gave the go to publish it on November 14, 2026, and it took effect and was published that day for build 8. The [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) lists its conditions. It replaced `2026-11-13-supabase-edge`, published November 13, 2026, and Git history keeps that text. The Terms drop the same operator details and published with it. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
-
-Pending: Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)) rewrites the public text in plain language, organized by what is collected, why, who receives it, how long it is kept, your choices and contact, at Anthony's request on November 15, 2026. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved that text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". The version and effective date above stay until he gives the separate go to publish it, which sets a new version and date.
+This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
