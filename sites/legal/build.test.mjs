@@ -342,7 +342,7 @@ test('repository public sources use document labels and exclude review records a
   );
   assert.match(
     privacy,
-    /this phone has not received that deletion, so those entries are copied too/,
+    /this phone has not received that deletion yet, those entries are copied too/,
   );
   assert.match(privacy, /keeps the same saved journal visible and editable/);
   assert.match(privacy, /private CloudKit database/);
