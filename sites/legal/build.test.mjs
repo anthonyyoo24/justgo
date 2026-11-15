@@ -330,47 +330,68 @@ test('repository public sources use document labels and exclude review records a
   const privacy = output.get('privacy/index.html');
   const terms = output.get('terms/index.html');
   assert.doesNotMatch(terms, /Canada|Ontario|Youngshin/);
-  assert.match(privacy, /does not create a JustGO server account/);
-  assert.match(
-    privacy,
-    /feelings and reflection text synchronize with your JustGO account/,
-  );
+  assert.match(privacy, /does not create a server account for you/);
   assert.match(privacy, /Before signing in with Apple or Google, we explain/);
-  assert.match(
-    privacy,
-    /When you sign in, the journal on this phone is saved to that account\./,
-  );
-  assert.match(
-    terms,
-    /When you sign in, the journal on this phone is saved to that account\./,
-  );
-  assert.match(privacy, /keeps the same saved journal visible and editable/);
-  assert.match(privacy, /private CloudKit database/);
-  assert.match(privacy, /off by default/);
-  assert.match(privacy, /Each file is a snapshot/);
-  assert.match(privacy, /not password protected by JustGO/);
-  for (const page of [privacy, terms])
+  for (const page of [privacy, terms]) {
+    assert.match(
+      page,
+      /When you sign in, the journal on this phone is saved to that account/,
+    );
+    assert.match(page, /Signing out keeps your journal on this phone\./);
     assert.match(
       page,
       /You can import a JustGO backup file without signing in\. Its entries are added to the journal on this phone/,
     );
+    assert.match(page, /Delete all my data/);
+    assert.match(page, /Delete account/);
+    assert.match(page, /adults aged 18 and older/);
+    assert.match(page, /free beta/);
+  }
   assert.doesNotMatch(
     `${privacy}${terms}`,
-    /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate|different JustGO account|has not received that deletion/,
+    /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate|different JustGO account|has not received that deletion|epoch|tombstone|receipt|transfer code|recovery key|legacy/i,
   );
+  // Plain sections in the order Anthony asked for (November 15, 2026).
+  const headings = (page) =>
+    [...page.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)].map((match) => match[1]);
+  assert.deepEqual(headings(privacy), [
+    'Information we collect',
+    'Where your journal is kept',
+    'How we use information',
+    'Who receives it',
+    'How long we keep it',
+    'Your choices and rights',
+    'Keeping your data safe',
+    'Age',
+    'Changes',
+    'Contact',
+  ]);
+  assert.match(privacy, /private CloudKit database/);
+  assert.match(privacy, /off by default/);
+  assert.match(privacy, /Each file is a snapshot/);
+  assert.match(privacy, /not password protected by JustGO/);
   assert.match(terms, /restorable snapshot/);
-  assert.match(terms, /Delete all my data/);
-  assert.match(terms, /Delete account/);
   assert.doesNotMatch(
     privacy,
     /Back up journal|Restore journal|Recover earlier journal|This export cannot be restored/,
   );
-  assert.match(privacy, /Sentry/);
-  assert.match(privacy, /Product analytics remains disabled/);
-  assert.match(privacy, /App versions with crash reporting enabled/);
   assert.match(
     privacy,
-    /runs the server that handles synchronized account data, including feelings and reflections, on Supabase Edge Functions/,
+    /We do not sell your personal information or share it for advertising\./,
+  );
+  assert.match(privacy, /product analytics is turned off/);
+  assert.match(
+    privacy,
+    /App versions with crash reporting enabled send Sentry/,
+  );
+  assert.match(
+    privacy,
+    /Reports never include your journal, feelings, email, account or device identifiers, or sign-in tokens\./,
+  );
+  assert.match(privacy, /JustGO is not end-to-end encrypted\./);
+  assert.match(
+    privacy,
+    /<strong>Supabase<\/strong> handles sign-in, stores account and journal records, and runs our server\./,
   );
   assert.match(
     privacy,
@@ -391,17 +412,16 @@ test('repository public sources use document labels and exclude review records a
   assert.match(privacy, /They do not record request bodies, sign-in tokens/);
   assert.match(
     privacy,
-    /<strong>Cloudflare<\/strong> stores encrypted backups of account, journal and sign-in information/,
-  );
-  assert.match(privacy, /scheduled to expire seven days after creation/);
-  assert.match(
-    privacy,
-    /Account users must sign in again after a service restore\./,
+    /<strong>Cloudflare<\/strong> stores encrypted backups of our database\./,
   );
   assert.match(
     privacy,
-    /<strong>Vercel<\/strong> hosts these public legal pages\./,
+    /encrypted backups are deleted about a week after they&#39;re made/,
   );
+  assert.match(privacy, /Support emails:<\/strong> 12 months/);
+  assert.match(privacy, /<strong>Vercel<\/strong> hosts these legal pages/);
+  for (const name of ['Apple', 'Google', 'Sentry'])
+    assert.match(privacy, new RegExp(`<strong>${name}</strong>`));
   assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
   // The dated sources publish together; either one without its date is refused.
   const undate = (dated) =>
@@ -451,10 +471,13 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
     /effective date/,
   );
   assert.match(document.html, /App versions with crash reporting enabled/);
-  assert.match(document.html, /Sanitized server error reports/);
+  assert.match(document.html, /When our server hits an error, it sends Sentry/);
   assert.match(document.html, /United States/);
-  assert.match(document.html, /original local crash report/);
-  assert.match(document.html, /Product analytics remains disabled/);
+  assert.match(
+    document.html,
+    /the original crash details can stay on your phone/,
+  );
+  assert.match(document.html, /product analytics is turned off/);
   assert.doesNotMatch(
     document.html,
     /ordinary automatic crash reporting are disabled/,

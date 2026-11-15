@@ -234,6 +234,19 @@ functions or the credential protocol change. Keeping them serves an engineering
 purpose. It is not a finding that permanent retention is proportionate in every
 jurisdiction.
 
+## Detail the public notices leave out
+
+Phase 13A PR 5 rewrote the public Privacy Policy and Terms in plain language at Anthony's request (November 15, 2026). The behavior is unchanged. The earlier, longer public text is in Git history (`2026-11-14-us-east`). These facts left the public text and stay true:
+
+- **Sentry reports.** A report can hold a random event identifier, a generic error classification, stack locations, app version and build, OS version and the environment. It excludes request URLs and bodies, screenshots, attachments and interaction history, and session replay, product activity tracking and profiling stay off. Sentry receives the connecting address on delivery, and the report settings keep it out of the stored event. Server reports carry a request identifier, HTTP status, a safe classification and a validated database error code, and exclude raw messages, queries and headers. The [Sentry diagnostic boundary](#sentry-diagnostic-boundary) owns this.
+- **Abuse controls** keep protected address hashes, not raw IP addresses ([data handling](#candidate-data-handling)).
+- **Backups.** R2 backup objects are scheduled to expire seven days after creation, and deletion normally completes within the next day without a guaranteed deadline. A restore reconciles deletions and revocations before it reopens, stays closed if that cannot be confirmed, may miss changes after the last copy, and signs account users out. [Cloudflare backups](../operations/CLOUDFLARE_BACKUPS.md) owns this.
+- **Security records** hold account and credential identifiers, dates and digests, as [Retention decisions](#retention-decisions-for-review) explains. Delete all my data and Delete account keep cleanup pending and retryable when the Apple account or iCloud is unavailable, and both reach app-managed iCloud copies even when iCloud Sync is off.
+- **Accounts.** Settings → Account lists verified Apple and Google login methods, and one can be connected or disconnected while one stays. An older installation links its existing protected access to the verified sign-in with no recovery key or transfer code. Changing Apple accounts does not combine unrelated iCloud copies. Reinstalling or restoring a purchase does not sign anyone in. An email supplied by someone else grants no account access.
+- **Files.** A signed-in download first syncs and needs a connection, and a signed-out account download may omit newer cloud changes. Older journal-only files restore writing, not a complete history, and cannot recreate a deleted account. Unsaved editor text and unfinished challenges are not in downloads or recovery.
+- **Legal reader.** Opening Terms & Privacy or continuing past it records no agreement, legal version or analytics permission.
+- **Paid access.** Account and data controls stay reachable when paid challenge access ends.
+
 ## App Store disclosure preparation
 
 Optional managed accounts and renewed private cloud journal processing require a fresh label and provider review. Earlier completion-only exclusions do not apply to signed-in feelings and text or to enabled CloudKit copies. Supabase Auth adds provider identifiers, possible email and profile data, and session processing. The actually enabled SDKs and signed behavior determine the final answers. The [release worksheet](RELEASE_DISCLOSURES.md) records the unpublished Apple draft: 13 categories selected, 11 configured and two diagnostic entries unfinished. Approved public notices and Sentry DPA acceptance are separately verified. This inventory does not establish journal-provider clearance, fixed backup expiry, final native privacy acceptance or a paid-production setting.
