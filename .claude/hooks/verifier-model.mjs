@@ -25,7 +25,7 @@ const recheckName =
 // Routine reviews, named by how the description starts.
 // A trail review starts with "review" (optionally "final" or "close out the")
 // and names the trail as a word, not as part of a name such as
-// require-trail-review. Or it starts with "trail review", optionally after
+// trail-review-notes. Or it starts with "trail review", optionally after
 // "close out the". A verdict is never
 // a trail review.
 const trailWord = String.raw`(?<![\w-])trail(?![\w-])`;
@@ -66,14 +66,13 @@ export const thisRepo = 'anthonyyoo24/justgo';
 const prReference =
   /(?:\bPR\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)(\d+)\b/gi;
 // Each PR a text names, as lowercase `owner/repo#N`. A link names its
-// repository. `PR #N` means this one. review-rounds-guard.mjs reads links the
-// same way and also reads lists such as `PRs #7, #8`.
+// repository. `PR #N` means this one.
 const prKeysIn = (text) =>
   [...(text ?? '').matchAll(prReference)].map(
     ([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`,
   );
 // Each JustGO PR number a text names, also in lists such as `PRs #7, #8 and
-// #9`, as review-rounds-guard.mjs reads them. A link to another repository
+// #9`. A link to another repository
 // makes the set unknown, so the hook keeps Opus.
 const prListReference =
   /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
