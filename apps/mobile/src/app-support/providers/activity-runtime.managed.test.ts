@@ -954,6 +954,32 @@ it('adopts a signed-out account collection into whichever account signs in next 
   ).toBe(false);
 });
 
+it.each(['guest', 'account'] as const)(
+  'keeps the phone deck on the phone when a %s collection moves into the account that signs in',
+  async (sourceKind) => {
+    const { runtime, activate, storage } = setup();
+    await cloud.transport.setEnabled(false);
+    const source = await activate(otherOwner, 'local', sourceKind);
+    await source.complete(input(), card);
+    const deck = { selected: 'gym' as const, orders: { gym: [card.id] } };
+    source.deckPreferences.save(deck);
+    await source.deckPreferences.settled();
+    await runtime.mergeGuestData(
+      otherOwner,
+      owner,
+      { userId: owner, token: 'fixture-session' },
+      sourceKind,
+    );
+    const target = await activate(owner, 'cloud', 'account');
+    await runtime.retireGuestData(otherOwner);
+    expect(await target.deckPreferences.read()).toEqual(deck);
+    expect(
+      JSON.parse(storage.values.get(`justgo:v1:${owner}:decks`) ?? 'null'),
+    ).toEqual({ version: 1, accountId: owner, ...deck });
+    expect(storage.values.has(`justgo:v1:${otherOwner}:decks`)).toBe(false);
+  },
+);
+
 it("finishes the source account's accepted delete-all clear before copying its collection into another account", async () => {
   const { runtime, activate, storage } = setup();
   await cloud.transport.setEnabled(false);

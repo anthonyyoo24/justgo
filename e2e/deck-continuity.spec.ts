@@ -85,7 +85,7 @@ async function expectSavedFront(
     .toEqual({ accountId, selected: venue, front: id });
 }
 
-test('saved venue decks resume their rotated front cards after reload and stay separate across accounts', async ({
+test('saved venue decks resume their rotated front cards after reload and stay on the phone when another account signs in', async ({
   page,
   fixtureDatabase,
 }) => {
@@ -155,14 +155,20 @@ test('saved venue decks resume their rotated front cards after reload and stay s
   await expectSavedFront(page, account.userId, 'gym', gym.id);
 
   await page.reload();
+  // One person owns the phone, so the next account takes its journal and deck.
   const other = await createAccount(page);
   expect(other.userId).not.toBe(account.userId);
   await expect(
-    page.getByRole('tab', { name: 'Streets', exact: true }),
+    page.getByRole('tab', { name: 'Gym', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');
-  const otherFront = await frontCard(page);
-  await expectSavedFront(page, other.userId, 'streets', otherFront.id);
-  expect(await savedDeck(page, account.userId)).toEqual(saved);
+  await expect(page.getByTestId('challenge-card')).toHaveAttribute(
+    'aria-label',
+    gym.label,
+  );
+  await expect
+    .poll(() => savedDeck(page, other.userId))
+    .toEqual({ ...saved, accountId: other.userId });
+  expect(await savedDeck(page, account.userId)).toBeNull();
 
   await recover(page, account.subjectHandle);
   await expect(
@@ -172,24 +178,18 @@ test('saved venue decks resume their rotated front cards after reload and stay s
     'aria-label',
     gym.label,
   );
-  expect(await savedDeck(page, account.userId)).toEqual(saved);
-  await expect
-    .poll(
-      async () =>
-        (
-          await fixtureDatabase.query(
-            'select id from justgo.attempts where user_id=$1',
-            [account.userId],
-          )
-        ).rows.length,
-    )
-    .toBe(1);
-  expect(
-    (
-      await fixtureDatabase.query(
-        'select id from justgo.attempts where user_id=$1',
-        [other.userId],
+  await expect.poll(() => savedDeck(page, account.userId)).toEqual(saved);
+  expect(await savedDeck(page, other.userId)).toBeNull();
+  for (const userId of [account.userId, other.userId])
+    await expect
+      .poll(
+        async () =>
+          (
+            await fixtureDatabase.query(
+              'select id from justgo.attempts where user_id=$1',
+              [userId],
+            )
+          ).rows.length,
       )
-    ).rows,
-  ).toHaveLength(0);
+      .toBe(1);
 });

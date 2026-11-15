@@ -273,6 +273,13 @@ export class ActivityRuntime {
         else await copy(await guest.snapshotData());
         if (this.getRepository() !== selectedAtStart)
           throw new ApiError('ACCOUNT_CHANGED');
+        // The deck is phone-only state, so it moves with the phone's journal
+        // and never uploads. Retiring the source erases its copy.
+        const deck = await guest.deckPreferences.read();
+        if (deck) {
+          target.deckPreferences.save(deck);
+          await target.deckPreferences.settled();
+        }
         // Keep the old source fenced through the controller's durable switch.
         // A failed identity write reconciles/reactivates it for a safe retry.
         guest.setAccountCurrent(false);
