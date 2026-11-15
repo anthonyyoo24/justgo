@@ -345,8 +345,31 @@ test('repository public sources use document labels and exclude review records a
     assert.match(page, /Delete all my data/);
     assert.match(page, /Delete account/);
     assert.match(page, /adults aged 18 and older/);
-    assert.match(page, /free beta/);
   }
+  assert.match(privacy, /free beta/);
+  // Anthony removed the free-beta wording from the Terms (November 15, 2026).
+  assert.doesNotMatch(terms, /beta|eligible testers|paid/i);
+  assert.deepEqual(
+    [...terms.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)].map((match) => match[1]),
+    [
+      'About JustGO',
+      'Using JustGO',
+      'The app license',
+      'Your account',
+      'Your content',
+      'Your data',
+      'Availability',
+      'Changes and contact',
+    ],
+  );
+  assert.match(
+    terms,
+    /Challenges may change or end, and we may change or interrupt the service/,
+  );
+  assert.match(
+    terms,
+    /If challenges change or end, your saved journal stays and your data controls stay available\./,
+  );
   assert.doesNotMatch(
     `${privacy}${terms}`,
     /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate|different JustGO account|has not received that deletion|epoch|tombstone|receipt|transfer code|recovery key|legacy/i,
