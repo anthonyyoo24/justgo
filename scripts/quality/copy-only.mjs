@@ -96,6 +96,14 @@ function normalize(skeleton) {
 const usesTextAsData =
   /[=!]=|\bcase\b|\.(?:includes|startsWith|endsWith|indexOf|lastIndexOf|match|matchAll|replace|replaceAll|split|search|test|localeCompare)\b|\bRegExp\b|\uE000:|[\w)\]]\[\uE000/;
 
+// Prettier wraps a long comparison or match so that its operator or method
+// call ends the line above the string (`error.message ===`, `text.includes(`,
+// `map[`), or a member chain starts the line below it (`.startsWith(…)`). So
+// the unchanged lines just around a run are read as code, strings and all,
+// and any sign of a comparison there keeps the run from being copy-only.
+const neighborUsesText = (line) =>
+  line !== undefined && (usesTextAsData.test(line) || /\[\s*$/.test(line));
+
 // SQL keywords as the mobile storage writes them, in capitals.
 const sqlKeyword =
   /\b(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|PRAGMA|FROM|WHERE|TABLE|INTO|VALUES|SET)\b/;
@@ -114,30 +122,38 @@ export function isProse(text) {
 }
 
 // The runs of changed lines in a unified-diff patch, as removed and added
-// text. Undefined when the patch has no hunk or a line it cannot read.
+// text, with the unchanged line just above and just below each run when the
+// hunk shows one. Undefined when the patch has no hunk or a line it cannot
+// read.
 export function changeRuns(patch) {
   const runs = [];
   let run;
+  let above;
   let hunks = 0;
   for (const line of patch.split('\n')) {
     if (line.startsWith('@@')) {
       hunks += 1;
       run = undefined;
+      above = undefined;
       continue;
     }
     if (line.startsWith('\\')) continue;
     if (hunks === 0) return undefined;
     const sign = line[0];
     if (sign === '-' || sign === '+') {
-      if (!run) runs.push((run = { removed: [], added: [] }));
+      if (!run) runs.push((run = { above, removed: [], added: [] }));
       (sign === '-' ? run.removed : run.added).push(line.slice(1));
-    } else if (sign === ' ' || line === '') run = undefined;
-    else return undefined;
+    } else if (sign === ' ' || line === '') {
+      if (run) run.below = line.slice(1);
+      run = undefined;
+      above = line.slice(1);
+    } else return undefined;
   }
   return hunks > 0 ? runs : undefined;
 }
 
-function copyOnlyRun({ removed, added }) {
+function copyOnlyRun({ above, below, removed, added }) {
+  if (neighborUsesText(above) || neighborUsesText(below)) return false;
   const before = splitStrings(removed.join('\n'));
   const after = splitStrings(added.join('\n'));
   if (!before || !after) return false;
