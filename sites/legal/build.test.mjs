@@ -338,25 +338,25 @@ test('repository public sources use document labels and exclude review records a
   assert.match(privacy, /Before signing in with Apple or Google, we explain/);
   assert.match(
     privacy,
-    /Each sign-in adds the journal on this phone to the account you sign into/,
+    /When you sign in, the journal on this phone is saved to that account\./,
   );
   assert.match(
-    privacy,
-    /this phone has not received that deletion yet, those entries are copied too/,
+    terms,
+    /When you sign in, the journal on this phone is saved to that account\./,
   );
   assert.match(privacy, /keeps the same saved journal visible and editable/);
   assert.match(privacy, /private CloudKit database/);
   assert.match(privacy, /off by default/);
   assert.match(privacy, /Each file is a snapshot/);
   assert.match(privacy, /not password protected by JustGO/);
-  assert.match(
-    privacy,
-    /Having a file does not sign you in or give access to any account/,
-  );
-  assert.match(terms, /A file does not sign you in/);
+  for (const page of [privacy, terms])
+    assert.match(
+      page,
+      /You can import a JustGO backup file without signing in\. Its entries are added to the journal on this phone/,
+    );
   assert.doesNotMatch(
     `${privacy}${terms}`,
-    /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate/,
+    /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate|different JustGO account|has not received that deletion/,
   );
   assert.match(terms, /restorable snapshot/);
   assert.match(terms, /Delete all my data/);

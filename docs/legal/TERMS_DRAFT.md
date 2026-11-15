@@ -26,7 +26,7 @@ You must be at least 18 to use JustGO. The app offers everyday social challenges
 
 ## Guest use and optional accounts
 
-You can continue without signing in and keep your journal on your phone. Before optional Sign in with Apple or Sign in with Google, the app explains that completed challenges, feelings and reflections will synchronize with a JustGO account. Each sign-in adds the journal on this phone to the account you sign into, even if that journal came from a different JustGO account. The [Privacy Policy](/privacy/) explains what happens to the previous account’s data.
+You can continue without signing in and keep your journal on your phone. Before optional Sign in with Apple or Sign in with Google, the app explains that completed challenges, feelings and reflections will synchronize with a JustGO account. When you sign in, the journal on this phone is saved to that account.
 
 Protect your phone, provider account and sign-in access. Do not enter someone else’s account, misuse recovery or interfere with the service’s security. Restoring a purchase or possessing a data file does not authenticate a JustGO account. Signing out stops JustGO account synchronization and keeps the same journal visible and editable on the phone; signing back into the same account synchronizes changes saved while signed out. Account settings show verified Apple and Google login methods. You can connect or disconnect a method while keeping at least one available.
 
@@ -42,7 +42,7 @@ A saved item waiting to synchronize may exist only on its original phone. Data s
 
 Settings → Data → Download my data creates a restorable snapshot of the selected collection’s saved history, journal and preferences. Signed-in account downloads first synchronize with the service; signed-out downloads include only the phone’s saved account data and may omit newer cloud changes. The ZIP contains readable private content and is not password protected by JustGO. Choose a protected destination and keep it secure. Later edits require another download. Unsaved text and unfinished challenges are excluded.
 
-Import data validates a supported file and asks you to confirm. You do not need to sign in, and any valid JustGO file, from a guest journal or from any account, may be added to the journal on this phone. A file does not sign you in. Importing the same saved completion again does not add an extra rep, and differing writing is preserved rather than silently replaced. Imports may synchronize with the signed-in account, or with the next account you sign into, and with an enabled iCloud copy. Older journal-only files are not complete account backups and cannot recover credentials or recreate a deleted account.
+Import data validates a supported file and asks you to confirm. You can import a JustGO backup file without signing in. Its entries are added to the journal on this phone. Importing the same saved completion again does not add an extra rep, and differing writing is preserved rather than silently replaced. Imports sync to your account when you’re signed in, and to an enabled iCloud copy. Older journal-only files are not complete account backups and cannot recover credentials or recreate a deleted account.
 
 Losing a phone, removing the app or clearing its data can lose unsynchronized information without a usable backup. Network, storage, provider and device conditions affect saving and recovery. We may change or interrupt the service for security, maintenance or operational reasons and will provide any notice required by applicable law.
 

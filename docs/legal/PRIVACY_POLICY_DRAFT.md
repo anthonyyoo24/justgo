@@ -20,7 +20,7 @@ JustGO helps adults aged 18 and older practice everyday challenges and keep a pr
 You choose where your saved challenge history, feelings and reflections go:
 
 - **Without sign-in:** your journal stays on your phone unless you enable iCloud Sync or save or share a data file.
-- **With an account:** Before signing in with Apple or Google, we explain that your history and journal synchronize through JustGO's cloud service. Each sign-in adds the journal on this phone to the account you sign into, even if that journal came from a different JustGO account.
+- **With an account:** Before signing in with Apple or Google, we explain that your history and journal synchronize through JustGO's cloud service. When you sign in, the journal on this phone is saved to that account.
 - **With iCloud Sync:** a separate choice, off by default, synchronizes the selected journal through your private Apple CloudKit database. You do not need a JustGO account for this choice.
 - **With a downloaded file:** you choose where to save or share a readable copy. The destination handles that copy under its own settings and practices.
 
@@ -36,7 +36,7 @@ Optional sign-in uses Apple or Google through Supabase Auth. The provider and au
 
 When signed in, your completed challenges, selected venue category, original start time, time zones, activity date, saved feelings and reflection text synchronize with your JustGO account. A venue is a category you select, not a GPS location. You can leave feelings and reflections blank. Differing saved versions can be retained to protect your writing from being overwritten.
 
-Signing out stops JustGO account synchronization and keeps the same saved journal visible and editable on the phone. Signing back into the same account synchronizes changes saved while signed out. If you sign into a different account instead, JustGO copies the journal on this phone into that account. After the copy is saved, the phone no longer keeps a separate copy for the previous account. Data the previous account already synchronized stays in that account, and so does its iCloud copy. The copy uses what the phone still holds. If you used Delete all my data for the previous account on another device and this phone has not received that deletion yet, those entries are copied too. Entries that the account you sign into has already deleted are not copied. Settings → Account shows your verified Apple and Google login methods; you can connect another method or disconnect one while keeping at least one available. Disconnecting a method does not delete your journal or your Apple or Google account. When upgrading an older installation, JustGO may use its existing protected account access to connect that account to your verified sign-in; you do not need to enter a recovery key or transfer code in the new account screens.
+Signing out stops JustGO account synchronization and keeps the same saved journal visible and editable on the phone. Signing back into the same account synchronizes changes saved while signed out. Settings → Account shows your verified Apple and Google login methods; you can connect another method or disconnect one while keeping at least one available. Disconnecting a method does not delete your journal or your Apple or Google account. When upgrading an older installation, JustGO may use its existing protected account access to connect that account to your verified sign-in; you do not need to enter a recovery key or transfer code in the new account screens.
 
 ## Information kept on your phone
 
@@ -58,7 +58,7 @@ Settings → Data → Download my data creates a restorable ZIP with saved chall
 
 A signed-in account download first synchronizes with the cloud and needs a working connection. A guest or signed-out download contains the selected phone collection; a signed-out account download may omit newer cloud changes. Each file is a snapshot, and later changes need another download. Concurrent changes on another device may arrive after it is created.
 
-Import data validates the file and shows a preview before you confirm. You do not need to sign in. After you confirm, any valid JustGO file, whether it came from a guest journal or from any account, is added to the journal on this phone. Having a file does not sign you in or give access to any account. Identical records do not create extra completions, and differing journal versions are preserved. When you are signed in, imported records synchronize with your account. When you are signed out, they stay on the phone and synchronize with the next account you sign into. Enabled iCloud Sync can synchronize imported data. Older supported journal-only files restore writing rather than a complete account history.
+Import data validates the file and shows a preview before you confirm. You can import a JustGO backup file without signing in. Its entries are added to the journal on this phone, and sync to your account when you’re signed in. Identical records do not create extra completions, and differing journal versions are preserved. Enabled iCloud Sync can synchronize imported data. Older supported journal-only files restore writing rather than a complete account history.
 
 ## Security and recovery
 
@@ -110,7 +110,7 @@ Providers may also process information in other countries, including through the
 
 ## Retention and deletion
 
-Saved phone collections remain until you delete them or remove the app’s data. Signing out keeps the selected account’s local data on the phone until another account signs in and the copy is saved there. Online account records remain until deleted, subject to limited security records and provider recovery copies.
+Saved phone collections remain until you delete them or remove the app’s data. Signing out keeps your journal on this phone. Online account records remain until deleted, subject to limited security records and provider recovery copies.
 
 Settings → Data → Delete all my data asks for confirmation, then removes the selected journal's saved challenge history, feelings and reflections from the phone, its signed-in JustGO account and app-managed iCloud copies previously associated with it, even if iCloud Sync is now off. It keeps the account and its login methods available for future use. Account data requires sign-in for cloud deletion. Devices reconcile deletion before synchronizing again. If the associated Apple account or iCloud service is unavailable, cleanup remains pending and can be retried when available. This action is distinct from closing the account.
 
