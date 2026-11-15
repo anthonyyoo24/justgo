@@ -76,7 +76,7 @@ PRs 2 and 4 can run side by side. PR 3 follows PR 2, because both touch `activit
 These cases pin today's behavior and change with the PR that changes it:
 
 - `apps/mobile/src/app-support/identity/auth/managed-controller.test.ts`: the cases for a different account opening its own collection, the `expectedOwnerId` refusal and the switch-provider path.
-- `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`: guest-only adoption and import refused outside cloud mode.
+- `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`: guest-only adoption, and import refused for an account collection outside cloud mode.
 - `apps/mobile/src/features/settings/data/SettingsDataScreen.test.tsx`: import sending the user to sign in. The delete-all sign-in return case stays.
 - `apps/mobile/src/app-support/identity/account/ManagedAccountScreen.test.tsx`: switches showing the active provider.
 - `e2e/identity-catalog.spec.ts`: the journeys that sign into a second account and expect a separate journal.
