@@ -89,7 +89,7 @@ const id = (value: number) =>
   `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
 const userId = id(1);
 const conflict =
-  'That Apple ID already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+  'That Apple ID already has its own JustGO account, so it can’t be added to this one.';
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },

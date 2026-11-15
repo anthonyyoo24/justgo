@@ -1375,13 +1375,13 @@ const conflicts = [
     signedIn: 'google',
     adding: 'apple',
     message:
-      'That Apple ID already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.',
+      'That Apple ID already has its own JustGO account, so it can’t be added to this one.',
   },
   {
     signedIn: 'apple',
     adding: 'google',
     message:
-      'That Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.',
+      'That Google account already has its own JustGO account, so it can’t be added to this one.',
   },
 ] as const;
 async function signInWithOnly(
