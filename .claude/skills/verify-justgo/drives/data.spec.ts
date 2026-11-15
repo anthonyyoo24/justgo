@@ -17,9 +17,7 @@ test('data-download: a signed-in fixture downloads one ZIP holding its history a
   await capture(page, 'data', '01-data');
 
   const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const download = await downloading;
   const file = await download.path();
   await capture(page, 'data', '02-downloaded');
@@ -32,7 +30,7 @@ test('data-download: a signed-in fixture downloads one ZIP holding its history a
     journal: { entries: unknown[] };
   };
   await writeProof('data', {
-    entryPoint: 'Data > Download my data',
+    entryPoint: 'Data > Export data',
     suggestedFilename: download.suggestedFilename(),
     zipFiles: Object.keys(files).sort(),
     ownerIsAccount:

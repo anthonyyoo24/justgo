@@ -1,11 +1,11 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-11-15-us-east-2 -->
+<!-- legal-version: 2026-11-15-us-east-3 -->
 <!-- publication-status: owner-approved -->
 <!-- effective-date: 2026-11-15 -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. Later on November 15, Anthony asked to drop "free beta" from the opening (`2026-11-15-us-east-2`): "it should not include free beta. I thought you removed that." and then "start it". Only that sentence changed, and the Terms keep `2026-11-15-us-east`. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. Later on November 15, Anthony asked to drop "free beta" from the opening (`2026-11-15-us-east-2`): "it should not include free beta. I thought you removed that." and then "start it". Only that sentence changed, and the Terms keep `2026-11-15-us-east`. Later still on November 15, Anthony asked to rename the Settings → Data row "Download my data" to "Export data" and then to "do both the icon swap and republish" (`2026-11-15-us-east-3`). Only the name of that row and "a new download" changed, and the Terms changed the same way as `2026-11-15-us-east-2`. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
@@ -36,7 +36,7 @@ You choose where your journal goes:
 - **On your phone.** Without sign-in, your journal stays on your phone unless you turn on iCloud Sync or save or share a data file. JustGO does not create a server account for you.
 - **In your JustGO account.** Before signing in with Apple or Google, we explain that your history and journal synchronize through JustGO's cloud service. When you sign in, the journal on this phone is saved to that account and syncs across your signed-in devices. Signing out keeps your journal on this phone.
 - **In your iCloud.** iCloud Sync is a separate choice in Settings → Data, off by default. It syncs your journal through a private CloudKit database in your Apple account, with or without a JustGO account. Turning it off stops syncing but does not erase the iCloud copy.
-- **In files you save.** Download my data creates a file you can save wherever you choose. The file is readable and not password protected by JustGO, so keep it somewhere safe.
+- **In files you save.** Export data creates a file you can save wherever you choose. The file is readable and not password protected by JustGO, so keep it somewhere safe.
 
 Our servers and database are in the United States. We store your account, history, journal and sign-in information there, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Our service providers may also process information in other countries, under those countries' laws.
 
@@ -67,7 +67,7 @@ Our providers' own backups follow their retention schedules.
 ## Your choices and rights
 
 - Use JustGO without signing in, skip feelings and reflections, and keep iCloud Sync off.
-- **Download my data** (Settings → Data) creates a file with your history, journal and preferences. Each file is a snapshot, so later changes need a new download.
+- **Export data** (Settings → Data) creates a file with your history, journal and preferences. Each file is a snapshot, so later changes need a new export.
 - **Import data** (Settings → Data) shows a preview before you confirm. You can import a JustGO backup file without signing in. Its entries are added to the journal on this phone, and sync to your account when you’re signed in.
 - **Delete all my data** (Settings → Data) removes your journal from this phone, from your account when you're signed in, and from the app's iCloud copy. Your account stays open.
 - **Delete account** (Settings → Account) closes your account, removes its sign-in, and removes its journal from our servers, this phone and the app's iCloud copy. It does not delete your Apple or Google account or cancel an Apple subscription.

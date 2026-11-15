@@ -93,7 +93,7 @@ jest.mock('./SettingsICloudRow', () => ({
 jest.mock('../export/SettingsExportRow', () => ({
   SettingsExportRow: () => {
     const { Text } = require('react-native') as typeof import('react-native');
-    return <Text accessibilityRole="button">Download my data</Text>;
+    return <Text accessibilityRole="button">Export data</Text>;
   },
 }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -153,7 +153,7 @@ it('shows only the requested data controls without extra journal sections', asyn
   const screen = await render(<SettingsDataScreen />);
   expect(screen.getByRole('header', { name: 'Data' })).toBeTruthy();
   expect(screen.getByRole('switch', { name: 'iCloud Sync' })).toBeTruthy();
-  for (const label of ['Download my data', 'Import data', 'Delete all my data'])
+  for (const label of ['Export data', 'Import data', 'Delete all my data'])
     expect(screen.getByRole('button', { name: label })).toBeTruthy();
   expect(screen.getByText('Delete all my data')).toHaveStyle({
     color: '#B3261E',

@@ -44,7 +44,7 @@ export function ICloudSyncPreview({ state }: { state?: string }) {
         <SettingsRowDivider />
         <SettingsActionRow
           icon="export"
-          label="Download my data"
+          label="Export data"
           disabled
           onPress={() => {}}
         />
