@@ -192,7 +192,7 @@ function DataSession() {
       setConfirmDelete(null);
       router.push({
         pathname: '/account/sign-in',
-        params: { returnTo: 'data', ownerId: owner.id },
+        params: { returnTo: 'data' },
       });
       return;
     }

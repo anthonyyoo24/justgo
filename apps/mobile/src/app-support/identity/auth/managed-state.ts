@@ -19,6 +19,17 @@ export const managedIdentityStateSchema = z
       .strict()
       .nullable()
       .default(null),
+    // An account collection that a different account's sign-in adopts. Its
+    // source is erased once the copy is saved, so nothing marks it consumed.
+    collectionAdoption: z
+      .object({
+        sourceId: z.uuid(),
+        ownerId: z.uuid(),
+        status: z.enum(['pending', 'copied']),
+      })
+      .strict()
+      .nullable()
+      .default(null),
     collection: z
       .object({ kind: z.enum(['guest', 'account']), id: z.uuid() })
       .strict(),
@@ -31,6 +42,8 @@ export const managedIdentityStateSchema = z
         mergeGuest: z.boolean(),
         guestId: z.uuid().nullable(),
         mappedOwnerId: z.uuid().nullable(),
+        // An older build may have saved an owner here. Every sign-in now
+        // adopts the phone collection, so the field is parsed and ignored.
         expectedOwnerId: z.uuid().nullable().default(null),
         switching: z.boolean().optional(),
         authenticated: z.boolean().optional(),
@@ -70,6 +83,10 @@ export const managedIdentityStateSchema = z
       (!state.pendingSignIn?.guestId ||
         state.pendingSignIn.guestId === state.guestId) &&
       (!state.guestAdoption || state.guestAdoption.ownerId !== state.guestId) &&
+      (!state.collectionAdoption ||
+        (state.collectionAdoption.sourceId !==
+          state.collectionAdoption.ownerId &&
+          state.collectionAdoption.sourceId !== state.guestId)) &&
       (!state.deletion ||
         (state.collection.kind === 'account' &&
           state.deletion.userId === state.collection.id)),

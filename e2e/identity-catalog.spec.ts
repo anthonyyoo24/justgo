@@ -172,7 +172,7 @@ test('provider sign-in failures reset between visits and leave no Account connec
   }
 });
 
-test('provider login, logout and returning login preserve local history and isolate different account collections', async ({
+test('provider login, logout and a different account’s login keep one phone journal and bring it into each account (#492)', async ({
   page,
   fixtureDatabase,
 }) => {
@@ -232,16 +232,29 @@ test('provider login, logout and returning login preserve local history and isol
   expect(second.userId).not.toBe(first.userId);
   await page.goto('/progress');
   await expect(page.getByText('Total reps', { exact: true })).toBeVisible();
-  expect(await localJournalEntries(page, second.userId)).toEqual([]);
-  expect(await localJournalEntries(page, first.userId)).toEqual(oldEntries);
-  expect(
-    (
-      await fixtureDatabase.query(
-        'select count(*)::int as n from justgo.attempts where user_id=$1',
-        [second.userId],
+  // One person uses the phone, so its journal joins the account that signed in.
+  const sameJournal = (entries: typeof oldEntries) =>
+    entries.map(({ id, reflection }) => ({ id, text: reflection.text }));
+  await expect
+    .poll(async () =>
+      sameJournal(await localJournalEntries(page, second.userId)),
+    )
+    .toEqual(sameJournal(oldEntries));
+  await expect
+    .poll(async () => await localJournalEntries(page, first.userId))
+    .toEqual([]);
+  for (const table of ['attempts', 'journal_versions'])
+    await expect
+      .poll(
+        async () =>
+          (
+            await fixtureDatabase.query(
+              `select count(*)::int as n from justgo.${table} where user_id=$1`,
+              [second.userId],
+            )
+          ).rows[0].n,
       )
-    ).rows[0].n,
-  ).toBe(0);
+      .toBe(1);
   await signOut(page);
   const returned = await signInFixture(page, {
     provider: 'apple',
@@ -249,7 +262,23 @@ test('provider login, logout and returning login preserve local history and isol
   });
   expect(returned.userId).toBe(first.userId);
   expect(returned.sessionId).not.toBe(first.sessionId);
-  expect(await localJournalEntries(page, first.userId)).toEqual(oldEntries);
+  await expect
+    .poll(async () =>
+      sameJournal(await localJournalEntries(page, first.userId)),
+    )
+    .toEqual(sameJournal(oldEntries));
+  await expect
+    .poll(async () => await localJournalEntries(page, second.userId))
+    .toEqual([]);
+  // The entry the first account already held stays single on the server.
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select count(*)::int as n from justgo.attempts where user_id=$1',
+        [first.userId],
+      )
+    ).rows[0].n,
+  ).toBe(1);
   await expect(
     page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toHaveCount(0);

@@ -1,6 +1,6 @@
 # Phase 13A plan for one journal per phone
 
-**Status.** Planned on November 14, 2026. Nothing in this plan has run. Anthony made its [decisions](#anthonys-decisions) the same day. It changes no provider setting, database, legal text or build by itself.
+**Status.** Planned on November 14, 2026. Anthony made its [decisions](#anthonys-decisions) the same day. PR 2 landed in #494. PR 3 makes every sign-in bring the phone's journal along and fixes #492. PRs 4 and 5 have not started. It changes no provider setting, database, legal text or build by itself.
 
 Phase 13 gave the phone one journal and optional Apple and Google accounts, but it still treats each account as a separate person. Signing in with a different account opens that account's journal and parks the phone's entries. Import asks for the account that owns the file, and the Apple and Google switches on Account change which account is active instead of joining them. On November 14 this blocked Anthony on build 8: the phone's journal belonged to his Google account, so import sent him to sign in, and his Apple sign-in was refused with an error that vanished.
 
@@ -33,7 +33,7 @@ The phone keeps one current collection, stored under `justgo:v1:<ownerId>` (`app
 
 - **Signed out.** The current collection stays readable and writable, as today. Import writes into it too. Entries saved or imported while signed out upload at the next sign-in.
 - **Sign-in to the same account.** Nothing moves. The account's sync resumes and uploads what changed while signed out.
-- **Sign-in to any other account.** The phone collection is adopted into that account, the way guest adoption works today, and the source is retired only after the copy saves. Today `mergeGuestData` in `apps/mobile/src/app-support/providers/activity-runtime.ts` adopts only a guest source. It changes to adopt whatever collection is current, guest or account.
+- **Sign-in to any other account.** The phone collection is adopted into that account, the way guest adoption works today, and the source is retired only after the copy saves. Today `mergeGuestData` in `apps/mobile/src/app-support/providers/activity-runtime.ts` adopts only a guest source. It changes to adopt whatever collection is current, guest or account. An account source keeps its iCloud records under its own account, and a copy that began stays bound to the account it started with.
 - **Account with server history.** Adoption downloads the account's history first, adds the phone's entries, then uploads the phone's entries through `/v1/completion-restores`, as ordinary sync does. Identical records stay single and differing journal versions are both kept, as import does today.
 - **Account deletion.** Unchanged. It erases the signed-in account's collection and starts a new guest one.
 
