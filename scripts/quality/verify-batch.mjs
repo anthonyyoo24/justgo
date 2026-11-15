@@ -1,13 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { isCopyOnly } from './copy-only.mjs';
 import { isSensitivePath } from './sensitive-paths.mjs';
 import { newestVerdictOf } from './merge-order.mjs';
 
 // Lists the open PRs that can share one verifier, in batches. A PR qualifies
 // when it needs a verdict, is not a draft and is small: it touches no
 // sensitive path and no boundary file below, and changes at most `maxLines`
-// counted lines. Every other PR keeps its own verifier. The verifier-model
+// counted lines. A sensitive file whose patch only rewords user-facing text
+// (copy-only.mjs) does not count as sensitive. Every other PR keeps its own verifier. The verifier-model
 // hook runs a verifier on Sonnet when every PR it names is small. The verifier of a batch still posts a
 // separate verdict comment on each PR, because the `verdict` check reads each
 // PR's own comments.
@@ -64,10 +66,14 @@ export function countedLines(files) {
 }
 
 // Why a PR's files are not small, or undefined when they are. Each file is
-// `{ path, additions, deletions }`. An empty list is never small.
+// `{ path, additions, deletions, patch? }`. An empty list is never small. A
+// sensitive file counts unless its patch only rewords user-facing text, so a
+// missing patch keeps it sensitive.
 export function sizeExclusion(files) {
   if (files.length === 0) return 'no files listed';
-  const sensitive = files.find((file) => isSensitivePath(file.path));
+  const sensitive = files.find(
+    (file) => isSensitivePath(file.path) && !isCopyOnly(file),
+  );
   if (sensitive) return `sensitive path ${sensitive.path}`;
   const edge = files.find((file) => isBoundaryFile(file.path));
   if (edge) return `boundary file ${edge.path}`;
@@ -75,6 +81,26 @@ export function sizeExclusion(files) {
   if (lines > maxLines)
     return `${lines} counted changed lines (limit ${maxLines})`;
   return undefined;
+}
+
+// GitHub lists at most 3000 files of a PR, so a list that long may be cut.
+export const maxListedFiles = 3000;
+
+// A PR's files from GitHub's list (`pulls/<n>/files`), with their line counts
+// and patches. A rename also lists its old path with no lines, and neither
+// path keeps its patch, so a sensitive path cannot hide behind a new name or
+// pass as copy-only. A list that may be cut is unknown.
+export function sizedFilesOf(entries) {
+  if (!entries.length || entries.length >= maxListedFiles) return undefined;
+  return entries.flatMap(
+    ({ filename, previous_filename, additions = 0, deletions = 0, patch }) =>
+      previous_filename
+        ? [
+            { path: filename, additions, deletions },
+            { path: previous_filename, additions: 0, deletions: 0 },
+          ]
+        : [{ path: filename, additions, deletions, patch }],
+  );
 }
 
 // A PR needs a verdict unless the `verdict` check passed, or the newest owner
@@ -187,6 +213,33 @@ const fields = [
   'statusCheckRollup',
 ].join(',');
 
+// `gh pr list` gives no patches, so a PR that only a sensitive path keeps out
+// of a batch reads its files with patches from GitHub, and a copy-only change
+// can join. On any failure it keeps the list without patches, which stays
+// sensitive.
+function withPatches(pull) {
+  if (!needsVerdict(pull) || !exclusion(pull)?.startsWith('sensitive path'))
+    return pull;
+  try {
+    const pages = JSON.parse(
+      execFileSync(
+        'gh',
+        [
+          'api',
+          '--paginate',
+          '--slurp',
+          `repos/anthonyyoo24/justgo/pulls/${pull.number}/files?per_page=100`,
+        ],
+        { encoding: 'utf8', timeout: 30000, maxBuffer: 64 * 1024 * 1024 },
+      ),
+    );
+    const files = sizedFilesOf(pages.flat());
+    return files ? { ...pull, files } : pull;
+  } catch {
+    return pull;
+  }
+}
+
 function main() {
   const at = process.argv.indexOf('--brief');
   if (at !== -1) {
@@ -205,7 +258,7 @@ function main() {
       ['pr', 'list', '--state', 'open', '--limit', '200', '--json', fields],
       { encoding: 'utf8', timeout: 30000 },
     ),
-  );
+  ).map(withPatches);
   const result = plan(pulls);
   console.info(
     process.argv.includes('--json')

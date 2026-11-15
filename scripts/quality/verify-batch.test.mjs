@@ -7,8 +7,10 @@ import {
   exclusion,
   format,
   maxBatchPulls,
+  maxListedFiles,
   needsVerdict,
   plan,
+  sizedFilesOf,
 } from './verify-batch.mjs';
 
 const head = 'a'.repeat(40);
@@ -252,4 +254,101 @@ test('--brief prints the brief and refuses a missing or bad number', () => {
   assert.equal(ok.stdout.trimEnd(), brief([7, 8]));
   assert.notEqual(run('--brief').status, 0);
   assert.notEqual(run('--brief', 'x').status, 0);
+});
+
+// A one-line patch that swaps the string `before` for `after`.
+const swap = (before, after) =>
+  [
+    '@@ -81,3 +81,3 @@',
+    ' const identityExistsMessage = (provider: SignInProvider) =>',
+    `-  \`That \${providerAccountNames[provider]} ${before}\`;`,
+    `+  \`That \${providerAccountNames[provider]} ${after}\`;`,
+    ' const isIdentityExists = (error: unknown) =>',
+  ].join('\n');
+const controller =
+  'apps/mobile/src/app-support/identity/auth/managed-controller.ts';
+const withPatch = (number, patch, extra = []) => ({
+  ...pull(number, [[controller, 1, 1], ...extra]),
+  files: [
+    { path: controller, additions: 1, deletions: 1, patch },
+    ...extra.map(([path, additions, deletions = 0]) => ({
+      path,
+      additions,
+      deletions,
+    })),
+  ],
+});
+
+test('a sensitive file whose patch only rewords user-facing text is small (#510)', () => {
+  const copy = swap(
+    'already has its own JustGO account. You’re still signed in.',
+    'already has its own JustGO account.',
+  );
+  assert.equal(exclusion(withPatch(1, copy)), undefined);
+  assert.deepEqual(
+    plan([withPatch(1, copy)]).batches.map((batch) =>
+      batch.pulls.map((p) => p.number),
+    ),
+    [[1]],
+  );
+  // The other rules still apply.
+  assert.match(
+    exclusion(withPatch(1, copy, [['.github/x.yml', 1]])),
+    /^boundary file/,
+  );
+  assert.match(
+    exclusion(withPatch(1, copy, [['apps/api/src/identity/x.ts', 1]])),
+    /^sensitive path apps\/api/,
+  );
+  assert.match(
+    exclusion(withPatch(1, copy, [['a.ts', 150]])),
+    /152 counted changed lines/,
+  );
+});
+
+test('a changed URL, identifier or code token, or a missing patch, keeps a sensitive file sensitive', () => {
+  for (const patch of [
+    swap('opens https://justgo.app/a.', 'opens https://evil.test/a.'),
+    swap('has code IDENTITY_EXISTS.', 'has code IDENTITY_TAKEN.'),
+    [
+      '@@ -81,3 +81,3 @@',
+      '-  `That ${providerAccountNames[provider]} is taken.`;',
+      '+  `That ${provider} is taken.`;',
+    ].join('\n'),
+    undefined,
+    '',
+  ])
+    assert.match(
+      exclusion(withPatch(1, patch)),
+      /^sensitive path apps\/mobile/,
+      String(patch),
+    );
+});
+
+test('GitHub files keep their patch, except a rename, which keeps neither', () => {
+  const patch = swap('is taken.', 'is in use.');
+  assert.deepEqual(
+    sizedFilesOf([
+      { filename: controller, additions: 1, deletions: 1, patch },
+      {
+        filename: 'apps/mobile/src/features/a.tsx',
+        previous_filename: controller,
+        additions: 1,
+        deletions: 1,
+        patch,
+      },
+    ]),
+    [
+      { path: controller, additions: 1, deletions: 1, patch },
+      { path: 'apps/mobile/src/features/a.tsx', additions: 1, deletions: 1 },
+      { path: controller, additions: 0, deletions: 0 },
+    ],
+  );
+  assert.equal(sizedFilesOf([]), undefined);
+  assert.equal(
+    sizedFilesOf(
+      Array.from({ length: maxListedFiles }, () => ({ filename: 'a' })),
+    ),
+    undefined,
+  );
 });
