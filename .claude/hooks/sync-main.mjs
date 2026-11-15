@@ -3,7 +3,7 @@ import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { changedPaths } from '../../scripts/quality/git.mjs';
-import { shellText } from './push-after-pass-guard.mjs';
+import { shellText } from './shell-text.mjs';
 
 // SessionStart and PreToolUse hook. Hooks and settings load from the folder a
 // session starts in, and on 2026-11-08 Anthony's main checkout sat 56 commits
