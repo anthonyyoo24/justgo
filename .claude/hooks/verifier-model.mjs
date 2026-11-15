@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus, except two cases that run
 // on Sonnet: a verifier whose PRs are all small by the verify-batch.mjs rule
-// (no sensitive or boundary file, few counted lines), at most 4 of them, and
+// (no boundary file, few counted lines, and no sensitive file unless its
+// patch only rewords user-facing text), at most 4 of them, and
 // a re-check of a docs- or tests-only, non-sensitive PR. Any doubt
 // keeps Opus, including a brief that mentions a PR or issue number the hook
 // did not check.
@@ -46,6 +47,8 @@ export const routinePrefixes = [
   'Lint fix',
   'Format',
   'Formatting fix',
+  // Only for edits to the wording of user-facing strings.
+  'Copy change',
 ];
 // The pstack roles that ~/.claude/rules/pstack-models.md puts on Sonnet.
 // pstack names no description for them, so a helper for one starts with its
@@ -138,21 +141,6 @@ export function prsOf(input) {
   return numbers.size > 0 && numbers.size <= maxSmallPulls
     ? [...numbers]
     : undefined;
-}
-
-// A PR's files with their line counts, in the shape verify-batch.mjs reads. A
-// rename also lists its old path with no lines, so a sensitive or boundary
-// path cannot hide behind a new name. A list that may be cut is unknown.
-export function sizedFilesOf(entries) {
-  if (!entries.length || entries.length >= maxFiles) return undefined;
-  return entries.flatMap(
-    ({ filename, previous_filename, additions = 0, deletions = 0 }) => [
-      { path: filename, additions, deletions },
-      ...(previous_filename
-        ? [{ path: previous_filename, additions: 0, deletions: 0 }]
-        : []),
-    ],
-  );
 }
 
 // The paths a verifier reviews, from GitHub's list of a PR's files. A rename
@@ -273,7 +261,7 @@ async function main() {
       if (numbers.length > 0)
         pulls = numbers.map((n) => {
           const list = entries.get(n);
-          return list ? sizedFilesOf(list) : undefined;
+          return list ? rules.sizedFilesOf(list) : undefined;
         });
       const list = numbers.length === 1 ? entries.get(numbers[0]) : undefined;
       files = list && filesOf(list);
