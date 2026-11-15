@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { focusManager } from '@tanstack/react-query';
 import type { AccessResponse } from '@justgo/contracts';
@@ -96,12 +97,15 @@ const response = (body: unknown, status = 200) =>
   });
 const originalUrl = process.env.EXPO_PUBLIC_API_URL;
 let controller: ManagedIdentityController;
-let auth: jest.Mocked<ManagedAuth>;
+let auth: ManagedAuth;
 let onAppState: (value: AppStateStatus) => void;
 let runtime: ReturnType<typeof useRuntime> | undefined;
 
 function Screen() {
-  runtime = useRuntime();
+  const current = useRuntime();
+  useEffect(() => {
+    runtime = current;
+  }, [current]);
   return <ProviderSignInScreen />;
 }
 
@@ -234,7 +238,7 @@ async function mount() {
 
 /** iOS leaves the app while the native sheet and Face ID are up, then returns. */
 async function switchToApple(outcome: () => Promise<ProviderSession | null>) {
-  auth.linkIdentity.mockImplementationOnce(async () => {
+  jest.mocked(auth.linkIdentity).mockImplementationOnce(async () => {
     onAppState('inactive');
     return outcome();
   });
@@ -255,21 +259,61 @@ async function foreground() {
 }
 
 // #507: the foreground retry after the Apple sheet erased the refusal.
-it.failing(
-  'keeps the identity-exists refusal on the switch screen after the app returns to the foreground (#507)',
-  async () => {
-    await mount();
-    await switchToApple(async () => {
-      throw new ProviderAuthError('IDENTITY_EXISTS');
-    });
-    expect(screen.getByRole('alert')).toHaveTextContent(conflict);
+it('keeps the identity-exists refusal on the switch screen after the app returns to the foreground (#507)', async () => {
+  await mount();
+  await switchToApple(async () => {
+    throw new ProviderAuthError('IDENTITY_EXISTS');
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent(conflict);
 
-    await foreground();
+  await foreground();
 
-    expect(screen.getByRole('alert')).toHaveTextContent(conflict);
-    expect(controller.getSnapshot()).toMatchObject({
-      account: { userId },
-      provider: 'google',
-    });
-  },
-);
+  expect(screen.getByRole('alert')).toHaveTextContent(conflict);
+  expect(controller.getSnapshot()).toMatchObject({
+    account: { userId },
+    provider: 'google',
+    message: '',
+  });
+});
+
+it('keeps another refused switch on screen after the foreground return', async () => {
+  await mount();
+  await switchToApple(async () => {
+    throw new ProviderAuthError('AUTH');
+  });
+  const message = controller.getSnapshot().message;
+  expect(message).not.toBe('');
+  expect(message).not.toBe(conflict);
+  expect(screen.getByRole('alert')).toHaveTextContent(message);
+
+  await foreground();
+
+  expect(screen.getByRole('alert')).toHaveTextContent(message);
+});
+
+it('keeps a cancelled Apple sheet silent through the foreground return', async () => {
+  await mount();
+  await switchToApple(async () => null);
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  await foreground();
+
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(controller.getSnapshot()).toMatchObject({
+    account: { userId },
+    provider: 'google',
+  });
+});
+
+it('clears the refusal when the next press starts another attempt', async () => {
+  await mount();
+  await switchToApple(async () => {
+    throw new ProviderAuthError('IDENTITY_EXISTS');
+  });
+  await foreground();
+  expect(screen.getByRole('alert')).toHaveTextContent(conflict);
+
+  await switchToApple(async () => null);
+
+  expect(screen.queryByRole('alert')).toBeNull();
+});
