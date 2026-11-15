@@ -1370,8 +1370,31 @@ it('deleting an adopted account creates a fresh empty guest identity rather than
   expect(ctx.saved()?.collection.id).toBe(ctx.saved()?.guestId);
 });
 
-const conflictMessage =
-  'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
+const conflicts = [
+  {
+    signedIn: 'google',
+    adding: 'apple',
+    message:
+      'That Apple ID already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.',
+  },
+  {
+    signedIn: 'apple',
+    adding: 'google',
+    message:
+      'That Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.',
+  },
+] as const;
+async function signInWithOnly(
+  ctx: ReturnType<typeof setup>,
+  provider: SignInProvider,
+) {
+  const only = { ...session, linkedProviders: [provider] };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(only);
+    return only;
+  });
+  await ctx.controller.signIn(provider);
+}
 const linked: ProviderSession = {
   ...session,
   accessToken: 'synthetic-linked-token',
@@ -1488,67 +1511,94 @@ it('turns on a provider while signed out with an ordinary sign-in', async () => 
   ctx.controller.dispose();
 });
 
-it('keeps the account, provider and app session when the identity already has its own account', async () => {
-  const ctx = setup();
+it.each(conflicts)(
+  'keeps the account, provider and app session when the $adding identity already has its own account',
+  async ({ signedIn, adding, message }) => {
+    const ctx = setup(true);
+    await ctx.controller.initialize();
+    await signInWithOnly(ctx, signedIn);
+    const before = ctx.controller.getSnapshot();
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    const offset = ctx.calls.length;
+    await ctx.controller.switchProvider(adding);
+    expect(ctx.auth.linkIdentity).toHaveBeenCalledWith(adding);
+    expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
+    // An expected, explained refusal carries no developer reference.
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+      collectionId: before.collectionId,
+      linkedProviders: [signedIn],
+      message,
+      connectionReference: null,
+    });
+    expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+    // Nothing was revoked or registered, and no switch proof is left behind.
+    expect(ctx.calls.slice(offset)).toEqual([]);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+    });
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps the developer reference for a link that fails for another reason', async () => {
+  const ctx = setup(true);
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
-  const before = ctx.controller.getSnapshot();
-  ctx.auth.linkIdentity.mockRejectedValueOnce(
-    new ProviderAuthError('IDENTITY_EXISTS'),
-  );
-  const offset = ctx.calls.length;
+  ctx.auth.linkIdentity.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
   await ctx.controller.switchProvider('google');
-  expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
   expect(ctx.controller.getSnapshot()).toMatchObject({
-    provider: 'apple',
     account: { userId: account.userId },
-    collectionId: before.collectionId,
-    linkedProviders: ['apple'],
-    message: conflictMessage,
+    connectionReference: 'Dev sign-in reference: provider-auth / AUTH',
   });
-  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
-  // Nothing was revoked or registered, and no switch proof is left behind.
-  expect(ctx.calls.slice(offset)).toEqual([]);
-  expect(ctx.saved()?.pendingSignIn).toBeNull();
-  expect(ctx.stored.size).toBe(0);
-  const restarted = ctx.create();
-  await restarted.initialize();
-  expect(restarted.getSnapshot()).toMatchObject({
-    provider: 'apple',
-    account: { userId: account.userId },
-  });
-  restarted.dispose();
   ctx.controller.dispose();
 });
 
-it('returns to the account with the conflict message after a browser link Auth refused', async () => {
-  const ctx = setup();
-  await ctx.controller.initialize();
-  await ctx.controller.signIn('apple');
-  ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
-  await ctx.controller.switchProvider('google');
-  expect(ctx.saved()?.pendingSignIn).toMatchObject({
-    provider: 'google',
-    switching: true,
-  });
-  ctx.setProvider({ ...session, identityExists: true });
-  const offset = ctx.calls.length;
-  const restarted = ctx.create();
-  await restarted.initialize();
-  expect(restarted.getSnapshot()).toMatchObject({
-    provider: 'apple',
-    account: { userId: account.userId },
-    message: conflictMessage,
-    switchCancelled: true,
-  });
-  expect(
-    ctx.calls.slice(offset).filter(({ path }) => path === '/auth/logout'),
-  ).toEqual([]);
-  expect(ctx.saved()?.pendingSignIn).toBeNull();
-  expect(ctx.stored.size).toBe(0);
-  restarted.dispose();
-  ctx.controller.dispose();
-});
+it.each(conflicts)(
+  'returns to the account with the $adding conflict message after a browser link Auth refused',
+  async ({ signedIn, adding, message }) => {
+    const ctx = setup(true);
+    await ctx.controller.initialize();
+    await signInWithOnly(ctx, signedIn);
+    ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+    await ctx.controller.switchProvider(adding);
+    expect(ctx.saved()?.pendingSignIn).toMatchObject({
+      provider: adding,
+      switching: true,
+    });
+    ctx.setProvider({
+      ...session,
+      linkedProviders: [signedIn],
+      identityExists: true,
+    });
+    const offset = ctx.calls.length;
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+      message,
+      switchCancelled: true,
+      connectionReference: null,
+    });
+    expect(
+      ctx.calls.slice(offset).filter(({ path }) => path === '/auth/logout'),
+    ).toEqual([]);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
 
 it('finishes a browser link after its callback, revoking the old app session first', async () => {
   const ctx = setup();

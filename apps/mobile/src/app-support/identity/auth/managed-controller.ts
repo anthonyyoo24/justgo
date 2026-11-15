@@ -53,7 +53,11 @@ type Options = {
   randomId?: () => string;
   connectionDiagnostics?: boolean;
 };
-type ConnectionTrace = { phase: ConnectionPhase | null; direct?: boolean };
+type ConnectionTrace = {
+  phase: ConnectionPhase | null;
+  direct?: boolean;
+  provider?: SignInProvider;
+};
 type ConnectionFeedback = Pick<
   ManagedIdentitySnapshot,
   'connectionReference' | 'directSignInFailure' | 'switchCancelled'
@@ -72,11 +76,17 @@ const legacyProofSchema = z
     token: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();
-const identityExistsMessage =
-  'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
-const errorMessage = (error: unknown) =>
-  error instanceof ProviderAuthError && error.code === 'IDENTITY_EXISTS'
-    ? identityExistsMessage
+const providerAccountNames: Record<SignInProvider, string> = {
+  apple: 'Apple ID',
+  google: 'Google account',
+};
+const identityExistsMessage = (provider: SignInProvider) =>
+  `That ${providerAccountNames[provider]} already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.`;
+const isIdentityExists = (error: unknown) =>
+  error instanceof ProviderAuthError && error.code === 'IDENTITY_EXISTS';
+const errorMessage = (error: unknown, provider?: SignInProvider) =>
+  isIdentityExists(error) && provider
+    ? identityExistsMessage(provider)
     : error instanceof ProviderAuthError && error.code === 'CONFIGURATION'
       ? 'Sign-in isn’t configured in this build yet. You can continue on this phone.'
       : error instanceof ProviderAuthError && error.code === 'STORAGE'
@@ -333,14 +343,14 @@ export class ManagedIdentityController {
     const running = Promise.resolve()
       .then(work)
       .catch((error: unknown) => {
-        const cancelled =
-          (error instanceof ApiError || error instanceof ProviderAuthError) &&
-          error.code === 'CANCELLED';
+        // A cancel or an explained refusal is not a failure to diagnose.
+        const expected =
+          ((error instanceof ApiError || error instanceof ProviderAuthError) &&
+            error.code === 'CANCELLED') ||
+          isIdentityExists(error);
         const feedback: ConnectionFeedback = {
           connectionReference:
-            this.options.connectionDiagnostics &&
-            connection?.phase &&
-            !cancelled
+            this.options.connectionDiagnostics && connection?.phase && !expected
               ? connectionReference(connection.phase, error)
               : null,
           directSignInFailure: connection?.direct === true,
@@ -362,14 +372,14 @@ export class ManagedIdentityController {
               ? this.data.deletion.receipt
                 ? 'Your account has been deleted. Please retry to finish clearing this phone’s account data and sign-in credentials.'
                 : 'Couldn’t finish deleting your account. Please try again. Your deletion request is saved.'
-              : errorMessage(error),
+              : errorMessage(error, connection?.provider),
             feedback,
           );
         else
           this.publish({
             initialized: true,
             needsWelcome: true,
-            message: errorMessage(error),
+            message: errorMessage(error, connection?.provider),
             ...feedback,
           });
       })
@@ -502,6 +512,7 @@ export class ManagedIdentityController {
     const connection: ConnectionTrace = {
       phase: 'phone-prepare',
       direct: true,
+      provider,
     };
     return this.run(
       async () => {
@@ -777,7 +788,9 @@ export class ManagedIdentityController {
             // so the callback can return to the Account page, with a notice
             // only when Auth refused to link an identity another account owns.
             this.reconcile(
-              session.identityExists ? identityExistsMessage : '',
+              session.identityExists
+                ? identityExistsMessage(intent.provider)
+                : '',
               {
                 ...emptyConnectionFeedback,
                 switchCancelled: true,
