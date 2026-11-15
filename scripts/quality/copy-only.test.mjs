@@ -128,6 +128,45 @@ test('text compared, matched, used as a key or index is behavior, not copy', () 
     );
 });
 
+test('a comparison or matcher that Prettier wraps around the string is behavior, not copy', () => {
+  // The unchanged line just above or below the run holds the comparison.
+  for (const [above, below] of [
+    ['  if (error.message ===', '  ) {'],
+    ['  if (error.message !==', '  ) {'],
+    ['  const offline = text.includes(', '  );'],
+    ['  const offline = message.startsWith(', '  );'],
+    ['  const value = map[', '  ];'],
+    ['  const offline = (', '  ).endsWith(prefix);'],
+    ['  const offline = (', '  )'],
+  ]) {
+    const patch = [
+      '@@ -1,3 +1,3 @@',
+      ` ${above}`,
+      "-    'Network request failed'",
+      "+    'Network request stopped'",
+      ` ${below}`,
+    ].join('\n');
+    const expected = above === '  const offline = (' && below === '  )';
+    assert.equal(isCopyOnly({ path, patch }), expected, `${above} / ${below}`);
+  }
+  // Only the lines next to the run count, so a comparison further away
+  // leaves a plain message copy-only.
+  assert.equal(
+    isCopyOnly({
+      path,
+      patch: [
+        '@@ -1,4 +1,4 @@',
+        '   if (error.message === offline) {',
+        '     return {',
+        "-      message: 'Network request failed',",
+        "+      message: 'Network request stopped',",
+        '     };',
+      ].join('\n'),
+    }),
+    true,
+  );
+});
+
 test('comments, JSX text, regexes, escapes and multi-line templates are not read', () => {
   assert.equal(
     copyOnly(['  // Signs the user out.'], ['  // Signs the user in.']),
@@ -211,8 +250,8 @@ test('the pieces read code, prose and patches as documented', () => {
   assert.deepEqual(
     changeRuns('@@ -1 +1 @@\n-a\n+b\n c\n-d\n\\ No newline at end of file'),
     [
-      { removed: ['a'], added: ['b'] },
-      { removed: ['d'], added: [] },
+      { above: undefined, removed: ['a'], added: ['b'], below: 'c' },
+      { above: 'c', removed: ['d'], added: [] },
     ],
   );
 });
