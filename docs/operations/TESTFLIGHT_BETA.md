@@ -64,10 +64,8 @@ notice published on November 14, 2026 (US-7).
 
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
-published Privacy version. It holds `2026-11-13-supabase-edge`, published and
-set on November 13, 2026, for build 7. Anthony sets it to the published U.S.
-version on publication day, after the pages go live and before build 8. Change
-it only after a new Privacy version is published, or the preflight refuses
+published Privacy version. It holds `2026-11-14-us-east`, published and set on
+November 14, 2026, for build 8. Change it only after a new Privacy version is published, or the preflight refuses
 diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
@@ -157,14 +155,17 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The current TestFlight build is **0.1.0 (7)**, from tag
-`testflight-beta-2026-11-12-3` at source
-`e2ab966807cbba64e0302f13f3ee8f0624825829`, with the optional diagnostics
-profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436)
-and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43340902735)
-succeeded, and the build run's signed-app inspection passed. The archive SHA-256
-is `5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`. It calls
-the staging `api` function. The internal **Owner validation** group has one
+The current TestFlight build is **0.1.0 (8)**, from tag
+`testflight-beta-2026-11-14-1` at source
+`efd40be737876a461e55c82774a2f603bc10b758`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099)
+and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418)
+succeeded. It calls the staging `api` function in the us-east-1 project.
+Build 0.1.0 (7), from tag `testflight-beta-2026-11-12-3` at `e2ab966`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436),
+archive SHA-256
+`5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`), still
+points at the Canada project until US-10. The internal **Owner validation** group has one
 tester and manual distribution. No external review or invitation has happened.
 
 On November 13, 2026, Anthony reported that Apple sign-in and account deletion

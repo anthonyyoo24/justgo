@@ -98,7 +98,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Check.**
 
-- [ ] Project Settings shows region `us-east-1` and the free plan. Anthony sends a screenshot with no keys on it.
+- [x] Project Settings shows region `us-east-1` and the free plan. On November 14 the Supabase management API read `us-east-1`, status `ACTIVE_HEALTHY`, for `gcjmvtsisivxxorstvkb`, and plan `free` for its organization, in place of a screenshot.
 - [x] `curl -s -o /dev/null -w '%{http_code}' https://<new-ref>.supabase.co/auth/v1/health` answers, which proves the ref is live. A 401 without an API key is expected. It answered 401 on November 13.
 - [x] The pooler host matches `aws-<n>-us-east-1.pooler.supabase.com`. Do not assume the `aws-0` prefix. It is `aws-1`.
 
@@ -215,15 +215,15 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-5, and PR E merged with Anthony's approval. The pages publish in this step, just before the build.
 
-- [ ] PR D merges. It points every API and Auth origin at the new project and sends `x-region: us-east-1` from `apiRegionHeaders`, reusing #479's code and tests.
-- [ ] Anthony sets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS `development` and `preview` environments to the new project's values. The Google client IDs do not change.
-- [ ] Anthony publishes the approved [US-9](#us-9) pages. The live Privacy page shows the new notice version.
-- [ ] Before installing build 8, Anthony exports his data from build 7 in Settings and keeps the ZIP.
-- [ ] Anthony dispatches the TestFlight workflow for build 0.1.0 (8) from a reviewed tag. Its preflight refuses any API URL but the new one and any notice version but the published one.
+- [x] PR D merges. It points every API and Auth origin at the new project and sends `x-region: us-east-1` from `apiRegionHeaders`, reusing #479's code and tests. It merged as #485.
+- [x] Anthony sets `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS `development` and `preview` environments to the new project's values. The Google client IDs do not change. The build 8 preflight, which refuses any other Auth project, passed.
+- [x] Anthony publishes the approved [US-9](#us-9) pages. The live Privacy page shows the new notice version. #490 records the publication on November 14.
+- [ ] Before installing build 8, Anthony exports his data from build 7 in Settings and keeps the ZIP. Not recorded.
+- [x] Anthony dispatches the TestFlight workflow for build 0.1.0 (8) from a reviewed tag. Its preflight refuses any API URL but the new one and any notice version but the published one. Tag `testflight-beta-2026-11-14-1` at `efd40be`: [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099) and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418) passed on November 14.
 
 **Check.**
 
-- [ ] The preflight log names the new API URL and the new notice version.
+- [x] The preflight log names the new API URL and the new notice version. The build run's environment shows `EXPO_PUBLIC_API_URL` on `gcjmvtsisivxxorstvkb` and `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` `2026-11-14-us-east`, and its step prints `Beta public configuration and legal-source preflight passed.`
 - [ ] The exported JavaScript bundle of build 8 contains the new origin and `us-east-1`, and does not contain `kmcpcauaxlgpevkkenwd`. Check with `grep -c` on the export.
 - [ ] Anthony's Mac reads `x-sb-edge-region: us-east-1` on a request that build 8's code path sends, through the verify-justgo region drive #479 added.
 
@@ -261,20 +261,20 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** Nothing for the drafts. Publication happens in US-7, right before build 8 is dispatched, because the TestFlight preflight needs the published notice version.
 
-- [ ] PR E rewrites the region paragraph of [PRIVACY_POLICY_DRAFT.md](../legal/PRIVACY_POLICY_DRAFT.md). It replaces "Our primary database remains in Canada Central" and #479's Canada sentence with one that says the database and the server run in the United States, in Supabase's us-east-1 region in Virginia.
-- [ ] It adds the U.S. storage disclosure. Canadian federal privacy law expects a business that stores personal information abroad to tell users so, and to say the information may be accessed by that country's courts, law enforcement and national security authorities under its laws. The existing sentence on foreign lawful access stays and names the United States.
-- [ ] It updates [DATA_INVENTORY.md](../legal/DATA_INVENTORY.md), [RELEASE_DISCLOSURES.md](../legal/RELEASE_DISCLOSURES.md) and [SUPABASE_NOTICE_REVIEW.md](../legal/SUPABASE_NOTICE_REVIEW.md) wherever they name Canada Central or `ca-central-1` as the database region. The operator's Ontario address stays.
-- [ ] It records Anthony's approval in [APPROVALS.md](../legal/APPROVALS.md) and a new notice version, such as `2026-11-<dd>-us-east`.
-- [ ] It notes that a lawyer should review the cross-border wording before the paid launch.
-- [ ] It adds no Quebec-specific text or transfer assessment ([decision 6](#decisions)).
-- [ ] Anthony publishes the pages only together with build 8, never earlier while build 7 still points at Canada. The published notice version becomes `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which PR D sets.
+- [x] PR E rewrites the region paragraph of [PRIVACY_POLICY_DRAFT.md](../legal/PRIVACY_POLICY_DRAFT.md). It replaces "Our primary database remains in Canada Central" and #479's Canada sentence with one that says the database and the server run in the United States, in Supabase's us-east-1 region in Virginia.
+- [x] It adds the U.S. storage disclosure. Canadian federal privacy law expects a business that stores personal information abroad to tell users so, and to say the information may be accessed by that country's courts, law enforcement and national security authorities under its laws. The existing sentence on foreign lawful access stays and names the United States.
+- [ ] It updates [DATA_INVENTORY.md](../legal/DATA_INVENTORY.md), [RELEASE_DISCLOSURES.md](../legal/RELEASE_DISCLOSURES.md) and [SUPABASE_NOTICE_REVIEW.md](../legal/SUPABASE_NOTICE_REVIEW.md) wherever they name Canada Central or `ca-central-1` as the database region. At Anthony's request the published pages also drop the operator's name and Ontario address (#481). The inventory docs keep them as internal records.
+- [x] It records Anthony's approval in [APPROVALS.md](../legal/APPROVALS.md) and a new notice version, such as `2026-11-<dd>-us-east`.
+- [x] It notes that a lawyer should review the cross-border wording before the paid launch.
+- [x] It adds no Quebec-specific text or transfer assessment ([decision 6](#decisions)).
+- [x] Anthony publishes the pages only together with build 8, never earlier while build 7 still points at Canada. The published notice version becomes `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which PR D sets.
 
 **Check.**
 
 - [ ] `pnpm run build:legal --production` passes with the approved metadata, then the built pages read correctly in the browser pane.
 - [ ] `pnpm run test:architecture` passes, including `scripts/quality/policy-copy.test.mjs` and the legal reader tests.
 - [ ] `git grep -n -i 'canada central' docs/legal` returns nothing but history lines.
-- [ ] The live Privacy page shows the new version and the U.S. paragraph.
+- [x] The live Privacy page shows the new version and the U.S. paragraph.
 
 **Rollback.** Before publication, nothing is public. After publication, republish the previous version only together with a return to build 7.
 
