@@ -18,11 +18,13 @@ export const betaApiUrl = `${authOrigin}/functions/v1/api`;
 /**
  * The published U.S. Privacy version that beta builds ship with. It says the
  * database and the server run in the United States (Phase 15A, US-7 and US-9).
- * `2026-11-15-us-east` is the plain-language rewrite (Phase 13A PR 5). A new
- * version must keep the `<yyyy>-<mm>-<dd>-us-east` form and change only after
- * Anthony publishes it, or the preflight refuses every beta build.
+ * `2026-11-15-us-east` is the plain-language rewrite (Phase 13A PR 5), and
+ * `2026-11-15-us-east-2` drops "free beta" from its opening the same day. A new version must
+ * keep the `<yyyy>-<mm>-<dd>-us-east` form, with `-<n>` for a later revision
+ * on the same date, and change only after Anthony publishes it, or the
+ * preflight refuses every beta build.
  */
-export const betaPrivacyVersion = '2026-11-15-us-east';
+export const betaPrivacyVersion = '2026-11-15-us-east-2';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 
@@ -233,7 +235,9 @@ export function checkBetaRelease({
       // Reuse the site's actual publication boundary, including dates and placeholders.
       const document = parseDocument(documents[filename], true);
       if (filename === 'PRIVACY_POLICY_DRAFT.md') {
-        const pinned = /^(\d{4}-\d{2}-\d{2})-us-east$/.exec(privacyVersion);
+        const pinned = /^(\d{4}-\d{2}-\d{2})-us-east(?:-[1-9]\d*)?$/.exec(
+          privacyVersion,
+        );
         check(
           pinned,
           'Set betaPrivacyVersion to the published U.S. Privacy version before a beta build.',
