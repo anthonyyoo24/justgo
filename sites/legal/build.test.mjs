@@ -362,14 +362,6 @@ test('repository public sources use document labels and exclude review records a
       'Changes and contact',
     ],
   );
-  assert.match(
-    terms,
-    /Challenges may change or end, and we may change or interrupt the service/,
-  );
-  assert.match(
-    terms,
-    /If challenges change or end, your saved journal stays and your data controls stay available\./,
-  );
   assert.doesNotMatch(
     `${privacy}${terms}`,
     /first successful sign-in|does not automatically copy|require sign-in to the same account|stays separate|different JustGO account|has not received that deletion|epoch|tombstone|receipt|transfer code|recovery key|legacy/i,

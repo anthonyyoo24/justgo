@@ -6,7 +6,7 @@
 
 This version drops the operator's name and province from About JustGO, at Anthony's request on November 13, 2026. Nothing else changes. Anthony approved this text on November 13, 2026. It took effect and was published on November 14, 2026, with Anthony's go for build 8, together with the U.S. region Privacy notice. It replaced `2026-10-25-beta`, effective October 25, 2026, and Git history keeps that text. Anthony authorized that version's final wording and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
-Pending: Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)) rewrites the public text in plain language, organized by what is collected, why, who receives it, how long it is kept, your choices and contact, at Anthony's request on November 15, 2026. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. At Anthony's request the same day, the public Terms no longer describe a free beta: the beta section is removed, and its point that challenges may change or end, while the journal and data controls stay, moves to Availability. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approves that text on its PR. The version and effective date above stay until he gives the separate go to publish it, which sets a new version and date.
+Pending: Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)) rewrites the public text in plain language, organized by what is collected, why, who receives it, how long it is kept, your choices and contact, at Anthony's request on November 15, 2026. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. At Anthony's request the same day, the public Terms no longer describe a free beta, and the beta section is removed with nothing added in its place. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approves that text on its PR. The version and effective date above stay until he gives the separate go to publish it, which sets a new version and date.
 
 <!-- public:start -->
 
@@ -48,7 +48,7 @@ Files you saved elsewhere stay under your control. Anything that wasn’t synced
 
 ## Availability
 
-Saving and syncing depend on your network, device and our providers. Challenges may change or end, and we may change or interrupt the service for security, maintenance or operational reasons. We will give any notice the law requires. If challenges change or end, your saved journal stays and your data controls stay available.
+Saving and syncing depend on your network, device and our providers. We may change or interrupt the service for security, maintenance or operational reasons, and we will give any notice the law requires.
 
 ## Changes and contact
 
