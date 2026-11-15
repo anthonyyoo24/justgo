@@ -23,7 +23,7 @@ We do not sell your personal information or share it for advertising. JustGO has
 
 **Sign-in information.** If you sign in with Apple or Google, our sign-in service receives an account identifier, sign-in tokens and the information Apple or Google supply, which may include an email address or basic profile information.
 
-**Error reports.** App versions with crash reporting enabled send Sentry a limited technical report when the app crashes or hits an error, including before you sign in. A report includes the type of error, where in the code it happened, the app and system versions and the time. When our server hits an error, it sends Sentry a similar report with a request identifier and an error code. Reports never include your journal, feelings, email, account or device identifiers, or sign-in tokens. On iPhone, the original crash details can stay on your phone until the next launch, before JustGO filters what it sends.
+**Error reports.** App versions with crash reporting enabled send us a limited technical report when the app crashes or hits an error, including before you sign in. A report includes the type of error, where in the code it happened, the app and system versions and the time. When our server hits an error, it sends a similar report with a request identifier and an error code. Reports never include your journal, feelings, email, account or device identifiers, or sign-in tokens. On iPhone, the original crash details can stay on your phone until the next launch, before JustGO filters what it sends.
 
 **Connection information.** Our hosting providers receive ordinary connection information, such as your IP address, the page or request, and browser or device details. Our server logs record each request's method, path, status and timing. They do not record request bodies, sign-in tokens or journal text.
 
@@ -40,7 +40,7 @@ You choose where your journal goes:
 - **In your iCloud.** iCloud Sync is a separate choice in Settings → Data, off by default. It syncs your journal through a private CloudKit database in your Apple account, with or without a JustGO account. Turning it off stops syncing but does not erase the iCloud copy.
 - **In files you save.** Download my data creates a file you can save wherever you choose. The file is readable and not password protected by JustGO, so keep it somewhere safe.
 
-Our database and the server run in the United States, in Supabase's us-east-1 region in Virginia. We store your account, history, journal and sign-in information in the United States, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Our providers may also process information in other countries. Information processed in another country may be subject to that country's laws.
+Our servers and database are in the United States. We store your account, history, journal and sign-in information there, where U.S. courts, law enforcement and national security authorities may access it under U.S. law. Our service providers may also process information in other countries, under those countries' laws.
 
 ## How we use information
 
@@ -48,12 +48,9 @@ We use your information to save and show your journal, sync the copies you choos
 
 ## Who receives it
 
-- **Supabase** handles sign-in, stores account and journal records, and runs our server.
-- **Cloudflare** stores encrypted backups of our database.
-- **Sentry** receives the error reports described above, in the United States.
-- **Apple** provides Sign in with Apple, iCloud Sync and secure storage for sign-in on your iPhone.
-- **Google** provides Sign in with Google. Gmail hosts our support inbox.
-- **Vercel** hosts these legal pages and receives ordinary connection information when you visit. These pages have no analytics or tracking cookies.
+Apple and Google provide Sign in with Apple and Sign in with Google. Apple also provides iCloud Sync and the secure storage on your iPhone that keeps you signed in.
+
+We also use service providers that host our servers and database, store our encrypted backups, process error reports, host our support email and host these legal pages. These pages have no analytics or tracking cookies.
 
 JustGO and its service providers can process synchronized account content, including feelings and reflections. JustGO is not end-to-end encrypted. A file you save to Files, iCloud Drive or another place is handled under that place's own rules. We may disclose information when the law requires it.
 
@@ -62,7 +59,7 @@ JustGO and its service providers can process synchronized account content, inclu
 - **Your journal on your phone:** until you delete it or remove the app's data.
 - **Your account and its journal:** until you use Delete all my data or Delete account.
 - **Backups:** our encrypted backups are deleted about a week after they're made. If we ever restore one, we make sure deleted data stays deleted.
-- **Error reports:** for the period set in our Sentry project. Reports carry no account identifier, so deleting your account can't find them. Email us the time and app version if you want us to look for one.
+- **Error reports:** for the period set with our error-reporting provider. Reports carry no account identifier, so deleting your account can't find them. Email us the time and app version if you want us to look for one.
 - **Server logs:** for a limited period set by our service plan.
 - **Support emails:** 12 months, unless your request is still open or the law requires longer.
 - **Security records:** after a deletion, we keep a small record, such as account identifiers and dates, so deleted data and revoked sign-ins can't come back. It contains no journal content.

@@ -380,49 +380,40 @@ test('repository public sources use document labels and exclude review records a
     /We do not sell your personal information or share it for advertising\./,
   );
   assert.match(privacy, /product analytics is turned off/);
-  assert.match(
-    privacy,
-    /App versions with crash reporting enabled send Sentry/,
-  );
+  assert.match(privacy, /App versions with crash reporting enabled send us/);
   assert.match(
     privacy,
     /Reports never include your journal, feelings, email, account or device identifiers, or sign-in tokens\./,
   );
   assert.match(privacy, /JustGO is not end-to-end encrypted\./);
-  assert.match(
-    privacy,
-    /<strong>Supabase<\/strong> handles sign-in, stores account and journal records, and runs our server\./,
-  );
-  assert.match(
-    privacy,
-    /Our database and the server run in the United States, in Supabase&#39;s us-east-1 region in Virginia\./,
-  );
+  // Plain location and provider roles; the names stay in DATA_INVENTORY.md.
+  assert.match(privacy, /Our servers and database are in the United States\./);
   assert.match(
     privacy,
     /where U\.S\. courts, law enforcement and national security authorities may access it under U\.S\. law/,
   );
   assert.match(
     privacy,
-    /Information processed in another country may be subject to that country&#39;s laws/,
+    /Our service providers may also process information in other countries, under those countries&#39; laws\./,
   );
-  assert.doesNotMatch(
-    privacy,
-    /Canada|Ontario|Youngshin|region closest|Privacy Commissioner/,
-  );
-  assert.match(privacy, /They do not record request bodies, sign-in tokens/);
   assert.match(
     privacy,
-    /<strong>Cloudflare<\/strong> stores encrypted backups of our database\./,
+    /service providers that host our servers and database, store our encrypted backups, process error reports, host our support email and host these legal pages/,
   );
+  assert.match(
+    privacy,
+    /Apple and Google provide Sign in with Apple and Sign in with Google\. Apple also provides iCloud Sync/,
+  );
+  assert.doesNotMatch(
+    `${privacy}${terms}`,
+    /Supabase|Cloudflare|Sentry|Vercel|Gmail|us-east|Virginia|Canada|Ontario|Youngshin|region closest|Privacy Commissioner|Workers|Hyperdrive/,
+  );
+  assert.match(privacy, /They do not record request bodies, sign-in tokens/);
   assert.match(
     privacy,
     /encrypted backups are deleted about a week after they&#39;re made/,
   );
   assert.match(privacy, /Support emails:<\/strong> 12 months/);
-  assert.match(privacy, /<strong>Vercel<\/strong> hosts these legal pages/);
-  for (const name of ['Apple', 'Google', 'Sentry'])
-    assert.match(privacy, new RegExp(`<strong>${name}</strong>`));
-  assert.doesNotMatch(privacy, /Workers|Hyperdrive|Vercel[^.]*\bAPI\b/);
   // The dated sources publish together; either one without its date is refused.
   const undate = (dated) =>
     dated.replace(
@@ -471,7 +462,10 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
     /effective date/,
   );
   assert.match(document.html, /App versions with crash reporting enabled/);
-  assert.match(document.html, /When our server hits an error, it sends Sentry/);
+  assert.match(
+    document.html,
+    /When our server hits an error, it sends a similar report/,
+  );
   assert.match(document.html, /United States/);
   assert.match(
     document.html,
