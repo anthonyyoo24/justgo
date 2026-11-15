@@ -155,12 +155,20 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The current TestFlight build is **0.1.0 (8)**, from tag
-`testflight-beta-2026-11-14-1` at source
-`efd40be737876a461e55c82774a2f603bc10b758`, with the optional diagnostics
-profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099)
-and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418)
-succeeded. It calls the staging `api` function in the us-east-1 project.
+The current TestFlight build is **0.1.0 (9)**, from tag
+`testflight-beta-2026-11-15-1` at source
+`77745df0b42a7552ee85197d521a7ea7350f7d69`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43720975910)
+(archive SHA-256
+`3ff8edf6829d95b77e667c2a0d446470bf2447cb075e95c37dc10b5ddef56c9b`) and
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43729886513)
+succeeded on November 15, 2026. It calls the staging `api` function in the
+us-east-1 project, and it carries the Phase 13A change that brings the phone's
+journal into whichever account signs in (#492).
+Build 0.1.0 (8), from tag `testflight-beta-2026-11-14-1` at `efd40be`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099),
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418)),
+calls the same us-east-1 project.
 Build 0.1.0 (7), from tag `testflight-beta-2026-11-12-3` at `e2ab966`
 ([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436),
 archive SHA-256
