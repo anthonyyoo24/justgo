@@ -8,10 +8,10 @@ project and publishes nothing.
 The October 25 owner-directed publication is live at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. The current Terms are `2026-11-15-us-east` and the current
-Privacy Policy is `2026-11-15-us-east-2`, the plain-language rewrite, owner-approved, effective
-and published November 15, 2026. The Privacy revision only drops "free beta"
-from its opening. The Privacy Policy says the database and the server run in the United
+`justgo-legal`. The current Terms are `2026-11-15-us-east-2` and the current
+Privacy Policy is `2026-11-15-us-east-3`, the plain-language rewrite, owner-approved, effective
+and published November 15, 2026. The same-day revisions drop "free beta"
+from the Privacy opening and rename "Download my data" to "Export data". The Privacy Policy says the database and the server run in the United
 States, names only Apple and Google and describes the other providers by role.
 The [data inventory](../../docs/legal/DATA_INVENTORY.md#detail-the-public-notices-leave-out)
 keeps the detail the shorter text leaves out. The Terms no longer describe a free

@@ -43,9 +43,7 @@ test('Download includes every history page, journal version and preferences in o
   await completeChallenge(page, 'New private fixture');
   await openData(page);
   const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const file = await (await downloading).path();
   expect(file).not.toBeNull();
   const files = unzipSync(await readFile(file!));
@@ -132,7 +130,7 @@ test('Download reports a cloud read failure and retries only after another expli
     await openData(page);
     await expect.poll(() => blockedReads).toBeGreaterThan(0);
     const download = page.getByRole('button', {
-      name: 'Download my data',
+      name: 'Export data',
       exact: true,
     });
     await expect(download).toBeEnabled();
@@ -142,13 +140,13 @@ test('Download reports a cloud read failure and retries only after another expli
     releaseFailure();
     const feedback = page.getByRole('alert');
     await expect(feedback).toHaveText(
-      'Couldn’t download your data. Please try again.',
+      'Couldn’t export your data. Please try again.',
     );
     await expect(download).toBeEnabled();
     expect(downloads).toBe(0);
     await page.unroute(failures);
     await expect(feedback).toHaveText(
-      'Couldn’t download your data. Please try again.',
+      'Couldn’t export your data. Please try again.',
     );
     const downloading = page.waitForEvent('download');
     await download.click();

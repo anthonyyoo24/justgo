@@ -19,12 +19,13 @@ export const betaApiUrl = `${authOrigin}/functions/v1/api`;
  * The published U.S. Privacy version that beta builds ship with. It says the
  * database and the server run in the United States (Phase 15A, US-7 and US-9).
  * `2026-11-15-us-east` is the plain-language rewrite (Phase 13A PR 5), and
- * `2026-11-15-us-east-2` drops "free beta" from its opening the same day. A new version must
+ * `2026-11-15-us-east-2` drops "free beta" from its opening the same day, and
+ * `2026-11-15-us-east-3` renames "Download my data" to "Export data". A new version must
  * keep the `<yyyy>-<mm>-<dd>-us-east` form, with `-<n>` for a later revision
  * on the same date, and change only after Anthony publishes it, or the
  * preflight refuses every beta build.
  */
-export const betaPrivacyVersion = '2026-11-15-us-east-2';
+export const betaPrivacyVersion = '2026-11-15-us-east-3';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 

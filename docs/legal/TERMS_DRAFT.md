@@ -1,10 +1,10 @@
 # Terms of Use — free beta
 
-<!-- legal-version: 2026-11-15-us-east -->
+<!-- legal-version: 2026-11-15-us-east-2 -->
 <!-- publication-status: owner-approved -->
 <!-- effective-date: 2026-11-15 -->
 
-This is the plain-language Terms from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)), rewritten at Anthony's request on November 15, 2026. It matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. At Anthony's request the same day, the public Terms no longer describe a free beta, and the beta section is removed with nothing added in its place. Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026, together with the plain-language Privacy Policy. It replaced `2026-11-14-us-east`, effective November 14, 2026, which dropped the operator's name and province, and Git history keeps that text. The focused review of the October 25 Terms retained the public wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
+This is the plain-language Terms from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)), rewritten at Anthony's request on November 15, 2026. It matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. At Anthony's request the same day, the public Terms no longer describe a free beta, and the beta section is removed with nothing added in its place. Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026, together with the plain-language Privacy Policy. Later on November 15, Anthony asked to rename the Settings → Data row "Download my data" to "Export data" and then to "do both the icon swap and republish" (`2026-11-15-us-east-2`). Only that row name and "download" in the content licence changed. `2026-11-15-us-east` replaced `2026-11-14-us-east`, effective November 14, 2026, which dropped the operator's name and province, and Git history keeps that text. The focused review of the October 25 Terms retained the public wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 
@@ -32,12 +32,12 @@ Keep your phone and your Apple or Google account secure. Don’t use someone els
 
 ## Your content
 
-Your journal and reflections remain yours. You allow JustGO to process them to save, show, sync, download, import and delete them as you ask, on your phone and through the account or iCloud Sync you choose. The [Privacy Policy](/privacy/) explains how.
+Your journal and reflections remain yours. You allow JustGO to process them to save, show, sync, export, import and delete them as you ask, on your phone and through the account or iCloud Sync you choose. The [Privacy Policy](/privacy/) explains how.
 
 ## Your data
 
 - **iCloud Sync** is optional and off by default. It keeps a private copy in your Apple account.
-- **Download my data** creates a restorable snapshot of your history, journal and preferences. The file isn’t password protected, so keep it somewhere safe.
+- **Export data** creates a restorable snapshot of your history, journal and preferences. The file isn’t password protected, so keep it somewhere safe.
 - **Import data:** You can import a JustGO backup file without signing in. Its entries are added to the journal on this phone.
 - **Delete all my data** removes your journal from this phone, from your account when you’re signed in, and from the app’s iCloud copy. Your account stays open.
 - **Delete account** closes your account and removes its journal from our servers, this phone and the app’s iCloud copy. It does not delete your Apple or Google account or cancel an Apple subscription.

@@ -319,8 +319,8 @@ test('repository public sources use document labels and exclude review records a
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
   for (const [documentSource, status, effectiveDate, version] of [
-    [privacySource, 'owner-approved', '2026-11-15', '2026-11-15-us-east-2'],
-    [termsSource, 'owner-approved', '2026-11-15', '2026-11-15-us-east'],
+    [privacySource, 'owner-approved', '2026-11-15', '2026-11-15-us-east-3'],
+    [termsSource, 'owner-approved', '2026-11-15', '2026-11-15-us-east-2'],
   ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, status);
@@ -345,6 +345,9 @@ test('repository public sources use document labels and exclude review records a
     assert.match(page, /Delete all my data/);
     assert.match(page, /Delete account/);
     assert.match(page, /adults aged 18 and older/);
+    // The Data row is named Export data since November 15, 2026.
+    assert.match(page, /Export data/);
+    assert.doesNotMatch(page, /Download my data/i);
   }
   // Anthony removed the free-beta wording from the Terms and then from the
   // Privacy opening (November 15, 2026).
@@ -466,7 +469,7 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
   const document = parseDocument(notice, true);
   assert.equal(document.status, 'owner-approved');
   assert.equal(document.effectiveDate, '2026-11-15');
-  assert.equal(document.version, '2026-11-15-us-east-2');
+  assert.equal(document.version, '2026-11-15-us-east-3');
   assert.match(notice, /^<!-- diagnostics-scope: essential-errors-only -->$/m);
   // Without its effective date the same text is refused in production.
   assert.throws(

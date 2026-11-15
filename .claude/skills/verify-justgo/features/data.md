@@ -21,7 +21,7 @@ Preconditions:
 - A fresh fixture account from `signInFixture(page)` with one completion and a synthetic reflection from `completeChallenge(page, text)`.
 
 - **Open Data.** `openData(page)` goes to `/data`. Heading `Data` is visible. Capture `01-data`.
-- **Download.** Click button `Download my data` and wait for the browser download. Capture `02-downloaded`.
+- **Export.** Click button `Export data` and wait for the browser download. Capture `02-downloaded`.
 - **Proof.** Unzip in memory. The ZIP holds exactly the four files, `data.json` names the fixture account as owner, with one attempt and one journal entry.
 
 ## Gotchas

@@ -7,7 +7,7 @@ The candidate offers:
 - durable phone journals without server account creation;
 - optional managed Apple or Google sign-in with private synchronization of account history and journals;
 - a separate, off-by-default private CloudKit choice;
-- one Data screen for Download my data, Import data and Delete all my data.
+- one Data screen for Export data, Import data and Delete all my data.
 
 Every sign-in adopts the phone's current journal, guest or another account's, into the account that signs in, after the cloud-storage disclosure and without a separate merge choice ([one journal per phone](../implementation-plan/one-person-phone.md)). The phone retires the source collection only after the copy saves. The previous account's server data and iCloud copy stay with that account. A delete-all from another device that the phone has not received yet does not stop the copy, so those local entries are copied too. Entries the target account already deleted are skipped. Deck and venue preferences stay on the phone. Signing out keeps the same journal visible and editable. Returning to the same account synchronizes later edits. Product analytics and billing remain disabled. Build 4 keeps app reporting off. The reviewed `beta-diagnostics` build 5 is signed, uploaded and in Testing for the existing owner group, and the matching sanitized API reporter is deployed. Exact source-map and native symbols match provider storage. Evidence for the native final envelope and cache, and for live deployed fault delivery, remains open. No legal-view or agreement receipts and no per-account document-version gates are restored.
 
@@ -28,7 +28,7 @@ Guest identifiers stay local until the user selects cloud synchronization or run
 Settings → Account & data links to **Account** and **Data** and has no separate journal backup or recovery actions.
 
 - **Account** contains Apple and Google login-method switches with provider logos and verified connection state, Log out and a red Delete account. Linking and unlinking refresh verified provider identities, preserve the owner and protect the final usable method. No View guest data row or separate signed-in status paragraph remains.
-- **Data** contains iCloud Sync, Download my data and Import data with matching down and up tray icons, import preview and confirmation, and Delete all my data.
+- **Data** contains iCloud Sync, Export data and Import data with matching up and down tray icons, import preview and confirmation, and Delete all my data.
 
 Both deletion actions use the existing confirmation modal with distinct wording and retry state. Essential local navigation to history, account and data does not depend on fresh paid challenge admission. Cloud operations still require authorization and connectivity.
 

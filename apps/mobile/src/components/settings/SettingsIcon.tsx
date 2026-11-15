@@ -49,8 +49,8 @@ export function SettingsIcon({
     motion: 'M7 12H17',
     account: 'M4 21V19C4 15 20 15 20 19V21',
     subscription: 'M3 9H21M14 15H18',
-    export: 'M12 3V16M6 10L12 16L18 10M4 21H20',
-    import: 'M12 16V3M6 9L12 3L18 9M4 21H20',
+    export: 'M12 16V3M6 9L12 3L18 9M4 21H20',
+    import: 'M12 3V16M6 10L12 16L18 10M4 21H20',
     icloud:
       'M21 7A9 9 0 0 0 4 7L3 10M1 7L3 10L6 8M8 21H18A4 4 0 0 0 18 13A5 5 0 0 0 8 14A3.5 3.5 0 0 0 8 21Z',
     logout: 'M10 4H4V20H10M9 12H21M16 7L21 12L16 17',

@@ -29,9 +29,7 @@ test("one import restores deleted history and writing, preserves conflicts, acce
   await completeChallenge(page, 'Backup fixture original');
   await openData(page);
   const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const filename = await (await downloading).path();
   const bytes = await readFile(filename!);
   const files = unzipSync(bytes);
@@ -162,9 +160,7 @@ test('a signed-out import stays on the phone and uploads as an import at the nex
   await completeChallenge(page, 'Signed-out import original');
   await openData(page);
   const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const bytes = await readFile((await (await downloading).path())!);
   await page
     .getByRole('button', { name: 'Delete all my data', exact: true })
