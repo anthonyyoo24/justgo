@@ -327,7 +327,7 @@ highest level that works and updates this list.
   - Enforced by (test, hook, written): `scripts/quality/known-bugs.test.mjs` fails on a tracked known-bug test with no issue reference in its title or the comment above. The Stop hook `.claude/hooks/require-trail-review.mjs` (cases in `trail-review-hook.test.mjs`) blocks while a trail's latest `bug` row for a bug has no label or skip reason. A bug with no row, and the issue's real labels, are caught only in review.
 - Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`. A run writes only to its own trail and records other sessions' events there. A block over another session's trail means the hook or the main checkout is stale, so never write into that trail.
   - Enforced by (hook, written): The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)
-- Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail.
+- Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. A long coordinator hands itself off to a fresh session at a milestone, and multi-step browser walkthroughs run in their own short session, without waiting for Anthony to ask, as [Agent effort](#agent-effort) says.
   - Enforced by (written): Nothing. It is a judgment call.
 - Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
@@ -607,6 +607,37 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   track their own context. A model with a smaller window keeps its own limit.
   `claude -p /autocompact` shows the window in force, and `get_usage` reports
   where auto-compact starts.
+- A coordinator hands itself off to a fresh session at a milestone, on its own
+  judgment, because Anthony runs several tasks at once and should not have to
+  (Anthony, 2026-11-14). A session that runs for days pays to reread a large
+  context on every turn and keeps compacting. A coordinator is a session that
+  starts sessions or verifiers, merges PRs or tracks a phase. A milestone is a
+  merged PR stack, a finished phase step, or a decision made with its work
+  handed out. Hand off at the first milestone after the session has compacted
+  once or its context, from `get_usage`, passes about 150k. Never hand off in
+  the middle of a change, with uncommitted work, or while Anthony waits on an
+  answer from this session. To hand off:
+  1. Write a resume note of at most about 40 lines: the goal, what landed with
+     PR links, open PRs and their verdict state, decisions and who made them,
+     the sessions still running with their links, the next steps and the
+     decision trail path.
+  2. Start the new session with `start_session`, `context: "fresh"` and the
+     note as its brief, in the same checkout or the Mac mini checkout this one
+     uses. Never fork it, which copies the long context, and never set its
+     `model`. When the app refuses the start, such as on a turn another
+     session's message began, propose it as a card instead.
+  3. Tell Anthony in one line with the new session's link, and then start no
+     more work here. Reports from sessions this one started still arrive here,
+     so pass each on to the new session with `SendMessage` until they stop.
+- Keep multi-step browser work out of a long session. Each screenshot adds
+  about 1,500 tokens that every later turn rereads. A coordinator reads pages
+  with `get_page_text` or `read_page` and takes at most one or two screenshots
+  for a quick check. A walkthrough of more steps, such as a provider dashboard,
+  a secrets screen, a sign-in or anything Anthony must do at the screen, goes
+  to its own short session started with `context: "fresh"`, on the agent's own
+  judgment. Its brief gives the exact steps and the links Anthony needs, and
+  asks for a short report back with no secret values. That session ends when
+  the walkthrough does.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, release and backup scripts, and privacy:
   secret storage, the code that carries account data or writing,
