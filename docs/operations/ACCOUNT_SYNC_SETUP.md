@@ -90,9 +90,20 @@ file or request field never does. Never merge accounts by email, including a
 hidden Apple email or a different Google email. An identity that already belongs
 to another Auth user must fail. See [Supabase identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking).
 
-On November 2, 2026, Anthony chose Account's Apple and Google switches to show
-the active sign-in provider, not the linked identities. The switches never link
-or unlink identities (`ManagedAccountScreen.test.tsx`).
+On November 15, 2026, Anthony replaced the November 2 decision that the switches
+never link. Apple and Google are one account with two ways in. Account's switches
+still show only the provider of the current sign-in, but turning on the other one
+links it to the signed-in Auth user if it is not linked yet, then signs in with
+it. The app never unlinks, and turning off the on switch logs out
+([Phase 13A plan](../implementation-plan/one-person-phone.md#linking-apple-and-google),
+`ManagedAccountScreen.test.tsx` and `managed-controller.test.ts`). An identity
+that already has its own Auth user is refused with `identity_already_exists`,
+and the app keeps the current sign-in.
+
+This needs **Allow manual linking** (`GOTRUE_SECURITY_MANUAL_LINKING_ENABLED`) on
+under Authentication, Sign In / Providers, in the hosted project
+`gcjmvtsisivxxorstvkb`. The code changes no provider setting. Check the setting
+before the iPhone acceptance gate, and change it only with Anthony's go.
 
 Real web Auth uses PKCE and `/auth/callback`. In Supabase, allowlist only approved
 browser origins and callback URLs, and set the API's `CORS_ORIGINS` to match.

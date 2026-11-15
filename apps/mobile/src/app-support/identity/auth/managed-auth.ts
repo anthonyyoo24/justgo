@@ -16,6 +16,8 @@ import {
 } from './types';
 
 const authStorageKey = 'justgo.auth.v1';
+/** Auth's code for linking an identity that belongs to another Auth user. */
+const identityExistsCode = 'identity_already_exists';
 function linkedProviders(identities: readonly { provider: string }[]) {
   return [
     ...new Set(
@@ -167,6 +169,7 @@ export function createManagedAuth(): ManagedAuth {
         const expected = generation;
         const auth = getClient().auth;
         let freshSignIn = false;
+        let identityExists = false;
         if (Platform.OS === 'web') {
           const callback = new URL(window.location.href);
           if (
@@ -185,7 +188,11 @@ export function createManagedAuth(): ManagedAuth {
               !callback.searchParams.has('error_code') &&
               (error === 'access_denied' ||
                 error === 'user_cancelled_authorize');
-            if (!cancelled) {
+            // A refused link changes nothing, so the SDK still holds the
+            // session it had before the redirect, as after a cancel.
+            identityExists =
+              callback.searchParams.get('error_code') === identityExistsCode;
+            if (!cancelled && !identityExists) {
               if (error !== null || !code) throw new ProviderAuthError('AUTH');
               const result = await auth.exchangeCodeForSession(code);
               if (result.error) throw new ProviderAuthError('AUTH');
@@ -197,7 +204,9 @@ export function createManagedAuth(): ManagedAuth {
         const restored = (await verifiedSession(expected))?.session ?? null;
         return restored && freshSignIn
           ? { ...restored, freshSignIn: true }
-          : restored;
+          : restored && identityExists
+            ? { ...restored, identityExists: true }
+            : restored;
       }),
     signIn: (provider: SignInProvider) =>
       safe(async () => {
@@ -262,6 +271,8 @@ export function createManagedAuth(): ManagedAuth {
           throw new ProviderAuthError('AUTH');
         const result = await auth.linkIdentity({ provider, ...credential });
         check(expected);
+        if (result.error?.code === identityExistsCode)
+          throw new ProviderAuthError('IDENTITY_EXISTS');
         if (result.error) throw new ProviderAuthError('AUTH');
         const linked = await verifiedSession(
           expected,

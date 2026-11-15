@@ -72,9 +72,11 @@ const legacyProofSchema = z
     token: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();
+const identityExistsMessage =
+  'That Apple ID or Google account already has its own JustGO account, so it can’t be added to this one. You’re still signed in, and nothing changed.';
 const errorMessage = (error: unknown) =>
-  error instanceof ProviderAuthError && error.code === 'LAST_PROVIDER'
-    ? 'Keep one login method connected. Use Log out to sign out on this phone.'
+  error instanceof ProviderAuthError && error.code === 'IDENTITY_EXISTS'
+    ? identityExistsMessage
     : error instanceof ProviderAuthError && error.code === 'CONFIGURATION'
       ? 'Sign-in isn’t configured in this build yet. You can continue on this phone.'
       : error instanceof ProviderAuthError && error.code === 'STORAGE'
@@ -487,7 +489,16 @@ export class ManagedIdentityController {
       });
       this.reconcile();
     });
-  signIn = (provider: SignInProvider) => {
+  signIn = (provider: SignInProvider) => this.authenticate(provider, false);
+  /**
+   * Turns on another login method for the signed-in account. An identity not
+   * linked yet is first linked to the same Auth user, so the sign-in that
+   * follows reaches the same JustGO account and copies nothing. Signed out,
+   * this is an ordinary sign-in.
+   */
+  switchProvider = (provider: SignInProvider) =>
+    this.authenticate(provider, true);
+  private authenticate(provider: SignInProvider, link: boolean) {
     const connection: ConnectionTrace = {
       phase: 'phone-prepare',
       direct: true,
@@ -508,6 +519,12 @@ export class ManagedIdentityController {
           });
         const sourceProof = await proof.read();
         const switching = !!source || !!sourceProof;
+        // Verified identities decide. One linked elsewhere since then comes
+        // back as the unchanged session and signs in below.
+        const linking =
+          link &&
+          !!source &&
+          !this.providerSession?.linkedProviders?.includes(provider);
         await this.save({
           ...state,
           pendingSignIn: {
@@ -527,7 +544,16 @@ export class ManagedIdentityController {
           ? (sourceProof?.token ?? null)
           : null;
         try {
-          session = await this.options.auth.signIn(provider);
+          session = linking
+            ? await this.options.auth.linkIdentity(provider)
+            : await this.options.auth.signIn(provider);
+          if (
+            linking &&
+            session &&
+            session !== 'redirecting' &&
+            session.accessToken === sourceProof?.token
+          )
+            session = await this.options.auth.signIn(provider);
         } catch (error) {
           this.switchingFromToken = null;
           // A source-token refresh can notify while the native sheet is open.
@@ -600,7 +626,7 @@ export class ManagedIdentityController {
       false,
       connection,
     );
-  };
+  }
   /**
    * Restore a cancelled/interrupted switch only to its original live app session.
    * `onUnreachable` hears when a check could not reach the server, so the
@@ -748,11 +774,15 @@ export class ManagedIdentityController {
             ))
           ) {
             // A cancel at the provider reloads the app on its callback. Say so,
-            // so the callback can return to the Account page without a notice.
-            this.reconcile('', {
-              ...emptyConnectionFeedback,
-              switchCancelled: true,
-            });
+            // so the callback can return to the Account page, with a notice
+            // only when Auth refused to link an identity another account owns.
+            this.reconcile(
+              session.identityExists ? identityExistsMessage : '',
+              {
+                ...emptyConnectionFeedback,
+                switchCancelled: true,
+              },
+            );
             return;
           }
           // An interrupted SDK exchange cannot prove which provider completed.
@@ -982,31 +1012,7 @@ export class ManagedIdentityController {
     this.verifiedOwner = true;
     this.reconcile();
   }
-  linkProvider = (provider: SignInProvider) =>
-    this.run(async () => {
-      const account = this.snapshot.account;
-      if (!account || !this.currentSession())
-        throw new ProviderAuthError('AUTH');
-      await this.verify();
-      await this.save({
-        ...this.state(),
-        pendingLink: {
-          provider,
-          ownerId: account.userId,
-          authUserId: account.authUserId,
-        },
-      });
-      const session = await this.options.auth.linkIdentity(provider);
-      if (this.disposed) throw new ApiError('CANCELLED');
-      if (session === 'redirecting') return;
-      if (session) this.providerSession = session;
-      else {
-        await this.save({ ...this.state(), pendingLink: null });
-        this.reconcile();
-        return;
-      }
-      await this.finishLink();
-    });
+  /** Finishes a link an older build saved before the switches linked through sign-in. */
   private async finishLink() {
     const pending = this.state().pendingLink;
     if (
@@ -1021,20 +1027,6 @@ export class ManagedIdentityController {
     await this.save({ ...this.state(), pendingLink: null });
     this.reconcile();
   }
-  unlinkProvider = (provider: SignInProvider) =>
-    this.run(async () => {
-      const account = this.snapshot.account;
-      if (!account || !this.currentSession())
-        throw new ProviderAuthError('AUTH');
-      await this.verify();
-      const session = await this.options.auth.unlinkIdentity(provider);
-      if (this.disposed) throw new ApiError('CANCELLED');
-      if (session.authUserId !== account.authUserId)
-        throw new ApiError('ACCOUNT_CHANGED');
-      this.providerSession = session;
-      await this.verify();
-      this.reconcile();
-    });
   retry = (options: { background?: boolean } = {}) => {
     const connection: ConnectionTrace = { phase: null };
     return this.run(

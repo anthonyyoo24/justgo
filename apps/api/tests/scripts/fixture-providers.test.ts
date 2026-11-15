@@ -33,16 +33,53 @@ describe('guarded provider-session fixture boundary', () => {
       providers.create({ provider: 'google' }).session.authUserId,
     ).not.toBe(first.session.authUserId);
   });
-  it('links providers without replacing a session or claiming another account', async () => {
+  it('links providers with a new session for the same subject and never claims another account', async () => {
     const providers = new FixtureProviders(),
       first = providers.create({ provider: 'apple' });
     const linked = providers.link({
       accessToken: first.session.accessToken,
       provider: 'google',
     });
-    expect(linked.session.accessToken).toBe(first.session.accessToken);
+    expect(linked.subjectHandle).toBe(first.subjectHandle);
+    expect(linked.session.accessToken).not.toBe(first.session.accessToken);
     expect(linked.session.authUserId).toBe(first.session.authUserId);
     expect(linked.session.linkedProviders).toEqual(['apple', 'google']);
+    expect(
+      (await providers.verify(linked.session.accessToken)).sessionId,
+    ).not.toBe((await providers.verify(first.session.accessToken)).sessionId);
+    // An identity that already signs in to another subject is refused.
+    const other = providers.create({ provider: 'google' }),
+      third = providers.create({ provider: 'apple' });
+    expect(() =>
+      providers.link({
+        accessToken: third.session.accessToken,
+        provider: 'google',
+        identityHandle: other.subjectHandle,
+      }),
+    ).toThrow('CONFLICT');
+    expect(
+      providers.link({
+        accessToken: third.session.accessToken,
+        provider: 'apple',
+        identityHandle: other.subjectHandle,
+      }).session.linkedProviders,
+    ).toEqual(['apple']);
+    expect(
+      providers.link({
+        accessToken: third.session.accessToken,
+        provider: 'google',
+        identityHandle: third.subjectHandle,
+      }).session.linkedProviders,
+    ).toEqual(['apple', 'google']);
+    await providers.erase(other.session.authUserId);
+    const fourth = providers.create({ provider: 'apple' });
+    expect(
+      providers.link({
+        accessToken: fourth.session.accessToken,
+        provider: 'google',
+        identityHandle: other.subjectHandle,
+      }).session.linkedProviders,
+    ).toEqual(['apple', 'google']);
     expect(() =>
       providers.link({ accessToken: 'unowned', provider: 'google' }),
     ).toThrow('UNAUTHORIZED');

@@ -80,7 +80,10 @@ export function useProviderSignIn(
     submitting.current = submittedVisit;
     cancelWelcomeEntry();
     setPendingProvider(selected);
-    await identity.signIn(selected);
+    // A switch links the provider to the signed-in account before it signs in.
+    await (switchProvider
+      ? identity.switchProvider(selected)
+      : identity.signIn(selected));
     if (submitting.current === submittedVisit) submitting.current = null;
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);

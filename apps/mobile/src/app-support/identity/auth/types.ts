@@ -8,6 +8,11 @@ export type ProviderSession = {
   provider?: SignInProvider;
   /** Set only after exchanging a fresh browser OAuth callback. */
   freshSignIn?: boolean;
+  /**
+   * Set only on the session kept after a browser link callback that Auth
+   * refused because the identity already belongs to another Auth user.
+   */
+  identityExists?: boolean;
 };
 export const providerAuthErrorCodes = [
   'CANCELLED',
@@ -15,6 +20,8 @@ export const providerAuthErrorCodes = [
   'AUTH',
   'STORAGE',
   'LAST_PROVIDER',
+  /** The identity already belongs to another Auth user, so it cannot be linked. */
+  'IDENTITY_EXISTS',
 ] as const;
 export class ProviderAuthError extends Error {
   constructor(readonly code: (typeof providerAuthErrorCodes)[number]) {
