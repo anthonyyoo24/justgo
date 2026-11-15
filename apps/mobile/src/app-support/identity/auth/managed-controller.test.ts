@@ -2,7 +2,10 @@ import {
   managedIdentityStateSchema,
   type ManagedIdentityState,
 } from './managed-state';
-import { ManagedIdentityController } from './managed-controller';
+import {
+  ManagedIdentityController,
+  type PhoneDataMerger,
+} from './managed-controller';
 import {
   ProviderAuthError,
   type ManagedAuth,
@@ -484,6 +487,7 @@ it('brings a signed-out account collection into whichever account signs in next 
     uuid(51),
     { userId: uuid(51), token: session.accessToken },
     'account',
+    expect.any(Function),
   );
   expect(retire).toHaveBeenCalledWith(account.userId);
   expect(ctx.controller.getSnapshot()).toMatchObject({
@@ -495,14 +499,42 @@ it('brings a signed-out account collection into whichever account signs in next 
   expect(ctx.saved()?.collectionAdoption).toBeNull();
 });
 
+it('lets a signed-out account sign back in after its pending delete-all refused another account (no owner bound)', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  await ctx.controller.signOut();
+  // ActivityRuntime.mergeGuestData refuses a source whose delete-all is
+  // pending before it calls beforeCopy.
+  ctx.controller.setGuestDataMerger(
+    jest.fn(async () => {
+      throw new ApiError('UNAVAILABLE');
+    }),
+  );
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.saved()?.collectionAdoption ?? null).toBeNull();
+  // Signing back into the source account is how its delete-all finishes.
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session });
+  ctx.setAccount(account);
+  await ctx.controller.signIn('apple');
+  expect(ctx.controller.currentSession()?.userId).toBe(account.userId);
+  expect(ctx.controller.getSnapshot().collectionId).toBe(account.userId);
+});
+
 it('keeps an interrupted account collection adoption bound to its first verified owner until it finishes', async () => {
   const ctx = setup();
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
   await ctx.controller.signOut();
-  const merge = jest.fn<Promise<void>, []>(async () => {
-    throw new Error('Connection lost');
-  });
+  const merge = jest.fn<Promise<void>, Parameters<PhoneDataMerger>>(
+    async (_source, _owner, _session, _kind, beforeCopy) => {
+      await beforeCopy?.();
+      throw new Error('Connection lost');
+    },
+  );
   ctx.controller.setGuestDataMerger(merge);
   ctx.auth.signIn.mockResolvedValue({ ...session, authUserId: uuid(41) });
   ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
@@ -529,6 +561,7 @@ it('keeps an interrupted account collection adoption bound to its first verified
     uuid(51),
     { userId: uuid(51), token: session.accessToken },
     'account',
+    expect.any(Function),
   );
   expect(ctx.controller.getSnapshot().collectionId).toBe(uuid(51));
 });
@@ -587,7 +620,7 @@ it('brings both a parked guest and the signed-out account collection into a diff
   const owner = { userId: uuid(51), token: session.accessToken };
   expect(merge.mock.calls).toEqual([
     [ctx.saved()!.guestId, uuid(51), owner],
-    [account.userId, uuid(51), owner, 'account'],
+    [account.userId, uuid(51), owner, 'account', expect.any(Function)],
   ]);
   expect(restarted.getSnapshot().collectionId).toBe(uuid(51));
   expect(ctx.saved()?.guestAdoption?.status).toBe('consumed');
@@ -1665,6 +1698,7 @@ it('brings the signed-in account collection into a different account on switch a
       uuid(51),
       { userId: uuid(51), token: next.accessToken },
       'account',
+      expect.any(Function),
     ],
   ]);
   expect(ctx.calls.find(({ path }) => path === '/auth/logout')?.token).toBe(

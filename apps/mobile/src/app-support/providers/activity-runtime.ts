@@ -191,6 +191,7 @@ export class ActivityRuntime {
     accountId: string,
     session: AccountSession,
     sourceKind: 'guest' | 'account' = 'guest',
+    beforeCopy?: () => Promise<void>,
   ) => {
     if (session.userId !== accountId || guestId === accountId)
       throw new ApiError('ACCOUNT_CHANGED');
@@ -267,6 +268,9 @@ export class ActivityRuntime {
         if (this.getRepository() !== selectedAtStart)
           throw new ApiError('ACCOUNT_CHANGED');
       };
+      // The source passed its checks; let the caller bind the copy before any
+      // of it leaves the phone.
+      await beforeCopy?.();
       await guest.withDataMigration(async () => {
         if (sourceKind === 'guest' && sourceApple)
           await sourceApple.handoverGuest(accountId, copy);

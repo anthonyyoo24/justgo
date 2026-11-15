@@ -90,13 +90,16 @@ const errorMessage = (error: unknown) =>
 /**
  * Copies a phone collection into the signed-in account. The guest source is
  * the default; `'account'` names an account collection that a different
- * account's sign-in adopts.
+ * account's sign-in adopts. The merger calls `beforeCopy` once the source can
+ * be copied and before any of it leaves the phone, so a refused source binds
+ * no owner.
  */
 export type PhoneDataMerger = (
   source: string,
   owner: string,
   session: { userId: string; token: string },
   sourceKind?: 'account',
+  beforeCopy?: () => Promise<void>,
 ) => Promise<void>;
 
 export class ManagedIdentityController {
@@ -881,19 +884,23 @@ export class ManagedIdentityController {
     if (adoptCollection) {
       connection.phase = 'adopt-guest';
       if (!this.mergeGuest) throw new ProviderAuthError('STORAGE');
-      await this.save({
-        ...this.state(),
-        collectionAdoption: {
-          sourceId: collection.id,
-          ownerId: account.userId,
-          status: 'pending',
-        },
-      });
+      // Bind the copy to this owner only once data can start to move. A source
+      // refused first, such as one with a delete-all pending, binds nobody, so
+      // its own account can still sign in and finish that deletion.
       await this.mergeGuest(
         collection.id,
         account.userId,
         { userId: account.userId, token: session.accessToken },
         'account',
+        () =>
+          this.save({
+            ...this.state(),
+            collectionAdoption: {
+              sourceId: collection.id,
+              ownerId: account.userId,
+              status: 'pending',
+            },
+          }),
       );
     }
     connection.phase = 'save-account';

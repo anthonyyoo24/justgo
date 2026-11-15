@@ -980,6 +980,68 @@ it.each(['guest', 'account'] as const)(
   },
 );
 
+it('refuses an account collection with a pending delete-all before binding any owner, then finishes the deletion under its own account', async () => {
+  const { runtime, activate, storage } = setup();
+  const source = await activate(owner, 'cloud', 'account');
+  await source.complete(input(), card);
+  runtime.setEnvironment({ active: true, online: true });
+  await source.synchronize();
+  jest
+    .spyOn(servers.get(owner)!.transport, 'deleteData')
+    .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
+  await expect(runtime.deleteAllData()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  // The person logs out and another account signs in.
+  runtime.changeAccount(owner, 'local', 'account');
+  const nextOwner = uuid(900);
+  const destination = server();
+  servers.set(nextOwner, destination);
+  const beforeCopy = jest.fn(async () => {});
+  await expect(
+    runtime.mergeGuestData(
+      owner,
+      nextOwner,
+      { userId: nextOwner, token: 'fixture-session' },
+      'account',
+      beforeCopy,
+    ),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  expect(beforeCopy).not.toHaveBeenCalled();
+  expect(destination.transport.putCompletions).not.toHaveBeenCalled();
+  // Signing back into the source account finishes its deletion.
+  await activate(owner, 'cloud', 'account');
+  await runtime.deleteAllData();
+  expect(storage.values.has(`justgo:v1:${owner}:delete-all-pending`)).toBe(
+    false,
+  );
+  expect(servers.get(owner)!.attempts.size).toBe(0);
+});
+
+it('binds the copy before any of the account collection leaves the phone', async () => {
+  const { runtime, activate } = setup();
+  await cloud.transport.setEnabled(false);
+  const source = await activate(owner, 'local', 'account');
+  await source.complete(input(), card);
+  const nextOwner = uuid(900);
+  const destination = server();
+  servers.set(nextOwner, destination);
+  const uploadsAtBind: number[] = [];
+  await runtime.mergeGuestData(
+    owner,
+    nextOwner,
+    { userId: nextOwner, token: 'fixture-session' },
+    'account',
+    async () => {
+      uploadsAtBind.push(
+        (destination.transport.putCompletions as jest.Mock).mock.calls.length,
+      );
+    },
+  );
+  expect(uploadsAtBind).toEqual([0]);
+  expect([...destination.attempts.keys()]).toEqual([uuid(1)]);
+});
+
 it("finishes the source account's accepted delete-all clear before copying its collection into another account", async () => {
   const { runtime, activate, storage } = setup();
   await cloud.transport.setEnabled(false);
