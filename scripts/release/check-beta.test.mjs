@@ -196,6 +196,9 @@ test('every beta build needs the pinned, dated U.S. Privacy notice', () => {
       ['2026-11-DD-us-east', pinError],
       // The Canada notice that build 7 shipped with.
       ['2026-11-13-supabase-edge', pinError],
+      // A same-day revision needs a number.
+      ['2026-11-15-us-east-', pinError],
+      ['2026-11-15-us-east-r2', pinError],
       ['', pinError],
     ]) {
       const value = make();

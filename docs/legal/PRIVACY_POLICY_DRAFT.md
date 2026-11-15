@@ -1,17 +1,17 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-11-15-us-east -->
+<!-- legal-version: 2026-11-15-us-east-2 -->
 <!-- publication-status: owner-approved -->
 <!-- effective-date: 2026-11-15 -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
+This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. Later on November 15, Anthony asked to drop "free beta" from the opening (`2026-11-15-us-east-2`): "it should not include free beta. I thought you removed that." and then "start it". Only that sentence changed, and the Terms keep `2026-11-15-us-east`. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
 # Privacy Policy
 
-JustGO is a free beta app for adults aged 18 and older. It offers everyday challenges and keeps a private journal of your activity. This policy explains what information JustGO collects, why we use it, who receives it, how long we keep it and the choices you have.
+JustGO is an app for adults aged 18 and older. It offers everyday challenges and keeps a private journal of your activity. This policy explains what information JustGO collects, why we use it, who receives it, how long we keep it and the choices you have.
 
 We do not sell your personal information or share it for advertising. JustGO has no ads, and product analytics is turned off. Questions? Email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com).
 
