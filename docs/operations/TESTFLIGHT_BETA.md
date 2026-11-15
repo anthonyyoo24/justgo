@@ -68,7 +68,8 @@ which replaced `2026-11-14-us-east` (US-7).
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
 published Privacy version. It holds `2026-11-15-us-east-3`, published and set on
-November 15, 2026, after build 9. Build 9 shipped beside `2026-11-14-us-east`. Change it only after a new Privacy version is published, or the preflight refuses
+November 15, 2026, after build 9. Build 9 shipped beside `2026-11-14-us-east`,
+and build 10 beside `2026-11-15-us-east-3`. Change it only after a new Privacy version is published, or the preflight refuses
 diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
@@ -158,16 +159,27 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The current TestFlight build is **0.1.0 (9)**, from tag
-`testflight-beta-2026-11-15-1` at source
-`77745df0b42a7552ee85197d521a7ea7350f7d69`, with the optional diagnostics
-profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43720975910)
+The current TestFlight build is **0.1.0 (10)**, from tag
+`testflight-beta-2026-11-15-3` at source
+`a6afeadcb5af15005922b62766d5e5b61ed41ba6`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43747593141)
 (archive SHA-256
-`3ff8edf6829d95b77e667c2a0d446470bf2447cb075e95c37dc10b5ddef56c9b`) and
-[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43729886513)
+`c602e1bc8b49a3b0c09df6ccb3815b4f184c119d57f2f586e55f6df12b444a6c`) and
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43750545190)
 succeeded on November 15, 2026. It calls the staging `api` function in the
-us-east-1 project, and it carries the Phase 13A change that brings the phone's
-journal into whichever account signs in (#492).
+us-east-1 project, and it adds three changes to build 9: the Login
+methods switches that make Apple and Google one account with two ways in
+(#502), the Privacy Policy `2026-11-15-us-east-3` without "free beta" (#501,
+#504), and the Export data rename with flipped tray icons (#504). Gate
+[#503](https://github.com/anthonyyoo24/justgo/issues/503) holds its phone check
+of the switches. Tag `testflight-beta-2026-11-15-2` at `cf0f2b0` stays unused:
+its preflight refused it because the published Privacy version had already
+moved to `-3`.
+Build 0.1.0 (9), from tag `testflight-beta-2026-11-15-1` at `77745df`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43720975910),
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43729886513)),
+carries the Phase 13A change that brings the phone's journal into whichever
+account signs in (#492).
 Build 0.1.0 (8), from tag `testflight-beta-2026-11-14-1` at `efd40be`
 ([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099),
 [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418)),
