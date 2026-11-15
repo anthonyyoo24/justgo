@@ -23,10 +23,11 @@ configuration changes. A TestFlight build is needed only for:
   Sentry delivery;
 - release acceptance and the `gate` issues that name a TestFlight build.
 
-To tell whether a change is JavaScript-only, compare `apps/mobile/package.json`,
-`app.config.ts`, `plugins/`, `modules/` and the lockfile's native packages
-between the installed Dev binary's source and the change. If none differ, Metro
-can serve it.
+To tell whether a change is JavaScript-only, compare these in `apps/mobile`
+between the installed Dev binary's source and the change: `package.json`,
+`app.config.ts`, `eas.json`, `plugins/`, `modules/`, the icon and splash images
+and fonts the config builds in, and the lockfile's native packages. If none
+differ, Metro can serve it.
 
 ## App and data boundaries
 
@@ -144,8 +145,11 @@ Those packages move together, as one scoped task per SDK:
 4. Run the full `pnpm run check`, then build Dev and check it on the phone. A
    JavaScript export does not prove a native upgrade.
 
-To rebuild a local native project, run `pnpm exec expo prebuild --platform ios`
-from `apps/mobile`, then `pod install` from `apps/mobile/ios`, even when
-dependencies are unchanged, then rebuild. The generated Podfile keeps Expo
+To rebuild a local native project, run prebuild with the Dev environment, since
+`app.config.ts` reads the bundle ID, container and Google scheme from it. From
+`apps/mobile`, run
+`EXPO_NO_DOTENV=1 eas env:exec development 'pnpm exec expo prebuild --platform ios' --non-interactive`,
+then `pod install` from `apps/mobile/ios`, even when dependencies are
+unchanged, then rebuild. The generated Podfile keeps Expo
 modules building from source, and `apps/mobile/app.config.test.ts` pins
 Sentry's static linkage.
