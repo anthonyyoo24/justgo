@@ -10,7 +10,7 @@ const drafts = {
     body:
       '<h2>Using JustGO</h2><p>JustGO helps adults aged 18 and over practice small everyday challenges and optionally save a feeling or written reflection.</p>' +
       journalStorageNotice +
-      '<h2>Your account and records</h2><p>Apple or Google sign-in protects access to your JustGO account. Settings provides Export data, Import data, optional iCloud Sync, Delete all my data and Delete account. Downloaded files do not authenticate an account. The free beta has no active in-app purchases. Billing terms and disclosures must be reviewed before purchases are enabled; deleting an account does not cancel an Apple subscription.</p><h2>Legal documents</h2><p>Reading the Terms or Privacy Policy does not create a server receipt or legal-version record. This development reference does not establish final regional terms or Apple EULA compatibility.</p>',
+      '<h2>Your account and records</h2><p>Apple or Google sign-in protects access to your JustGO account. Settings provides Export data, Import data, optional iCloud Sync, Delete all my data and Delete account. Downloaded files do not authenticate an account. Billing terms and disclosures must be reviewed before purchases are enabled; deleting an account does not cancel an Apple subscription.</p><h2>Legal documents</h2><p>Reading the Terms or Privacy Policy does not create a server receipt or legal-version record. This development reference does not establish final regional terms or Apple EULA compatibility.</p>',
   },
   privacy: {
     title: 'Privacy Policy',
