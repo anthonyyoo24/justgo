@@ -31,7 +31,8 @@ first build on this project. Build 7, the last build on the Canada project
 P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
 retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
 its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
-was paused, not deleted. The legal pages stay on Vercel.
+was paused, not deleted. The legal pages moved to the Cloudflare Worker
+`justgo-legal` on November 16, 2026 (#123).
 TestFlight submissions need Anthony's go.
 
 Store signing does not select a paid production API. Preview reuses the verified
@@ -84,14 +85,16 @@ instruction.
 
 ## Preflight and release procedure
 
-The legal pages stay on Vercel, so `release:beta:check` asks for no
-`deployment-host` marker. It still needs the approved, dated Privacy Policy and
-Terms, and a diagnostics build still needs the matching published Privacy
-version. Every beta build needs the U.S. notice that `betaPrivacyVersion` pins.
-The Privacy Policy published on November 13, 2026 names the Supabase
-Edge Function as the API host, as P15-10 of the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) required
-before the first outside tester joins.
+`release:beta:check` asks for no `deployment-host` marker. It needs the
+approved, dated Privacy Policy and Terms, and a diagnostics build still needs the
+matching published Privacy version. Every beta build needs the U.S. notice that
+`betaPrivacyVersion` pins. P15-10 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) requires the
+Privacy Policy to name Supabase as the API host before the first outside tester
+joins. The November 13, 2026 version did, but the November 15 plain-language
+rewrite dropped the name, so the published `2026-11-15-us-east-3` names no host.
+The [P15-10 candidate](../legal/SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10)
+puts it back and waits for Anthony's approval and his go to publish.
 
 From `apps/mobile`, check the resolved remote public settings for the
 reporting-enabled candidate:
