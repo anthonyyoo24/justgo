@@ -2,7 +2,7 @@
 
 # Phase 15A plan to move the database and API to Supabase us-east-1
 
-**Status.** Planned on November 13, 2026. Nothing in this plan has run. Anthony settled its [decisions](#decisions) on November 13. Each hosted step still waits for his go. It changes no provider, secret, build or database by itself.
+**Status.** Done on November 16, 2026. Anthony settled its [decisions](#decisions) on November 13, and US-10 deleted the Canada project on November 16. The restore rehearsal from the first U.S. backup is still open as gate [#522](https://github.com/anthonyyoo24/justgo/issues/522). Unticked boxes below were skipped or not recorded. Some give the reason, and the US-7 bundle and region reads and the US-9 build and architecture checks were never recorded.
 
 This plan moves JustGO's Supabase database, Auth and the `api` Edge Function from project `kmcpcauaxlgpevkkenwd` in Canada Central (`ca-central-1`) to a new Supabase project in us-east-1 (North Virginia). The new project becomes the one the app uses. The Canada project stays until the app works on the new one, then Anthony deletes it.
 
@@ -202,8 +202,8 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 - [x] The final Canada runs, database [43633779138](https://github.com/anthonyyoo24/justgo/actions/runs/43633779138) and ledger [43633781515](https://github.com/anthonyyoo24/justgo/actions/runs/43633781515), passed with `kmcpcauaxlgpevkkenwd` as the logged policy's source. The logged receipt hides the source.
 - [x] The first US runs, database [43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and ledger [43635341677](https://github.com/anthonyyoo24/justgo/actions/runs/43635341677), passed with `gcjmvtsisivxxorstvkb` as the logged policy's source. The first two attempts failed the role check on `public.rls_auto_enable()`, which new projects ship with `PUBLIC` execute. Anthony approved revoking that right, and [backup-role.sql](../../scripts/backups/backup-role.sql) now does it.
-- [ ] The next hourly ledger run at minute 23 passes on its own.
-- [ ] A restore rehearsal from the first new database backup passes into loopback `justgo_test`, as [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) describes.
+- [x] The next hourly ledger run at minute 23 passes on its own. The clock-dispatched runs at 13:23 and 14:23 UTC on November 16 passed.
+- [ ] A restore rehearsal from the first new database backup passes into loopback `justgo_test`, as [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) describes. Not run. Gate [#522](https://github.com/anthonyyoo24/justgo/issues/522) tracks it.
 
 **Rollback.** Revert PR C, restore the old policy and secrets, and re-enable. The R2 objects are unchanged.
 
@@ -250,7 +250,7 @@ TestFlight build 10 replaced build 8 and also points at the new project. The pho
 
 - [x] The account counts match the export. The export held no completions or journal entries, so the gate runs created every row on the new project, and their counts are on #451 and #452.
 - [x] Each gate issue gets a comment with the build, the project ref and the result, and closes with a link to its evidence. A failing gate stays open and blocks US-10.
-- [ ] The Sentry API project shows no new issue from build 10's runs.
+- [x] The Sentry API project shows no new issue from build 10's runs. On November 16, 2026, justgo-mobile and justgo-api had no issue from build 10. The only two issues in 14 days were resolved staging monitor alerts: the backup-health cron failure of November 14 and the downtime of November 2.
 
 **Rollback.** Reinstall build 7. Canada still holds its data.
 
@@ -264,7 +264,7 @@ TestFlight build 10 replaced build 8 and also points at the new project. The pho
 
 - [x] PR E rewrites the region paragraph of [PRIVACY_POLICY_DRAFT.md](../legal/PRIVACY_POLICY_DRAFT.md). It replaces "Our primary database remains in Canada Central" and #479's Canada sentence with one that says the database and the server run in the United States, in Supabase's us-east-1 region in Virginia.
 - [x] It adds the U.S. storage disclosure. Canadian federal privacy law expects a business that stores personal information abroad to tell users so, and to say the information may be accessed by that country's courts, law enforcement and national security authorities under its laws. The existing sentence on foreign lawful access stays and names the United States.
-- [ ] It updates [DATA_INVENTORY.md](../legal/DATA_INVENTORY.md), [RELEASE_DISCLOSURES.md](../legal/RELEASE_DISCLOSURES.md) and [SUPABASE_NOTICE_REVIEW.md](../legal/SUPABASE_NOTICE_REVIEW.md) wherever they name Canada Central or `ca-central-1` as the database region. At Anthony's request the published pages also drop the operator's name and Ontario address (#481). The inventory docs keep them as internal records.
+- [x] It updates [DATA_INVENTORY.md](../legal/DATA_INVENTORY.md), [RELEASE_DISCLOSURES.md](../legal/RELEASE_DISCLOSURES.md) and [SUPABASE_NOTICE_REVIEW.md](../legal/SUPABASE_NOTICE_REVIEW.md) wherever they name Canada Central or `ca-central-1` as the database region. At Anthony's request the published pages also drop the operator's name and Ontario address (#481). The inventory docs keep them as internal records.
 - [x] It records Anthony's approval in [APPROVALS.md](../legal/APPROVALS.md) and a new notice version, such as `2026-11-<dd>-us-east`.
 - [x] It notes that a lawyer should review the cross-border wording before the paid launch.
 - [x] It adds no Quebec-specific text or transfer assessment ([decision 6](#decisions)).
@@ -274,7 +274,7 @@ TestFlight build 10 replaced build 8 and also points at the new project. The pho
 
 - [ ] `pnpm run build:legal --production` passes with the approved metadata, then the built pages read correctly in the browser pane.
 - [ ] `pnpm run test:architecture` passes, including `scripts/quality/policy-copy.test.mjs` and the legal reader tests.
-- [ ] `git grep -n -i 'canada central' docs/legal` returns nothing but history lines.
+- [x] `git grep -n -i 'canada central' docs/legal` returns nothing but history lines. On November 16 the only hits were in SUPABASE_NOTICE_REVIEW.md, which records the old notice.
 - [x] The live Privacy page shows the new version and the U.S. paragraph.
 
 **Rollback.** Before publication, nothing is public. After publication, republish the previous version only together with a return to build 7.
@@ -287,19 +287,19 @@ TestFlight build 10 replaced build 8 and also points at the new project. The pho
 
 **Depends on.** US-6 to US-9 all passed, and every gate in US-8 closed.
 
-- [ ] Anthony confirms the app works on the new project and gives an explicit go to delete Canada. Approval of this plan does not count.
-- [ ] Anthony expires build 7 in App Store Connect, so no installed build points at Canada.
-- [ ] Anthony reads in the Canada SQL editor that no completion or journal row is newer than the final US-6 backup. If one is, it is test data that build 8 already holds, or Anthony runs one more manual export before deleting.
-- [ ] Anthony decides how long to keep Canada's final backup ([decision 9](#decisions)). R2 retention removes it after the policy's `backupDays` unless he keeps a copy.
-- [ ] Anthony removes the Canada callback from the Google web client.
-- [ ] Anthony deletes the Canada project in the Supabase dashboard. This frees the second free slot.
-- [ ] PR F records the retirement in this plan and in the runbooks, and closes the plan.
+- [x] Anthony confirms the app works on the new project and gives an explicit go to delete Canada. Approval of this plan does not count. He gave each go in the coordinator session on November 16, 2026.
+- [x] Anthony expires build 7 in App Store Connect, so no installed build points at Canada. Build 0.1.0 (7) expired on November 16. Builds 8, 9 and 10 stay Ready to Submit.
+- [x] Anthony reads in the Canada SQL editor that no completion or journal row is newer than the final US-6 backup. If one is, it is test data that build 8 already holds, or Anthony runs one more manual export before deleting. An agent read it on November 16: 260 completions and 260 journal versions, the newest completion from November 10, nothing newer than the final backup at 19:45 UTC on November 14, and no user created or deleted after it.
+- [x] Anthony decides how long to keep Canada's final backup ([decision 9](#decisions)). R2 retention removes it after the policy's `backupDays` unless he keeps a copy. Decision 9 stands: no copy is kept, and R2 removes it.
+- [x] Anthony removes the Canada callback from the Google web client. Removed at 15:17 UTC on November 16.
+- [x] Anthony deletes the Canada project in the Supabase dashboard. This frees the second free slot. Deleted on November 16.
+- [x] PR F records the retirement in this plan and in the runbooks, and closes the plan.
 
 **Check.**
 
-- [ ] `curl -s -o /dev/null -w '%{http_code}' https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/health` no longer returns 200.
-- [ ] `git grep -n kmcpcauaxlgpevkkenwd` returns only history lines.
-- [ ] The Supabase project list shows one active project, in us-east-1.
+- [x] `curl -s -o /dev/null -w '%{http_code}' https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/health` no longer returns 200. It returned 404, and later 410, on November 16, while the U.S. health URL returned 200.
+- [x] `git grep -n kmcpcauaxlgpevkkenwd` returns only history lines. The test hits pin that the Canada ref is refused.
+- [x] The Supabase project list shows one active project, in us-east-1. On November 16 it listed only "JustGo US" `gcjmvtsisivxxorstvkb` as `ACTIVE_HEALTHY`.
 
 **Rollback.** None after deletion. Until the deletion, reinstalling build 7 and reverting PRs B, C and D brings Canada back.
 

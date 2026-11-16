@@ -160,8 +160,9 @@ Sources: [Apple privacy labels](https://developer.apple.com/app-store/app-privac
 The API runs on the Supabase Edge Function `api`. From build 8, which sends
 `x-region: us-east-1`, Supabase processes API connection metadata and signed-in
 journal requests beside the database in us-east-1 (Virginia, United States).
-Build 7 and earlier reach the Canada project, whose function runs in the region
-closest to each request ([Phase 15A](../implementation-plan/supabase-us-move.md)). Its function logs keep method,
+Build 7 and earlier reached the Canada project, whose function ran in the region
+closest to each request, until [Phase 15A](../implementation-plan/supabase-us-move.md)
+deleted it on November 16, 2026. Its function logs keep method,
 path, status and timing, not bodies, tokens or writing. R2 stores encrypted app
 and Auth snapshots and encrypted deletion and revocation records. Encryption does
 not remove those copies from the inventory or prove Not Linked. Vercel keeps only
