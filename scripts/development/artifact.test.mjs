@@ -33,8 +33,9 @@ const env = {
   EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME: 'com.googleusercontent.apps.123-dev',
   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: '123-web.apps.googleusercontent.com',
   EXPO_PUBLIC_SENTRY_ENABLED: 'false',
-  EXPO_PUBLIC_PRIVACY_POLICY_URL: 'https://justgo-legal.vercel.app/privacy/',
-  EXPO_PUBLIC_TERMS_URL: 'https://justgo-legal.vercel.app/terms/',
+  EXPO_PUBLIC_PRIVACY_POLICY_URL:
+    'https://justgo-legal.anthonyyoo24.workers.dev/privacy/',
+  EXPO_PUBLIC_TERMS_URL: 'https://justgo-legal.anthonyyoo24.workers.dev/terms/',
 };
 test('provenance rejects foreign workflows, missing source and invalid run identity', () => {
   buildContext(env);

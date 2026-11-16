@@ -201,9 +201,12 @@ Build 0.1.0 (5), from tag `testflight-beta-2026-10-27-2` at `311f073`, called th
 Vercel API and expired in TestFlight on November 13, 2026.
 
 The legal notices are at
-[Privacy](https://justgo-legal.vercel.app/privacy/) and
-[Terms](https://justgo-legal.vercel.app/terms/), and both URLs are set in EAS
-preview. App Store Connect keeps the Vercel Privacy Policy URL.
+[Privacy](https://justgo-legal.anthonyyoo24.workers.dev/privacy/) and
+[Terms](https://justgo-legal.anthonyyoo24.workers.dev/terms/) on the Cloudflare
+Worker `justgo-legal` (#123). Both URLs are set in EAS development and preview
+and as the App Store Connect Privacy Policy URL. Builds up to 10 embed the old
+`justgo-legal.vercel.app` links, so the Vercel legal project stays up until
+every installed build that carries them has expired.
 
 ## Tester and reviewer package
 

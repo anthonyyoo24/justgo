@@ -3,7 +3,7 @@
   "name": "justgo-legal",
   "compatibility_date": "2026-10-28",
   "workers_dev": true,
-  "preview_urls": true,
+  "preview_urls": false,
   "observability": { "enabled": false },
   "build": { "command": "node cloudflare.mjs" },
   "assets": {

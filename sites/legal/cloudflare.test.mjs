@@ -48,6 +48,9 @@ test('the legal Worker serves only static assets with stable trailing-slash rout
   assert.equal(config.assets.not_found_handling, '404-page');
   assert.equal(config.build.command, 'node cloudflare.mjs');
   assert.deepEqual(config.observability, { enabled: false });
+  // workers.dev serves the published URLs; per-version preview URLs stay off.
+  assert.equal(config.workers_dev, true);
+  assert.equal(config.preview_urls, false);
   assert.equal(config.main, undefined);
   assert.equal(config.hyperdrive, undefined);
 });

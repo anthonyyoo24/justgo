@@ -44,7 +44,7 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [ ] The installed pstack plugin's `skills/poteto-mode/playbooks/autopilot-full.md` and `skills/poteto-mode/playbooks/opening-a-pr.md`. pstack is a plugin, so these files are not in this repository.
 - [x] Get Anthony's decisions before dependent work starts. He made all five in the planning session on November 6, 2026.
   - [x] Production arrangement. Phase 15 releases staging only. Production uses the same release lane in a later approved step.
-  - [x] Legal page hosting. The legal pages stay on Vercel, because they carry no account data. Edge Functions rewrite HTML to plain text without a custom domain.
+  - [x] Legal page hosting. The legal pages stay on Vercel, because they carry no account data. Edge Functions rewrite HTML to plain text without a custom domain. On November 16, 2026, Anthony moved them to a Cloudflare Worker instead, because Vercel Hobby bars commercial use (#123).
   - [x] Backups. R2, the backup clock Worker and the Cloudflare account that holds them stay.
   - [x] Plan tier. The project stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
   - [x] Local tools. Edge runtime lanes run in GitHub Actions, and nothing new is installed on the Mac.

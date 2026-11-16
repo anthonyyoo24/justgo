@@ -78,8 +78,9 @@ adding this sentence to the Privacy Policy
 
 Do not add it while any journal provider's processor or sensitive-data scope is
 unresolved. Supabase's sensitive-data condition is unresolved
-([#95](https://github.com/anthonyyoo24/justgo/issues/95)), and Vercel's stays open
-until its API project and the builds that call it are retired
+([#95](https://github.com/anthonyyoo24/justgo/issues/95)). Vercel no longer
+handles journal data: its API project was paused and the builds that called it
+expired on November 13, 2026
 ([#123](https://github.com/anthonyyoo24/justgo/issues/123)). The sentence is a
 conditional correction, not a current safeguard, and it authorizes no provider
 agreement.
@@ -165,8 +166,8 @@ closest to each request, until [Phase 15A](../implementation-plan/supabase-us-mo
 deleted it on November 16, 2026. Its function logs keep method,
 path, status and timing, not bodies, tokens or writing. R2 stores encrypted app
 and Auth snapshots and encrypted deletion and revocation records. Encryption does
-not remove those copies from the inventory or prove Not Linked. Vercel keeps only
-the legal pages. No new product analytics or mobile data collection is added, so
+not remove those copies from the inventory or prove Not Linked. A Cloudflare
+Worker hosts the legal pages, and Vercel serves only the old legal-page links. No new product analytics or mobile data collection is added, so
 the App Privacy categories above do not change.
 
 The [Supabase notice](SUPABASE_NOTICE_REVIEW.md) was approved and published on
