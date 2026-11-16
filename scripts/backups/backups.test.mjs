@@ -526,9 +526,23 @@ test('scheduled copies remain opt-in, protected, pinned, sequential and publish 
   assert.match(workflow, /43 4 \* \* \*/);
   assert.match(workflow, /23 \* \* \* \*/);
   assert.match(workflow, /apt.postgresql.org.sh -y/);
+  assert.doesNotMatch(workflow, /upload-artifact@|AGE_SECRET|OFFLINE_KEY/);
+  // The parent reaches only the mint step, which runs just before the backup
+  // step. The backup step reads the one-hour uploader from GITHUB_ENV, so it
+  // names no R2_UPLOAD_* secret that would override it.
+  const steps = workflow.split(/\n(?= {6}- )/);
+  const parentSteps = steps.filter((step) => /R2_PARENT/.test(step));
+  assert.equal(parentSteps.length, 1);
+  assert.match(
+    parentSteps[0],
+    /run: node scripts\/backups\/mint-upload-credentials\.mjs\s*$/,
+  );
+  assert.match(parentSteps[0], /R2_UPLOAD_TTL_SECONDS: '3600'/);
+  const backupStep = steps[steps.indexOf(parentSteps[0]) + 1];
+  assert.match(backupStep, /run: node scripts\/backups\/run\.mjs/);
   assert.doesNotMatch(
     workflow,
-    /upload-artifact@|AGE_SECRET|OFFLINE_KEY|R2_PARENT/,
+    /R2_UPLOAD_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)/,
   );
   assert.match(workflow, /checkout@[a-f0-9]{40}/);
   assert.match(workflow, /github.ref == 'refs\/heads\/main'/);
@@ -587,6 +601,104 @@ test('offline credential minting signs only upload/readback with bounded expiry'
     /inputs/,
   );
   assert.doesNotMatch(JSON.stringify(values), new RegExp('e'.repeat(64)));
+});
+test('the workflow mints only a masked one-hour uploader into GITHUB_ENV', async () => {
+  const { main, backupWorkflowRef } =
+    await import('./mint-upload-credentials.mjs');
+  const raw = JSON.stringify(policy);
+  const parentSecret = 'e'.repeat(64);
+  const base = {
+    GITHUB_ACTIONS: 'true',
+    CI: 'true',
+    GITHUB_WORKFLOW_REF: backupWorkflowRef,
+    GITHUB_ENV: '/synthetic/github-env',
+    BACKUP_POLICY_JSON: raw,
+    BACKUP_POLICY_SHA256: digest(raw),
+    R2_PARENT_ACCESS_KEY_ID: 'd'.repeat(32),
+    R2_PARENT_SECRET_ACCESS_KEY: parentSecret,
+    R2_UPLOAD_TTL_SECONDS: '3600',
+  };
+  const recorder = () => {
+    const events = [];
+    return {
+      events,
+      io: {
+        appendFile: async (path, text) => events.push(['env', path, text]),
+        writeFile: async () => events.push(['file']),
+        log: (line) => events.push(['log', line]),
+      },
+    };
+  };
+
+  const ok = recorder();
+  const before = Date.now();
+  await main(base, ok.io);
+  const env = ok.events.find(([kind]) => kind === 'env');
+  assert.equal(env[1], '/synthetic/github-env');
+  const values = Object.fromEntries(
+    env[2]
+      .trimEnd()
+      .split('\n')
+      .map((line) => [
+        line.slice(0, line.indexOf('=')),
+        line.slice(line.indexOf('=') + 1),
+      ]),
+  );
+  assert.deepEqual(Object.keys(values), [
+    'R2_UPLOAD_ACCESS_KEY_ID',
+    'R2_UPLOAD_SECRET_ACCESS_KEY',
+    'R2_UPLOAD_SESSION_TOKEN',
+  ]);
+  assert.equal(uploadCredentials(values, policy).accessKeyId, 'd'.repeat(32));
+  const claims = JSON.parse(
+    Buffer.from(
+      Buffer.from(values.R2_UPLOAD_SESSION_TOKEN, 'base64')
+        .toString()
+        .split('.')[1],
+      'base64url',
+    ).toString(),
+  );
+  assert.equal(claims.exp - claims.iat, 3600);
+  assert.ok(claims.iat * 1000 >= before - 1000);
+  // Every value is masked before it is written, and no log line carries one.
+  const envIndex = ok.events.indexOf(env);
+  for (const value of Object.values(values))
+    assert.ok(
+      ok.events
+        .slice(0, envIndex)
+        .some(
+          ([kind, line]) => kind === 'log' && line === `::add-mask::${value}`,
+        ),
+    );
+  for (const [kind, line] of ok.events)
+    if (kind === 'log' && !line.startsWith('::add-mask::'))
+      assert.ok(Object.values(values).every((value) => !line.includes(value)));
+  assert.ok(!JSON.stringify(ok.events).includes(parentSecret));
+  assert.ok(!ok.events.some(([kind]) => kind === 'file'));
+
+  for (const [change, message] of [
+    [
+      {
+        GITHUB_WORKFLOW_REF:
+          'anthonyyoo24/justgo/.github/workflows/database-backups.yml@refs/heads/feature',
+      },
+      /Only the main database-backups workflow/,
+    ],
+    [
+      {
+        GITHUB_WORKFLOW_REF:
+          'anthonyyoo24/justgo/.github/workflows/ci.yml@refs/heads/main',
+      },
+      /Only the main database-backups workflow/,
+    ],
+    [{ GITHUB_ENV: '' }, /Only the main database-backups workflow/],
+    [{ R2_UPLOAD_TTL_SECONDS: '86400' }, /exactly one hour/],
+    [{ GITHUB_ACTIONS: undefined }, /forbidden in CI/],
+  ]) {
+    const refused = recorder();
+    await assert.rejects(main({ ...base, ...change }, refused.io), message);
+    assert.deepEqual(refused.events, []);
+  }
 });
 test('a public recovery bucket is refused even when retention rules match', async () => {
   await assert.rejects(
