@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -7,6 +8,7 @@ import {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { EntryMotionView, useEntryMotion } from './useEntryMotion';
+import { EntryExpansion } from './DayEntryList';
 
 type EntryDetailsProps = {
   open: boolean;
@@ -42,6 +44,8 @@ function MountedEntryDetails({
   const contentHeight = measurement.height;
   const measuredKey = open ? measurement.key : null;
   const motion = useEntryMotion();
+  const expand = useContext(EntryExpansion);
+  const shownHeight = useRef(0);
   const openedCallback = useRef(onOpened);
   useEffect(() => {
     openedCallback.current = onOpened;
@@ -57,6 +61,12 @@ function MountedEntryDetails({
     // A replacement must be measured before starting its reveal. Reusing the
     // saved text's height would start and then restart the textbox animation.
     if (contentHeight === 0 || (open && measuredKey !== contentKey)) return;
+    // Tell the list how far this panel grows, so it can scroll with the
+    // reveal when the opened content would end below the viewport.
+    const target = open ? contentHeight : 0;
+    const growth = target - shownHeight.current;
+    shownHeight.current = target;
+    if (Math.abs(growth) > 0.5) expand?.(growth);
     if (reduceMotion) {
       motion.set(open, contentHeight);
       if (open) openedCallback.current?.();
@@ -78,6 +88,7 @@ function MountedEntryDetails({
   }, [
     contentHeight,
     contentKey,
+    expand,
     measuredKey,
     motion,
     open,

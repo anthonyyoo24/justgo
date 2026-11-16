@@ -1,7 +1,10 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import type { ProgressEntry } from '../../types';
 import { DayEntryList } from './DayEntryList';
+import { SlidingEntryDetails } from './SlidingEntryDetails';
+
+jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 
 const entries = (count: number): ProgressEntry[] =>
   Array.from({ length: count }, (_, index) => ({
@@ -164,4 +167,108 @@ it('keeps trailing padding at zero, so the last row meets the viewport and the s
       style.padding ??
       0,
   ).toBe(0);
+});
+
+describe('scrolling an opening row into view', () => {
+  // Four 100-point rows in a 300-point viewport, scrolled to the bottom.
+  async function setup(reduceMotion: boolean) {
+    const scrollTo = jest.fn();
+    const attach = (scroll: ScrollViewInstance | null) => {
+      if (scroll) jest.spyOn(scroll, 'scrollTo').mockImplementation(scrollTo);
+    };
+    const list = (open: string | null) => (
+      <DayEntryList
+        entries={entries(4)}
+        scrollRef={attach}
+        renderEntry={({ item }) => (
+          <View testID={`row-${item.attemptId}`}>
+            <Text>{item.instruction}</Text>
+            <SlidingEntryDetails
+              open={open === item.attemptId}
+              reduceMotion={reduceMotion}
+              contentKey="saved"
+            >
+              <Text>Reflection</Text>
+            </SlidingEntryDetails>
+          </View>
+        )}
+        onScroll={jest.fn()}
+        onScrollBeginDrag={jest.fn()}
+        footer={null}
+      />
+    );
+    const screen = await render(list(null));
+    const scrollView = screen.getByTestId('day-sheet-entry-list');
+    await fireEvent(scrollView, 'layout', layout(300));
+    await fireEvent(scrollView, 'contentSizeChange', 390, 400);
+    for (let index = 0; index < 4; index += 1)
+      await fireEvent(screen.getByTestId(`row-entry-${index}`), 'layout', {
+        nativeEvent: {
+          layout: { x: 0, y: index * 100, width: 390, height: 100 },
+        },
+      });
+    await fireEvent.scroll(scrollView, {
+      nativeEvent: {
+        contentOffset: { y: 100 },
+        contentSize: { height: 400 },
+        layoutMeasurement: { height: 300 },
+      },
+    });
+    const open = async (id: string, height: number) => {
+      await screen.rerender(list(id));
+      await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height } },
+      });
+    };
+    const grow = (height: number) =>
+      fireEvent(scrollView, 'contentSizeChange', 390, height);
+    return { screen, scrollView, scrollTo, open, grow };
+  }
+
+  it('follows the last row while its reflection opens below the viewport', async () => {
+    const { scrollTo, open, grow } = await setup(false);
+    await open('entry-3', 120);
+    // Nothing has grown yet, and the list is already at its end.
+    expect(scrollTo).not.toHaveBeenCalled();
+    await grow(460);
+    expect(scrollTo).toHaveBeenLastCalledWith({ y: 160, animated: false });
+    await grow(520);
+    expect(scrollTo).toHaveBeenLastCalledWith({ y: 220, animated: false });
+    // The reflection is fully in view, so later growth such as a new page
+    // below it leaves the position alone.
+    await grow(900);
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens with one jump when motion is reduced', async () => {
+    const { scrollTo, open, grow } = await setup(true);
+    await open('entry-3', 120);
+    await grow(520);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ y: 220, animated: false });
+  });
+
+  it('does not scroll when the opened reflection already fits', async () => {
+    const { scrollTo, open, grow } = await setup(false);
+    await open('entry-1', 80);
+    await grow(480);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('shows the start of a row taller than the viewport', async () => {
+    const { scrollTo, open, grow } = await setup(true);
+    await open('entry-3', 400);
+    await grow(800);
+    expect(scrollTo).toHaveBeenCalledWith({ y: 300, animated: false });
+  });
+
+  it('stops following once the person drags the list', async () => {
+    const { scrollView, scrollTo, open, grow } = await setup(false);
+    await open('entry-3', 120);
+    await grow(460);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await fireEvent(scrollView, 'scrollBeginDrag');
+    await grow(520);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+  });
 });

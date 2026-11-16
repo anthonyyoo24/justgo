@@ -1,15 +1,15 @@
 import {
-  Fragment,
+  createContext,
   useCallback,
   useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
-  type Ref,
 } from 'react';
 import {
   ScrollView,
   StyleSheet,
+  View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type LayoutChangeEvent,
@@ -18,6 +18,15 @@ import {
 import type { ProgressEntry } from '../../types';
 
 const rowBatch = 8;
+
+/**
+ * Lets an opening row ask the list to keep its final bottom in view. The row
+ * reports how much it will grow; the list follows the growth frame by frame.
+ */
+export const EntryExpansion = createContext<((growth: number) => void) | null>(
+  null,
+);
+type Expansion = { id: string; height: number };
 
 /** Keep animated row heights and active drafts stable while filling ahead of scroll. */
 export function DayEntryList({
@@ -35,7 +44,7 @@ export function DayEntryList({
   renderEntry: (item: { item: ProgressEntry; index: number }) => ReactNode;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   footer: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
+  scrollRef?: (scroll: ScrollViewInstance | null) => void;
   onViewportLayout?: (event: LayoutChangeEvent) => void;
   onScrollOffsetChange?: (y: number) => void;
   onContentLayout?: (height: number, complete: boolean) => void;
@@ -46,8 +55,57 @@ export function DayEntryList({
   const previousLength = useRef(entries.length);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [content, setContent] = useState({ height: 0, rows: 0 });
+  const scrollView = useRef<ScrollViewInstance | null>(null);
+  const attachScroll = useCallback(
+    (scroll: ScrollViewInstance | null) => {
+      scrollView.current = scroll;
+      scrollRef?.(scroll);
+    },
+    [scrollRef],
+  );
+  const geometry = useRef({ offset: 0, viewport: 0, content: 0 });
+  const rowLayouts = useRef(new Map<string, { y: number; height: number }>());
+  const expansion = useRef<Expansion | null>(null);
+  // Scroll only as far as the content has grown so far, so the expanding
+  // row's bottom stays pinned to the viewport edge while it opens. With
+  // reduced motion the row opens in one step and this is a single jump.
+  const followExpansion = useCallback(() => {
+    const goal = expansion.current;
+    if (!goal) return;
+    const row = rowLayouts.current.get(goal.id);
+    const { offset, viewport, content: contentHeight } = geometry.current;
+    if (!row || viewport <= 0) {
+      expansion.current = null;
+      return;
+    }
+    // A row taller than the viewport shows its start, never its far end.
+    const target =
+      goal.height > viewport ? row.y : row.y + goal.height - viewport;
+    const reachable = Math.min(target, contentHeight - viewport);
+    if (reachable > offset + 0.5) {
+      geometry.current.offset = reachable;
+      scrollView.current?.scrollTo({ y: reachable, animated: false });
+    }
+    if (reachable >= target - 0.5) expansion.current = null;
+  }, []);
+  const expandRow = useCallback(
+    (id: string, growth: number) => {
+      const row = rowLayouts.current.get(id);
+      expansion.current =
+        row && growth > 0.5 ? { id, height: row.height + growth } : null;
+      followExpansion();
+    },
+    [followExpansion],
+  );
+  const measureRow = useCallback(
+    (id: string, y: number, height: number) =>
+      rowLayouts.current.set(id, { y, height }),
+    [],
+  );
   const measureContent = useCallback(
     (_: number, height: number) => {
+      geometry.current.content = height;
+      followExpansion();
       const rows = Math.min(visibleCount, entries.length);
       onContentLayout?.(height, rows === entries.length);
       setContent((measured) =>
@@ -56,7 +114,7 @@ export function DayEntryList({
           : { height, rows },
       );
     },
-    [entries.length, visibleCount, onContentLayout],
+    [entries.length, visibleCount, onContentLayout, followExpansion],
   );
   useLayoutEffect(() => {
     const appended = entries.length > previousLength.current;
@@ -76,14 +134,20 @@ export function DayEntryList({
   }, [content, entries.length, viewportHeight, visibleCount]);
   return (
     <ScrollView
-      ref={scrollRef}
+      ref={attachScroll}
       testID="day-sheet-entry-list"
       style={styles.scroll}
       contentContainerStyle={styles.entries}
       scrollEventThrottle={16}
       keyboardShouldPersistTaps="handled"
-      onScrollBeginDrag={onScrollBeginDrag}
+      onScrollBeginDrag={() => {
+        // A finger on the list owns scrolling from here on.
+        expansion.current = null;
+        onScrollBeginDrag?.();
+      }}
       onLayout={(event) => {
+        geometry.current.viewport = event.nativeEvent.layout.height;
+        followExpansion();
         setViewportHeight(event.nativeEvent.layout.height);
         onViewportLayout?.(event);
       }}
@@ -91,6 +155,7 @@ export function DayEntryList({
       onScroll={(event) => {
         const { contentOffset, contentSize, layoutMeasurement } =
           event.nativeEvent;
+        geometry.current.offset = contentOffset.y;
         onScrollOffsetChange?.(contentOffset.y);
         fillingAhead.current =
           contentOffset.y > 0 &&
@@ -106,12 +171,45 @@ export function DayEntryList({
       }}
     >
       {entries.slice(0, visibleCount).map((entry, index) => (
-        <Fragment key={entry.attemptId}>
+        <EntrySlot
+          key={entry.attemptId}
+          id={entry.attemptId}
+          onMeasure={measureRow}
+          onExpand={expandRow}
+        >
           {renderEntry({ item: entry, index })}
-        </Fragment>
+        </EntrySlot>
       ))}
       {visibleCount >= entries.length && footer}
     </ScrollView>
+  );
+}
+
+function EntrySlot({
+  id,
+  onMeasure,
+  onExpand,
+  children,
+}: {
+  id: string;
+  onMeasure: (id: string, y: number, height: number) => void;
+  onExpand: (id: string, growth: number) => void;
+  children: ReactNode;
+}) {
+  const expand = useCallback(
+    (growth: number) => onExpand(id, growth),
+    [id, onExpand],
+  );
+  return (
+    <View
+      onLayout={({ nativeEvent: { layout } }) =>
+        onMeasure(id, layout.y, layout.height)
+      }
+    >
+      <EntryExpansion.Provider value={expand}>
+        {children}
+      </EntryExpansion.Provider>
+    </View>
   );
 }
 
