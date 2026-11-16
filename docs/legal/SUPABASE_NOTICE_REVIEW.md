@@ -116,6 +116,46 @@ which waits for Anthony's choice.
   [release disclosures](RELEASE_DISCLOSURES.md) record the move by build. The
   data collected and the App Privacy answers do not change.
 
+## Supabase named (P15-10)
+
+On November 16, 2026, Anthony agreed that the Privacy Policy must name Supabase
+before outside testers join the beta. The plain-language text of November 15
+named only Apple and Google and described every other provider by role. This
+candidate names Supabase and changes nothing else in the public text. It keeps
+the other providers by role, including Cloudflare R2 for the encrypted backups.
+The Terms do not change.
+
+| Section             | Published (`2026-11-15-us-east-3`)                                                                                                                                       | Candidate                                                                                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who receives it     | We also use service providers that host our servers and database, store our encrypted backups, process error reports, host our support email and host these legal pages. | Supabase hosts our servers, our database and our sign-in service in the United States, in its us-east-1 region in Virginia. We also use service providers that store our encrypted backups, process error reports, host our support email and host these legal pages. |
+| How long we keep it | **Server logs:** for a limited period set by our service plan.                                                                                                           | **Server logs:** for a limited period set by our Supabase plan.                                                                                                                                                                                                       |
+
+- **What makes it true.** The `api` Edge Function, PostgreSQL and Auth run in
+  the us-east-1 Supabase project
+  ([U.S. move](../implementation-plan/supabase-us-move.md)), and every build
+  since build 8 sends `x-region: us-east-1`. The Canada project was deleted at
+  US-10 on November 16, 2026, and build 7 expired the same day.
+- **Log retention.** P15-2 and P15-9 recorded no retention period. The
+  [log retention](#recorded-facts-behind-the-wording) fact above still holds:
+  Supabase lists 1 day for API and database logs on Free, which the project is
+  on, and no separate figure for function logs. The text names the plan, not a
+  number, so a plan change does not make it false.
+- **Legal pages.** A Cloudflare Worker hosts the legal pages since November 16,
+  2026 ([#123](https://github.com/anthonyyoo24/justgo/issues/123)). The text
+  keeps "host these legal pages" by role, so it needs no change.
+- **Provider review.** Issue [#95](https://github.com/anthonyyoo24/justgo/issues/95)
+  carries the restated review for journal traffic through Edge Functions in
+  us-east-1. The health-data consent question there stays open until the App
+  Store launch, as Anthony decided.
+- **Before publication.** Anthony approves the text. At publication, set
+  `legal-version` to `2026-11-<dd>-us-east` (with `-<n>` for a later revision
+  that day), `publication-status: owner-approved` and the same
+  `effective-date`, update `betaPrivacyVersion` in
+  `scripts/release/check-beta.mjs` and the legal build tests, publish by the
+  [legal site guide](../../sites/legal/README.md#publishing-updates), record it
+  in [APPROVALS.md](APPROVALS.md), and set
+  `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to the published version.
+
 ## Approved R2 wording and its conditions
 
 The provider bullet keeps only the backup role from the approved Cloudflare

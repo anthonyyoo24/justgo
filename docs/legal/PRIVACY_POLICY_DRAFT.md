@@ -8,6 +8,8 @@
 
 This is the plain-language notice from Phase 13A PR 5 ([one journal per phone](../implementation-plan/one-person-phone.md)). At Anthony's request on November 15, 2026, it rewrites the public text by what is collected, why, who receives it, how long it is kept, your choices and contact. It also matches the behavior that PRs #494 and #497 shipped: import works without sign-in, and every sign-in brings the phone's journal into that account. Detail the shorter text leaves out stays in [DATA_INVENTORY.md](DATA_INVENTORY.md#detail-the-public-notices-leave-out). Anthony approved the text on its PR on November 15, 2026: "ok soudns good the docs are ready to go". He gave the go to publish it the same day ("publish it now"), and it took effect and was published on November 15, 2026. It replaced `2026-11-14-us-east`, the U.S. region notice published November 14, 2026, whose [conditions](SUPABASE_NOTICE_REVIEW.md#us-region-candidate) still hold, and Git history keeps that text. The Terms publish with it. Later on November 15, Anthony asked to drop "free beta" from the opening (`2026-11-15-us-east-2`): "it should not include free beta. I thought you removed that." and then "start it". Only that sentence changed, and the Terms keep `2026-11-15-us-east`. Later still on November 15, Anthony asked to rename the Settings → Data row "Download my data" to "Export data" and then to "do both the icon swap and republish" (`2026-11-15-us-east-3`). Only the name of that row and "a new download" changed, and the Terms changed the same way as `2026-11-15-us-east-2`. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
+Pending: P15-10 of the [Supabase plan](../implementation-plan/phase-15-supabase-api.md) names Supabase in the public text. Anthony agreed on November 16, 2026, that the policy must name it before outside testers join. The "Who receives it" paragraph now says Supabase hosts the servers, database and sign-in service in us-east-1, and the server-log bullet says "our Supabase plan" instead of "our service plan". Nothing else in the public text changed. The [Supabase notice review](SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10) records the change. The version, status and effective date above stay until Anthony approves the text and gives his separate go to publish.
+
 <!-- public:start -->
 
 # Privacy Policy
@@ -49,7 +51,7 @@ We use your information to save and show your journal, sync the copies you choos
 
 Apple and Google provide Sign in with Apple and Sign in with Google. Apple also provides iCloud Sync and the secure storage on your iPhone that keeps you signed in.
 
-We also use service providers that host our servers and database, store our encrypted backups, process error reports, host our support email and host these legal pages. These pages have no analytics or tracking cookies.
+Supabase hosts our servers, our database and our sign-in service in the United States, in its us-east-1 region in Virginia. We also use service providers that store our encrypted backups, process error reports, host our support email and host these legal pages. These pages have no analytics or tracking cookies.
 
 JustGO and its service providers can process synchronized account content, including feelings and reflections. JustGO is not end-to-end encrypted. A file you save to Files, iCloud Drive or another place is handled under that place's own rules. We may disclose information when the law requires it.
 
@@ -59,7 +61,7 @@ JustGO and its service providers can process synchronized account content, inclu
 - **Your account and its journal:** until you use Delete all my data or Delete account.
 - **Backups:** our encrypted backups are deleted about a week after they're made. If we ever restore one, we make sure deleted data stays deleted.
 - **Error reports:** for the period set with our error-reporting provider. Reports carry no account identifier, so deleting your account can't find them. Email us the time and app version if you want us to look for one.
-- **Server logs:** for a limited period set by our service plan.
+- **Server logs:** for a limited period set by our Supabase plan.
 - **Support emails:** 12 months, unless your request is still open or the law requires longer.
 - **Security records:** after a deletion, we keep a small record, such as account identifiers and dates, so deleted data and revoked sign-ins can't come back. It contains no journal content.
 

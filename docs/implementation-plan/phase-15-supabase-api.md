@@ -631,14 +631,14 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Files.**
 
-- [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
-- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` (planned) from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
+- [x] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
+- [x] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
 - [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
 
 **Build.**
 
-- [ ] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded.
-- [ ] Keep Cloudflare R2 for encrypted backups, and keep Vercel for the legal pages until Anthony moves them.
+- [x] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded. The November 15 plain-language rewrite described every provider but Apple and Google by role. On November 16, 2026, Anthony agreed that the policy must name Supabase before outside testers join, so the second candidate ([Supabase named](../legal/SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10)) names it as the host of the servers, database and sign-in service in us-east-1.
+- [x] Keep Cloudflare R2 for encrypted backups. Anthony moved the legal pages from Vercel to a Cloudflare Worker on November 16, 2026 (#123), and the text keeps them by role.
 - [ ] Restate the provider review in issue #95 for journal traffic through Edge Functions.
 
 **You see.**
