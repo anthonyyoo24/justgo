@@ -165,13 +165,14 @@ The current TestFlight build is **0.1.0 (11)**, from tag
 `testflight-beta-2026-11-16-1` at source
 `877be4809bd449815a53117177a710ddf00628e9`, with the optional diagnostics
 profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43935265337)
-(artifact 14261203743, IPA SHA-256
-`a47327ebbdbf6237791cd9755f0223722e7465fcdb545ac0d459c6cbd46ac829`) and
+(artifact 14261203743, archive SHA-256
+`7e3452262e573bab2de006f24d17b98d8392f895521d36743e0d6d3a4a444254`, IPA
+SHA-256 `a47327ebbdbf6237791cd9755f0223722e7465fcdb545ac0d459c6cbd46ac829`) and
 [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43941070213)
 ran on November 16, 2026. The IPA inspector passed, and its bundle calls the
 us-east-1 `api` function and links the legal pages on the Worker. It carries
-everything on `main` since build 10, including the one-journal-per-phone
-changes of Phase 13A and the legal pages on the Worker (#525). It ships with
+everything on `main` since build 10, including the rest of Phase 13A (one
+journal per phone) and the legal pages on the Worker (#525). It ships with
 Privacy `2026-11-15-us-east-3`, which describes the host by role (P15-10, #526).
 Its phone check is the beta acceptance below.
 Build 0.1.0 (10), from tag `testflight-beta-2026-11-15-3` at source
@@ -287,8 +288,9 @@ What to Test for build 11:
 >    check your history is still there.
 > 4. Optional: turn on airplane mode, finish and save a challenge, then
 >    reconnect.
->    Report anything confusing or broken with TestFlight's screenshot feedback.
->    Please don't include private writing in screenshots.
+>
+> Report anything confusing or broken with TestFlight's screenshot feedback.
+> Please don't include private writing in screenshots.
 
 The feedback email and privacy URL are saved. Anthony gave the review-contact
 phone to Apple directly, so it is not recorded here. Sign-in Required stays
