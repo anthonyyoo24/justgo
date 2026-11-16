@@ -166,7 +166,7 @@ describe('completed attempt resources', () => {
       catalog = (
         await request(a.sessionToken, '/v1/challenges')
       ).json<Catalog>();
-    expect(catalog.cards).toHaveLength(61);
+    expect(catalog.cards).toHaveLength(105);
     expect(new Set(catalog.cards.map((c) => c.venue)).size).toBe(6);
     for (const card of catalog.cards) {
       expect(card).not.toHaveProperty('revisionId');
