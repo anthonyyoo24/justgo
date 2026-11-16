@@ -58,8 +58,15 @@ function server() {
   const versions: JournalSyncVersion[] = [];
   let loseAcknowledgement = false;
   const uploads: JournalSyncVersion[] = [];
-  const check = (expected: number) => {
+  const tombstones = new Set<string>();
+  const check = (
+    expected: number,
+    ids: string[] = [],
+    restoreDeleted?: boolean,
+  ) => {
     if (expected !== epoch) throw new ApiError('DATA_EPOCH_CHANGED');
+    if (!restoreDeleted && ids.some((id) => tombstones.has(id)))
+      throw new ApiError('DATA_DELETED');
   };
   const transport: DataSyncTransport = {
     completions: async () => ({
@@ -73,7 +80,11 @@ function server() {
       nextCursor: null,
     }),
     putCompletions: async (input) => {
-      check(input.expectedEpoch);
+      check(
+        input.expectedEpoch,
+        input.attempts.map((attempt) => attempt.id),
+        input.restoreDeleted,
+      );
       let added = 0;
       for (const attempt of input.attempts)
         if (!attempts.some((old) => old.id === attempt.id)) {
@@ -88,7 +99,11 @@ function server() {
       };
     },
     putVersions: async (input) => {
-      check(input.expectedEpoch);
+      check(
+        input.expectedEpoch,
+        input.versions.map((version) => version.attemptId),
+        input.restoreDeleted,
+      );
       uploads.push(...input.versions);
       let saved = 0;
       for (const version of input.versions)
@@ -120,6 +135,7 @@ function server() {
     attempts,
     versions,
     uploads,
+    tombstones,
     loseNextAcknowledgement: () => {
       loseAcknowledgement = true;
     },
@@ -288,6 +304,45 @@ it('restores orphan journal versions explicitly and retries a lost acknowledgeme
   await repository.submitReflection(uuid(1), uuid(400), { text: 'New edit' });
   await sync.synchronize();
   expect(write.mock.calls.at(-1)?.[0].restoreDeleted).toBeUndefined();
+});
+
+it('replays a signed-out import as an import at the next sync, then returns to routine uploads', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await sync.synchronize();
+  remote.tombstones.add(attempt().id);
+  const write = jest.spyOn(remote.transport, 'putCompletions');
+  await repository.mergeCompletions([attempt()]);
+  // Routine sync never restores a deleted record by itself.
+  await expect(sync.synchronize()).rejects.toMatchObject({
+    code: 'DATA_DELETED',
+  });
+  await sync.markImportPending();
+  await sync.synchronize();
+  expect(write.mock.calls.at(-1)?.[0]).toMatchObject({
+    restoreDeleted: true,
+    attempts: [{ id: attempt().id }],
+  });
+  expect(remote.attempts.map((value) => value.id)).toEqual([attempt().id]);
+  await repository.mergeCompletions([attempt(2)]);
+  await sync.synchronize();
+  expect(write.mock.calls.at(-1)?.[0].restoreDeleted).toBeUndefined();
+  expect(
+    JSON.parse((await storage.getItem(`justgo:v1:${owner}:cloud-sync`))!),
+  ).toMatchObject({ importPending: false });
+});
+
+it('lets a delete-all from another device win over a signed-out import', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await sync.synchronize();
+  await sync.markImportPending();
+  await repository.mergeCompletions([attempt()]);
+  remote.reset();
+  await sync.synchronize();
+  expect((await repository.snapshotData()).attempts).toEqual([]);
+  expect(remote.attempts).toEqual([]);
+  expect(
+    JSON.parse((await storage.getItem(`justgo:v1:${owner}:cloud-sync`))!),
+  ).toMatchObject({ importPending: false });
 });
 
 it('downloads journal-only history using frozen context without needing a current catalog or completion row', async () => {

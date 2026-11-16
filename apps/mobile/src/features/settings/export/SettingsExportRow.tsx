@@ -130,7 +130,7 @@ function ExportSession({
                     : 'Your ZIP download has started.'
                   : localAccountSnapshot
                     ? 'Your phone’s saved data was shared. Sign in to include the latest cloud data.'
-                    : 'Your data download was shared.',
+                    : 'Your data export was shared.',
             },
       );
     } catch (error) {
@@ -146,7 +146,7 @@ function ExportSession({
             ? error.message
             : error instanceof ApiError && error.code === 'STORAGE'
               ? 'Some saved data on this phone could not be read. Try reopening the app before exporting.'
-              : 'Couldn’t download your data. Please try again.',
+              : 'Couldn’t export your data. Please try again.',
       });
     } finally {
       if (active.current === controller) {
@@ -159,13 +159,13 @@ function ExportSession({
     <View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Download my data"
+        accessibilityLabel="Export data"
         accessibilityHint={
           accountId && repository
             ? localAccountSnapshot
               ? 'Save this phone’s challenge history, journal and preferences. Sign in to include the latest cloud data.'
               : 'Save your complete challenge history, journal and preferences in a restorable ZIP'
-            : 'Continue on this phone before downloading your saved data'
+            : 'Continue on this phone before exporting your saved data'
         }
         accessibilityState={{
           disabled: busy || preferencesPending || disabled,
@@ -180,14 +180,14 @@ function ExportSession({
       >
         <SettingsRowContent
           icon="export"
-          label="Download my data"
+          label="Export data"
           accessory={
             busy ? (
               <ActivityIndicator
                 color={colors.ink}
                 accessible
                 accessibilityRole="progressbar"
-                accessibilityLabel="Download my data in progress"
+                accessibilityLabel="Export data in progress"
               />
             ) : undefined
           }

@@ -8,6 +8,7 @@ import {
 
 const sessionKey = 'justgo.fixture.provider-session.v1';
 const subjectKey = 'justgo.fixture.provider-subject.v1';
+const linkIdentityKey = 'justgo.fixture.provider-link-identity.v1';
 const handleSchema = z.string().regex(/^[a-f\d]{32}$/);
 const providerSchema = z.enum(['apple', 'google']);
 const sessionSchema = z
@@ -31,6 +32,11 @@ interface FixtureStorage {
 }
 export type ProviderFixtureControl = {
   selectSubject(subjectHandle: string | null): void;
+  /**
+   * Names the subject whose provider identity the next links use, so a journey
+   * can link an identity that already has its own account. Null links a new one.
+   */
+  selectLinkIdentity(subjectHandle: string | null): void;
 };
 declare global {
   var justgoProviderFixture: ProviderFixtureControl | undefined;
@@ -91,9 +97,9 @@ export function createJourneyManagedAuth(options: {
       throw new ProviderAuthError('STORAGE');
     }
   };
-  const selected = () =>
+  const selected = (key = subjectKey) =>
     store(() => {
-      const value = options.storage.getItem(subjectKey);
+      const value = options.storage.getItem(key);
       if (value === null) return null;
       const parsed = handleSchema.safeParse(value);
       if (!parsed.success) throw new ProviderAuthError('STORAGE');
@@ -137,6 +143,7 @@ export function createJourneyManagedAuth(options: {
       | 'provider-sign-outs',
     body: unknown,
     schema: z.ZodType<T>,
+    refusal?: ProviderAuthError,
   ): Promise<T> => {
     check();
     const expected = generation;
@@ -151,6 +158,7 @@ export function createJourneyManagedAuth(options: {
         signal: lifetime.signal,
       });
       check(expected);
+      if (refusal && response.status === 409) throw refusal;
       if (
         !response.ok ||
         new URL(response.url || api.href).origin !== api.origin
@@ -182,6 +190,18 @@ export function createJourneyManagedAuth(options: {
       });
       saved = null;
     },
+    selectLinkIdentity(subjectHandle) {
+      check();
+      if (
+        subjectHandle !== null &&
+        !handleSchema.safeParse(subjectHandle).success
+      )
+        throw new ProviderAuthError('CONFIGURATION');
+      store(() => {
+        if (subjectHandle === null) options.storage.removeItem(linkIdentityKey);
+        else options.storage.setItem(linkIdentityKey, subjectHandle);
+      });
+    },
   };
   const auth: ManagedAuth = {
     initialize: async () => {
@@ -209,15 +229,26 @@ export function createJourneyManagedAuth(options: {
       const expected = generation;
       const current = load();
       if (!current) throw new ProviderAuthError('AUTH');
+      // Like Auth's managed adapter, an identity already linked keeps the session.
+      if (current.session.linkedProviders.includes(provider))
+        return current.session;
+      const identity = selected(linkIdentityKey);
       const envelope = await request(
         'provider-links',
-        { accessToken: current.session.accessToken, provider },
+        {
+          accessToken: current.session.accessToken,
+          provider,
+          ...(identity ? { identityHandle: identity } : {}),
+        },
         envelopeSchema,
+        new ProviderAuthError('IDENTITY_EXISTS'),
       );
+      // A native link returns a new session for the same Auth user.
       if (
         envelope.subjectHandle !== current.subjectHandle ||
         envelope.session.authUserId !== current.session.authUserId ||
-        envelope.session.accessToken !== current.session.accessToken
+        envelope.session.accessToken === current.session.accessToken ||
+        !envelope.session.linkedProviders.includes(provider)
       )
         throw new ProviderAuthError('AUTH');
       return retain(envelope, provider, expected);

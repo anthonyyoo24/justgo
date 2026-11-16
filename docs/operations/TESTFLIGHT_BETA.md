@@ -19,10 +19,16 @@ are invited.
 
 `build.beta` is a store-signed release build that uses EAS **preview** variables.
 The beta and Dev profiles, the beta preflight and every TestFlight workflow
-command select the staging `api` Edge Function at
-`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api`, and the preflight
-refuses any other API URL. Build 7 is the current TestFlight build and uses the
-function. P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+command select the staging `api` Edge Function in the us-east-1 project
+`gcjmvtsisivxxorstvkb`, at
+`https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api`, and the preflight
+refuses any other API URL or Auth project. Every API request sends
+`x-region: us-east-1`, so Supabase runs the function beside the database
+(`apiRegionHeaders` in `apps/mobile/src/lib/network/http.ts`). Build 8 is the
+first build on this project. Build 7 still points at the Canada project
+`kmcpcauaxlgpevkkenwd` until step US-10 of the
+[Supabase us-east-1 move](../implementation-plan/supabase-us-move.md) retires it.
+P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
 retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
 its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
 was paused, not deleted. The legal pages stay on Vercel.
@@ -49,11 +55,22 @@ Phase 15 build run and its submit run, to keep build 5's approved essential-erro
 reporting. The default off path would change that behavior and needs its own
 disposition.
 
+Every beta build, with or without diagnostics, needs the U.S. Privacy notice
+that `betaPrivacyVersion` in
+[`scripts/release/check-beta.mjs`](../../scripts/release/check-beta.mjs) names.
+It must read `<yyyy>-<mm>-<dd>-us-east`, with `-<n>` for a later revision on the
+same date, and the Privacy draft must carry that version with the same effective
+date. It holds `2026-11-15-us-east-3`, the plain-language U.S. notice that
+names the Export data row, published on November 15, 2026. It replaced
+`2026-11-15-us-east-2` and `2026-11-15-us-east`, published earlier that day,
+which replaced `2026-11-14-us-east` (US-7).
+
 The protected `testflight-beta` environment holds
 `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`, which must match the actually
-published Privacy version. It holds `2026-11-13-supabase-edge`, published and
-set on November 13, 2026. Change it only after a new Privacy version is
-published, or the preflight refuses diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
+published Privacy version. It holds `2026-11-15-us-east-3`, published and set on
+November 15, 2026, after build 9. Build 9 shipped beside `2026-11-14-us-east`,
+and build 10 beside `2026-11-15-us-east-3`. Change it only after a new Privacy version is published, or the preflight refuses
+diagnostics builds. It also holds the Sentry `org:ci` token that Anthony
 approved on October 27, 2026, as `SENTRY_AUTH_TOKEN`, for the mandatory source-map
 and dSYM uploads. The approved versions are in the [approval record](../legal/APPROVALS.md).
 
@@ -70,7 +87,8 @@ instruction.
 The legal pages stay on Vercel, so `release:beta:check` asks for no
 `deployment-host` marker. It still needs the approved, dated Privacy Policy and
 Terms, and a diagnostics build still needs the matching published Privacy
-version. The Privacy Policy published on November 13, 2026 names the Supabase
+version. Every beta build needs the U.S. notice that `betaPrivacyVersion` pins.
+The Privacy Policy published on November 13, 2026 names the Supabase
 Edge Function as the API host, as P15-10 of the
 [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) required
 before the first outside tester joins.
@@ -141,14 +159,36 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The current TestFlight build is **0.1.0 (7)**, from tag
-`testflight-beta-2026-11-12-3` at source
-`e2ab966807cbba64e0302f13f3ee8f0624825829`, with the optional diagnostics
-profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436)
-and [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43340902735)
-succeeded, and the build run's signed-app inspection passed. The archive SHA-256
-is `5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`. It calls
-the staging `api` function. The internal **Owner validation** group has one
+The current TestFlight build is **0.1.0 (10)**, from tag
+`testflight-beta-2026-11-15-3` at source
+`a6afeadcb5af15005922b62766d5e5b61ed41ba6`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43747593141)
+(archive SHA-256
+`c602e1bc8b49a3b0c09df6ccb3815b4f184c119d57f2f586e55f6df12b444a6c`) and
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43750545190)
+succeeded on November 15, 2026. It calls the staging `api` function in the
+us-east-1 project, and it adds three changes to build 9: the Login
+methods switches that make Apple and Google one account with two ways in
+(#502), the Privacy Policy `2026-11-15-us-east-3` without "free beta" (#501,
+#504), and the Export data rename with flipped tray icons (#504). Gate
+[#503](https://github.com/anthonyyoo24/justgo/issues/503) holds its phone check
+of the switches. Tag `testflight-beta-2026-11-15-2` at `cf0f2b0` stays unused:
+its preflight refused it because the published Privacy version had already
+moved to `-3`.
+Build 0.1.0 (9), from tag `testflight-beta-2026-11-15-1` at `77745df`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43720975910),
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43729886513)),
+carries the Phase 13A change that brings the phone's journal into whichever
+account signs in (#492).
+Build 0.1.0 (8), from tag `testflight-beta-2026-11-14-1` at `efd40be`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43649273099),
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43652833418)),
+calls the same us-east-1 project.
+Build 0.1.0 (7), from tag `testflight-beta-2026-11-12-3` at `e2ab966`
+([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436),
+archive SHA-256
+`5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`), still
+points at the Canada project until US-10. The internal **Owner validation** group has one
 tester and manual distribution. No external review or invitation has happened.
 
 On November 13, 2026, Anthony reported that Apple sign-in and account deletion
@@ -238,7 +278,7 @@ any other hosted schedule needs Anthony's separate approval.
 
 Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
 checks the function's public `/ready`,
-`https://kmcpcauaxlgpevkkenwd.supabase.co/functions/v1/api/ready`, over HTTPS every minute, with a five-second
+`https://gcjmvtsisivxxorstvkb.supabase.co/functions/v1/api/ready`, over HTTPS every minute, with a five-second
 timeout and no account credentials. A check passes only on a successful HTTP
 status with JSON `status: ready`. Three failures in a row open an issue, and one
 success resolves it. The API and mobile Sentry projects email Anthony on new

@@ -541,9 +541,7 @@ test('complete historical pages stay available offline after sync and logout kee
   await context.setOffline(false);
   await openData(page);
   const download = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   await download;
   await expect(
     page.getByText(

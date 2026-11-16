@@ -79,7 +79,9 @@ describe('health and readiness', () => {
           headers: {
             origin,
             'access-control-request-method': method,
-            'access-control-request-headers': 'authorization,content-type',
+            // Mobile pins every request to the database region (#449).
+            'access-control-request-headers':
+              'authorization,content-type,x-region',
           },
         });
       const allowed = await preflight('http://localhost:8081');
@@ -89,6 +91,9 @@ describe('health and readiness', () => {
       );
       expect(allowed.headers['access-control-allow-methods']).toBe(
         'GET, POST, PUT, PATCH, DELETE',
+      );
+      expect(allowed.headers['access-control-allow-headers']).toBe(
+        'authorization,content-type,x-region',
       );
       const denied = await preflight('https://unknown.example');
       expect(denied.headers['access-control-allow-origin']).toBeUndefined();

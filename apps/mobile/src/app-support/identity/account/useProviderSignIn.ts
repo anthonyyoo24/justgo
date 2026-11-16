@@ -8,19 +8,24 @@ import type { SignInProvider } from '../auth/types';
 import { useCancelWelcomeEntry } from '../welcome/WelcomeTransition';
 import { useSignInHandoff } from './useSignInHandoff';
 
+type DirectFailure = {
+  message: string;
+  reference: string | null;
+  owner: string | null;
+  provider: SignInProvider | null;
+};
+
 /** Provider feedback belongs to this visit; durable work stays in identity. */
 export function useProviderSignIn(
   identity: ManagedIdentityController | null,
   snapshot: ManagedIdentitySnapshot | null,
   {
     provider,
-    expectedOwnerId,
     returnToData = false,
     switchProvider = false,
     clearLinkError,
   }: {
     provider?: SignInProvider | undefined;
-    expectedOwnerId?: string | undefined;
     returnToData?: boolean;
     switchProvider?: boolean;
     clearLinkError?: () => void;
@@ -41,7 +46,7 @@ export function useProviderSignIn(
     returnToData,
   );
   const cancelWelcomeEntry = useCancelWelcomeEntry();
-  const [showDirectFailure, setShowDirectFailure] = useState(false);
+  const [failure, setFailure] = useState<DirectFailure | null>(null);
   const [pendingProvider, setPendingProvider] = useState<SignInProvider | null>(
     null,
   );
@@ -52,16 +57,15 @@ export function useProviderSignIn(
       visit.current = {
         identity,
         provider,
-        expectedOwnerId,
         returnToData,
         switchProvider,
       };
-      setShowDirectFailure(false);
+      setFailure(null);
       setPendingProvider(null);
       return () => {
         visit.current = null;
       };
-    }, [identity, provider, expectedOwnerId, returnToData, switchProvider]),
+    }, [identity, provider, returnToData, switchProvider]),
   );
   const signIn = async (selected: SignInProvider) => {
     const submittedVisit = visit.current;
@@ -74,7 +78,7 @@ export function useProviderSignIn(
       submitting.current === submittedVisit
     )
       return;
-    setShowDirectFailure(false);
+    setFailure(null);
     clearLinkError?.();
     if (state.account && handoffReady) {
       handoff.retry();
@@ -83,7 +87,10 @@ export function useProviderSignIn(
     submitting.current = submittedVisit;
     cancelWelcomeEntry();
     setPendingProvider(selected);
-    await identity.signIn(selected, expectedOwnerId ? { expectedOwnerId } : {});
+    // A switch links the provider to the signed-in account before it signs in.
+    await (switchProvider
+      ? identity.switchProvider(selected)
+      : identity.signIn(selected));
     if (submitting.current === submittedVisit) submitting.current = null;
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);
@@ -92,14 +99,31 @@ export function useProviderSignIn(
     // active after a failed switch is still this visit's failure.
     const landed =
       !!result.account && (!switchProvider || result.provider === selected);
-    setShowDirectFailure(!landed && result.directSignInFailure);
+    setFailure(
+      !landed && result.directSignInFailure && result.message
+        ? {
+            message: result.message,
+            reference: result.connectionReference,
+            owner: result.account?.userId ?? null,
+            provider: result.provider,
+          }
+        : null,
+    );
   };
-  const directFailure = showDirectFailure && snapshot?.directSignInFailure;
-  const error = (directFailure ? snapshot.message : '') || handoff.error;
+  // Keep this visit's failure, not the live snapshot's: returning from the
+  // native sheet foregrounds the app, and that background run republishes the
+  // same login with its feedback cleared (#507). A changed login drops it.
+  const directFailure =
+    failure &&
+    failure.owner === (snapshot?.account?.userId ?? null) &&
+    failure.provider === (snapshot?.provider ?? null)
+      ? failure
+      : null;
+  const error = directFailure?.message || handoff.error;
   return {
     ...handoff,
     error,
-    reference: directFailure ? snapshot.connectionReference : null,
+    reference: directFailure?.reference ?? null,
     busyProvider:
       pendingProvider ??
       (snapshot?.account && !error && handoffReady

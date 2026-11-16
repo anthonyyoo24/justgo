@@ -4,6 +4,28 @@ Moving the API to Supabase Edge Functions does not change these backups. The API
 Worker and its Hyperdrive configuration were deleted on November 13, 2026. Keep
 R2, the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`.
 
+The [Supabase US move](../implementation-plan/supabase-us-move.md#us-6) changes
+the backup source at its step US-6. The source moves from the Canada project
+`kmcpcauaxlgpevkkenwd` (ca-central-1) to the "JustGo US" project
+`gcjmvtsisivxxorstvkb` (us-east-1), read through the session pooler
+`aws-1-us-east-1.pooler.supabase.com:5432` as
+`justgo_backup.gcjmvtsisivxxorstvkb`. The bucket, the `staging/` prefixes, the
+retention and the backup clock stay the same. The code accepts the cron-history
+exception only for the new project. A policy that opts in for Canada no longer
+parses, so every run fails until Anthony's new policy and secrets are in place.
+That is why US-6 pauses the backups before the code change merges. The logged
+receipt hides the source, so the logged policy's `sourceProjectRef` shows which
+project a run read. Inside its encryption, each ledger copy keeps the full source,
+`gcjmvtsisivxxorstvkb@aws-1-us-east-1.pooler.supabase.com/postgres`. Canada's final backups stay in R2 until retention removes them.
+The first US backups ran on November 14, 2026, as database run
+[43635331795](https://github.com/anthonyyoo24/justgo/actions/runs/43635331795) and
+ledger run
+[43635341677](https://github.com/anthonyyoo24/justgo/actions/runs/43635341677).
+New Supabase projects ship `public.rls_auto_enable()`, a definer function that
+`PUBLIC` may run, and the role check refuses it.
+[backup-role.sql](../../scripts/backups/backup-role.sql) revokes that right
+wherever the function exists.
+
 Backups resumed on November 13, 2026. They had been paused since November 6,
 when Anthony set the repository variable `JUSTGO_BACKUPS_ENABLED` to `paused`
 because staging held only test data. The last copy before the pause, ledger run
@@ -21,6 +43,11 @@ November 14, and gate [#476](https://github.com/anthonyyoo24/justgo/issues/476)
 tracks it.
 [Credential dates](#credential-dates) and
 [#77](https://github.com/anthonyyoo24/justgo/issues/77) hold the new expiry dates.
+On November 16 the three R2 credentials were renewed again, and database run
+[43805247759](https://github.com/anthonyyoo24/justgo/actions/runs/43805247759)
+and ledger run
+[43805256487](https://github.com/anthonyyoo24/justgo/actions/runs/43805256487)
+passed on them.
 
 Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony
 approved creating the empty private `justgo-staging-backups` bucket. Its creation
@@ -30,9 +57,9 @@ verified-TLS metadata and required-schema `LIMIT 0` access probes passed without
 fetching private rows.
 
 The main-only `database-backups` GitHub environment holds `BACKUP_DATABASE_URL`,
-`BACKUP_DATABASE_CA_CERT`, the approved `R2_INSPECT_TOKEN`, the three derived
-`R2_UPLOAD_*` secrets, and the approved `BACKUP_POLICY_JSON` and
-`BACKUP_POLICY_SHA256`. The reviewed main workflow was enabled on November 2 with
+`BACKUP_DATABASE_CA_CERT`, the approved `R2_INSPECT_TOKEN`, the R2 parent
+`R2_PARENT_ACCESS_KEY_ID` and `R2_PARENT_SECRET_ACCESS_KEY`, and the approved
+`BACKUP_POLICY_JSON` and `BACKUP_POLICY_SHA256`. The reviewed main workflow was enabled on November 2 with
 `JUSTGO_BACKUPS_ENABLED=approved` after the remaining configuration checks.
 
 A disposable encrypted R2 canary passed PUT and HEAD. GET, list and
@@ -127,8 +154,10 @@ ciphertext checksum and non-private release and snapshot metadata.
 
 [Cloudflare temporary credentials](https://developers.cloudflare.com/r2/api/s3/temporary-credentials/)
 support action-scoped JWTs. A normal Object Read & Write credential is broader, and
-this runner deliberately rejects it. The parent credential must remain outside
-CI. Bucket administration and lifecycle changes require a separate owner
+this runner deliberately rejects it. Each run mints its own one-hour uploader
+from the parent in a separate step, described in
+[Credential dates](#credential-dates). The backup step never sees the parent.
+Bucket administration and lifecycle changes require a separate owner
 credential. The uploader must not be able to edit locks or public access.
 
 ## Backup clock
@@ -161,30 +190,49 @@ unchanged apart from the expiry.
 
 ## Credential dates
 
-The November 13, 2026 renewal replaced the R2 parent, the derived uploader, the
-inspector and the clock's GitHub token, with unchanged scopes. Each R2 credential
-lasts seven days, the longest the uploader allows.
+No R2 credential needs renewal. Since November 16, 2026, each backup run mints
+its own uploader. The step `Mint a one-hour uploader` in
+`database-backups.yml` runs `scripts/backups/mint-upload-credentials.mjs` with
+the parent from the `database-backups` environment. The script mints only in
+the main `database-backups` workflow, and only a one-hour uploader limited to
+PutObject and HeadObject on the two staging prefixes. It masks the three values
+and passes them to the backup step through `GITHUB_ENV`. The parent exists only
+in that step, which loads the mint script and zod, never the database, Sentry or
+upload code. The uploader is not stored and expires an hour later.
 
-| Credential                                      | Expires (UTC)         | Guard cutoff (UTC)    |
-| ----------------------------------------------- | --------------------- | --------------------- |
-| Derived uploader, `R2_UPLOAD_*`                 | November 20, 15:59:58 | November 20, 15:39:58 |
-| Inspector, `R2_INSPECT_TOKEN`                   | November 20, 16:53:36 | None                  |
-| R2 parent, kept local outside CI                | November 20, 16:52:21 | None                  |
-| Clock GitHub token, `BACKUP_CLOCK_GITHUB_TOKEN` | December 13, 16:58:59 | December 12, 23:40:00 |
+| Credential                                                                               | Expires (UTC)                                                  |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| R2 parent `justgo-staging-backup-parent-2026-11-16`, `R2_PARENT_*`                       | Never                                                          |
+| Inspector `justgo-staging-backup-inspector-2026-11-16`, `R2_INSPECT_TOKEN`               | Never                                                          |
+| Derived uploader                                                                         | One hour after each run mints it                               |
+| Clock GitHub token `justgo-staging-backup-clock-2026-11-13`, `BACKUP_CLOCK_GITHUB_TOKEN` | December 13, 16:58:59, last dispatch before December 12, 23:40 |
 
-Renew the three R2 credentials before the uploader's cutoff, 10:39 a.m. Toronto
-on November 20, 2026. Gate [#474](https://github.com/anthonyyoo24/justgo/issues/474)
-tracks it. The parent mints the uploader, so renew it first. The
-runner rejects an uploader credential with less than 20 minutes left. The clock
-stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its deployed
-configuration, which is `2026-12-13T00:00:00Z`, so the clock token's last
-dispatch falls before 23:40 UTC on December 12.
+The parent is a Cloudflare account API token with Object Read & Write on
+`justgo-staging-backups` only. The inspector is an account API token with Admin
+Read only. Both were created with TTL Forever and no IP filter, because GitHub
+runners have no fixed addresses.
 
-Before November 13, no record held the expiry dates of the November 3 renewal,
-and backups were paused while they lapsed. On November 13 the variable went back
-to `approved` after the R2 credentials were renewed and before the clock token
-was. The old clock token was still valid until November 29, so no dispatch
-failed.
+What still needs a person:
+
+- The clock's GitHub token, before 23:40 UTC on December 12, 2026. The clock
+  stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its
+  deployed configuration, `2026-12-13T00:00:00Z`.
+  [#519](https://github.com/anthonyyoo24/justgo/issues/519) tracks making it
+  last.
+- A leaked or revoked parent or inspector. Create a new token with the same
+  fields in the
+  [R2 API tokens page](https://dash.cloudflare.com/52662d8ba7ae983237860a1719c66a1e/r2/api-tokens),
+  store it with hidden prompts piped to
+  `gh secret set <name> --env database-backups`, and revoke the old one. Revoking
+  the parent stops every later run until the new one is stored. The Sentry
+  monitor reports the missed copies.
+
+The manual renewals of November 3, 13 and 16 left tokens that expire on their
+own. The last manual parent and inspector,
+`justgo-staging-backup-parent-renewal-2026-11-16` and
+`justgo-staging-backup-inspector-renewal-2026-11-16`, expire at 04:24:36 and
+04:28:52 UTC on November 23. Before November 13, no record held the expiry dates
+of the November 3 renewal, and backups were paused while they lapsed.
 
 ## Recovery decision and remaining proposals
 
@@ -212,18 +260,19 @@ in this table are not approvals or published promises.
 | Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance, Auth and provider mutations. The accepted beta fallback keeps unverified old restored state closed | Independent deletion and revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. A clean restart needs a separate procedure. Automatic old-phone recovery is unsupported.                                                            |
 | Restored sessions             | Invalidate every restored legacy, app and Auth session and every Auth refresh token. Cancel pending transfers                                                | Reauthentication was approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations. Do not recreate deleted owners or use an old transfer to recover access. Actual app and Auth recovery still requires evidence.                                               |
 | Key custody                   | Approved October 31: owner-held `age` identity in protected Mac copies locally outside CI                                                                    | USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable. Actual hosted-copy decryption passed November 1. Complete app and Auth recovery remains unverified.                                                                        |
-| Upload-token renewal          | Maximum seven-day derived credential. Anthony owns manual renewal by day five                                                                                | The parent key remains local and outside CI. The runner rejects tokens with less than 20 minutes remaining, and failed or missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility. This code creates no external reminder or automatic issuer.         |
+| Upload-token renewal          | Approved November 16: each run mints a one-hour uploader from a never-expiring bucket-only parent in the protected environment                               | The parent reaches only the mint step. The runner rejects tokens with less than 20 minutes remaining, and failed or missed jobs alert through the configured monitor. No R2 credential needs renewal. [Credential dates](#credential-dates) lists what still needs a person.                            |
 | Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                                | The engineering design uses one free Cron with 20-minute grace and runtime settings and checks both backup kinds. Real missed-run detection, owner email receipt and verified-copy recovery passed November 2. The short initial error email was not received. Timeout-specific behavior is unverified. |
 
-The seven-day upload-token lifetime is the local minting policy, not an
-established Cloudflare maximum. Scheduled copying is unattended only while its
-credentials remain valid. Fully unattended renewal would need an approved online
-issuer with access to the parent signing secret. A longer lifetime would also
-change the proposed policy. Neither change is implemented or approved. Anthony
-owns manual renewal. Keep the parent secret outside CI. The optional
-[Phase 21 issuer](../implementation-plan/README.md#unscheduled-roadmap) is
-deferred until accepted payments, analytics and actual App Store publication. It
-does not gate Phase 15 or the first launch.
+The seven-day cap on a derived uploader is the minting policy, not an
+established Cloudflare maximum. On November 16, 2026, Anthony chose to give CI
+the bucket-only parent so that nobody renews upload credentials by hand. The
+parent can read, write and delete objects in this bucket only. The ciphertext is
+useless without the `age` identity, which stays on his Mac, and the seven-day
+locks refuse overwrite and DELETE of every retained copy. The optional
+[Phase 21 issuer](../implementation-plan/README.md#unscheduled-roadmap) would
+take the parent back out of CI. It is deferred until accepted payments,
+analytics and actual App Store publication, and it does not gate Phase 15 or the
+first launch.
 
 Anthony accepts the ledger gap as a recovery limit for the small beta. If the
 source is lost after the last hourly copy and later deletions or revocations
@@ -286,7 +335,7 @@ lane.
    capability for the small beta and requests backup activation. The opt-in is
    the optional policy field `allowCronJobRunDetailsDelete: true`. If the field is
    absent or `false`, the guard keeps rejecting. The opt-in is restricted to
-   `environment: "staging"`, `sourceProjectRef: "kmcpcauaxlgpevkkenwd"`,
+   `environment: "staging"`, `sourceProjectRef: "gcjmvtsisivxxorstvkb"`,
    `sourceDatabase: "postgres"` and the matching accepted direct or session-pooler
    source. The exact approved policy bytes and digest bind the exception, and the
    role-verification boundary must receive and revalidate that policy. Only DELETE
@@ -294,6 +343,14 @@ lane.
    table, relation and column mutations elsewhere, ownership, memberships and
    privileged functions remain rejected. The exception does not grant app or Auth
    deletion or authorize deleting scheduler history.
+
+   Until US-6 of the Supabase US move, the exception named the Canada project
+   `kmcpcauaxlgpevkkenwd`, and Anthony's acceptance, the probe, the support
+   request and the access probes below were all made there. The approved move plan
+   carries the exception to the new project. Nobody has yet read whether the new
+   project's `cron.job_run_details` has the same PUBLIC DELETE grant. The opt-in
+   tolerates that one grant whether or not it is present, and any other privilege
+   still fails the first US-6 run's role check.
 
    A rollback-only `postgres` probe could not revoke the `supabase_admin` owner's
    grant, so the existing ACLs are unchanged. The sole scheduled job runs as
@@ -337,7 +394,11 @@ lane.
    newline, so it held 581 bytes instead of the approved 582. When you set the
    variable through a structured API body, preserve the exact bytes. Then read it
    back and run the policy verifier. Do not normalize the policy or weaken its
-   raw-byte hash check. The approved SHA-256 remains
+   raw-byte hash check. At US-6 Anthony replaced the Canada policy with one whose
+   `sourceHost` is `aws-1-us-east-1.pooler.supabase.com`, whose `sourceProjectRef`
+   is `gcjmvtsisivxxorstvkb` and whose `approvalReference` names the move plan.
+   `BACKUP_POLICY_SHA256` holds its digest. A rollback restores the Canada policy,
+   whose approved SHA-256 is
    `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`.
 
    Policy fields are `version: 1`, `approvalReference`, `accountId`, `bucket`,
@@ -374,15 +435,15 @@ lane.
    recovery or permission to reopen restored accounts. Those recovery gates remain
    open.
 
-5. Prepare derived upload credentials locally, outside CI, with
-   `node scripts/backups/mint-upload-credentials.mjs`. It needs the approved policy
-   variables, `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, an explicit
-   `R2_UPLOAD_TTL_SECONDS` (1–168 hours) and `R2_CREDENTIAL_OUTPUT_FILE`. It refuses
-   to run in CI and creates a new mode-0600 file instead of printing credentials.
-   Transfer only its three `R2_UPLOAD_*` values into the protected environment
-   secrets. Securely remove the temporary operator file. Rotate before day five,
-   and test the actual permitted and denied actions. No parent key or private
-   encryption identity belongs in GitHub, source, chat or logs.
+5. Store the R2 parent as `R2_PARENT_ACCESS_KEY_ID` and
+   `R2_PARENT_SECRET_ACCESS_KEY` in the protected environment. Each run mints its
+   own uploader, as [Credential dates](#credential-dates) describes. For a local
+   test, `node scripts/backups/mint-upload-credentials.mjs` also runs outside CI.
+   It needs the approved policy variables, the two parent values, an explicit
+   `R2_UPLOAD_TTL_SECONDS` (1–168 hours) and `R2_CREDENTIAL_OUTPUT_FILE`, and it
+   creates a new mode-0600 file instead of printing credentials. It refuses every
+   other CI. No private encryption identity belongs in GitHub, and no credential
+   belongs in source, chat or logs.
 
    On October 31, an agent tool-output mistake exposed the original parent API
    token. Anthony approved replacing and revoking it. The old parent is revoked,
@@ -405,11 +466,9 @@ lane.
    records the scheduled copies that followed. Actual hosted-copy
    decryption passed November 1, while complete writer-fenced hosted recovery and
    email receipt remain open. The November 1 accepted provider assessment settles
-   the earlier contractual-coverage gate. Anthony owns manual renewal. Parent
-   revocation invalidates its derived uploader. When the parent expires, renewing
-   the uploader alone is not enough. The November 3 renewal replaced the
-   uploader and the inspector. [Credential dates](#credential-dates) records
-   what is known about their expiry.
+   the earlier contractual-coverage gate. Parent revocation invalidates its
+   derived uploaders. Manual renewal ended on November 16, 2026.
+   [Credential dates](#credential-dates) records the current credentials.
 
 6. Create and verify one Sentry Cron monitor, `justgo-staging-backup-health`, with
    schedule `23 * * * *` in UTC, a check-in margin of 20 minutes, a maximum runtime

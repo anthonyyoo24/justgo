@@ -141,6 +141,7 @@ it.each(['google', 'apple'] as const)(
       deviceId: account.deviceId,
       guestId: id(50),
       guestAdoption: { ownerId: userId, status: 'consumed' },
+      collectionAdoption: null,
       collection: { kind: 'account', id: userId },
       mode: 'account',
       account,

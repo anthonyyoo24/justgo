@@ -8,11 +8,14 @@ project and publishes nothing.
 The October 25 owner-directed publication is live at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. The current Privacy Policy is `2026-11-13-supabase-edge`,
-owner-approved, effective and published November 13, 2026. It names Supabase
-Edge Functions as the API host and Cloudflare R2 for encrypted backups, and keeps
-the October 27 description of the minimal Sentry app and server reports and the
-local iOS crash cache. Terms retain `2026-10-25-beta` and their October 25 effective date.
+`justgo-legal`. The current Terms are `2026-11-15-us-east-2` and the current
+Privacy Policy is `2026-11-15-us-east-3`, the plain-language rewrite, owner-approved, effective
+and published November 15, 2026. The same-day revisions drop "free beta"
+from the Privacy opening and rename "Download my data" to "Export data". The Privacy Policy says the database and the server run in the United
+States, names only Apple and Google and describes the other providers by role.
+The [data inventory](../../docs/legal/DATA_INVENTORY.md#detail-the-public-notices-leave-out)
+keeps the detail the shorter text leaves out. The Terms no longer describe a free
+beta.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
 
@@ -91,10 +94,12 @@ must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
 Never upload the source repository, review records or environment files.
 
 After an authorized deploy, verify both stable HTTPS routes anonymously, the
-original logo bytes and footer navigation. The November 13 privacy update passed
-anonymous byte checks for both documents, the root Privacy page, the stylesheet
-and the logo. Terms were unchanged. The publication also confirmed that
-`/.env.local`, `/vercel.json` and the internal review-record path returned 404. The project's model-training sharing is
+original logo bytes and footer navigation. The November 15 plain-language update
+and the November 14 U.S. region update passed anonymous byte checks for both documents, the root Privacy page, the
+stylesheet and the logo, and the publication confirmed that `/.env.local`,
+`/vercel.json` and the internal review-record path returned 404. The staging
+folder needed no link: `deploy --prod --project justgo-legal --scope ...` from it
+created no dotfile, and `deploy --dry --json` listed the six files first. The project's model-training sharing is
 disabled. EAS preview public legal URLs and App Store Connect's Privacy Policy
 URL use the published destinations. Opening and accessibility on the actual
 signed iPhone remain Phase 14 acceptance.

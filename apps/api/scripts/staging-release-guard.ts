@@ -6,7 +6,7 @@ import { readMigrationFiles, type MigrationConfig } from 'drizzle-orm/migrator';
 import { noPreviousApi } from '../../../scripts/release/staging-api.mjs';
 import { applyMigrations } from './migration-runner.js';
 
-export const stagingProject = 'kmcpcauaxlgpevkkenwd';
+export const stagingProject = 'gcjmvtsisivxxorstvkb';
 export const releaseLock = [1246187347, 1413564229] as const;
 export class StagingReleaseFailure extends Error {
   constructor(readonly reason: string) {
@@ -27,7 +27,7 @@ export function hostedMigrationOptions(
         decodeURIComponent(url.username) ===
           `justgo_migrator.${stagingProject}` &&
         Boolean(url.password) &&
-        url.hostname === 'aws-0-ca-central-1.pooler.supabase.com' &&
+        url.hostname === 'aws-1-us-east-1.pooler.supabase.com' &&
         url.port === '5432' &&
         url.pathname === '/postgres' &&
         !url.search &&
@@ -305,7 +305,7 @@ export async function withStagingRelease<T>(
   );
 }
 
-/** Shared by the first Worker upload and ordinary releases; never a new session. */
+/** Holds one locked restricted-role session for the whole release; never a new session. */
 export async function withStagingDatabaseLease<T>(
   client: Connection,
   expectedDatabase: string,
@@ -333,22 +333,4 @@ export async function withStagingDatabaseLease<T>(
   } finally {
     await client.query('select pg_advisory_unlock($1,$2)', [...releaseLock]);
   }
-}
-
-/** Bootstrap has no previous Worker and cannot apply migrations or invent its SHA. */
-export async function withStagingBootstrap<T>(
-  client: Connection,
-  config: MigrationConfig,
-  upload: () => Promise<T>,
-): Promise<T> {
-  return withStagingDatabaseLease(client, 'postgres', async () => {
-    ensure(
-      pendingMigrations(
-        migrationEntries(config),
-        await appliedHistory(client, config),
-      ).length === 0,
-      'bootstrap_requires_current_migrations',
-    );
-    return upload();
-  });
 }

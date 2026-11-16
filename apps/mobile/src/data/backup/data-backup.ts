@@ -57,15 +57,21 @@ const envelopeSchema = z
 function invalid(): never {
   throw new JournalBackupError('INVALID_BACKUP');
 }
+const rebind = <
+  T extends { entries: LocalJournalEntry[]; alternatives: LocalJournalEntry[] },
+>(
+  journal: T,
+  accountId: string,
+): T => ({
+  ...journal,
+  entries: journal.entries.map((entry) => ({ ...entry, accountId })),
+  alternatives: journal.alternatives.map((entry) => ({ ...entry, accountId })),
+});
 function parseData(value: unknown, destination: BackupOwner): RestorableData {
   const parsed = envelopeSchema.safeParse(value);
   if (!parsed.success) invalid();
+  // One person uses the phone, so any valid backup joins the current collection.
   const source = parsed.data;
-  if (
-    source.owner.kind === 'account' &&
-    (destination.kind !== 'account' || destination.id !== source.owner.id)
-  )
-    throw new JournalBackupError('WRONG_ACCOUNT');
   if (
     source.attempts.length +
       source.journal.entries.length +
@@ -98,16 +104,10 @@ function parseData(value: unknown, destination: BackupOwner): RestorableData {
     owner: destination,
     exportedAt: source.exportedAt,
     attempts,
-    journal: {
-      entries: journal.entries.map((entry) => ({
-        ...entry,
-        accountId: destination.id,
-      })),
-      alternatives: journal.alternatives.map((entry) => ({
-        ...entry,
-        accountId: destination.id,
-      })),
-    },
+    journal: rebind(
+      { entries: journal.entries, alternatives: journal.alternatives },
+      destination.id,
+    ),
     preferences: source.preferences,
     legacyJournalOnly: false,
   };
@@ -214,7 +214,7 @@ export function createDataBackup(snapshot: DataBackup): {
       }),
       'activity.csv': strToU8(csv),
       'README.txt': strToU8(
-        'JustGO data backup\n\nThis private snapshot contains challenge history, feelings, reflections, preserved versions and preferences. Use Import data in JustGO and choose this unchanged ZIP. Save it in Files, iCloud Drive or another private destination. It does not contain account credentials or sign you in. Account-owned backups require the same account; guest backups can be added to your current collection. Later changes need a new download.\n',
+        'JustGO data backup\n\nThis private snapshot contains challenge history, feelings, reflections, preserved versions and preferences. Use Import data in JustGO and choose this unchanged ZIP. Save it in Files, iCloud Drive or another private destination. It does not contain account credentials or sign you in. Any JustGO backup can be added to the data on this phone. Later changes need a new download.\n',
       ),
     },
     { level: 0 },
@@ -278,17 +278,15 @@ export function readDataBackup(
       .safeParse(data);
     if (!previous.success) invalid();
     if (
-      previous.data.account.id !== destination.id ||
-      destination.kind !== 'account'
-    )
-      throw new JournalBackupError('WRONG_ACCOUNT');
-    if (
       previous.data.attempts.length + previous.data.localChanges.length >
       JOURNAL_BACKUP_MAX_ENTRIES
     )
       throw new JournalBackupError('TOO_LARGE');
     const oldJournal = journal
-      ? parseJournalSnapshot(journal, destination.id)
+      ? rebind(
+          parseJournalSnapshot(journal, previous.data.account.id),
+          destination.id,
+        )
       : {
           entries: [] as LocalJournalEntry[],
           alternatives: [] as LocalJournalEntry[],
@@ -338,7 +336,12 @@ export function readDataBackup(
     );
   }
   if (data !== null) invalid();
-  const oldJournal = parseJournalSnapshot(journal, destination.id);
+  const file = z.object({ accountId: z.uuid() }).safeParse(journal);
+  if (!file.success) invalid();
+  const oldJournal = rebind(
+    parseJournalSnapshot(journal, file.data.accountId),
+    destination.id,
+  );
   return {
     owner: destination,
     exportedAt: oldJournal.createdAt,

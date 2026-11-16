@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus, except two cases that run
 // on Sonnet: a verifier whose PRs are all small by the verify-batch.mjs rule
-// (no sensitive or boundary file, few counted lines), at most 4 of them, and
+// (no boundary file, few counted lines, and no sensitive file unless its
+// patch only rewords user-facing text), at most 4 of them, and
 // a re-check of a docs- or tests-only, non-sensitive PR. Any doubt
 // keeps Opus, including a brief that mentions a PR or issue number the hook
 // did not check.
@@ -25,7 +26,7 @@ const recheckName =
 // Routine reviews, named by how the description starts.
 // A trail review starts with "review" (optionally "final" or "close out the")
 // and names the trail as a word, not as part of a name such as
-// require-trail-review. Or it starts with "trail review", optionally after
+// trail-review-notes. Or it starts with "trail review", optionally after
 // "close out the". A verdict is never
 // a trail review.
 const trailWord = String.raw`(?<![\w-])trail(?![\w-])`;
@@ -46,6 +47,8 @@ export const routinePrefixes = [
   'Lint fix',
   'Format',
   'Formatting fix',
+  // Only for edits to the wording of user-facing strings.
+  'Copy change',
 ];
 // The pstack roles that ~/.claude/rules/pstack-models.md puts on Sonnet.
 // pstack names no description for them, so a helper for one starts with its
@@ -66,14 +69,13 @@ export const thisRepo = 'anthonyyoo24/justgo';
 const prReference =
   /(?:\bPR\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)(\d+)\b/gi;
 // Each PR a text names, as lowercase `owner/repo#N`. A link names its
-// repository. `PR #N` means this one. review-rounds-guard.mjs reads links the
-// same way and also reads lists such as `PRs #7, #8`.
+// repository. `PR #N` means this one.
 const prKeysIn = (text) =>
   [...(text ?? '').matchAll(prReference)].map(
     ([, repo = thisRepo, number]) => `${repo.toLowerCase()}#${number}`,
   );
 // Each JustGO PR number a text names, also in lists such as `PRs #7, #8 and
-// #9`, as review-rounds-guard.mjs reads them. A link to another repository
+// #9`. A link to another repository
 // makes the set unknown, so the hook keeps Opus.
 const prListReference =
   /(?:\bPRs?\s*#|github\.com\/([\w.-]+\/[\w.-]+)\/pull\/)\d+\b(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)#\d+\b)*/gi;
@@ -139,21 +141,6 @@ export function prsOf(input) {
   return numbers.size > 0 && numbers.size <= maxSmallPulls
     ? [...numbers]
     : undefined;
-}
-
-// A PR's files with their line counts, in the shape verify-batch.mjs reads. A
-// rename also lists its old path with no lines, so a sensitive or boundary
-// path cannot hide behind a new name. A list that may be cut is unknown.
-export function sizedFilesOf(entries) {
-  if (!entries.length || entries.length >= maxFiles) return undefined;
-  return entries.flatMap(
-    ({ filename, previous_filename, additions = 0, deletions = 0 }) => [
-      { path: filename, additions, deletions },
-      ...(previous_filename
-        ? [{ path: previous_filename, additions: 0, deletions: 0 }]
-        : []),
-    ],
-  );
 }
 
 // The paths a verifier reviews, from GitHub's list of a PR's files. A rename
@@ -274,7 +261,7 @@ async function main() {
       if (numbers.length > 0)
         pulls = numbers.map((n) => {
           const list = entries.get(n);
-          return list ? sizedFilesOf(list) : undefined;
+          return list ? rules.sizedFilesOf(list) : undefined;
         });
       const list = numbers.length === 1 ? entries.get(numbers[0]) : undefined;
       files = list && filesOf(list);

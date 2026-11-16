@@ -299,7 +299,7 @@ const secretValues = {
   NODE_ENV: 'production',
   APP_ENVIRONMENT: 'staging',
   MANAGED_AUTH_ENABLED: 'true',
-  DATABASE_URL: `postgresql://justgo_runtime.${stagingProjectRef}:synthetic-password@aws-0-ca-central-1.pooler.supabase.com:6543/postgres`,
+  DATABASE_URL: `postgresql://justgo_runtime.${stagingProjectRef}:synthetic-password@aws-1-us-east-1.pooler.supabase.com:6543/postgres`,
   DATABASE_SSL: 'verify-full',
   DATABASE_CA_CERT: pem,
   IDENTITY_RATE_LIMIT_KEY: 'r'.repeat(32),

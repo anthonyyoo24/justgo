@@ -21,7 +21,7 @@ async function choose(page: Page, bytes: Uint8Array) {
     buffer: Buffer.from(bytes),
   });
 }
-test('one import restores deleted history and writing, preserves conflicts and rejects invalid ownership before writing', async ({
+test("one import restores deleted history and writing, preserves conflicts, accepts another owner's backup and rejects invalid files before writing", async ({
   page,
   fixtureDatabase,
 }) => {
@@ -29,9 +29,7 @@ test('one import restores deleted history and writing, preserves conflicts and r
   await completeChallenge(page, 'Backup fixture original');
   await openData(page);
   const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const filename = await (await downloading).path();
   const bytes = await readFile(filename!);
   const files = unzipSync(bytes);
@@ -39,8 +37,8 @@ test('one import restores deleted history and writing, preserves conflicts and r
     owner: { id: string };
     attempts: unknown[];
     journal: {
-      entries: { reflection: { text: string } }[];
-      alternatives: unknown[];
+      entries: { accountId: string; reflection: { text: string } }[];
+      alternatives: { accountId: string }[];
     };
   };
   await page
@@ -122,15 +120,25 @@ test('one import restores deleted history and writing, preserves conflicts and r
       (row: { reflection_text: string }) => row.reflection_text,
     ),
   ).toEqual(['Backup fixture alternate', 'Backup fixture original']);
-  data.owner.id = randomUUID();
+  // One person uses the phone, so a backup from another account joins this one.
+  const otherOwner = randomUUID();
+  data.owner.id = otherOwner;
+  for (const entry of [...data.journal.entries, ...data.journal.alternatives])
+    entry.accountId = otherOwner;
   files['data.json'] = strToU8(JSON.stringify(data));
   await choose(page, zipSync(files, { level: 0 }));
+  await page
+    .getByRole('button', { name: 'Confirm import', exact: true })
+    .click();
   await expect(
-    page.getByText(/Sign in to the account that owns this backup/),
+    page.getByText(
+      'Your data was imported. Existing differing journal entries were kept.',
+      { exact: true },
+    ),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Confirm import', exact: true }),
-  ).toHaveCount(0);
+  expect(
+    (await localJournalEntries(page, account.userId))[0]?.reflection.text,
+  ).toBe('Backup fixture original');
   await choose(page, new Uint8Array([1, 2, 3]));
   await expect(
     page.getByText(/Choose an unchanged JustGO export/),
@@ -143,4 +151,73 @@ test('one import restores deleted history and writing, preserves conflicts and r
       )
     ).rows,
   ).toHaveLength(1);
+});
+test('a signed-out import stays on the phone and uploads as an import at the next sign-in', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const account = await signInFixture(page);
+  await completeChallenge(page, 'Signed-out import original');
+  await openData(page);
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
+  const bytes = await readFile((await (await downloading).path())!);
+  await page
+    .getByRole('button', { name: 'Delete all my data', exact: true })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: 'Delete all saved data?', exact: true })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      'All saved data was deleted. Your account and downloaded files were kept.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  const serverAttempts = async () =>
+    (
+      await fixtureDatabase.query(
+        'select id from justgo.attempts where user_id=$1',
+        [account.userId],
+      )
+    ).rows.length;
+  expect(await serverAttempts()).toBe(0);
+  await page.goto('/recovery');
+  await page.getByRole('switch', { checked: true }).click();
+  await page
+    .getByRole('alertdialog', { name: 'Log out?', exact: true })
+    .getByRole('button', { name: 'Log out', exact: true })
+    .click();
+  await expect(
+    page.getByRole('switch', { name: 'Apple', exact: true }),
+  ).not.toBeChecked();
+  await openData(page);
+  await choose(page, bytes);
+  await page
+    .getByRole('button', { name: 'Confirm import', exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      'Your data was imported. Existing differing journal entries were kept.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/data$/);
+  expect(
+    (await localJournalEntries(page, account.userId))[0]?.reflection.text,
+  ).toBe('Signed-out import original');
+  expect(await serverAttempts()).toBe(0);
+  await signInFixture(page, { subjectHandle: account.subjectHandle });
+  await expect.poll(serverAttempts).toBe(1);
+  await expect
+    .poll(async () =>
+      (
+        await fixtureDatabase.query(
+          "select reflection->>'text' as text from justgo.journal_versions where user_id=$1",
+          [account.userId],
+        )
+      ).rows.map((row: { text: string }) => row.text),
+    )
+    .toEqual(['Signed-out import original']);
 });

@@ -257,6 +257,21 @@ it.each([
   },
 );
 
+it('keeps the stored session and marks it when Auth refused to link an identity that has its own account', async () => {
+  const replaceState = webCallback(
+    'error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user',
+  );
+  const restored = await createManagedAuth().initialize();
+  expect(restored).toMatchObject({
+    authUserId: serverSession.user.id,
+    accessToken: serverSession.access_token,
+    identityExists: true,
+  });
+  expect(restored?.freshSignIn).toBeUndefined();
+  expect(replaceState).toHaveBeenCalledWith(null, '', '/auth/callback');
+  expect(mockAuth.exchangeCodeForSession).not.toHaveBeenCalled();
+});
+
 it.each([
   'error=access_denied&error_code=signup_disabled&error_description=Signups+not+allowed',
   'error=server_error&error_code=unexpected_failure',
@@ -510,6 +525,13 @@ it('leaves the prior connections intact when linking is cancelled or rejected by
   mockAuth.linkIdentity.mockResolvedValueOnce({
     data: { session: null },
     error: { code: 'identity_already_exists' },
+  });
+  await expect(auth.linkIdentity('google')).rejects.toMatchObject({
+    code: 'IDENTITY_EXISTS',
+  });
+  mockAuth.linkIdentity.mockResolvedValueOnce({
+    data: { session: null },
+    error: { code: 'unexpected_failure' },
   });
   await expect(auth.linkIdentity('google')).rejects.toMatchObject({
     code: 'AUTH',

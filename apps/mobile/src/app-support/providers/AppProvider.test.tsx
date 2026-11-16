@@ -182,6 +182,7 @@ beforeEach(async () => {
     deviceId: session.deviceId,
     guestId: id(50),
     guestAdoption: { ownerId: userId, status: 'consumed' },
+    collectionAdoption: null,
     collection: { kind: 'account' as const, id: userId },
     mode: 'account' as const,
     account: {

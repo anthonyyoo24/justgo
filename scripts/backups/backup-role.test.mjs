@@ -70,9 +70,9 @@ test('only a complete staging policy enables the parameter and all other drift r
     ledgerDays: 7,
     lockDays: 7,
     ageRecipient: `age1${'a'.repeat(58)}`,
-    sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+    sourceHost: 'db.gcjmvtsisivxxorstvkb.supabase.co',
     sourceDatabase: 'postgres',
-    sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+    sourceProjectRef: 'gcjmvtsisivxxorstvkb',
     allowCronJobRunDetailsDelete: true,
   };
   let calls = 0;
@@ -240,6 +240,11 @@ test('provisioning and rehearsal use only the approved reader membership and ret
   );
   assert.equal((role.match(/^grant /gm) ?? []).length, 1);
   assert.doesNotMatch(role, /grant (?:usage|select|create)|password\s+'/i);
+  // Supabase's PUBLIC-executable definer helper is revoked only where it exists.
+  assert.match(
+    role,
+    /if to_regprocedure\('public\.rls_auto_enable\(\)'\) is not null then\s+revoke execute on function public\.rls_auto_enable\(\) from public;/,
+  );
   const rehearsal = await readFile(
     new URL('./rehearse.mjs', import.meta.url),
     'utf8',

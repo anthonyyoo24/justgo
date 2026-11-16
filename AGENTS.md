@@ -161,8 +161,8 @@ these rules:
   `bug`, whose evidence is the issue URL and whose result is the issue's label. A
   bug that gets no label takes the result `skip: <reason>`. A later `bug` row
   replaces an earlier one that names the same issue, or that has the same
-  evidence text when it names none. The Stop hook blocks until the latest row for
-  each bug has a label or a skip reason.
+  evidence text when it names none. The latest row for each bug needs a label or a
+  skip reason before the run ends.
 - Agents in interactive sessions fix `agent-fix` issues. The nightly claude.ai
   cloud routine, with a builder and a separate verifier for each fix, has been
   paused since 2026-11-10, so filing an issue does not queue a fix.
@@ -210,8 +210,7 @@ these rules:
 ## Rules and what enforces them
 
 When a checked rule breaks, its check stops the work. A lint, type or test check
-fails CI, the trail hook blocks the run from finishing, and branch protection
-blocks the merge. A written rule is a judgment call that no check catches. When
+fails CI, a hook denies the tool call, and branch protection blocks the merge. A written rule is a judgment call that no check catches. When
 an agent repeats a mistake, run `/pstack:correct`. It fixes the mistake at the
 highest level that works and updates this list.
 
@@ -281,22 +280,22 @@ highest level that works and updates this list.
   - Enforced by (test): The download cases in `apps/mobile/src/data/cloud/coordinator.test.ts` serve pages from a fake that checks each requested cursor and has no extra page. Each fault, including an epoch change inside one kind, a cursor cycle and a server that keeps paging, rejects with no storage write, no local change and no upload. Exactly 50,000 records pass the cap and reach the first local write.
 - One delete-all intent resets the server at most once, removes everything the server held when the intent was saved, and finishes on a crash-free retry. This holds when an ordinary sync, such as the one guest adoption runs, happens between attempts of a pending intent.
   - Enforced by (test): `apps/mobile/src/data/cloud/coordinator-deletion.model.test.ts` runs every schedule of up to 2 crashes or lost acknowledgements, 2 other-device events and 1 ordinary sync against `CloudDataCoordinator.deleteData`, the runtime's `clearData` and a model of `deletion.ts`. [`verify-delete-all-retry`](.claude/skills/verify-delete-all-retry/SKILL.md) owns its bounds and upkeep.
-- Deck and venue preferences stay on the phone. Completion uploads, journal sync, iCloud records and the data export carry none of them, so the server never holds a deck to download.
-  - Enforced by (test): The `keeps saved deck order and venue out of` cases in `apps/mobile/src/data/cloud/coordinator.test.ts`, which sends every completion upload since #293 retired the legacy sender, `apps/mobile/src/data/cloud/icloud-coordinator.test.ts` and `apps/mobile/src/features/settings/export/data-export.test.ts` save decks, run the real path and fail when its payload carries a `selected` or `orders` key or the saved order. Analytics stays uninstalled (its row below). A deck field under another name is caught only in review.
-- Data actions wait for the user and history on the phone is kept. Returning from the owner sign-in that delete-all asks for never deletes, imports or opens a picker by itself. Leaving for Files keeps a pending pick's guest or account owner. No data mode prunes earlier-day history.
+- Deck and venue preferences stay on the phone. When the phone's collection moves into the account that signs in, its deck moves with it. Completion uploads, journal sync, iCloud records and the data export carry none of them, so the server never holds a deck to download.
+  - Enforced by (test): The `keeps saved deck order and venue out of` cases in `apps/mobile/src/data/cloud/coordinator.test.ts`, which sends every completion upload since #293 retired the legacy sender, `apps/mobile/src/data/cloud/icloud-coordinator.test.ts` and `apps/mobile/src/features/settings/export/data-export.test.ts` save decks, run the real path and fail when its payload carries a `selected` or `orders` key or the saved order. The `keeps the phone deck on the phone` cases in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts` and `e2e/deck-continuity.spec.ts` fail when adoption drops the deck. Analytics stays uninstalled (its row below). A deck field under another name is caught only in review.
+- Data actions wait for the user and history on the phone is kept. Import needs no sign-in and adds any valid backup to the phone's current collection. Returning from the sign-in that delete-all asks for never deletes, imports or opens a picker by itself. Leaving for Files keeps a pending pick's guest or account owner. No data mode prunes earlier-day history.
   - Enforced by (type, test): `DataMode` in `apps/mobile/src/data/activity/model.ts` allows only `local` and `cloud`, and `AccountRepository` has no pruning path since the legacy data mode was retired (#293). `apps/mobile/src/features/settings/data/SettingsDataScreen.test.tsx` covers the sign-in return and Files trip cases, and the `local` and `cloud` rollover and relaunch case in `apps/mobile/src/data/activity/local-collections.test.ts` fails if pruning comes back.
 - Delete-all keeps the account signed in on its other devices and keeps its access grant, today the staging free beta, for both `/v1/access` and uploads. In managed mode the API still renews legacy sessions and replays a renewal or a pending legacy deletion under its original proof.
   - Enforced by (test): Cases in `apps/api/tests/data-sync/sync.integration.test.ts`. The devices case fails when delete-all revokes another legacy session. The access case fails when delete-all ends the account or when `/v1/access` or upload eligibility depends on cleared data. The legacy case fails when managed mode rejects renewal, renewal replay or legacy deletion, or loses the original-proof receipt.
 - The API still defaults to its legacy identity mode. Managed mode refuses exactly the legacy key, code, device and transfer administration routes and new bootstrap or transfer sessions, and keeps `GET /v1/sessions/current`, `POST /v1/sessions` and `DELETE /v1/account`. Mobile has no legacy data mode since #293, but it keeps finishing a saved legacy deletion, renewing the exact legacy proof, reusing a frozen exchange proof, honoring linked-owner markers and reading the legacy secure vault.
   - Enforced by (test, written): `apps/api/tests/http/routing.test.ts` fails when the routes only legacy mode registers differ from the retired list, so a re-enabled or new legacy-only route fails, and when bootstrap or transfer sessions stop getting 410 in managed mode or stop reaching the identity service in legacy mode. `apps/api/tests/build-app.test.ts` fails when the default config, or the runtime wiring of `MANAGED_AUTH_ENABLED`, serves the managed contract. The legacy case in `sync.integration.test.ts` covers recovery, renewal and replay. On mobile, `apps/mobile/src/app-support/identity/auth/managed-controller.test.ts` fails without the saved-deletion, frozen-proof or linked-owner path, and `auth/legacy-link-proof.test.ts` without renewal. `apps/mobile/src/app-support/identity/vault.test.ts` fails when the vault stops reading the native Keychain, and `apps/mobile/src/app-support/providers/AppProvider.token-canary.test.tsx` fails when the managed identity factory stops reading the legacy vault. Only review catches a legacy administration route added to both modes, the native Swift Keychain module (device acceptance), and dropping recovery items or device-only session proposals before linking or deletion reconciles them.
-- Guest adoption, iCloud adoption, backups and imports never copy admission metadata. iCloud consent belongs to one route visit, one collection and one Apple account through the final preference write.
-  - Enforced by (test, written): `never copies guest admission metadata into the adopting account` in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts` seeds a guest approval, runs the real adoption with its iCloud handover and fails when any non-guest key holds an access entry or the approval, or the account upload carries it. The backup formats in `apps/mobile/src/data/backup/` are strict schemas with no admission field, so only review catches one added to them. In `apps/mobile/src/features/settings/data/SettingsICloudRow.test.tsx`, `keeps consent and an activation to the route visit that started them` fails when consent survives a blur or an activation commits after one, and the collection and Apple-account cases cover the rest.
+- Guest and account collection adoption, iCloud adoption, backups and imports never copy admission metadata. iCloud consent belongs to one route visit, one collection and one Apple account through the final preference write.
+  - Enforced by (test, written): `never copies guest admission metadata into the adopting account` and its `account` case in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts` seed an approval in the source collection, run the real adoption (with its iCloud handover for a guest) and fail when any key outside the source holds an access entry or the approval, or the account upload carries it. The backup formats in `apps/mobile/src/data/backup/` are strict schemas with no admission field, so only review catches one added to them. In `apps/mobile/src/features/settings/data/SettingsICloudRow.test.tsx`, `keeps consent and an activation to the route visit that started them` fails when consent survives a blur or an activation commits after one, and the collection and Apple-account cases cover the rest.
 - The legal reader records no agreement, and no route rebuilds a completion from its URL. Success and Reflection show only the local record their `attemptId` names.
   - Enforced by (test, written): `shows direct document links without mutations and enters guest mode only after Continue` in `apps/mobile/src/app-support/acceptance/AcceptanceScreen.test.tsx` fails when reading Terms or Privacy enters the app, and the `without legal confirmation` cases in `NavigationRoutes.test.tsx` open every product and account route with no confirmation. `does not show a different attempt or the old account result` in `apps/mobile/src/features/challenges/success/SuccessScreen.test.tsx` fails when an `attemptId` with no local record shows a result. Only review catches a legal screen that stores an agreement, and a route parameter that carries completion fields.
 - Each screen copy the Privacy Policy promises stays on that screen. Today that is the cloud-sync explanation before Apple or Google sign-in, on Welcome and the provider sign-in screen.
   - Enforced by (test, written): `scripts/quality/policy-copy.test.mjs` in `pnpm run test:architecture` lists each promising clause of `docs/legal/PRIVACY_POLICY_DRAFT.md` with the screens and copy that keep it. It fails when the clause or a screen's copy changes. Only review catches a new policy clause that promises copy and is missing from that list.
-- Guest adoption copies the source only after its accepted completions and reflections save and every stopped source or target sync settles. A completion still saving reaches the account, and its caller sees success. A reflection that fails to save fails the adoption and keeps the source for a retry. An accepted sync clear delays the copy.
-  - Enforced by (test): Cases in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`. One fails for each await removed from `AccountRepository.withDataMigration` (accepted completions, accepted reflections) or from the `settled()` calls in `mergeGuestData` (source iCloud, target cloud and target iCloud coordinators).
+- Every sign-in brings the phone's current collection, guest or another account's, into the account that signed in (#492). The adoption copies the source only after its accepted completions and reflections save and every stopped source or target sync settles. A completion still saving reaches the account, and its caller sees success. A reflection that fails to save fails the adoption and keeps the source for a retry. An accepted sync clear, including the source account's own delete-all from another device, delays the copy. An interrupted copy stays bound to the owner it started with, and the source is erased only after the copy saves. An account source keeps its iCloud records under its own account.
+  - Enforced by (test): Cases in `apps/mobile/src/app-support/providers/activity-runtime.managed.test.ts`. One fails for each await removed from `AccountRepository.withDataMigration` (accepted completions, accepted reflections) or from the `settled()` calls in `mergeGuestData` (source iCloud, source cloud, target cloud and target iCloud coordinators). In `apps/mobile/src/app-support/identity/auth/managed-controller.test.ts`, `brings a signed-out account collection into whichever account signs in next (#492)` fails when another account's sign-in opens its own journal instead, `keeps an interrupted account collection adoption bound to its first verified owner until it finishes` when a different owner takes over a pending copy, and `selects the adopting account before retiring the previous account collection and resumes retirement after restart` when the source outlives a restart after its copy.
 - A runtime built before hydration finishes reads the current snapshot when it connects, just before or just after it subscribes. Hydration or accepted input that lands between construction and connection still reaches it. Today that covers the app runtime from `createAppRuntime()`, which connects identity to the activity runtime, client and access, the reflection controller, the `useAccountDeletionDialog` focus effect and `ChallengeController.changeAccount()`.
   - Enforced by (test): The `connects to identity that hydrated after runtime construction` case in `apps/mobile/src/app-support/providers/AppProvider.test.tsx` fails when the runtime's `subscribe()` skips its first `sync()`, skips the access calls in it or drops the identity subscription. The `reconciles saved local writing when hydration finishes before subscription` case in `apps/mobile/src/features/reflections/controller.test.ts` fails when `ReflectionController.connect()` skips its first `refresh()`. The `reconciles a deletion restored between construction and subscription, then unsubscribes` case in `apps/mobile/src/app-support/identity/deletion/DeleteAccountScreen.test.tsx` fails when the deletion dialog skips its `reconcile()` after subscribing, and 8 cases under `apps/mobile/src/features/challenges` fail when `changeAccount()` skips the `read()` after saved preferences load. Only review catches a new runtime with this lifecycle that has no such case.
 - Prove a user-facing change on the running app. Interactive checks use the built-in browser pane, not an outside Chrome window.
@@ -324,35 +323,35 @@ highest level that works and updates this list.
 - Screens stay accessible.
   - Enforced by (test, written): Role and accessible-name queries in component tests, journeys and drives fail when a queried label goes missing. [Accessibility](#accessibility) covers the rest.
 - A bug found outside the task is filed with `bug` and one of `agent-fix`, `needs-decision` or `blocked`. Each known-bug test (Jest `.failing` or Vitest `.fails`) names its issue as `#NNN` or the issue URL. A decision trail records each filed bug in a `bug` row.
-  - Enforced by (test, hook, written): `scripts/quality/known-bugs.test.mjs` fails on a tracked known-bug test with no issue reference in its title or the comment above. The Stop hook `.claude/hooks/require-trail-review.mjs` (cases in `trail-review-hook.test.mjs`) blocks while a trail's latest `bug` row for a bug has no label or skip reason. A bug with no row, and the issue's real labels, are caught only in review.
-- Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`. A run writes only to its own trail and records other sessions' events there. A block over another session's trail means the hook or the main checkout is stale, so never write into that trail.
-  - Enforced by (hook, written): The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)
-- Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail.
+  - Enforced by (test, written): `scripts/quality/known-bugs.test.mjs` fails on a tracked known-bug test with no issue reference in its title or the comment above. A trail's `bug` rows, and the issue's real labels, are caught only in review.
+- Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`. A run writes only to its own trail and records other sessions' events there, never into another session's trail.
   - Enforced by (written): Nothing. It is a judgment call.
-- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
-  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
+- Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. A long coordinator hands itself off to a fresh session at a milestone, and multi-step browser walkthroughs run in their own short session, without waiting for Anthony to ask, as [Agent effort](#agent-effort) says.
+  - Enforced by (written): Nothing. It is a judgment call.
+- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, where a sensitive file whose patch only rewords user-facing strings in mobile TypeScript does not count as sensitive, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix, Copy change) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
+  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`. `scripts/quality/copy-only.mjs` decides a copy-only patch, with cases in `copy-only.test.mjs`, and fails closed on a missing patch (GitHub omits large ones), a rename, a changed template expression or code token, a string that does not read like prose, and text the code compares or looks up, also when Prettier wraps the comparison onto the line just above or below. It reads only string literals, so a change to JSX text or comments stays sensitive. Only review catches prose-shaped text the code uses as data in a way the check does not list.
 - Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself. A session on the Mac mini starts inside its JustGO checkout, `/Users/anthony/Documents/apps/justgo`, so JustGO's settings, hooks and compaction window load.
   - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/session-model-guard.mjs`, which denies a `mcp__ccd_session__start_session` call that sets `model` (a `proposal_id`-only call passes), a call with `target: "ssh"` or a `host` whose `cwd` is missing or outside that checkout, and every `mcp__ccd_session_mgmt__set_session_model` call, with cases in `scripts/quality/session-model-guard.test.mjs`. A preset that carries a host is caught only in review.
 - A session started in the main checkout runs the current hooks and settings, and its checkout stays current during the session. On `main` with no tracked changes, the checkout fast-forwards to `origin/main` at session start and before each `Agent` call or Bash `git worktree add`, and asks for a restart when the update changed `.claude/` or the root agent instructions. At session start it otherwise says how far behind it is and why it was not updated. Before a tool call it fetches at most once a minute and warns about nothing. It never resets, stashes or touches untracked files, never blocks a session or a tool call, and leaves linked worktrees alone.
-  - Enforced by (hook, test): The `SessionStart` and `PreToolUse` (`Agent|Bash`) hook `.claude/hooks/sync-main.mjs`, which stays silent when offline or up to date and returns no permission decision, with cases against temporary repositories in `scripts/quality/sync-main-hook.test.mjs`. It finds `git worktree add` in Bash text with `shellText()` from `push-after-pass-guard.mjs`, so a worktree that a script creates is not preceded by a sync.
+  - Enforced by (hook, test): The `SessionStart` and `PreToolUse` (`Agent|Bash`) hook `.claude/hooks/sync-main.mjs`, which stays silent when offline or up to date and returns no permission decision, with cases against temporary repositories in `scripts/quality/sync-main-hook.test.mjs`. It finds `git worktree add` in Bash text with `shellText()` from `.claude/hooks/shell-text.mjs` (cases in `scripts/quality/shell-text.test.mjs`), so a worktree that a script creates is not preceded by a sync.
 - When a chat starts or ends in the main checkout, a detached process removes each worktree under `.claude/worktrees/` that nobody needs: unlocked, with no changes or untracked files, no unique ignored files outside `.local/` (such as a key), its HEAD on a remote branch or its PR (the branch's, or the one a `ver-<n>` or `adv-<n>` name gives) merged or closed, no open PR on its branch or HEAD, no process inside, and no file outside `node_modules` changed for 2 hours. Before each removal, `refs/archive/worktrees/<name>` keeps its HEAD and its `.local/` is copied to `.local/archived-worktrees/<name>/`. It then moves the worktree to `.local/worktree-trash/` with `git worktree move` and removes it there, so the next sweep deletes what a removal killed or timed out partway left in that folder, unless `git status`, run through git's record of that worktree, shows more than deleted files. An untracked path counts as deleted when the main checkout ignores it, since a removal can delete a `.gitignore` before the files it ignores. It keeps a leftover git has no record of, a box that holds a file when its worktree folder is gone, and a box it cannot delete. A worktree git refuses to remove, or one changed since its check, moves back, or is locked in the trash when it cannot. When GitHub cannot be read, it keeps everything. It never forces a removal, never deletes a branch, and logs each removal with its commit to `.local/worktree-sweep.log`.
   - Enforced by (hook, test): The `SessionStart` (`startup`) and `SessionEnd` hooks start `.claude/hooks/sweep-worktrees.mjs --detach`, with cases against temporary repositories in `scripts/quality/sweep-worktrees-hook.test.mjs`. `--dry-run` lists what it would remove.
 - Changes reach `main` only through a PR that passes `checks`, `description` and `verdict`.
   - Enforced by (GitHub): Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion. A required check added in GitHub settings is caught only in review.
 - Agents merge only through `pnpm run merge:pr <n> --head <sha> [--auto]`. A PR that targets a branch other than `main` is refused until its parent merges. PRs that share a file merge one at a time: auto-merge armed first, then the earliest PASS verdict, then the lowest number. The script refuses a merge that would newly conflict an open PR earlier in that order, and first merges the latest `main` into a branch that is behind; only a direct merge waits for its checks. `node scripts/quality/merge-order.mjs` plans the order.
   - Enforced by (hook, test): The `PreToolUse` Bash hook `.claude/hooks/merge-order-guard.mjs` denies any command with `gh pr merge` on one line (also with quoted words, an unset `$name` variable, a `${…}` expansion that keeps its default word or expands to nothing, such as `${x:-merge}` or `m${x:+zz}erge`, or up to 16 `-R` or `--repo` flags before `merge`, an empty `--repo=` included), a `pulls/<n>/merge` API path or the GraphQL `mergePullRequest`, `enablePullRequestAutoMerge` or `enqueuePullRequest` mutation, harmless mentions included. A mention split across lines merges nothing and passes. A 120k-character line takes it milliseconds. A command that builds those words at runtime in other ways, such as `${x/*/merge}` or `$(echo merge)`, or reads a GraphQL query from a file is caught only in review. Branch merges (GraphQL `mergeBranch`, REST `merges`) pass, because branch protection guards `main`. `scripts/quality/merge-pr.mjs` checks with `git merge-tree` and `verdict-patch.mjs`, fails closed when `gh`, git or the network fails, and pins each step to its head. Cases beside it in `merge-pr.test.mjs` and `merge-order-guard.test.mjs`
-- After a `PASS`, agents push nothing more to that PR but docs, tests and merges from `main`. A push that cannot wait disarms auto-merge first and carries `PUSH_AFTER_PASS=1`.
-  - Enforced by (hook, test, written): The `PreToolUse` Bash hook `.claude/hooks/push-after-pass-guard.mjs` denies a `git push` that `verdict-patch.mjs` says needs `re-verify` against a `PASS` on the PR head, and a push in the same command as a commit, merge or rebase to such a PR, with cases in `scripts/quality/push-after-pass-guard.test.mjs`. It reads shell text, skipping heredoc bodies and quoted strings, and lets a push through when it cannot parse it or git, `gh` or the network fails, so review catches those.
+- After a `PASS`, agents push nothing more to that PR but docs, tests and merges from `main`. A push that cannot wait disarms auto-merge first.
+  - Enforced by (CI, written): A code push after a `PASS` cannot merge on that verdict, because the required `verdict` job fails when the newest verdict no longer covers the head (its rule below) and `merge:pr` pins every merge to the head a verdict covers. Pushing to an armed PR and waiting for the fresh verdict is caught only in review.
 - Review rounds end. A `FAIL` must show a failure on a `Failure shown:` line, or it is a note and the verdict is `PASS+NOTES`. No verifier starts on an open PR whose `PASS` or `PASS+NOTES` still covers its head, or that already has 3 `FAIL` verdicts that show a failure. Anthony can ask for another round.
-  - Enforced by (CI, hook, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. The `PreToolUse` Agent hook `.claude/hooks/review-rounds-guard.mjs` denies a verifier on such a PR unless its brief has an `Another round:` line, with cases in `scripts/quality/review-rounds-guard.test.mjs`. It checks the PRs the description names, or every PR the prompt mentions when the description names none. It lets the call through when `gh`, git or the network fails, or when its 45 s budget runs out. Whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony, are caught only in review.
+  - Enforced by (CI, test, written): `scripts/quality/verdict-status.mjs` in the required `verdict` job rejects a `FAIL` with no `Failure shown:` line and says to post `PASS+NOTES`, with cases in `verdict-status.test.mjs`. Starting a verifier on a covered PR or past 3 shown `FAIL` verdicts, whether a shown failure is a real defect, and whether an `Another round:` line quotes Anthony are caught only in review.
 - Small non-sensitive PRs share one Sonnet verifier, at most 4 PRs a batch, with a verdict comment on each PR.
   - Enforced by (test, written): `scripts/quality/verify-batch.mjs` lists the batches, with cases in `scripts/quality/verify-batch.test.mjs`. Starting one verifier per batch is a judgment call.
 - Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.
   - Enforced by (written): Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.
 - The newest verdict covers the PR head. A commit pushed after it needs a fresh verdict, unless every file it changes is review-only in `verdict-patch.mjs` (Markdown, tests, `eslint.config.mjs` and Prettier config). Review-only files still get a review.
   - Enforced by (CI, test): The required `verdict` job in `.github/workflows/pr-description.yml` runs `scripts/quality/verdict-status.mjs`, and `.github/workflows/verdict-recheck.yml` reruns that job when Anthony's account posts or edits a verdict. Cases in `scripts/quality/verdict-status.test.mjs`. A missing or unreadable verdict fails. The format is in [Git and autonomy](#git-and-autonomy).
-- A PR description has the pstack sections in order: `## Why`, `## What changed` (optional), `## Scope`, `## Tradeoffs` (optional), `## Blast Radius` (optional), `## Verification`. A bad description fails only `description`, and the hook catches it before CI does.
-  - Enforced by (hook, CI, test): `descriptionProblems()` in `scripts/quality/pr-description.mjs`, run by the required `description` job. The `PostToolUse` Bash hook `.claude/hooks/pr-description-check.mjs` reads the body back with `gh pr view` after each `gh pr create` or `gh pr edit` and tells the agent to fix it, with cases in `scripts/quality/pr-description-hook.test.mjs`. A PR created outside Bash is caught only by `description`.
+- A PR description has the pstack sections in order: `## Why`, `## What changed` (optional), `## Scope`, `## Tradeoffs` (optional), `## Blast Radius` (optional), `## Verification`. A bad description fails only `description`.
+  - Enforced by (CI, test): `descriptionProblems()` in `scripts/quality/pr-description.mjs`, run by the required `description` job.
 
 ## Security and privacy
 
@@ -385,8 +384,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   Attach a known-bug test to its issue rather than opening a PR for it alone.
   Keep other doc tweaks for a PR that already touches that doc.
 - **PR descriptions use pstack sections**: Why, What changed, Scope,
-  Tradeoffs, Blast Radius and Verification, in that order. The
-  `pr-description-check` hook and the required `description` check enforce them.
+  Tradeoffs, Blast Radius and Verification, in that order. The required
+  `description` check enforces them.
 - **Act without asking** on reversible work: commit, push your own branches, open
   ready (not draft) PRs, update them, reply to review threads, create or update
   GitHub issues, and rebase or `--force-with-lease` push your own unshared PR branches.
@@ -457,7 +456,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   its brief carries a line `Another round: <his words>`.
 - **Batch small PRs under one verifier.** Before you start verifiers, run
   `node scripts/quality/verify-batch.mjs`. It lists the open PRs that need a
-  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path and no contracts,
+  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path (a patch that only
+  rewords user-facing strings in mobile TypeScript, by
+  `scripts/quality/copy-only.mjs`, does not count) and no contracts,
   database, CI, dependency, `.claude` hook, skill or settings file, lint config
   or `scripts/quality` script outside its tests, and changes at most 150
   counted lines. Tests and Markdown do not count, except `AGENTS.md` and
@@ -485,13 +486,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   after each CI and PR description run, and rerunning the script does the
   same by hand. After a
   `PASS`, push nothing more to the PR. Those `main` merges are the one
-  exception, and the `push-after-pass-guard` hook denies a code push to a PR
-  whose head has a `PASS`. It cannot check a push in the same command as a
-  commit, merge or rebase, so it denies that too: run them as separate
-  commands. Put
-  later additions in a follow-up PR. If a push after
+  exception. Put later additions in a follow-up PR. If a push after
   a `PASS` cannot be avoided, run `pnpm run merge:pr <n> --disable-auto` first,
-  prefix the push with `PUSH_AFTER_PASS=1`, and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
+  and re-arm only after a fresh verdict covers the new head. A docs- or tests-only
   push keeps `verdict` green without a review. Also disarm with
   `--disable-auto` on Anthony's hold.
 - **Sensitive PRs merge like any other.** Green CI and a `PASS` or `PASS+NOTES`
@@ -532,13 +529,6 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Hooks are frozen to cut usage (Anthony, 2026-11-11). Change a hook in
-  `.claude/hooks/` only when it blocks or misfires in real use, shown by the
-  command it got wrong, or when Anthony asks. This holds for `/pstack:correct`
-  too: it fixes a repeated mistake with a written rule, not a new hook check,
-  unless Anthony asks for one. A shell form agents do not write,
-  such as unusual quoting, expansions or heredocs, stays caught only in review.
-  Open no issue or PR for one.
 - Start a session on the Mac mini (the `Mac mini` SSH connection) with `cwd`
   `/Users/anthony/Documents/apps/justgo` or a worktree inside it, never the
   home folder. Outside the repository, JustGO's `.claude/settings.json` does
@@ -562,7 +552,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `Sensitive: yes` line, mentions no other PR or issue number (`#<n>`,
   `owner/repo#<n>` or a GitHub link), every named PR is small by
   `sizeExclusion()` in `scripts/quality/verify-batch.mjs`, with the old path of
-  each rename checked too. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
+  each rename checked too. A sensitive file counts as small there only when its
+  GitHub patch only rewords user-facing strings, so a one-sentence message fix
+  in `managed-controller.ts` gets Sonnet and a missing patch keeps Opus. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
@@ -574,14 +566,15 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Start routine `Agent` helpers on Sonnet at `high` (`model: "sonnet"`) when
   pstack's per-role settings do not already cover them. This covers `Agent`
   calls only, never a session. Routine helpers are research, inventories,
-  docs-only passes, and lint and formatting fixes, and that list is complete.
+  docs-only passes, lint and formatting fixes, and copy changes that only
+  reword user-facing text, and that list is complete.
   Any other helper, or one you are unsure about, runs on Opus. Owners that
   change behavior stay on Opus. The verifier hook above decides each
   verifier's model, so this bullet never overrides it.
 - `verifier-model.mjs` enforces that list. An `Agent` call that is not a verifier,
   trail review or audit keeps Sonnet only when its description starts with
-  Research, Inventory, Docs pass, Docs-only, Lint fix, Format or Formatting
-  fix. A pstack role that `~/.claude/rules/pstack-models.md` puts on Sonnet
+  Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting
+  fix or Copy change. A pstack role that `~/.claude/rules/pstack-models.md` puts on Sonnet
   keeps it when the description starts with the role name: How explorer, How
   explainer, Why investigator, Reflect, Hillclimb or Arena cross-judge. The
   hook rewrites any other non-Opus `model` to Opus.
@@ -607,6 +600,37 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   track their own context. A model with a smaller window keeps its own limit.
   `claude -p /autocompact` shows the window in force, and `get_usage` reports
   where auto-compact starts.
+- A coordinator hands itself off to a fresh session at a milestone, on its own
+  judgment, because Anthony runs several tasks at once and should not have to
+  (Anthony, 2026-11-14). A session that runs for days pays to reread a large
+  context on every turn and keeps compacting. A coordinator is a session that
+  starts sessions or verifiers, merges PRs or tracks a phase. A milestone is a
+  merged PR stack, a finished phase step, or a decision made with its work
+  handed out. Hand off at the first milestone after the session has compacted
+  once or its context, from `get_usage`, passes about 150k. Never hand off in
+  the middle of a change, with uncommitted work, or while Anthony waits on an
+  answer from this session. To hand off:
+  1. Write a resume note of at most about 40 lines: the goal, what landed with
+     PR links, open PRs and their verdict state, decisions and who made them,
+     the sessions still running with their links, the next steps and the
+     decision trail path.
+  2. Start the new session with `start_session`, `context: "fresh"` and the
+     note as its `background`, in this session's checkout. A Mac mini session
+     keeps the `cwd` rule above. Never fork it, which copies the long context,
+     and never set its `model`. When the app refuses the start, such as on a turn another
+     session's message began, propose it as a card instead.
+  3. Tell Anthony in one line with the new session's link, and then start no
+     more work here. Reports from sessions this one started still arrive here,
+     so pass each on to the new session with `SendMessage` until they stop.
+- Keep multi-step browser work out of a long session. Each screenshot adds
+  about 1,500 tokens that every later turn rereads. A coordinator reads pages
+  with `get_page_text` or `read_page` and takes at most one or two screenshots
+  for a quick check. A walkthrough of more steps, such as a provider dashboard,
+  a secrets screen, a sign-in or anything Anthony must do at the screen, goes
+  to its own short session started with `context: "fresh"`, on the agent's own
+  judgment. Its brief gives the exact steps and the links Anthony needs, and
+  asks for a short report back with no secret values. That session ends when
+  the walkthrough does.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, release and backup scripts, and privacy:
   secret storage, the code that carries account data or writing,

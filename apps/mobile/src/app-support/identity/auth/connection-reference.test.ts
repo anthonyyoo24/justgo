@@ -63,6 +63,7 @@ it.each([
   'AUTH',
   'STORAGE',
   'LAST_PROVIDER',
+  'IDENTITY_EXISTS',
 ] as const)(
   'accepts the provider code %s without accepting a provider request ID',
   (code) => {

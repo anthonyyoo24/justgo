@@ -11,9 +11,21 @@ const { diagnosticConfiguration } = createRequire(import.meta.url)(
 );
 
 const root = new URL('../../', import.meta.url);
-const authOrigin = 'https://kmcpcauaxlgpevkkenwd.supabase.co';
-// The staging `api` Edge Function, which passed the Phase 15 hosted window.
+const authOrigin = 'https://gcjmvtsisivxxorstvkb.supabase.co';
+// The staging `api` Edge Function in the us-east-1 project (Phase 15A). The
+// app pins every request to that region with `x-region`.
 export const betaApiUrl = `${authOrigin}/functions/v1/api`;
+/**
+ * The published U.S. Privacy version that beta builds ship with. It says the
+ * database and the server run in the United States (Phase 15A, US-7 and US-9).
+ * `2026-11-15-us-east` is the plain-language rewrite (Phase 13A PR 5), and
+ * `2026-11-15-us-east-2` drops "free beta" from its opening the same day, and
+ * `2026-11-15-us-east-3` renames "Download my data" to "Export data". A new version must
+ * keep the `<yyyy>-<mm>-<dd>-us-east` form, with `-<n>` for a later revision
+ * on the same date, and change only after Anthony publishes it, or the
+ * preflight refuses every beta build.
+ */
+export const betaPrivacyVersion = '2026-11-15-us-east-3';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
 
@@ -80,6 +92,7 @@ export function checkBetaRelease({
   documents,
   operation = 'build',
   diagnostics = false,
+  privacyVersion = betaPrivacyVersion,
 }) {
   const errors = [];
   const check = (condition, message) => {
@@ -151,7 +164,7 @@ export function checkBetaRelease({
   const auth = publicUrl(env.EXPO_PUBLIC_SUPABASE_URL);
   check(
     auth?.origin === authOrigin && auth.pathname === '/',
-    'EXPO_PUBLIC_SUPABASE_URL must select the existing staging Auth project.',
+    'EXPO_PUBLIC_SUPABASE_URL must select the us-east-1 staging Auth project.',
   );
   check(
     publicAuthKey(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
@@ -222,6 +235,21 @@ export function checkBetaRelease({
     try {
       // Reuse the site's actual publication boundary, including dates and placeholders.
       const document = parseDocument(documents[filename], true);
+      if (filename === 'PRIVACY_POLICY_DRAFT.md') {
+        const pinned = /^(\d{4}-\d{2}-\d{2})-us-east(?:-[1-9]\d*)?$/.exec(
+          privacyVersion,
+        );
+        check(
+          pinned,
+          'Set betaPrivacyVersion to the published U.S. Privacy version before a beta build.',
+        );
+        check(
+          pinned &&
+            document.version === privacyVersion &&
+            document.effectiveDate === pinned[1],
+          'PRIVACY_POLICY_DRAFT.md must be the U.S. notice betaPrivacyVersion names, effective on its date.',
+        );
+      }
       if (diagnostics && filename === 'PRIVACY_POLICY_DRAFT.md') {
         const scopes = documents[filename].match(
           /^<!-- diagnostics-scope: [^\r\n]+ -->$/gm,

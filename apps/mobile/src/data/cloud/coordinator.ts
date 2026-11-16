@@ -33,6 +33,8 @@ const metadataSchema = z
     deletionId: z.string().nullable().default(null),
     completedDeletionId: z.string().nullable().default(null),
     adoptionDeleted: z.array(z.uuid()).max(LIMIT).default([]),
+    // A signed-out import restores deleted records on the next full pass, like a signed-in import.
+    importPending: z.boolean().default(false),
     versions: z.record(
       z.string(),
       z.object({ id: z.uuid(), parents: z.array(z.uuid()).max(50) }).strict(),
@@ -50,6 +52,7 @@ const emptyMetadata = (): Metadata => ({
   deletionId: null,
   completedDeletionId: null,
   adoptionDeleted: [],
+  importPending: false,
   versions: {},
   heads: {},
 });
@@ -331,6 +334,7 @@ export class CloudDataCoordinator {
       const response = await this.transport.putCompletions(
         {
           expectedEpoch: remote.epoch,
+          ...(metadata.importPending && { restoreDeleted: true }),
           attempts: missing
             .slice(index, index + BATCH)
             .map((attempt) => completionAttemptSchema.strip().parse(attempt)),
@@ -368,6 +372,7 @@ export class CloudDataCoordinator {
       const response = await this.transport.putVersions(
         {
           expectedEpoch: remote.epoch,
+          ...(metadata.importPending && { restoreDeleted: true }),
           versions: upload.slice(index, index + BATCH),
         },
         signal,
@@ -383,7 +388,13 @@ export class CloudDataCoordinator {
         values.map((value) => value.versionId),
       ]),
     );
+    metadata.importPending = false;
     await this.save(metadata);
+  }
+  /** Marks a local-only import so the next sync uploads it as an import. An epoch change still clears it. */
+  async markImportPending() {
+    await this.settled();
+    await this.save({ ...(await this.load()), importPending: true });
   }
   async deleteData(intentId = this.id()): Promise<void> {
     this.stop();

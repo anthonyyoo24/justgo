@@ -73,10 +73,8 @@ beforeEach(() => {
 it('offers an explicit complete data download for a guest without requiring an account', async () => {
   const screen = await render(<SettingsExportRow />);
   expect(collect).not.toHaveBeenCalled();
-  await fireEvent.press(
-    screen.getByRole('button', { name: 'Download my data' }),
-  );
-  await screen.findByText('Your data download was shared.');
+  await fireEvent.press(screen.getByRole('button', { name: 'Export data' }));
+  await screen.findByText('Your data export was shared.');
   expect(collect).toHaveBeenCalledWith(
     expect.objectContaining({
       ownerKind: 'guest',
@@ -90,9 +88,7 @@ it('offers an explicit complete data download for a guest without requiring an a
 it('uses account-owned local snapshots while signed out', async () => {
   mockKind = 'account';
   const screen = await render(<SettingsExportRow />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: 'Download my data' }),
-  );
+  await fireEvent.press(screen.getByRole('button', { name: 'Export data' }));
   await screen.findByText(
     'Your phone’s saved data was shared. Sign in to include the latest cloud data.',
   );
@@ -128,7 +124,7 @@ it('returns quietly after cancelling and permits a fresh explicit retry', async 
   await waitFor(() => expect(screen.getByRole('button')).toBeEnabled());
   expect(screen.queryByRole('alert')).toBeNull();
   await fireEvent.press(screen.getByRole('button'));
-  await screen.findByText('Your data download was shared.');
+  await screen.findByText('Your data export was shared.');
 });
 it('shows safe storage feedback rather than private adapter details', async () => {
   collect.mockRejectedValueOnce(new ApiError('STORAGE'));
@@ -143,8 +139,8 @@ it('reports a failed cloud read and retries only after another explicit download
   collect.mockRejectedValueOnce(new ApiError('NETWORK'));
   share.mockResolvedValueOnce('downloaded');
   const screen = await render(<SettingsExportRow />);
-  const button = screen.getByRole('button', { name: 'Download my data' });
-  const failure = 'Couldn’t download your data. Please try again.';
+  const button = screen.getByRole('button', { name: 'Export data' });
+  const failure = 'Couldn’t export your data. Please try again.';
 
   await fireEvent.press(button);
   await screen.findByText(failure);

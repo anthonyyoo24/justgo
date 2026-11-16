@@ -15,7 +15,7 @@ instruction.
    support record. Assess which deadline applies. Do not promise one worldwide
    period. Keep journal text and authentication or recovery secrets out of the
    record.
-2. Where **Download my data**, **Delete all my data** or **Delete account** in
+2. Where **Export data**, **Delete all my data** or **Delete account** in
    Settings covers the request, point the user to it.
 3. For manual help, verify account authority through an authenticated route. An
    account identifier alone does not verify a requester. Never ask for a

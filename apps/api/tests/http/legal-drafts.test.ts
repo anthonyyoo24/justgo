@@ -30,6 +30,7 @@ describe('local development legal destinations', () => {
         'JustGO does not record document views or legal agreement.',
       );
       expect(response.body).not.toContain('analytics-scope versions');
+      expect(response.body).not.toContain('free beta');
       expect(response.body).toContain(
         'When signed in, challenge history, feelings and written reflections synchronize with your JustGO account.',
       );

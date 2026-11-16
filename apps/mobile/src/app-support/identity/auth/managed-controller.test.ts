@@ -2,7 +2,10 @@ import {
   managedIdentityStateSchema,
   type ManagedIdentityState,
 } from './managed-state';
-import { ManagedIdentityController } from './managed-controller';
+import {
+  ManagedIdentityController,
+  type PhoneDataMerger,
+} from './managed-controller';
 import {
   ProviderAuthError,
   type ManagedAuth,
@@ -463,19 +466,164 @@ it('fences uploads immediately on offline logout, retains local ownership and re
   expect(restarted.offlineAccountOwner()).toBeNull();
 });
 
-it('never treats another signed-out account collection as guest data to merge', async () => {
+// #492: a different account no longer fails after the server made its session.
+it('brings a signed-out account collection into whichever account signs in next (#492)', async () => {
   const ctx = setup();
   const merge = jest.fn(async () => {});
+  const retire = jest.fn(async () => {});
   ctx.controller.setGuestDataMerger(merge);
+  ctx.controller.setGuestDataRetirer(retire);
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
   expect(await ctx.controller.signOut()).toBe(true);
   merge.mockClear();
+  retire.mockClear();
   ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
   ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
   await ctx.controller.signIn('google');
+  expect(merge).toHaveBeenCalledTimes(1);
+  expect(merge).toHaveBeenCalledWith(
+    account.userId,
+    uuid(51),
+    { userId: uuid(51), token: session.accessToken },
+    'account',
+    expect.any(Function),
+  );
+  expect(retire).toHaveBeenCalledWith(account.userId);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    collectionId: uuid(51),
+    collectionKind: 'account',
+    account: { userId: uuid(51) },
+    message: '',
+  });
+  expect(ctx.saved()?.collectionAdoption).toBeNull();
+});
+
+it('lets a signed-out account sign back in after its pending delete-all refused another account (no owner bound)', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  await ctx.controller.signOut();
+  // ActivityRuntime.mergeGuestData refuses a source whose delete-all is
+  // pending before it calls beforeCopy.
+  ctx.controller.setGuestDataMerger(
+    jest.fn(async () => {
+      throw new ApiError('UNAVAILABLE');
+    }),
+  );
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.saved()?.collectionAdoption ?? null).toBeNull();
+  // Signing back into the source account is how its delete-all finishes.
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session });
+  ctx.setAccount(account);
+  await ctx.controller.signIn('apple');
+  expect(ctx.controller.currentSession()?.userId).toBe(account.userId);
+  expect(ctx.controller.getSnapshot().collectionId).toBe(account.userId);
+});
+
+it('keeps an interrupted account collection adoption bound to its first verified owner until it finishes', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  await ctx.controller.signOut();
+  const merge = jest.fn<Promise<void>, Parameters<PhoneDataMerger>>(
+    async (_source, _owner, _session, _kind, beforeCopy) => {
+      await beforeCopy?.();
+      throw new Error('Connection lost');
+    },
+  );
+  ctx.controller.setGuestDataMerger(merge);
+  ctx.auth.signIn.mockResolvedValue({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot().collectionId).toBe(account.userId);
+  expect(ctx.saved()?.collectionAdoption).toEqual({
+    sourceId: account.userId,
+    ownerId: uuid(51),
+    status: 'pending',
+  });
+  merge.mockClear();
+  ctx.auth.signIn.mockResolvedValue({ ...session, authUserId: uuid(42) });
+  ctx.setAccount({ ...account, authUserId: uuid(42), userId: uuid(52) });
+  await ctx.controller.signIn('google');
   expect(merge).not.toHaveBeenCalled();
+  expect(ctx.controller.getSnapshot().collectionId).toBe(account.userId);
+  merge.mockImplementation(async () => {});
+  ctx.auth.signIn.mockResolvedValue({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await ctx.controller.signIn('google');
+  expect(merge).toHaveBeenCalledWith(
+    account.userId,
+    uuid(51),
+    { userId: uuid(51), token: session.accessToken },
+    'account',
+    expect.any(Function),
+  );
   expect(ctx.controller.getSnapshot().collectionId).toBe(uuid(51));
+});
+
+it('selects the adopting account before retiring the previous account collection and resumes retirement after restart', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  await ctx.controller.signOut();
+  ctx.controller.setGuestDataRetirer(
+    jest.fn(async () => {
+      throw new Error('Storage locked');
+    }),
+  );
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await ctx.controller.signIn('google');
+  expect(ctx.saved()).toMatchObject({
+    collection: { kind: 'account', id: uuid(51) },
+    collectionAdoption: {
+      sourceId: account.userId,
+      ownerId: uuid(51),
+      status: 'copied',
+    },
+  });
+  const restarted = ctx.create();
+  const retire = jest.fn(async () => {});
+  const merge = jest.fn(async () => {});
+  restarted.setGuestDataRetirer(retire);
+  restarted.setGuestDataMerger(merge);
+  await restarted.initialize();
+  expect(retire).toHaveBeenCalledWith(account.userId);
+  expect(merge).not.toHaveBeenCalled();
+  expect(ctx.saved()?.collectionAdoption).toBeNull();
+  expect(restarted.getSnapshot().collectionId).toBe(uuid(51));
+});
+
+it('brings both a parked guest and the signed-out account collection into a different account', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // An older build could leave guest writing parked beside an account collection.
+  await ctx.storage.write({
+    ...ctx.saved()!,
+    mode: 'signed-out',
+    account: null,
+    guestAdoption: null,
+  });
+  const restarted = ctx.create();
+  const merge = jest.fn(async () => {});
+  restarted.setGuestDataMerger(merge);
+  await restarted.initialize();
+  ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
+  ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
+  await restarted.signIn('google');
+  const owner = { userId: uuid(51), token: session.accessToken };
+  expect(merge.mock.calls).toEqual([
+    [ctx.saved()!.guestId, uuid(51), owner],
+    [account.userId, uuid(51), owner, 'account', expect.any(Function)],
+  ]);
+  expect(restarted.getSnapshot().collectionId).toBe(uuid(51));
+  expect(ctx.saved()?.guestAdoption?.status).toBe('consumed');
 });
 
 it('checks canonical owner with the API before making a stored session available after relaunch', async () => {
@@ -1024,37 +1172,6 @@ it('finishes an existing legacy deletion receipt without any bootstrap or provid
   });
 });
 
-it('links providers only within the verified canonical owner and rejects a different returned Auth subject', async () => {
-  const ctx = setup();
-  await ctx.controller.initialize();
-  await ctx.controller.signIn('apple');
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['apple', 'google'],
-  });
-  await ctx.controller.linkProvider('google');
-  expect(ctx.controller.getSnapshot()).toMatchObject({
-    account,
-    hasPending: false,
-  });
-  expect(
-    ctx.calls.filter(
-      (call) => call.method === 'POST' && call.path === '/auth/session',
-    ),
-  ).toHaveLength(1);
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    authUserId: uuid(999),
-  });
-  await ctx.controller.linkProvider('google');
-  expect(ctx.controller.currentSession()).toBeNull();
-  expect(ctx.controller.getSnapshot()).toMatchObject({
-    account: null,
-    collectionId: account.userId,
-    mode: 'signed-out',
-  });
-});
-
 it('shows a retryable startup error without replacing unreadable saved ownership, then recovers after unlocking', async () => {
   const ctx = setup();
   ctx.storage.read.mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
@@ -1228,17 +1345,6 @@ it('upgrades parked guest writing only after the renewed sign-in disclosure', as
   expect(ctx.saved()?.guestAdoption?.status).toBe('consumed');
 });
 
-it('rejects a different account in an account-owned import or deletion sign-in flow', async () => {
-  const ctx = setup();
-  const merge = jest.fn();
-  ctx.controller.setGuestDataMerger(merge);
-  await ctx.controller.initialize();
-  await ctx.controller.signIn('google', { expectedOwnerId: uuid(99) });
-  expect(ctx.controller.currentSession()).toBeNull();
-  expect(ctx.controller.getSnapshot().collectionId).toBe(uuid(1));
-  expect(merge).not.toHaveBeenCalled();
-});
-
 it('keeps an interrupted adoption bound to its first verified owner', async () => {
   const ctx = setup();
   const merge = jest.fn().mockRejectedValue(new Error('Connection lost'));
@@ -1264,34 +1370,319 @@ it('deleting an adopted account creates a fresh empty guest identity rather than
   expect(ctx.saved()?.collection.id).toBe(ctx.saved()?.guestId);
 });
 
-it('reflects verified provider links, protects the last method and clears switches on logout', async () => {
+const conflicts = [
+  {
+    signedIn: 'google',
+    adding: 'apple',
+    message:
+      'That Apple ID already has its own JustGO account, so it can’t be added to this one.',
+  },
+  {
+    signedIn: 'apple',
+    adding: 'google',
+    message:
+      'That Google account already has its own JustGO account, so it can’t be added to this one.',
+  },
+] as const;
+async function signInWithOnly(
+  ctx: ReturnType<typeof setup>,
+  provider: SignInProvider,
+) {
+  const only = { ...session, linkedProviders: [provider] };
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(only);
+    return only;
+  });
+  await ctx.controller.signIn(provider);
+}
+const linked: ProviderSession = {
+  ...session,
+  accessToken: 'synthetic-linked-token',
+  linkedProviders: ['apple', 'google'],
+};
+
+it('links a new provider to the signed-in account, then signs in with it to the same account and copies nothing', async () => {
   const ctx = setup();
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['apple']);
-  ctx.auth.linkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['apple', 'google'],
+  const merge = jest.fn(async () => {});
+  ctx.controller.setGuestDataMerger(merge);
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    ctx.auth.subscribe.mock.calls[0]![0](linked);
+    return linked;
   });
-  await ctx.controller.linkProvider('google');
+  const offset = ctx.calls.length;
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).toHaveBeenCalledWith('google');
+  expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+    message: '',
+  });
+  // The old app session is revoked before the linked session registers.
+  expect(
+    ctx.calls
+      .slice(offset)
+      .map(({ method, path, token }) => [method, path, token]),
+  ).toEqual([
+    ['POST', '/auth/logout', session.accessToken],
+    ['POST', '/auth/session', linked.accessToken],
+  ]);
+  expect(merge).not.toHaveBeenCalled();
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  expect(ctx.stored.size).toBe(0);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('signs in with a provider already linked to the account without linking it again', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    const both = { ...session, linkedProviders: ['apple', 'google'] as const };
+    ctx.setProvider({ ...both, linkedProviders: [...both.linkedProviders] });
+    return { ...both, linkedProviders: [...both.linkedProviders] };
+  });
+  await ctx.controller.signIn('apple');
   expect(ctx.controller.getSnapshot().linkedProviders).toEqual([
     'apple',
     'google',
   ]);
-  ctx.auth.unlinkIdentity.mockResolvedValueOnce({
-    ...session,
-    linkedProviders: ['google'],
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    ctx.auth.subscribe.mock.calls[0]![0](linked);
+    return linked;
   });
-  await ctx.controller.unlinkProvider('apple');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['google']);
-  ctx.auth.unlinkIdentity.mockRejectedValueOnce(
-    new ProviderAuthError('LAST_PROVIDER'),
+  const offset = ctx.calls.length;
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).not.toHaveBeenCalled();
+  expect(ctx.auth.signIn).toHaveBeenLastCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  expect(
+    ctx.calls.slice(offset).map(({ path, token }) => [path, token]),
+  ).toEqual([
+    ['/auth/logout', session.accessToken],
+    ['/auth/session', linked.accessToken],
+  ]);
+  ctx.controller.dispose();
+});
+
+it('signs in when Auth reports the identity was linked elsewhere since the last verification', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // Auth's adapter returns the unchanged session for an identity already linked.
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => session);
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    return linked;
+  });
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.signIn).toHaveBeenLastCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  ctx.controller.dispose();
+});
+
+it('turns on a provider while signed out with an ordinary sign-in', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.switchProvider('google');
+  expect(ctx.auth.linkIdentity).not.toHaveBeenCalled();
+  expect(ctx.auth.signIn).toHaveBeenCalledWith('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+  });
+  ctx.controller.dispose();
+});
+
+it.each(conflicts)(
+  'keeps the account, provider and app session when the $adding identity already has its own account',
+  async ({ signedIn, adding, message }) => {
+    const ctx = setup(true);
+    await ctx.controller.initialize();
+    await signInWithOnly(ctx, signedIn);
+    const before = ctx.controller.getSnapshot();
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    const offset = ctx.calls.length;
+    await ctx.controller.switchProvider(adding);
+    expect(ctx.auth.linkIdentity).toHaveBeenCalledWith(adding);
+    expect(ctx.auth.signIn).toHaveBeenCalledTimes(1);
+    // An expected, explained refusal carries no developer reference.
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+      collectionId: before.collectionId,
+      linkedProviders: [signedIn],
+      message,
+      connectionReference: null,
+    });
+    expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+    // Nothing was revoked or registered, and no switch proof is left behind.
+    expect(ctx.calls.slice(offset)).toEqual([]);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+    });
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps the developer reference for a link that fails for another reason', async () => {
+  const ctx = setup(true);
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+  await ctx.controller.switchProvider('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: { userId: account.userId },
+    connectionReference: 'Dev sign-in reference: provider-auth / AUTH',
+  });
+  ctx.controller.dispose();
+});
+
+it.each(conflicts)(
+  'returns to the account with the $adding conflict message after a browser link Auth refused',
+  async ({ signedIn, adding, message }) => {
+    const ctx = setup(true);
+    await ctx.controller.initialize();
+    await signInWithOnly(ctx, signedIn);
+    ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+    await ctx.controller.switchProvider(adding);
+    expect(ctx.saved()?.pendingSignIn).toMatchObject({
+      provider: adding,
+      switching: true,
+    });
+    ctx.setProvider({
+      ...session,
+      linkedProviders: [signedIn],
+      identityExists: true,
+    });
+    const offset = ctx.calls.length;
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot()).toMatchObject({
+      provider: signedIn,
+      account: { userId: account.userId },
+      message,
+      switchCancelled: true,
+      connectionReference: null,
+    });
+    expect(
+      ctx.calls.slice(offset).filter(({ path }) => path === '/auth/logout'),
+    ).toEqual([]);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.size).toBe(0);
+    restarted.dispose();
+    ctx.controller.dispose();
+  },
+);
+
+it('finishes a browser link after its callback, revoking the old app session first', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+  await ctx.controller.switchProvider('google');
+  ctx.setProvider({ ...linked, freshSignIn: true });
+  const offset = ctx.calls.length;
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+  });
+  const paths = ctx.calls
+    .slice(offset)
+    .map(({ method, path, token }) => [method, path, token]);
+  const logout = paths.findIndex(
+    ([, path, token]) =>
+      path === '/auth/logout' && token === session.accessToken,
   );
-  await ctx.controller.unlinkProvider('google');
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual(['google']);
-  expect(ctx.controller.getSnapshot().message).toContain('Use Log out');
-  await ctx.controller.signOut();
-  expect(ctx.controller.getSnapshot().linkedProviders).toEqual([]);
+  const register = paths.findIndex(
+    ([method, path, token]) =>
+      method === 'POST' &&
+      path === '/auth/session' &&
+      token === linked.accessToken,
+  );
+  expect(logout).toBeGreaterThanOrEqual(0);
+  expect(register).toBeGreaterThan(logout);
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
+});
+
+it('finishes a saved link switch after restart once the old app session can be revoked', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.linkIdentity.mockImplementationOnce(async () => {
+    ctx.setProvider(linked);
+    return linked;
+  });
+  ctx.setFailure(new ApiError('UNAVAILABLE'));
+  await ctx.controller.switchProvider('google');
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    collectionId: account.userId,
+    hasPending: true,
+  });
+  expect(ctx.saved()?.pendingSignIn).toMatchObject({
+    provider: 'google',
+    switching: true,
+    authenticated: true,
+  });
+  ctx.setFailure(null);
+  const offset = ctx.calls.length;
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    provider: 'google',
+    account: { userId: account.userId },
+    linkedProviders: ['apple', 'google'],
+  });
+  const logout = ctx.calls.findIndex(
+    ({ path, token }, index) =>
+      index >= offset &&
+      path === '/auth/logout' &&
+      token === session.accessToken,
+  );
+  const register = ctx.calls.findIndex(
+    ({ method, path, token }, index) =>
+      index >= offset &&
+      method === 'POST' &&
+      path === '/auth/session' &&
+      token === linked.accessToken,
+  );
+  expect(logout).toBeGreaterThanOrEqual(offset);
+  expect(register).toBeGreaterThan(logout);
+  expect(ctx.stored.size).toBe(0);
+  restarted.dispose();
+  ctx.controller.dispose();
 });
 
 it('switches the active provider for one linked subject only after fresh auth and revokes the old app session', async () => {
@@ -1522,12 +1913,9 @@ it('fences the replaced SDK session until old-session revocation succeeds after 
   ctx.controller.dispose();
 });
 
-it('keeps previous-owner data out of a different signed-in account and does not re-adopt consumed guest data', async () => {
+it('brings the signed-in account collection into a different account on switch and never re-adopts consumed guest data', async () => {
   const ctx = setup();
-  const merge = jest.fn(async (guest: string, owner: string) => {
-    expect(guest).toBe(uuid(1));
-    expect(owner).toBe(account.userId);
-  });
+  const merge = jest.fn(async () => {});
   ctx.controller.setGuestDataMerger(merge);
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
@@ -1553,8 +1941,20 @@ it('keeps previous-owner data out of a different signed-in account and does not 
     collectionId: uuid(51),
     account: { userId: uuid(51) },
   });
-  expect(merge).toHaveBeenCalledTimes(1);
-  expect(merge.mock.calls[0]?.[1]).toBe(account.userId);
+  expect(merge.mock.calls).toEqual([
+    [
+      uuid(1),
+      account.userId,
+      { userId: account.userId, token: session.accessToken },
+    ],
+    [
+      account.userId,
+      uuid(51),
+      { userId: uuid(51), token: next.accessToken },
+      'account',
+      expect.any(Function),
+    ],
+  ]);
   expect(ctx.calls.find(({ path }) => path === '/auth/logout')?.token).toBe(
     session.accessToken,
   );

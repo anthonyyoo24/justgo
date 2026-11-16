@@ -4,8 +4,8 @@ import { uuid, deferred } from './journal';
 const apiUrl = 'http://127.0.0.1:4311';
 const origin = 'http://127.0.0.1:8091';
 const prefix = '/functions/v1/api';
-const response = (body: unknown, ok = true) =>
-  ({ ok, url: apiUrl, json: async () => body }) as Response;
+const response = (body: unknown, ok = true, status = ok ? 200 : 400) =>
+  ({ ok, status, url: apiUrl, json: async () => body }) as Response;
 function storage() {
   const values = new Map<string, string>();
   return {
@@ -75,11 +75,31 @@ function provider() {
           if (subject.providers.size < 2)
             return response({ error: 'Last provider' }, false);
           subject.providers.delete(body.provider);
-        } else subject.providers.add(body.provider);
-        return response({
+          return response({
+            subjectHandle: old.subjectHandle,
+            session: {
+              ...old.session,
+              linkedProviders: [...subject.providers],
+            },
+          });
+        }
+        const owner = body.identityHandle
+          ? subjects.get(body.identityHandle)
+          : undefined;
+        if (owner && owner !== subject && owner.providers.has(body.provider))
+          return response({ code: 'CONFLICT' }, false, 409);
+        subject.providers.add(body.provider);
+        // Like Auth's native link, a link returns a new session.
+        const result = {
           subjectHandle: old.subjectHandle,
-          session: { ...old.session, linkedProviders: [...subject.providers] },
-        });
+          session: {
+            ...old.session,
+            accessToken: `fixture.${String(serial++).padStart(30, '0')}.signature`,
+            linkedProviders: [...subject.providers],
+          },
+        };
+        sessions.set(result.session.accessToken, result);
+        return response(result);
       }
       if (String(url).endsWith('provider-sign-outs'))
         return response({ ok: true });
@@ -235,23 +255,105 @@ it('refuses arbitrary ownership claims and forces a fresh allocated principal on
   fixture.auth.dispose();
 });
 
-it('links another provider without fabricating a new registered session', async () => {
+it('links another provider with a new session for the same subject', async () => {
+  const remote = provider();
+  const base = options();
+  const { auth } = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  const signed = (await auth.signIn('apple')) as {
+    authUserId: string;
+    accessToken: string;
+  };
+  const linked = await auth.linkIdentity('google');
+  expect(linked).toMatchObject({
+    authUserId: signed.authUserId,
+    linkedProviders: ['apple', 'google'],
+  });
+  expect(linked).not.toMatchObject({ accessToken: signed.accessToken });
+  const [url, request] = remote.fetcher.mock.calls[1]!;
+  expect(String(url)).toBe(`${apiUrl}/__fixtures/provider-links`);
+  expect(JSON.parse(String(request?.body))).toEqual({
+    accessToken: signed.accessToken,
+    provider: 'google',
+  });
+  // An identity already linked keeps the session and sends nothing.
+  await expect(auth.linkIdentity('google')).resolves.toEqual(linked);
+  expect(remote.fetcher).toHaveBeenCalledTimes(2);
+  const reloaded = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  await expect(reloaded.auth.initialize()).resolves.toEqual(linked);
+  auth.dispose();
+  reloaded.auth.dispose();
+});
+
+it('refuses to link an identity that already has its own subject and keeps the session', async () => {
+  const remote = provider();
+  const base = options();
+  const { auth, control } = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  await auth.signIn('google');
+  const other = [...remote.subjects.keys()][0]!;
+  control.selectSubject(null);
+  const signed = await auth.signIn('apple');
+  control.selectLinkIdentity(other);
+  expect(
+    base.storage.values.get('justgo.fixture.provider-link-identity.v1'),
+  ).toBe(other);
+  await expect(auth.linkIdentity('google')).rejects.toMatchObject({
+    code: 'IDENTITY_EXISTS',
+  });
+  expect(
+    JSON.parse(String(remote.fetcher.mock.calls[2]?.[1]?.body)),
+  ).toMatchObject({ provider: 'google', identityHandle: other });
+  await expect(auth.initialize()).resolves.toEqual(signed);
+  expect(() => control.selectLinkIdentity('not a handle')).toThrow(
+    expect.objectContaining({ code: 'CONFIGURATION' }),
+  );
+  control.selectLinkIdentity(null);
+  await expect(auth.linkIdentity('google')).resolves.toMatchObject({
+    linkedProviders: ['apple', 'google'],
+  });
+  auth.dispose();
+});
+
+it('rejects a link response that keeps the old session or changes the subject', async () => {
   const remote = provider();
   const { auth } = createJourneyManagedAuth({
     ...options(),
     fetcher: remote.fetcher,
   });
   const signed = await auth.signIn('apple');
-  await expect(auth.linkIdentity('google')).resolves.toMatchObject({
-    ...(signed as object),
-    linkedProviders: ['apple', 'google'],
+  const handle = [...remote.subjects.keys()][0]!;
+  remote.fetcher.mockResolvedValueOnce(
+    response({
+      subjectHandle: handle,
+      session: { ...(signed as object), linkedProviders: ['apple', 'google'] },
+    }),
+  );
+  await expect(auth.linkIdentity('google')).rejects.toMatchObject({
+    code: 'AUTH',
   });
-  const [url, request] = remote.fetcher.mock.calls[1]!;
-  expect(String(url)).toBe(`${apiUrl}/__fixtures/provider-links`);
-  expect(JSON.parse(String(request?.body))).toEqual({
-    accessToken: (signed as { accessToken: string }).accessToken,
-    provider: 'google',
+  remote.fetcher.mockResolvedValueOnce(
+    response({
+      subjectHandle: handle,
+      session: {
+        ...(signed as object),
+        authUserId: uuid(99),
+        accessToken: 'fixture.000000000000000000000000000099.signature',
+        linkedProviders: ['apple', 'google'],
+      },
+    }),
+  );
+  await expect(auth.linkIdentity('google')).rejects.toMatchObject({
+    code: 'AUTH',
   });
+  await expect(auth.initialize()).resolves.toEqual(signed);
   auth.dispose();
 });
 
@@ -267,9 +369,10 @@ it('unlinks a connected provider while preserving the registered subject and ses
     code: 'LAST_PROVIDER',
   });
   expect(remote.fetcher).toHaveBeenCalledTimes(1);
-  await auth.linkIdentity('google');
+  const linked = await auth.linkIdentity('google');
   await expect(auth.unlinkIdentity('apple')).resolves.toMatchObject({
-    ...(signed as object),
+    ...(linked as object),
+    authUserId: (signed as { authUserId: string }).authUserId,
     linkedProviders: ['google'],
   });
   expect(String(remote.fetcher.mock.calls[2]?.[0])).toBe(

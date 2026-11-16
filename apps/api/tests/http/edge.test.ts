@@ -15,7 +15,7 @@ const hosted = {
   NODE_ENV: 'production',
   APP_ENVIRONMENT: 'staging',
   DATABASE_URL:
-    'postgresql://justgo_runtime:synthetic@aws-0-ca-central-1.pooler.supabase.com:6543/postgres',
+    'postgresql://justgo_runtime:synthetic@aws-1-us-east-1.pooler.supabase.com:6543/postgres',
   DATABASE_SSL: 'verify-full',
   IDENTITY_RATE_LIMIT_KEY: 'synthetic-only-test-key-at-least-32-long',
   MANAGED_AUTH_ENABLED: 'true',

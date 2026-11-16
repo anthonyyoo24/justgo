@@ -14,17 +14,17 @@ the Dev app. The `preview` environment holds the TestFlight inputs.
 
 ## Provider settings
 
-| Area                     | Setting                                                                                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Apple identity           | Team `NPDYTJS425`, bundle `com.anthonyyoo.justgo`, the existing signing credentials and the Sign in with Apple capability.                                                                        |
-| Supabase Auth            | Project `kmcpcauaxlgpevkkenwd`. Apple and Google providers are on. Manual identity linking is on.                                                                                                 |
-| Supabase Apple provider  | The bundle ID is an accepted Client ID and token audience. Users without email are allowed. Nonce validation is on.                                                                               |
-| Google clients           | Project `justgo-512319` in the existing organization, with a JustGO Supabase web client and a JustGO iPhone client. The consent screen is External and Testing, with the owner email allowlisted. |
-| Google scopes            | `openid`, `profile` and `email` only.                                                                                                                                                             |
-| Supabase Google provider | Skip nonce checks is on. See [Accepted security exceptions](#accepted-security-exceptions).                                                                                                       |
-| CloudKit                 | Container `iCloud.com.anthonyyoo.justgo`, assigned only to `com.anthonyyoo.justgo` under team `NPDYTJS425`. The encrypted private record schema is deployed in Development and Production.        |
-| Public app inputs        | The Auth, Google and API inputs in `apps/mobile/.env.example`, plus `IOS_BUNDLE_IDENTIFIER`, are set in local development and in the EAS `development` and `preview` environments.                |
-| Server-only Auth inputs  | `SUPABASE_AUTH_SECRET_KEY` and the matching Supabase URL and publishable key live in the API host's secret store.                                                                                 |
+| Area                     | Setting                                                                                                                                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apple identity           | Team `NPDYTJS425`, bundle `com.anthonyyoo.justgo`, the existing signing credentials and the Sign in with Apple capability.                                                                                                                                                      |
+| Supabase Auth            | Project `gcjmvtsisivxxorstvkb` ("JustGo US", us-east-1) from build 8. Apple and Google providers are on. Manual identity linking is on. Build 7 uses the Canada project `kmcpcauaxlgpevkkenwd` until US-10 of the [us-east-1 move](../implementation-plan/supabase-us-move.md). |
+| Supabase Apple provider  | The bundle ID is an accepted Client ID and token audience. Users without email are allowed. Nonce validation is on.                                                                                                                                                             |
+| Google clients           | Project `justgo-512319` in the existing organization, with a JustGO Supabase web client and a JustGO iPhone client. The consent screen is External and Testing, with the owner email allowlisted.                                                                               |
+| Google scopes            | `openid`, `profile` and `email` only.                                                                                                                                                                                                                                           |
+| Supabase Google provider | Skip nonce checks is on. See [Accepted security exceptions](#accepted-security-exceptions).                                                                                                                                                                                     |
+| CloudKit                 | Container `iCloud.com.anthonyyoo.justgo`, assigned only to `com.anthonyyoo.justgo` under team `NPDYTJS425`. The encrypted private record schema is deployed in Development and Production.                                                                                      |
+| Public app inputs        | The Auth, Google and API inputs in `apps/mobile/.env.example`, plus `IOS_BUNDLE_IDENTIFIER`, are set in local development and in the EAS `development` and `preview` environments.                                                                                              |
+| Server-only Auth inputs  | `SUPABASE_AUTH_SECRET_KEY` and the matching Supabase URL and publishable key live in the API host's secret store.                                                                                                                                                               |
 
 ## Accepted security exceptions
 
@@ -70,7 +70,9 @@ See [Supabase Apple sign-in](https://supabase.com/docs/guides/auth/social-login/
 
 Configure the web client and the iOS client for the same permanent bundle. Add the
 iOS reversed-client URL scheme. The web client callback is the project's
-`/auth/v1/callback`. The native ID-token exchange puts no client secret on the
+`/auth/v1/callback`. During the us-east-1 move the web client lists the
+callbacks of both `gcjmvtsisivxxorstvkb` and `kmcpcauaxlgpevkkenwd`, and the
+Canada one goes at US-10. The native ID-token exchange puts no client secret on the
 phone. Browser Google OAuth is a separate setup and acceptance task. See
 [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-login/auth-google)
 and the [original Google Sign-In Expo setup](https://react-native-google-signin.github.io/docs/setting-up/expo).
@@ -88,9 +90,20 @@ file or request field never does. Never merge accounts by email, including a
 hidden Apple email or a different Google email. An identity that already belongs
 to another Auth user must fail. See [Supabase identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking).
 
-On November 2, 2026, Anthony chose Account's Apple and Google switches to show
-the active sign-in provider, not the linked identities. The switches never link
-or unlink identities (`ManagedAccountScreen.test.tsx`).
+On November 15, 2026, Anthony replaced the November 2 decision that the switches
+never link. Apple and Google are one account with two ways in. Account's switches
+still show only the provider of the current sign-in, but turning on the other one
+links it to the signed-in Auth user if it is not linked yet, then signs in with
+it. The app never unlinks, and turning off the on switch logs out
+([Phase 13A plan](../implementation-plan/one-person-phone.md#linking-apple-and-google),
+`ManagedAccountScreen.test.tsx` and `managed-controller.test.ts`). An identity
+that already has its own Auth user is refused with `identity_already_exists`,
+and the app keeps the current sign-in.
+
+This needs **Allow manual linking** (`GOTRUE_SECURITY_MANUAL_LINKING_ENABLED`) on
+under Authentication, Sign In / Providers, in the hosted project
+`gcjmvtsisivxxorstvkb`. The code changes no provider setting. Check the setting
+before the iPhone acceptance gate, and change it only with Anthony's go.
 
 Real web Auth uses PKCE and `/auth/callback`. In Supabase, allowlist only approved
 browser origins and callback URLs, and set the API's `CORS_ORIGINS` to match.
