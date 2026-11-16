@@ -30,7 +30,9 @@ stay on Vercel until Anthony moves them.
 ## Recorded facts behind the wording
 
 - **API host.** The `api` Edge Function in Supabase project
-  `kmcpcauaxlgpevkkenwd` serves staging, and TestFlight build 7 points at it.
+  `kmcpcauaxlgpevkkenwd` served staging, and TestFlight build 7 pointed at it,
+  until US-10 of the [U.S. move](../implementation-plan/supabase-us-move.md#us-10)
+  deleted that project on November 16, 2026.
   [Appendix A](../implementation-plan/phase-15-supabase-api.md#appendix-a-prototype-evidence)
   holds the P15-2 and P15-9 receipts.
 - **Region.** At publication the database sat in Canada Central
@@ -89,7 +91,7 @@ The other sentences stay word for word. The Terms
 and publishes with it. The support address is still a personal Gmail account,
 which waits for Anthony's choice.
 
-- **What makes it true.** Build 8 points at the new project and sends
+- **What makes it true.** Build 8 and every later build point at the new project and sends
   `x-region: us-east-1` on every API request, so Supabase runs the `api`
   function beside the database. US-7 reads `x-sb-edge-region: us-east-1` back
   from build 8's code path.
@@ -98,7 +100,8 @@ which waits for Anthony's choice.
   notice that information held in another country may be accessed by its
   courts, law enforcement and national security authorities. The new placement
   paragraph says so for the United States.
-- **Builds.** Build 7 and earlier keep the Canada project until US-10 retires it.
+- **Builds.** Build 7, the last build on the Canada project, expired at US-10
+  on November 16, 2026.
   Publish only together with build 8, never while build 7 is the build testers
   use.
 - **Before publication.** Anthony approves the text. At publication, set

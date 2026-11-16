@@ -254,8 +254,9 @@ Optional managed accounts and renewed private cloud journal processing require a
 
 ## Phase 15 provider change candidate
 
-The API runs on the Supabase Edge Function `api`, and TestFlight build 7 points
-at it. Supabase now processes API connection metadata and signed-in journal
+The API runs on the Supabase Edge Function `api`, and TestFlight build 7 pointed
+at it until it expired on November 16, 2026. Build 8 and later builds use the
+us-east-1 project. Supabase now processes API connection metadata and signed-in journal
 requests as well as the database and Auth. R2 stores encrypted app and Auth
 snapshots and encrypted deletion and revocation records. Encryption does not
 remove those copies from the inventory or prove Not Linked. Vercel keeps only

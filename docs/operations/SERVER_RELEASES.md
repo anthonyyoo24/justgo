@@ -159,8 +159,8 @@ The staging database is the Supabase project **JustGo US**, project ref
 `gcjmvtsisivxxorstvkb`, in `us-east-1` on the free plan, under the organization
 **anthonyyoo corp**. Anthony created it on 2026-11-13. The
 [move plan](../implementation-plan/supabase-us-move.md) owns the move from the
-Canada project `kmcpcauaxlgpevkkenwd`, which served staging before it and stays
-until that plan's US-10. The lane can no longer release to Canada. Production
+Canada project `kmcpcauaxlgpevkkenwd`, which served staging before it. That
+plan's US-10 deleted it on November 16, 2026. The lane can no longer release to Canada. Production
 is not provisioned.
 
 To provision a database, follow this order:

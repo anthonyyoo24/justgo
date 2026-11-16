@@ -25,9 +25,9 @@ command select the staging `api` Edge Function in the us-east-1 project
 refuses any other API URL or Auth project. Every API request sends
 `x-region: us-east-1`, so Supabase runs the function beside the database
 (`apiRegionHeaders` in `apps/mobile/src/lib/network/http.ts`). Build 8 is the
-first build on this project. Build 7 still points at the Canada project
-`kmcpcauaxlgpevkkenwd` until step US-10 of the
-[Supabase us-east-1 move](../implementation-plan/supabase-us-move.md) retires it.
+first build on this project. Build 7, the last build on the Canada project
+`kmcpcauaxlgpevkkenwd`, expired on November 16, 2026, when step US-10 of the
+[Supabase us-east-1 move](../implementation-plan/supabase-us-move.md) deleted that project.
 P15-11 of the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
 retired the old hosts on November 13, 2026: builds 3, 4 and 5 expired, the API Worker and
 its Hyperdrive configuration were deleted, and the Vercel API project `justgo`
@@ -187,8 +187,8 @@ calls the same us-east-1 project.
 Build 0.1.0 (7), from tag `testflight-beta-2026-11-12-3` at `e2ab966`
 ([build run](https://github.com/anthonyyoo24/justgo/actions/runs/43336256436),
 archive SHA-256
-`5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`), still
-points at the Canada project until US-10. The internal **Owner validation** group has one
+`5d87ebb7970f216e79f3d92bc8f73b81a16c49163aa64e1bf935fa15c9b90418`), pointed
+at the Canada project and expired at US-10 on November 16, 2026. The internal **Owner validation** group has one
 tester and manual distribution. No external review or invitation has happened.
 
 On November 13, 2026, Anthony reported that Apple sign-in and account deletion

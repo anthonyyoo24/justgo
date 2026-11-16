@@ -188,6 +188,15 @@ at 17:05 UTC, from main at `176104a5`, whose clock source differs from the
 first deploy only in a comment. Its schedules and three bindings read back
 unchanged apart from the expiry.
 
+On November 16, 2026, [#519](https://github.com/anthonyyoo24/justgo/issues/519)
+gave the clock a token that never expires, also limited to this repository
+with Actions read and write, and set its expiry value to `never`. Deployed
+version `65bc1d67-10ff-418e-82d9-17def6730293` replaced
+`5a4182f5-74ba-47fd-97bf-5f5a8a9194ce` at about 15:19 UTC, from main at
+`f4e6ee22`, and kept both schedules. Its first dispatch, run
+[43895767793](https://github.com/anthonyyoo24/justgo/actions/runs/43895767793)
+at 15:23 UTC, passed. The November 13 token was then deleted.
+
 ## Credential dates
 
 No R2 credential needs renewal. Since November 16, 2026, each backup run mints
@@ -200,12 +209,12 @@ and passes them to the backup step through `GITHUB_ENV`. The parent exists only
 in that step, which loads the mint script and zod, never the database, Sentry or
 upload code. The uploader is not stored and expires an hour later.
 
-| Credential                                                                               | Expires (UTC)                                                  |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| R2 parent `justgo-staging-backup-parent-2026-11-16`, `R2_PARENT_*`                       | Never                                                          |
-| Inspector `justgo-staging-backup-inspector-2026-11-16`, `R2_INSPECT_TOKEN`               | Never                                                          |
-| Derived uploader                                                                         | One hour after each run mints it                               |
-| Clock GitHub token `justgo-staging-backup-clock-2026-11-13`, `BACKUP_CLOCK_GITHUB_TOKEN` | December 13, 16:58:59, last dispatch before December 12, 23:40 |
+| Credential                                                                               | Expires (UTC)                    |
+| ---------------------------------------------------------------------------------------- | -------------------------------- |
+| R2 parent `justgo-staging-backup-parent-2026-11-16`, `R2_PARENT_*`                       | Never                            |
+| Inspector `justgo-staging-backup-inspector-2026-11-16`, `R2_INSPECT_TOKEN`               | Never                            |
+| Derived uploader                                                                         | One hour after each run mints it |
+| Clock GitHub token `justgo-staging-backup-clock-2026-11-16`, `BACKUP_CLOCK_GITHUB_TOKEN` | Never                            |
 
 The parent is a Cloudflare account API token with Object Read & Write on
 `justgo-staging-backups` only. The inspector is an account API token with Admin
@@ -214,16 +223,13 @@ runners have no fixed addresses.
 
 What still needs a person:
 
-- The clock's GitHub token, before 23:40 UTC on December 12, 2026. The clock
-  stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its
-  deployed configuration, `2026-12-13T00:00:00Z`.
-  [#519](https://github.com/anthonyyoo24/justgo/issues/519) replaces it with a
-  token that never expires. The clock accepts `never` as that value, for a
-  fine-grained token created with no expiration, limited to this repository
-  with Actions read and write. Store the token with
-  `wrangler secret put BACKUP_CLOCK_GITHUB_TOKEN`, which prompts with hidden
-  input, then deploy the clock from its protected activated configuration
-  with the expiry set to `never`.
+- A leaked or revoked clock token. Create a fine-grained token with no
+  expiration, limited to this repository with Actions read and write. Store it
+  with `wrangler secret put BACKUP_CLOCK_GITHUB_TOKEN`, which prompts with
+  hidden input, then delete the old token. The deployed configuration keeps
+  `BACKUP_CLOCK_TOKEN_EXPIRES_AT` at `never`. A token with an expiry needs that
+  date there instead, and the clock stops 20 minutes before it. With `never`,
+  deleting the token is the only way to stop it.
 - A leaked or revoked parent or inspector. Create a new token with the same
   fields in the
   [R2 API tokens page](https://dash.cloudflare.com/52662d8ba7ae983237860a1719c66a1e/r2/api-tokens),
