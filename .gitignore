@@ -7,7 +7,7 @@ dist/
 coverage/
 .vercel/
 .wrangler/
-.local/
+.local
 *.log
 *.tsbuildinfo
 .DS_Store
