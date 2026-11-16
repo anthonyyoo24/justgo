@@ -45,6 +45,16 @@ jobs:
           sudo apt-get install --yes age postgresql-client-17
           age --version
           /usr/lib/postgresql/17/bin/pg_dump --version
+      # The never-expiring parent exists only in this step, which loads the mint
+      # script and zod. The backup step gets a one-hour uploader instead.
+      - name: Mint a one-hour uploader
+        env:
+          BACKUP_POLICY_JSON: ${{ vars.BACKUP_POLICY_JSON }}
+          BACKUP_POLICY_SHA256: ${{ vars.BACKUP_POLICY_SHA256 }}
+          R2_PARENT_ACCESS_KEY_ID: ${{ secrets.R2_PARENT_ACCESS_KEY_ID }}
+          R2_PARENT_SECRET_ACCESS_KEY: ${{ secrets.R2_PARENT_SECRET_ACCESS_KEY }}
+          R2_UPLOAD_TTL_SECONDS: '3600'
+        run: node scripts/backups/mint-upload-credentials.mjs
       - name: Encrypt and verify recovery copy
         env:
           JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
@@ -52,9 +62,6 @@ jobs:
           BACKUP_POLICY_SHA256: ${{ vars.BACKUP_POLICY_SHA256 }}
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
           BACKUP_DATABASE_CA_CERT: ${{ secrets.BACKUP_DATABASE_CA_CERT }}
-          R2_UPLOAD_ACCESS_KEY_ID: ${{ secrets.R2_UPLOAD_ACCESS_KEY_ID }}
-          R2_UPLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_UPLOAD_SECRET_ACCESS_KEY }}
-          R2_UPLOAD_SESSION_TOKEN: ${{ secrets.R2_UPLOAD_SESSION_TOKEN }}
           R2_INSPECT_TOKEN: ${{ secrets.R2_INSPECT_TOKEN }}
           BACKUP_SENTRY_DSN: ${{ secrets.BACKUP_SENTRY_DSN }}
           BACKUP_ACTIONS_TOKEN: ${{ github.token }}

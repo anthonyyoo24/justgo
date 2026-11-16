@@ -328,8 +328,8 @@ highest level that works and updates this list.
   - Enforced by (written): Nothing. It is a judgment call.
 - Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. A long coordinator hands itself off to a fresh session at a milestone, and multi-step browser walkthroughs run in their own short session, without waiting for Anthony to ask, as [Agent effort](#agent-effort) says.
   - Enforced by (written): Nothing. It is a judgment call.
-- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
-  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`
+- Verifiers run on Opus. A verifier whose PRs are all small by the `verify-batch.mjs` rule, where a sensitive file whose patch only rewords user-facing strings in mobile TypeScript does not count as sensitive, and a re-check of one named, docs- or tests-only, non-sensitive PR, run on Sonnet. Decision-trail reviews and non-sensitive audits run on Sonnet. Any other `Agent` helper keeps Sonnet only when its description starts with a routine kind (Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting fix, Copy change) or a pstack Sonnet role name, and other non-Opus models are rewritten to Opus. A hook failure blocks the call.
+  - Enforced by (hook, test): The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`. `scripts/quality/copy-only.mjs` decides a copy-only patch, with cases in `copy-only.test.mjs`, and fails closed on a missing patch (GitHub omits large ones), a rename, a changed template expression or code token, a string that does not read like prose, and text the code compares or looks up, also when Prettier wraps the comparison onto the line just above or below. It reads only string literals, so a change to JSX text or comments stays sensitive. Only review catches prose-shaped text the code uses as data in a way the check does not list.
 - Agents never set the `model` of a session they start. A session inherits its parent's model, and Anthony picks another one himself. A session on the Mac mini starts inside its JustGO checkout, `/Users/anthony/Documents/apps/justgo`, so JustGO's settings, hooks and compaction window load.
   - Enforced by (written): Nothing. It is a judgment call.
 - A session started in the main checkout runs the current hooks and settings, and its checkout stays current during the session. On `main` with no tracked changes, the checkout fast-forwards to `origin/main` at session start and before each `Agent` call or Bash `git worktree add`, and asks for a restart when the update changed `.claude/` or the root agent instructions. At session start it otherwise says how far behind it is and why it was not updated. Before a tool call it fetches at most once a minute and warns about nothing. It never resets, stashes or touches untracked files, never blocks a session or a tool call, and leaves linked worktrees alone.
@@ -456,7 +456,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   its brief carries a line `Another round: <his words>`.
 - **Batch small PRs under one verifier.** Before you start verifiers, run
   `node scripts/quality/verify-batch.mjs`. It lists the open PRs that need a
-  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path and no contracts,
+  verdict and groups the small ones, at most 4 PRs a batch. A small PR is not a draft, touches no sensitive path (a patch that only
+  rewords user-facing strings in mobile TypeScript, by
+  `scripts/quality/copy-only.mjs`, does not count) and no contracts,
   database, CI, dependency, `.claude` hook, skill or settings file, lint config
   or `scripts/quality` script outside its tests, and changes at most 150
   counted lines. Tests and Markdown do not count, except `AGENTS.md` and
@@ -550,7 +552,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `Sensitive: yes` line, mentions no other PR or issue number (`#<n>`,
   `owner/repo#<n>` or a GitHub link), every named PR is small by
   `sizeExclusion()` in `scripts/quality/verify-batch.mjs`, with the old path of
-  each rename checked too. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
+  each rename checked too. A sensitive file counts as small there only when its
+  GitHub patch only rewords user-facing strings, so a one-sentence message fix
+  in `managed-controller.ts` gets Sonnet and a missing patch keeps Opus. So keep other PR and issue numbers out of a small verifier's brief. It also picks Sonnet for a re-check (description starting with a form of Re-verify
   or Re-check) whose brief names exactly one PR, as `PR #<n>` or a JustGO PR
   URL, whose files on GitHub, with the old path of each rename, are all docs
   or tests by the `verdict-patch.mjs` rule, none on the sensitive list, and
@@ -562,14 +566,15 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Start routine `Agent` helpers on Sonnet at `high` (`model: "sonnet"`) when
   pstack's per-role settings do not already cover them. This covers `Agent`
   calls only, never a session. Routine helpers are research, inventories,
-  docs-only passes, and lint and formatting fixes, and that list is complete.
+  docs-only passes, lint and formatting fixes, and copy changes that only
+  reword user-facing text, and that list is complete.
   Any other helper, or one you are unsure about, runs on Opus. Owners that
   change behavior stay on Opus. The verifier hook above decides each
   verifier's model, so this bullet never overrides it.
 - `verifier-model.mjs` enforces that list. An `Agent` call that is not a verifier,
   trail review or audit keeps Sonnet only when its description starts with
-  Research, Inventory, Docs pass, Docs-only, Lint fix, Format or Formatting
-  fix. A pstack role that `~/.claude/rules/pstack-models.md` puts on Sonnet
+  Research, Inventory, Docs pass, Docs-only, Lint fix, Format, Formatting
+  fix or Copy change. A pstack role that `~/.claude/rules/pstack-models.md` puts on Sonnet
   keeps it when the description starts with the role name: How explorer, How
   explainer, Why investigator, Reflect, Hillclimb or Arena cross-judge. The
   hook rewrites any other non-Opus `model` to Opus.

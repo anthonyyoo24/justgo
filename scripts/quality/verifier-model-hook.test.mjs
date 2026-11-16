@@ -22,13 +22,13 @@ import {
   prOf,
   prsOf,
   strayReference,
-  sizedFilesOf,
 } from '../../.claude/hooks/verifier-model.mjs';
 import * as sensitive from './sensitive-paths.mjs';
 import * as patch from './verdict-patch.mjs';
 import * as batch from './verify-batch.mjs';
 
 const rules = { ...sensitive, ...patch, ...batch };
+const { sizedFilesOf } = batch;
 const sized = (...files) =>
   files.map(([path, additions, deletions = 0]) => ({
     path,
@@ -519,6 +519,8 @@ test('a routine helper named by an allowed prefix keeps Sonnet', () => {
     'Lint fix for the mobile workspace',
     'Format the changed files',
     'Formatting fix after rebase',
+    'Copy change: shorten the link-conflict message',
+    'Copy changes on the Welcome screen',
   ]) {
     const input = { description, prompt: 'Do it.', model: 'sonnet' };
     assert.equal(decide(input, undefined, rules), undefined, description);
@@ -551,6 +553,8 @@ test('any other helper that picks a non-Opus model is rewritten to Opus', () => 
     ['Owner: IDENTITY R46 backup ledger', 'sonnet'],
     ['Researcher notes', 'sonnet'],
     ['Formatter swap', 'sonnet'],
+    ['Copywriter pass', 'sonnet'],
+    ['Change copy and fix the sync bug', 'sonnet'],
     ['Fix the reflect hook', 'claude-sonnet-5-5'],
     ['Inventory routes', 'haiku'],
     ['Quick look', 'haiku'],
@@ -603,4 +607,96 @@ test('the hook process rewrites a non-routine Sonnet helper to Opus', () => {
   });
   assert.equal(kept.status, 0, kept.stderr);
   assert.equal(kept.stdout, '');
+});
+
+// The #510 change: one sentence dropped from a message in a sensitive file.
+const controller =
+  'apps/mobile/src/app-support/identity/auth/managed-controller.ts';
+const messagePatch = (before, after) =>
+  [
+    '@@ -81,3 +81,3 @@',
+    ' const identityExistsMessage = (provider: SignInProvider) =>',
+    `-  \`That \${providerAccountNames[provider]} ${before}\`;`,
+    `+  \`That \${providerAccountNames[provider]} ${after}\`;`,
+    ' const isIdentityExists = (error: unknown) =>',
+  ].join('\n');
+const copyPatch = messagePatch(
+  'already has its own JustGO account. You’re still signed in.',
+  'already has its own JustGO account.',
+);
+
+test('a verifier of a copy-only change to a sensitive file runs on Sonnet', () => {
+  const copy = [
+    { path: controller, additions: 1, deletions: 1, patch: copyPatch },
+  ];
+  assert.equal(decide(first, ['x'], rules, [copy]).model, 'sonnet');
+  for (const patch of [
+    messagePatch('opens https://justgo.app/a.', 'opens https://evil.test/a.'),
+    messagePatch('has code IDENTITY_EXISTS.', 'has code IDENTITY_TAKEN.'),
+    [
+      '@@ -81,3 +81,3 @@',
+      '-  `That ${providerAccountNames[provider]} is taken.`;',
+      '+  `That ${provider} is taken.`;',
+    ].join('\n'),
+    undefined,
+  ])
+    assert.equal(
+      decide(first, ['x'], rules, [
+        [{ path: controller, additions: 1, deletions: 1, patch }],
+      ]).model,
+      'opus',
+      String(patch),
+    );
+  const flagged = { ...first, prompt: `Sensitive: yes\n${first.prompt}` };
+  assert.equal(decide(flagged, ['x'], rules, [copy]).model, 'opus');
+});
+
+test('the hook process reads patches from GitHub and keeps Opus without one', () => {
+  const bin = mkdtempSync(path.join(tmpdir(), 'fake-gh-'));
+  writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\ncat "$GH_PAGES"\n');
+  chmodSync(path.join(bin, 'gh'), 0o755);
+  const run = (pages) => {
+    writeFileSync(path.join(bin, 'pages.json'), JSON.stringify(pages));
+    const result = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({ tool_name: 'Agent', tool_input: first }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${bin}:/bin:/usr/bin`,
+        GH_PAGES: path.join(bin, 'pages.json'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout
+      ? JSON.parse(result.stdout).hookSpecificOutput.updatedInput.model
+      : undefined;
+  };
+  const file = { filename: controller, additions: 1, deletions: 1 };
+  assert.equal(run([[{ ...file, patch: copyPatch }]]), 'sonnet');
+  // GitHub omits the patch of a large file.
+  assert.equal(run([[file]]), 'opus');
+  assert.equal(
+    run([
+      [
+        {
+          ...file,
+          patch: messagePatch('opens https://a.test.', 'opens https://b.test.'),
+        },
+      ],
+    ]),
+    'opus',
+  );
+  // A renamed file keeps no patch.
+  assert.equal(
+    run([
+      [
+        {
+          ...file,
+          previous_filename: 'apps/mobile/src/features/a.ts',
+          patch: copyPatch,
+        },
+      ],
+    ]),
+    'opus',
+  );
 });

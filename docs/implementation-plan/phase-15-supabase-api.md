@@ -49,7 +49,7 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [x] Plan tier. The project stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
   - [x] Local tools. Edge runtime lanes run in GitHub Actions, and nothing new is installed on the Mac.
 - [x] The backup clock token was renewed on November 13, 2026. The new token stops passing the clock's expiry check at 23:40 UTC on December 12, 2026.
-- [x] Backups resumed on November 13, 2026. The R2 credentials and the clock token were renewed, `JUSTGO_BACKUPS_ENABLED` went back to `approved`, and one database run and one ledger run passed. The [backup runbook](../operations/CLOUDFLARE_BACKUPS.md#credential-dates) and issue #77 record the new expiry dates. The R2 credentials expire on November 20, 2026, and gate #474 tracks the next renewal.
+- [x] Backups resumed on November 13, 2026. The R2 credentials and the clock token were renewed, `JUSTGO_BACKUPS_ENABLED` went back to `approved`, and one database run and one ledger run passed. The [backup runbook](../operations/CLOUDFLARE_BACKUPS.md#credential-dates) and issue #77 record the new expiry dates. The R2 credentials were renewed again on November 16, 2026. They expire on November 23, and gate #517 tracks the next renewal.
 - [ ] On Anthony's hold or stand-down, send every owner a zero-writes order at once.
 
 ### Spawn owners
