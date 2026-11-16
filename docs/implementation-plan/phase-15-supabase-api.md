@@ -629,17 +629,19 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Depends on.** P15-9 merged. It must merge before the first outside tester joins, and it does not block P15-11 or P15-5.
 
+**Closed by decision.** On November 16, 2026, Anthony chose to describe the host by role and not to name Supabase in the Privacy Policy ([Host described by role](../legal/SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10)). The published `2026-11-15-us-east-3` text stays, so no new version, approval row or publication follows. The boxes below that build, approve or check new public text do not apply.
+
 **Files.**
 
-- [x] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
+- [x] Edit `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`. `docs/legal/PRIVACY_POLICY_DRAFT.md` does not change.
 - [x] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
-- [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
+- [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text. Not needed: the public text does not change.
 
 **Build.**
 
-- [x] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded. The November 15 plain-language rewrite described every provider but Apple and Google by role. On November 16, 2026, Anthony agreed that the policy must name Supabase before outside testers join, so the second candidate ([Supabase named](../legal/SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10)) names it as the host of the servers, database and sign-in service in us-east-1.
-- [x] Keep Cloudflare R2 for encrypted backups. Anthony moved the legal pages from Vercel to a Cloudflare Worker on November 16, 2026 (#123), and the text keeps them by role.
-- [ ] Restate the provider review in issue #95 for journal traffic through Edge Functions.
+- [ ] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded. Not done by decision: the policy describes the host by role, and the [review](../legal/SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10) records the region and log retention.
+- [x] Keep Cloudflare R2 for encrypted backups. Anthony moved the legal pages from Vercel to a Cloudflare Worker on November 16, 2026 (#123), and the text describes their host by role.
+- [x] Restate the provider review in issue #95 for journal traffic through Edge Functions.
 
 **You see.**
 

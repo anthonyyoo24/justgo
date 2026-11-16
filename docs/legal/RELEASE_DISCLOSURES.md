@@ -172,9 +172,8 @@ the App Privacy categories above do not change.
 
 The [Supabase notice](SUPABASE_NOTICE_REVIEW.md) was approved and published on
 November 13, after the [backups](../operations/CLOUDFLARE_BACKUPS.md) resumed.
-The P15-10 candidate names Supabase in the plain-language Privacy text as the
-host of the servers, database and sign-in service in us-east-1
-([Supabase named](SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10)). It waits
-for Anthony's approval and does not change the App Privacy answers.
+The plain-language Privacy text describes Supabase by role, and Anthony chose
+on November 16 to keep it that way
+([Host described by role](SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10)).
 Supabase consent and copy retention, Sentry diagnostic disclosure and device
 acceptance remain open Phase 14 responsibilities. No Apple answers were changed.

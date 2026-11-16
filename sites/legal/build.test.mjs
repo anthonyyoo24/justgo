@@ -405,8 +405,7 @@ test('repository public sources use document labels and exclude review records a
     /Reports never include your journal, feelings, email, account or device identifiers, or sign-in tokens\./,
   );
   assert.match(privacy, /JustGO is not end-to-end encrypted\./);
-  // Plain location and provider roles. Supabase is the one host named (P15-10);
-  // the other provider names stay in DATA_INVENTORY.md.
+  // Plain location and provider roles; the names stay in DATA_INVENTORY.md.
   assert.match(privacy, /Our servers and database are in the United States\./);
   assert.match(
     privacy,
@@ -418,11 +417,7 @@ test('repository public sources use document labels and exclude review records a
   );
   assert.match(
     privacy,
-    /Supabase hosts our servers, our database and our sign-in service in the United States, in its us-east-1 region in Virginia\. We also use service providers that store our encrypted backups, process error reports, host our support email and host these legal pages/,
-  );
-  assert.match(
-    privacy,
-    /Server logs:<\/strong> for a limited period set by our Supabase plan\./,
+    /service providers that host our servers and database, store our encrypted backups, process error reports, host our support email and host these legal pages/,
   );
   assert.match(
     privacy,
@@ -430,10 +425,8 @@ test('repository public sources use document labels and exclude review records a
   );
   assert.doesNotMatch(
     `${privacy}${terms}`,
-    /Cloudflare|Sentry|Vercel|Gmail|Canada|Ontario|Youngshin|region closest|Privacy Commissioner|Workers|Hyperdrive/,
+    /Supabase|Cloudflare|Sentry|Vercel|Gmail|us-east|Virginia|Canada|Ontario|Youngshin|region closest|Privacy Commissioner|Workers|Hyperdrive/,
   );
-  assert.doesNotMatch(terms, /Supabase|us-east|Virginia/);
-  assert.equal(privacy.match(/Supabase/g)?.length, 2);
   assert.match(privacy, /They do not record request bodies, sign-in tokens/);
   assert.match(
     privacy,

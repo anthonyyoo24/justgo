@@ -88,13 +88,12 @@ instruction.
 `release:beta:check` asks for no `deployment-host` marker. It needs the
 approved, dated Privacy Policy and Terms, and a diagnostics build still needs the
 matching published Privacy version. Every beta build needs the U.S. notice that
-`betaPrivacyVersion` pins. P15-10 of the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) requires the
-Privacy Policy to name Supabase as the API host before the first outside tester
-joins. The November 13, 2026 version did, but the November 15 plain-language
-rewrite dropped the name, so the published `2026-11-15-us-east-3` names no host.
-The [P15-10 candidate](../legal/SUPABASE_NOTICE_REVIEW.md#supabase-named-p15-10)
-puts it back and waits for Anthony's approval and his go to publish.
+`betaPrivacyVersion` pins. The November 13, 2026 Privacy Policy named the
+Supabase Edge Function as the API host. The November 15 plain-language rewrite
+describes it by role, so the published `2026-11-15-us-east-3` names no host.
+Anthony chose on November 16 to keep it that way, which closes P15-10 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md)
+([Host described by role](../legal/SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10)).
 
 From `apps/mobile`, check the resolved remote public settings for the
 reporting-enabled candidate:
