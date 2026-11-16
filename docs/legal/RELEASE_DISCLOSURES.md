@@ -172,5 +172,8 @@ the App Privacy categories above do not change.
 
 The [Supabase notice](SUPABASE_NOTICE_REVIEW.md) was approved and published on
 November 13, after the [backups](../operations/CLOUDFLARE_BACKUPS.md) resumed.
+The plain-language Privacy text describes Supabase by role, and Anthony chose
+on November 16 to keep it that way
+([Host described by role](SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10)).
 Supabase consent and copy retention, Sentry diagnostic disclosure and device
 acceptance remain open Phase 14 responsibilities. No Apple answers were changed.

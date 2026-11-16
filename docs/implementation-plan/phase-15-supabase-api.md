@@ -13,7 +13,7 @@ On November 11, 2026, Anthony chose the fastest path that keeps every critical c
 1. **PR 1, entry and release lane.** P15-6 absorbs P15-8. One PR adds the Edge entry, its CI smoke and the Supabase staging lane, reusing the `phase15/edge-trial` code. It replaces the Worker's deploy lane but keeps the Worker code, and the deployed Worker keeps serving the beta profile.
 2. **Hosted window.** On one go from Anthony that names the deploy, the secrets and the trial function's deletion, run P15-2 and P15-9 together. Deploy `api` from `main` through the new lane, deploy `justgo-trial` for its probe route, run the kept lanes, then delete `justgo-trial`. No build points at the function yet, so a failure reaches no user. On a failure, stop and present it to Anthony. One docs PR records the result.
 3. **PR 2, switch.** P15-11 points the Dev and beta profiles at the function. Anthony ships a new TestFlight build and checks it on the iPhone. The Worker and the Vercel API stay until that build passes.
-4. **Cleanup and notices.** P15-5 then removes the Worker code. P15-10 updates the notices before the first outside tester joins.
+4. **Cleanup and notices.** P15-5 then removes the Worker code. P15-10 checked the notices before the first outside tester joins, and closed on November 16, 2026, with the host described by role.
 
 **Kept.** The hosted query speed and the predicted worst-case sync, the log canary, the forged client-address check, the cold start, Anthony's sign-in on the iPhone, one independent verifier per PR, CI's security tests, Anthony's go before every hosted step, and the R2 backups.
 
@@ -25,7 +25,7 @@ On November 11, 2026, Anthony chose the fastest path that keeps every critical c
 
 One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA. The body is a how-to. The appendices explain and record.
 
-The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges each verified PR, including those that touch an [Agent-effort](../../AGENTS.md#agent-effort) path, as Anthony decided on November 10, 2026. P15-10 still waits for his review of the notices, and P15-3 for his Vercel check, before merge. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
+The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges each verified PR, including those that touch an [Agent-effort](../../AGENTS.md#agent-effort) path, as Anthony decided on November 10, 2026. P15-10 closed on November 16, 2026, when Anthony chose to keep the notices unchanged. P15-3 still waits for his Vercel check before merge. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -61,14 +61,14 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [x] The hosted window, P15-2 and P15-9 together, after P15-6 merges and on Anthony's go. It ran on November 12, 2026, and #456 recorded it.
   - [x] P15-11 after the hosted window passes and its docs PR merges. #462 to #464 switched the builds, and build 7 passed on November 13, 2026. Lanes 4, 5, 6 and 10 and the perf rule stay unchecked, because they passed on Anthony's report alone, were skipped or wait for the first clock-dispatched nightly database run (#476).
   - [ ] P15-5 after the new TestFlight build passes P15-11. Build 7 passed, so P15-5 can run.
-  - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
+  - [x] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5. Closed on November 16, 2026, with no change to the public text.
 - [ ] Hold the file boundaries.
   - [x] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
   - [ ] P15-5 touches only the API Worker code, its scripts, tests, CI step and docs. It never touches `scripts/backups/clock/`, `sites/legal/` or `.github/workflows/staging-health.yml`.
   - [ ] P15-7 touches only `apps/mobile/src/lib/network/`, `scripts/development/`, the fixture API prefix and their tests.
   - [ ] P15-6 keeps the Worker code, its smoke scripts and `scripts/backups/clock/`. It replaces only the Worker's staging deploy lane.
   - [ ] P15-3 and P15-5 can both edit `apps/api/tests/http/routing.test.ts`. Whichever lands second rebases onto the first.
-- [ ] Hold the review gate. P15-10 changes what users read. It waits for Anthony's review in chat with screenshots and a video before merge.
+- [x] Hold the review gate. P15-10 changes what users read. It waits for Anthony's review in chat with screenshots and a video before merge. Not needed: Anthony reviewed the candidate on November 16, 2026, and chose to keep the published text, so nothing users read changes.
 - [ ] Hold Anthony's hosted gates. Every deploy, `supabase secrets set`, provider setting change, new build and notice publication waits for his go. These happen in the hosted window (P15-2, P15-8 and P15-9), in P15-11 and in P15-10.
 
 ### PR mechanics, for every PR
@@ -629,17 +629,19 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 **Depends on.** P15-9 merged. It must merge before the first outside tester joins, and it does not block P15-11 or P15-5.
 
+**Closed by decision.** On November 16, 2026, Anthony chose to describe the host by role and not to name Supabase in the Privacy Policy ([Host described by role](../legal/SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10)). The published `2026-11-15-us-east-3` text stays, so no new version, approval row or publication follows. The boxes below that build, approve or check new public text do not apply.
+
 **Files.**
 
-- [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
-- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` (planned) from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
-- [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
+- [x] Edit `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`. `docs/legal/PRIVACY_POLICY_DRAFT.md` does not change.
+- [x] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, which P15-11 deleted. Git history keeps it at `e2ab966`.
+- [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text. Not needed: the public text does not change.
 
 **Build.**
 
-- [ ] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded.
-- [ ] Keep Cloudflare R2 for encrypted backups, and keep Vercel for the legal pages until Anthony moves them.
-- [ ] Restate the provider review in issue #95 for journal traffic through Edge Functions.
+- [ ] Name Supabase as the API host, with the function region and the log retention that P15-2 and P15-9 recorded. Not done by decision: the policy describes the host by role, and the [review](../legal/SUPABASE_NOTICE_REVIEW.md#host-described-by-role-p15-10) records the region and log retention.
+- [x] Keep Cloudflare R2 for encrypted backups. Anthony moved the legal pages from Vercel to a Cloudflare Worker on November 16, 2026 (#123), and the text describes their host by role.
+- [x] Restate the provider review in issue #95 for journal traffic through Edge Functions.
 
 **You see.**
 

@@ -116,6 +116,41 @@ which waits for Anthony's choice.
   [release disclosures](RELEASE_DISCLOSURES.md) record the move by build. The
   data collected and the App Privacy answers do not change.
 
+## Host described by role (P15-10)
+
+On November 16, 2026, Anthony chose to describe JustGO's host by role and not
+to name Supabase in the Privacy Policy ("Yes, drop it"). The published
+`2026-11-15-us-east-3` text stays as it is, and P15-10 closes without a new
+version. A candidate that named Supabase in "Who receives it" and "Server logs"
+was drafted on the same day and dropped.
+
+- **Why the role is enough.** Naming the host is not a legal requirement. U.S.
+  privacy laws, Apple's App Privacy rules and the GDPR ask for the categories of
+  recipients. The published text already says that service providers host the
+  servers and database, and that a signed-in account's journal syncs through
+  JustGO's cloud service with its servers in the United States.
+- **What keeps it true.** The `api` Edge Function, PostgreSQL and Auth run in
+  the us-east-1 Supabase project
+  ([U.S. move](../implementation-plan/supabase-us-move.md)), and every build
+  since build 8 sends `x-region: us-east-1`. The Canada project was deleted at
+  US-10 on November 16, 2026, and build 7 expired the same day.
+- **Log retention.** P15-2 and P15-9 recorded no retention period. The
+  [log retention](#recorded-facts-behind-the-wording) fact above still holds:
+  Supabase lists 1 day for API and database logs on Free, which the project is
+  on, and no separate figure for function logs. The text says "a limited period
+  set by our service plan", with no number, so a plan change does not make it
+  false.
+- **Legal pages.** A Cloudflare Worker hosts the legal pages since November 16,
+  2026 ([#123](https://github.com/anthonyyoo24/justgo/issues/123)). The text
+  says "host these legal pages" by role, so it needs no change.
+- **Provider review.** Issue [#95](https://github.com/anthonyyoo24/justgo/issues/95)
+  carries the restated review for journal traffic through Edge Functions in
+  us-east-1. The health-data consent question there stays open until the App
+  Store launch, as Anthony decided.
+- **The data inventory still names every provider.**
+  [DATA_INVENTORY.md](DATA_INVENTORY.md) owns the names, regions and roles
+  behind the public categories.
+
 ## Approved R2 wording and its conditions
 
 The provider bullet keeps only the backup role from the approved Cloudflare
