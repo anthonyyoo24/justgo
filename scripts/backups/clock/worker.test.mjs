@@ -71,6 +71,17 @@ test('both Cron events dispatch exactly one fixed main workflow and return its a
     });
 });
 
+test('a token with no expiration dispatches when the expiry is never', async () => {
+  const f = fixture();
+  const result = await dispatchBackup(
+    event,
+    { ...env, BACKUP_CLOCK_TOKEN_EXPIRES_AT: 'never' },
+    f.operations,
+  );
+  assert.equal(result.runId, id);
+  assert.equal(f.calls.length, 1);
+});
+
 test('invalid schedules, disabled activation, broad token shape, expiry and time fail before network', async (t) => {
   const variants = [
     { event: { ...event, cron: '* * * * *' } },
@@ -82,6 +93,9 @@ test('invalid schedules, disabled activation, broad token shape, expiry and time
     },
     { env: { ...env, BACKUP_CLOCK_GITHUB_TOKEN: undefined } },
     { env: { ...env, BACKUP_CLOCK_TOKEN_EXPIRES_AT: 'unconfigured' } },
+    { env: { ...env, BACKUP_CLOCK_TOKEN_EXPIRES_AT: undefined } },
+    { env: { ...env, BACKUP_CLOCK_TOKEN_EXPIRES_AT: 'Never' } },
+    { env: { ...env, BACKUP_CLOCK_TOKEN_EXPIRES_AT: 'Infinity' } },
     {
       env: {
         ...env,

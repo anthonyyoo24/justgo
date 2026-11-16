@@ -217,8 +217,13 @@ What still needs a person:
 - The clock's GitHub token, before 23:40 UTC on December 12, 2026. The clock
   stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its
   deployed configuration, `2026-12-13T00:00:00Z`.
-  [#519](https://github.com/anthonyyoo24/justgo/issues/519) tracks making it
-  last.
+  [#519](https://github.com/anthonyyoo24/justgo/issues/519) replaces it with a
+  token that never expires. The clock accepts `never` as that value, for a
+  fine-grained token created with no expiration, limited to this repository
+  with Actions read and write. Store the token with
+  `wrangler secret put BACKUP_CLOCK_GITHUB_TOKEN`, which prompts with hidden
+  input, then deploy the clock from its protected activated configuration
+  with the expiry set to `never`.
 - A leaked or revoked parent or inspector. Create a new token with the same
   fields in the
   [R2 API tokens page](https://dash.cloudflare.com/52662d8ba7ae983237860a1719c66a1e/r2/api-tokens),
