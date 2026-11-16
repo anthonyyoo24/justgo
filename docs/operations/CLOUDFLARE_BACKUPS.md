@@ -832,3 +832,16 @@ Mac that ran the October and November 2026 setup. Git does not keep them.
   `hosted-archive-compatibility-verified.json`.
 - The real Supabase Auth v2.197.0 loopback rehearsal:
   `phone-google-2026-11-01/real-auth-service-rehearsal.json`.
+- U.S. project restore rehearsals into loopback PostgreSQL 17 with
+  `restore-local.mjs`: the first U.S. copy on November 14 in
+  `us-restore-rehearsal-2026-11-14.json`, and on November 16 for gate
+  [#522](https://github.com/anthonyyoo24/justgo/issues/522) the database copy
+  from run [43882483960](https://github.com/anthonyyoo24/justgo/actions/runs/43882483960)
+  and the ledger from run
+  [43895767793](https://github.com/anthonyyoo24/justgo/actions/runs/43895767793)
+  in `us-restore-rehearsal-2026-11-16.json`. The read-only inspector matched
+  both receipt checksums. The ledger's source and migration digest matched, and
+  the restore held 3 users, 8 attempts, 9 journal versions and 26 migration
+  rows. Ledger row counts matched the restored tables, and replay left no live
+  Auth or app session. No writer fence was set, the target never opened, and
+  the database, roles and local ciphertext were removed afterwards.
