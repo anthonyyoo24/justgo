@@ -43,6 +43,11 @@ November 14, and gate [#476](https://github.com/anthonyyoo24/justgo/issues/476)
 tracks it.
 [Credential dates](#credential-dates) and
 [#77](https://github.com/anthonyyoo24/justgo/issues/77) hold the new expiry dates.
+On November 16 the three R2 credentials were renewed again, and database run
+[43805247759](https://github.com/anthonyyoo24/justgo/actions/runs/43805247759)
+and ledger run
+[43805256487](https://github.com/anthonyyoo24/justgo/actions/runs/43805256487)
+passed on them.
 
 Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony
 approved creating the empty private `justgo-staging-backups` bucket. Its creation
@@ -183,19 +188,20 @@ unchanged apart from the expiry.
 
 ## Credential dates
 
-The November 13, 2026 renewal replaced the R2 parent, the derived uploader, the
-inspector and the clock's GitHub token, with unchanged scopes. Each R2 credential
-lasts seven days, the longest the uploader allows.
+The November 16, 2026 renewal replaced the R2 parent, the derived uploader and
+the inspector, with unchanged scopes. The November 13 renewal last replaced the
+clock's GitHub token. Each R2 credential lasts about seven days, the longest the
+uploader allows. The uploader is minted to expire about an hour before the parent.
 
 | Credential                                      | Expires (UTC)         | Guard cutoff (UTC)    |
 | ----------------------------------------------- | --------------------- | --------------------- |
-| Derived uploader, `R2_UPLOAD_*`                 | November 20, 15:59:58 | November 20, 15:39:58 |
-| Inspector, `R2_INSPECT_TOKEN`                   | November 20, 16:53:36 | None                  |
-| R2 parent, kept local outside CI                | November 20, 16:52:21 | None                  |
+| Derived uploader, `R2_UPLOAD_*`                 | November 23, 03:27:25 | November 23, 03:07:25 |
+| Inspector, `R2_INSPECT_TOKEN`                   | November 23, 04:28:52 | None                  |
+| R2 parent, kept local outside CI                | November 23, 04:24:36 | None                  |
 | Clock GitHub token, `BACKUP_CLOCK_GITHUB_TOKEN` | December 13, 16:58:59 | December 12, 23:40:00 |
 
-Renew the three R2 credentials before the uploader's cutoff, 10:39 a.m. Toronto
-on November 20, 2026. Gate [#474](https://github.com/anthonyyoo24/justgo/issues/474)
+Renew the three R2 credentials before the uploader's cutoff, 10:07 p.m. Toronto
+on November 22, 2026. Gate [#517](https://github.com/anthonyyoo24/justgo/issues/517)
 tracks it. The parent mints the uploader, so renew it first. The
 runner rejects an uploader credential with less than 20 minutes left. The clock
 stops 20 minutes before the `BACKUP_CLOCK_TOKEN_EXPIRES_AT` value in its deployed
