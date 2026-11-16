@@ -161,8 +161,20 @@ The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
 
 ## Current build
 
-The current TestFlight build is **0.1.0 (10)**, from tag
-`testflight-beta-2026-11-15-3` at source
+The current TestFlight build is **0.1.0 (11)**, from tag
+`testflight-beta-2026-11-16-1` at source
+`877be4809bd449815a53117177a710ddf00628e9`, with the optional diagnostics
+profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43935265337)
+(artifact 14261203743, IPA SHA-256
+`a47327ebbdbf6237791cd9755f0223722e7465fcdb545ac0d459c6cbd46ac829`) and
+[upload run](https://github.com/anthonyyoo24/justgo/actions/runs/43941070213)
+ran on November 16, 2026. The IPA inspector passed, and its bundle calls the
+us-east-1 `api` function and links the legal pages on the Worker. It carries
+everything on `main` since build 10, including the one-journal-per-phone
+changes of Phase 13A and the legal pages on the Worker (#525). It ships with
+Privacy `2026-11-15-us-east-3`, which describes the host by role (P15-10, #526).
+Its phone check is the beta acceptance below.
+Build 0.1.0 (10), from tag `testflight-beta-2026-11-15-3` at source
 `a6afeadcb5af15005922b62766d5e5b61ed41ba6`, with the optional diagnostics
 profile on. Its [build run](https://github.com/anthonyyoo24/justgo/actions/runs/43747593141)
 (archive SHA-256
@@ -250,9 +262,33 @@ Reviewer notes saved in App Store Connect:
 > access is currently configured through November 10, 2026 at 15:23 UTC. Use
 > disposable entries for testing; never use the owner's real provider credentials.
 
-These notes describe build 4. Before the external review of a diagnostics-enabled
-build, update their Sentry sentence. Purchases and product analytics stay
-disabled.
+These notes describe build 4 and are out of date. On November 16, 2026, the
+hosted `/v1/guest/access` reported the free beta window open through
+December 31, 2026 at 23:59:59 UTC, and diagnostics builds send filtered error
+reports. Before the external review of build 11, replace them with:
+
+> Continue offers guest use without a required account. Apple or Google sign-in
+> is optional and syncs the account journal. Private iCloud Sync is optional and
+> off by default, separate from account sync and manual backup files. Purchases
+> and product analytics are disabled. Crash and error reports are limited to
+> essential technical errors with no private writing, as the Privacy Policy
+> describes. This build uses a staging server with free, time-limited beta
+> access, open to guests and signed-in accounts through December 31, 2026.
+> Use disposable entries for testing.
+
+What to Test for build 11:
+
+> Thanks for testing JustGO. Please try:
+>
+> 1. Use the app without signing in: pick a venue, try a challenge, finish it,
+>    and save how it went.
+> 2. Check Progress shows the completed challenge and your note.
+> 3. Optional: sign in with Apple or Google, then close and reopen the app and
+>    check your history is still there.
+> 4. Optional: turn on airplane mode, finish and save a challenge, then
+>    reconnect.
+>    Report anything confusing or broken with TestFlight's screenshot feedback.
+>    Please don't include private writing in screenshots.
 
 The feedback email and privacy URL are saved. Anthony gave the review-contact
 phone to Apple directly, so it is not recorded here. Sign-in Required stays
