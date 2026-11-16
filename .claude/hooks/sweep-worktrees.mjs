@@ -50,7 +50,8 @@ import { fileURLToPath } from 'node:url';
 //    the main checkout whose steps ran inside it.
 // Before each removal, the ref refs/archive/worktrees/<name> keeps its HEAD
 // commit reachable, and its .local/ records are copied to
-// <main>/.local/archived-worktrees/<name>/. Then `git worktree move` puts it
+// <main>/.local/archived-worktrees/<name>/, unless .local is a link, such as
+// one to the main checkout's, whose target stays where it is. Then `git worktree move` puts it
 // in <main>/.local/worktree-trash/, and `git worktree remove` deletes it
 // there. git deletes the files first and its record last, so a removal killed
 // or timed out partway leaves a half-deleted worktree, and the next sweep
@@ -459,7 +460,9 @@ export function archive(main, entry, name) {
     // An empty old value makes git refuse a ref that appeared meanwhile.
     git(main, ['update-ref', ref, entry.head, '']);
     const local = path.join(entry.path, '.local');
-    if (existsSync(local))
+    // A .local that links elsewhere, such as to the main checkout's, holds
+    // nothing of the worktree's own, so only a real folder is copied.
+    if (realFolder(local))
       cpSync(local, dest, {
         recursive: true,
         verbatimSymlinks: true,
@@ -471,6 +474,14 @@ export function archive(main, entry, name) {
     return ref;
   }
   throw new Error(`no free archive name for ${name}`);
+}
+
+function realFolder(file) {
+  try {
+    return lstatSync(file).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 function isMainCheckout(dir) {

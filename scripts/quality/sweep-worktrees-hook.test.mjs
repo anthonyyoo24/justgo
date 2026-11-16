@@ -10,6 +10,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -108,7 +109,7 @@ function fixture(t) {
   commit(
     main,
     '.gitignore',
-    'node_modules/\n.env\n.local/\n*.log\n*.key\n.claude/worktrees/\n',
+    'node_modules/\n.env\n.local\n*.log\n*.key\n.claude/worktrees/\n',
   );
   git(main, 'update-ref', 'refs/remotes/origin/main', 'main');
   const logs = [];
@@ -474,6 +475,37 @@ test('copies .local records into the main checkout and keeps only unique ignored
     );
   assert.equal(existsSync(path.join(store, 'key')), false);
   assert.equal(existsSync(path.join(key, '.local', 'pr-body.md')), true);
+});
+
+// A session can link a worktree's .local to the main checkout's, so the
+// worktree shares its loopback database and trails. git sees that link as a
+// file, so the repository's own ignore rule has to match a file named .local
+// too. The archive copies nothing through the link, because what it points at
+// already sits in the main checkout, and removal deletes only the link.
+test('removes a worktree whose .local links to the main checkout, under the real ignore rules', (t) => {
+  const repo = fixture(t);
+  const rules = readFileSync(
+    fileURLToPath(new URL('../../.gitignore', import.meta.url)),
+    'utf8',
+  );
+  commit(repo.main, '.gitignore', `${rules}.claude/worktrees/\n`);
+  git(repo.main, 'update-ref', 'refs/remotes/origin/main', 'main');
+  const shared = path.join(repo.main, '.local');
+  mkdirSync(path.join(shared, 'decision-trails'), { recursive: true });
+  writeFileSync(path.join(shared, 'decision-trails', 'run.tsv'), 'a\n');
+  const linked = repo.add('linked', '--detach');
+  symlinkSync(shared, path.join(linked, '.local'));
+  assert.deepEqual(repo.run(), { linked: 'remove' });
+  assert.deepEqual(listed(repo.main), ['main']);
+  assert.equal(existsSync(linked), false);
+  assert.equal(
+    readFileSync(path.join(shared, 'decision-trails', 'run.tsv'), 'utf8'),
+    'a\n',
+  );
+  assert.equal(
+    existsSync(path.join(shared, 'archived-worktrees', 'linked')),
+    false,
+  );
 });
 
 test('archives under a new name when an earlier archive holds the name', (t) => {
