@@ -237,19 +237,20 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 
 **Depends on.** US-7.
 
-- [ ] Sign in with Apple on build 8. A new account is created in the new project.
-- [ ] Import the build 7 export ZIP in Settings. The completions and journal entries appear, then reach the server.
-- [ ] Sign in with Google on a second install or after sign-out. Apple and Google stay separate accounts, as P15-9 lane 4 required.
-- [ ] Rerun gate #451. The iPhone and the web app show the same writing.
-- [ ] Rerun gate #452. Offline writes sync on reconnect.
-- [ ] Rerun gate #453. The account deletion receipt retries.
-- [ ] **Perf.** Rerun P15-9 lane 3 with the same 23.7 MB archive. All 14 sync POSTs return 200 and the slowest stays under the 8,000 ms limit. Phase 15 measured 1,098 ms. The first request after 15 minutes idle stays under 2,000 ms.
+TestFlight build 10 replaced build 8 and also points at the new project. The phone checks ran on build 10 and on JustGO Dev 0.1.0 (3), which uses the same project.
+
+- [x] Sign in with Apple and with Google. Since #492 and #502, a sign-in brings the phone's current collection into the account that signs in, and the login switches link Apple and Google into one account, so P15-9 lane 4's separate accounts no longer apply. Gate #503 passed all five switch checks on JustGO Dev against the new project on November 15, 2026: linking, a new phone, an already linked provider, switches off, and the conflict message.
+- [x] Import the build 7 export ZIP. The only export on Anthony's Mac, from November 14, 2026, holds 0 completions and 0 journal entries, so there was nothing to bring over.
+- [x] Rerun gate #451. On November 15, 2026, build 10 and JustGO Dev on the same iPhone showed the same writing through the hosted `api` function. The web app was replaced by JustGO Dev because the hosted function allows no browser origin. Evidence is on #451.
+- [x] Rerun gate #452. On November 16, 2026, an entry written offline on build 10 uploaded on reconnect and appeared on JustGO Dev. Evidence is on #452.
+- [ ] Rerun gate #453. The account deletion receipt retries. Anthony skipped the iPhone run on November 16, 2026. The replay is covered by `pnpm run test:db`, and one real deletion on the new project completed with its Auth user erased. #453 records it and is closed as not planned.
+- [ ] **Perf.** Rerun P15-9 lane 3 with the same 23.7 MB archive. All 14 sync POSTs return 200 and the slowest stays under the 8,000 ms limit. Phase 15 measured 1,098 ms. The first request after 15 minutes idle stays under 2,000 ms. Anthony skipped it on November 16, 2026, because no beta user is near that size. Reflections stay capped at 10,000 characters.
 
 **Check.**
 
-- [ ] Anthony runs `select count(*) from justgo.completions` and the journal count in the new SQL editor. They match the counts in the export.
-- [ ] Each gate issue gets a comment with the build, the project ref and the result, and closes with a link to its evidence. A failing gate stays open and blocks US-10.
-- [ ] The Sentry API project shows no new issue from build 8's runs.
+- [x] The account counts match the export. The export held no completions or journal entries, so the gate runs created every row on the new project, and their counts are on #451 and #452.
+- [x] Each gate issue gets a comment with the build, the project ref and the result, and closes with a link to its evidence. A failing gate stays open and blocks US-10.
+- [ ] The Sentry API project shows no new issue from build 10's runs.
 
 **Rollback.** Reinstall build 7. Canada still holds its data.
 
