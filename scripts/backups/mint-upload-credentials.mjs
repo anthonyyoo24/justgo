@@ -1,9 +1,12 @@
 import { createHmac, createHash } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { appendFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { readPolicy, endpointFor, prefixFor } from './configuration.mjs';
 
-/** Offline operator only. Never give the backup runner the parent secret. */
+/**
+ * Signs an uploader limited to PutObject and HeadObject on the two backup
+ * prefixes. The parent stays in the mint step; the backup step gets only this.
+ */
 export function mintUploadCredentials(
   policy,
   accessKeyId,
@@ -44,8 +47,28 @@ export function mintUploadCredentials(
     R2_UPLOAD_SESSION_TOKEN: Buffer.from(`jwt/${jwt}`).toString('base64'),
   };
 }
-async function main(env) {
-  if (env.CI) throw new Error('Parent R2 credentials are forbidden in CI');
+export const backupWorkflowRef =
+  'anthonyyoo24/justgo/.github/workflows/database-backups.yml@refs/heads/main';
+export const workflowUploaderSeconds = 3600;
+
+/**
+ * In GitHub Actions only the main database-backups workflow may mint, and only
+ * a one-hour uploader. It masks the values, then hands them to the next step
+ * through GITHUB_ENV. Elsewhere, CI is refused and an operator gets a new
+ * mode-0600 file. Nothing prints a credential.
+ */
+export async function main(
+  env,
+  io = { appendFile, writeFile, log: console.log },
+) {
+  const workflow = env.GITHUB_ACTIONS === 'true';
+  if (workflow) {
+    if (env.GITHUB_WORKFLOW_REF !== backupWorkflowRef || !env.GITHUB_ENV)
+      throw new Error('Only the main database-backups workflow mints in CI');
+    if (Number(env.R2_UPLOAD_TTL_SECONDS) !== workflowUploaderSeconds)
+      throw new Error('Workflow uploaders last exactly one hour');
+  } else if (env.CI)
+    throw new Error('Parent R2 credentials are forbidden in CI');
   const policy = readPolicy(env.BACKUP_POLICY_JSON, env.BACKUP_POLICY_SHA256);
   const credentials = mintUploadCredentials(
     policy,
@@ -53,18 +76,29 @@ async function main(env) {
     env.R2_PARENT_SECRET_ACCESS_KEY,
     Number(env.R2_UPLOAD_TTL_SECONDS),
   );
+  if (workflow) {
+    for (const value of Object.values(credentials))
+      io.log(`::add-mask::${value}`);
+    await io.appendFile(
+      env.GITHUB_ENV,
+      Object.entries(credentials)
+        .map(([name, value]) => `${name}=${value}\n`)
+        .join(''),
+    );
+    io.log('One-hour upload credentials passed to the backup step.');
+    return;
+  }
   if (!env.R2_CREDENTIAL_OUTPUT_FILE)
     throw new Error('Protected output file required');
-  await writeFile(env.R2_CREDENTIAL_OUTPUT_FILE, JSON.stringify(credentials), {
-    flag: 'wx',
-    mode: 0o600,
-  });
-  console.log(
-    'Scoped upload credentials written to the protected operator file.',
+  await io.writeFile(
+    env.R2_CREDENTIAL_OUTPUT_FILE,
+    JSON.stringify(credentials),
+    { flag: 'wx', mode: 0o600 },
   );
+  io.log('Scoped upload credentials written to the protected operator file.');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
   main(process.env).catch(() => {
-    console.error('Offline credential preparation failed.');
+    console.error('Upload credential preparation failed.');
     process.exitCode = 1;
   });
