@@ -76,7 +76,7 @@ Each step has a **Rollback.** Until [US-10](#us-10), Canada keeps serving build 
 **Who.** Agent checks. Anthony confirms the dashboard facts.
 
 - [ ] Gate #476 is closed with a passing first scheduled nightly backup from November 14 at 04:43 UTC. Check `gh issue view 476`.
-- [ ] Issue #474, the R2 credential renewal due by November 20 at 15:39 UTC, is done or scheduled. It happens whatever this move does. The renewal is independent of the move if [decision 3](#decisions) keeps the bucket and prefixes, because the uploader is scoped to those.
+- [x] Issue #474, the R2 credential renewal due by November 20 at 15:39 UTC, was done on November 16. Gate #517 tracks the next one, due by November 23 at 03:07 UTC. It happens whatever this move does. The renewal is independent of the move if [decision 3](#decisions) keeps the bucket and prefixes, because the uploader is scoped to those.
 - [ ] Anthony pauses content-machine, as he approved ([decision 2](#decisions)). Then the Supabase organization's project list shows JustGo in Canada as the only active free project. The free plan allows two. If another active free project has appeared, Anthony pauses it or decides otherwise before US-2.
 - [ ] `apps/api/tests/db/fixtures/applied-migration-hashes.json` on `main` lists 26 applied migrations, 0000 to 0025, and an empty `unapplied`. Check `git show origin/main:apps/api/tests/db/fixtures/applied-migration-hashes.json`.
 - [ ] No open PR adds a migration. Check `gh pr list --search 'drizzle in:files'` and read the file lists.
