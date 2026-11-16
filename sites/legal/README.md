@@ -5,10 +5,12 @@ This static reader renders the public sections of the two documents in
 embeds, analytics or external asset requests. The build itself creates no hosting
 project and publishes nothing.
 
-The October 25 owner-directed publication is live at
-[Privacy](https://justgo-legal.vercel.app/privacy/) and
-[Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. The current Terms are `2026-11-15-us-east-2` and the current
+The pages are hosted on the assets-only Cloudflare Worker `justgo-legal`, at
+[Privacy](https://justgo-legal.anthonyyoo24.workers.dev/privacy/) and
+[Terms](https://justgo-legal.anthonyyoo24.workers.dev/terms/). On November 16,
+2026, Anthony chose Cloudflare Workers because Vercel Hobby allows only personal
+or non-commercial use (#123). The Vercel Hobby project `justgo-legal` served the
+pages from October 25 and stays up until the builds that embed its links expire. The current Terms are `2026-11-15-us-east-2` and the current
 Privacy Policy is `2026-11-15-us-east-3`, the plain-language rewrite, owner-approved, effective
 and published November 15, 2026. The same-day revisions drop "free beta"
 from the Privacy opening and rename "Download my data" to "Export data". The Privacy Policy says the database and the server run in the United
@@ -79,42 +81,37 @@ production build still grants no hosting, Git or publication authorization.
 
 ## Publishing updates
 
-Keep the document project independent of the API project and preserve the owner's
-Git permissions. Build the approved sources in production mode, then stage only
-the generated public files. The Vercel project uses framework `Other`, empty
-build and install commands and output directory `.`. Set `trailingSlash: true` in the
-staged `vercel.json` so `/privacy/` and `/terms/` remain stable destinations.
+Publish only with Anthony's go, recorded in
+[`APPROVALS.md`](../../docs/legal/APPROVALS.md). `wrangler.json` defines an
+assets-only Worker with no script, no bindings, invocation logs off, the
+`workers.dev` route on and preview URLs off. `force-trailing-slash` keeps
+`/privacy/` and `/terms/` as stable destinations. The Worker lives on the same
+personal Cloudflare account as the R2 backups, whose terms are recorded in the
+[data inventory](../../docs/legal/DATA_INVENTORY.md#provider-agreements).
 
-Use pinned Vercel CLI `64.5.0` and an explicit `--project justgo-legal --scope
-anthony-youngshin-yoos-projects`. Never relink the repository root away from its
-API project. Linking a staging directory can create an OIDC `.env.local`. Remove
-that generated local file and exclude all dotfiles from the upload. A dry run
-must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
-`styles.css`, `assets/justgo-mark.png` and `vercel.json`. Stop on any other file.
-Never upload the source repository, review records or environment files.
+Its build runs `cloudflare.mjs`, which builds in production mode and also
+requires the `deployment-host: cloudflare` marker in the Privacy source. Run
+Wrangler from this folder, because the build command runs in the current
+directory, and turn its usage metrics off:
 
-After an authorized deploy, verify both stable HTTPS routes anonymously, the
-original logo bytes and footer navigation. The November 15 plain-language update
-and the November 14 U.S. region update passed anonymous byte checks for both documents, the root Privacy page, the
-stylesheet and the logo, and the publication confirmed that `/.env.local`,
-`/vercel.json` and the internal review-record path returned 404. The staging
-folder needed no link: `deploy --prod --project justgo-legal --scope ...` from it
-created no dotfile, and `deploy --dry --json` listed the six files first. The project's model-training sharing is
-disabled. EAS preview public legal URLs and App Store Connect's Privacy Policy
-URL use the published destinations. Opening and accessibility on the actual
-signed iPhone remain Phase 14 acceptance.
+```sh
+cd sites/legal
+WRANGLER_SEND_METRICS=false pnpm exec wrangler deploy --dry-run --outdir "$TMPDIR/legal-dry"
+WRANGLER_SEND_METRICS=false pnpm exec wrangler deploy
+```
 
-## Cloudflare candidate
+The dry run must read exactly 8 entries from `dist`: `index.html`,
+`privacy/index.html`, `terms/index.html`, `styles.css`,
+`assets/justgo-mark.png` and the folders `assets`, `privacy` and `terms`. Stop
+on any other file. Never upload the source repository, review records or
+environment files. `wrangler login` is Anthony's sign-in.
 
-Phase 15 no longer moves the API to Cloudflare. On November 6, 2026, Anthony
-decided that the legal pages stay on Vercel, as the
-[Phase 15 plan](../../docs/implementation-plan/phase-15-supabase-api.md) records.
-Do not deploy this candidate without his go.
+After an authorized deploy, verify both stable HTTPS routes and the root Privacy
+page anonymously against the built bytes, the original logo bytes and footer
+navigation. Then set `EXPO_PUBLIC_PRIVACY_POLICY_URL` and
+`EXPO_PUBLIC_TERMS_URL` in the EAS `development` and `preview` environments and
+the App Store Connect Privacy Policy URL to the published destinations. Opening
+and accessibility on the actual signed iPhone remain Phase 14 acceptance.
 
-`wrangler.json` prepares an assets-only Worker with the same stable document
-paths. Its build runs `cloudflare.mjs`, which requires the existing publication
-approval and date metadata plus an explicit `deployment-host: cloudflare` marker.
-The current approved Vercel notice does not satisfy that additional gate.
-P15-11 deleted the Cloudflare notice review and cutover procedure this candidate
-needed. Git history keeps them.
-No deployment, DNS switch or old-site removal has occurred.
+Git history keeps the Vercel publishing procedure. Retire the Vercel project
+`justgo-legal` only with Anthony's go, once no installed build embeds its links.

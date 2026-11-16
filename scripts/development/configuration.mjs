@@ -80,7 +80,11 @@ export function validateDevelopmentEnvironment(environment) {
     ['EXPO_PUBLIC_PRIVACY_POLICY_URL', 'privacy'],
     ['EXPO_PUBLIC_TERMS_URL', 'terms'],
   ]) {
-    check(environment[key] === `https://justgo-legal.vercel.app/${path}/`, key);
+    check(
+      environment[key] ===
+        `https://justgo-legal.anthonyyoo24.workers.dev/${path}/`,
+      key,
+    );
   }
   check(
     !Object.entries(environment).some(
