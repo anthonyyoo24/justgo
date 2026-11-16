@@ -540,7 +540,10 @@ test('scheduled copies remain opt-in, protected, pinned, sequential and publish 
   assert.match(parentSteps[0], /R2_UPLOAD_TTL_SECONDS: '3600'/);
   const backupStep = steps[steps.indexOf(parentSteps[0]) + 1];
   assert.match(backupStep, /run: node scripts\/backups\/run\.mjs/);
-  assert.doesNotMatch(workflow, /secrets\.R2_UPLOAD_/);
+  assert.doesNotMatch(
+    workflow,
+    /R2_UPLOAD_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)/,
+  );
   assert.match(workflow, /checkout@[a-f0-9]{40}/);
   assert.match(workflow, /github.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /actions: read/);
