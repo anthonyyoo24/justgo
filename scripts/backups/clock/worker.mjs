@@ -46,14 +46,19 @@ export async function dispatchBackup(
 ) {
   try {
     const kind = schedules.get(event?.cron);
-    const expiry = Date.parse(env.BACKUP_CLOCK_TOKEN_EXPIRES_AT);
+    // 'never' names a token created with no expiration. Any other value must
+    // be a date at least 20 minutes away.
+    const expiry =
+      env.BACKUP_CLOCK_TOKEN_EXPIRES_AT === 'never'
+        ? Infinity
+        : Date.parse(env.BACKUP_CLOCK_TOKEN_EXPIRES_AT);
     if (
       !kind ||
       env.BACKUP_CLOCK_ENABLED !== 'approved' ||
       !/^github_pat_[A-Za-z0-9_]{20,}$/.test(
         env.BACKUP_CLOCK_GITHUB_TOKEN ?? '',
       ) ||
-      !Number.isFinite(expiry) ||
+      Number.isNaN(expiry) ||
       expiry - now() < 20 * 60000 ||
       !Number.isSafeInteger(event.scheduledTime) ||
       event.scheduledTime < 1
