@@ -517,7 +517,7 @@ describe('managed authentication and guest boundary', () => {
     );
     expect(
       (await apiRequest(guest, '/v1/guest/challenges')).json().cards,
-    ).toHaveLength(61);
+    ).toHaveLength(105);
 
     expect(
       (

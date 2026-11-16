@@ -105,5 +105,5 @@
       "when": 1794337657738
     }
   },
-  "unapplied": []
+  "unapplied": ["0026_challenge_additions.sql"]
 }

@@ -76,15 +76,23 @@ afterAll(async () => {
   await Promise.all([db.pool.end(), admin.end()]);
 });
 describe('canonical catalog and final route cutover', () => {
-  it('keeps exactly the reviewed 61 placements, all six venues and current Level 1 wording', async () => {
+  it('keeps exactly the reviewed 105 placements, all six venues and current Level 1 wording', async () => {
     const a = await account();
     const response = await request(a.sessionToken, '');
     expect(response.statusCode, response.body).toBe(200);
     const { cards } = response.json<Catalog>();
-    expect(cards).toHaveLength(61);
+    expect(cards).toHaveLength(105);
+    const perVenue: Record<string, number> = {
+      streets: 18,
+      park: 19,
+      gym: 15,
+      cafe: 17,
+      bookstore: 17,
+      bars: 19,
+    };
     for (const venue of venues) {
       const selected = cards.filter((card) => card.venue === venue.id);
-      expect(selected).toHaveLength(venue.id === 'gym' ? 11 : 10);
+      expect(selected).toHaveLength(perVenue[venue.id]!);
       expect(selected.map((card) => card.position)).toEqual(
         [...selected.map((card) => card.position)].sort((a, b) => a - b),
       );
@@ -102,6 +110,49 @@ describe('canonical catalog and final route cutover', () => {
     expect(cards.find((card) => card.id === 'ST-05')?.challengeId).toBe(
       cards.find((card) => card.id === 'PK-02')?.challengeId,
     );
+    // Migration 0026: nine challenges, each placed after the venue's earlier cards.
+    const placements = (challengeId: string) =>
+      cards
+        .filter((card) => card.challengeId === challengeId)
+        .map((card) => card.venue)
+        .sort();
+    const exceptGym = ['bars', 'bookstore', 'cafe', 'park', 'streets'];
+    expect(
+      Object.fromEntries(
+        [
+          'mv-01',
+          'mv-02',
+          'mv-03',
+          'mv-04',
+          'mv-05',
+          'mv-06',
+          'mv-07',
+          'mv-08',
+          'mv-09',
+        ].map((id) => [id, placements(id)]),
+      ),
+    ).toEqual({
+      'mv-01': exceptGym,
+      'mv-02': exceptGym,
+      'mv-03': exceptGym,
+      'mv-04': [...venues.map((venue) => venue.id)].sort(),
+      'mv-05': [...venues.map((venue) => venue.id)].sort(),
+      'mv-06': ['bars', 'gym', 'park', 'streets'],
+      'mv-07': ['bars', 'gym', 'park'],
+      'mv-08': exceptGym,
+      'mv-09': exceptGym,
+    });
+    expect(cards.find((card) => card.id === 'BC-19')).toMatchObject({
+      challengeId: 'mv-09',
+      position: 19,
+      text: 'Say “Excuse me, I noticed something interesting about you…” and improvise.',
+      subtext: null,
+    });
+    expect(cards.find((card) => card.id === 'GY-12')).toMatchObject({
+      challengeId: 'mv-04',
+      position: 12,
+      text: 'Tell someone they have great energy.',
+    });
   });
   it('rejects every obsolete product route without creating state', async () => {
     const a = await account();
