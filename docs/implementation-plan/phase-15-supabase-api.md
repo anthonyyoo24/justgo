@@ -63,7 +63,7 @@ This plan replaces the paused Cloudflare plan, which P15-11 deleted. Git history
   - [ ] P15-5 after the new TestFlight build passes P15-11. Build 7 passed, so P15-5 can run.
   - [ ] P15-10 after P15-9 merges, and before the first outside tester joins. It does not block P15-11 or P15-5.
 - [ ] Hold the file boundaries.
-  - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
+  - [x] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
   - [ ] P15-5 touches only the API Worker code, its scripts, tests, CI step and docs. It never touches `scripts/backups/clock/`, `sites/legal/` or `.github/workflows/staging-health.yml`.
   - [ ] P15-7 touches only `apps/mobile/src/lib/network/`, `scripts/development/`, the fixture API prefix and their tests.
   - [ ] P15-6 keeps the Worker code, its smoke scripts and `scripts/backups/clock/`. It replaces only the Worker's staging deploy lane.
@@ -216,60 +216,62 @@ Each live lane runs at the PR head in its own worktree. Lanes run one at a time 
 
 ## Remove the Vercel API leftovers (P15-3)
 
+**Status.** Merged as #201 on November 9, 2026. Its two verifier verdicts hold the evidence for the lanes and the perf probe, and gate #247 holds Anthony's Vercel check. Lane 1 ran at the head only, with no trunk run, and lane 6 did not run as written, so those two boxes stay unchecked.
+
 **Depends on.** None.
 
 **Files.**
 
-- [ ] Delete `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/` and `scripts/quality/contract-upload.test.mjs`, which tests only `.vercelignore`.
-- [ ] Edit `apps/api/src/server.ts`, `apps/api/src/runtime-app.ts`, `apps/api/src/build-app.ts`, `apps/api/src/identity/address.ts`, `apps/api/src/identity/routes.ts` and `apps/api/src/identity/managed-routes.ts`.
-- [ ] Edit `apps/api/tests/identity/identity.test.ts`, `apps/api/tests/http/routing.test.ts`, `apps/api/tests/http/legal-drafts.test.ts` and `.github/dependabot.yml`.
+- [x] Delete `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/` and `scripts/quality/contract-upload.test.mjs`, which tests only `.vercelignore`.
+- [x] Edit `apps/api/src/server.ts`, `apps/api/src/runtime-app.ts`, `apps/api/src/build-app.ts`, `apps/api/src/identity/address.ts`, `apps/api/src/identity/routes.ts` and `apps/api/src/identity/managed-routes.ts`.
+- [x] Edit `apps/api/tests/identity/identity.test.ts`, `apps/api/tests/http/routing.test.ts`, `apps/api/tests/http/legal-drafts.test.ts` and `.github/dependabot.yml`.
 
 **Build.**
 
-- [ ] Delete the `onVercel` option and the `x-vercel-forwarded-for` reader. Rate limits use the `clientAddress` that the entry supplies.
-- [ ] Keep every other Vercel mention. That covers the `VERCEL` refusals in `apps/api/scripts/challenge-dev.ts` and `scripts/release/staging-local.mjs`, the Vercel legal URLs, the Dev profile's Vercel API URL in `apps/mobile/eas.json` and `.github/workflows/development-ios.yml`, and `apps/api/.env.example`. P15-11 changes the API URLs.
-- [ ] Delete both `VERCEL` gates on the development legal drafts, in `apps/api/src/runtime-app.ts:44-47` and `apps/api/src/build-app.ts:86-91`, and the `vercel: '1'` case in `apps/api/tests/http/legal-drafts.test.ts`.
-- [ ] Keep the forged `x-vercel-forwarded-for` header in the adapter-address test in `apps/api/tests/http/routing.test.ts`. It shows that the header is ignored.
-- [ ] If P15-4 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`. If P15-3 merged first, P15-4 deletes it.
-- [ ] Before merge, Anthony confirms in the Vercel dashboard that Git deployments are off for the `justgo` project, so the merge cannot start a deploy.
+- [x] Delete the `onVercel` option and the `x-vercel-forwarded-for` reader. Rate limits use the `clientAddress` that the entry supplies.
+- [x] Keep every other Vercel mention. That covers the `VERCEL` refusals in `apps/api/scripts/challenge-dev.ts` and `scripts/release/staging-local.mjs`, the Vercel legal URLs, the Dev profile's Vercel API URL in `apps/mobile/eas.json` and `.github/workflows/development-ios.yml`, and `apps/api/.env.example`. P15-11 changes the API URLs.
+- [x] Delete both `VERCEL` gates on the development legal drafts, in `apps/api/src/runtime-app.ts:44-47` and `apps/api/src/build-app.ts:86-91`, and the `vercel: '1'` case in `apps/api/tests/http/legal-drafts.test.ts`.
+- [x] Keep the forged `x-vercel-forwarded-for` header in the adapter-address test in `apps/api/tests/http/routing.test.ts`. It shows that the header is ignored.
+- [x] If P15-4 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`. If P15-3 merged first, P15-4 deletes it.
+- [x] Before merge, Anthony confirms in the Vercel dashboard that Git deployments are off for the `justgo` project, so the merge cannot start a deploy.
 
 **You see.**
 
-- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github -g '!apps/api/tests/**'` matches nothing, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs` if P15-5 has not removed it, and `apps/api/vercel.json` and `.vercelignore` are gone.
+- [x] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github -g '!apps/api/tests/**'` matches nothing, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs` if P15-5 has not removed it, and `apps/api/vercel.json` and `.vercelignore` are gone.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `apps/api/tests/identity/identity.test.ts` keys a managed-auth rate bucket by the supplied client address and ignores `x-vercel-forwarded-for`. Run `pnpm --filter @justgo/api run test tests/identity/identity.test.ts`.
-- [ ] Run `pnpm --filter @justgo/api run typecheck`, `pnpm run lint` and `pnpm run test:architecture`.
+- [x] `apps/api/tests/identity/identity.test.ts` keys a managed-auth rate bucket by the supplied client address and ignores `x-vercel-forwarded-for`. Run `pnpm --filter @justgo/api run test tests/identity/identity.test.ts`.
+- [x] Run `pnpm --filter @justgo/api run typecheck`, `pnpm run lint` and `pnpm run test:architecture`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes drive the Node fixture API and Expo web.
 
 - [ ] Lane 1. Regression lane against trunk. Run `verify drive welcome challenge progress account data` at trunk and at head. Save `drive-summary.json`. Pass when the same drives pass on both.
-- [ ] Lane 2. Send 121 managed sign-in requests from one address to the Node fixture API. Save `rate-one.json`. Pass when request 121 returns 429 with `Retry-After`.
-- [ ] Lane 3. Repeat lane 2 with a different forged `x-vercel-forwarded-for` value on every request. Save `rate-forged.json`. Pass when request 121 still returns 429.
-- [ ] Lane 4. Start `apps/api/src/server.ts` in development with `VERCEL=1` and the loopback `justgo_test` settings, not the fixture API, which refuses `VERCEL`. Save `vercel-env.json`. Pass when the development legal draft routes answer as they do without the variable.
-- [ ] Lane 5. Request `/health` and `/ready` on the Node entry with `JUSTGO_SOURCE_SHA` set. Save `node-ready.json`. Pass when both return 200 with the release identity headers.
+- [x] Lane 2. Send 121 managed sign-in requests from one address to the Node fixture API. Save `rate-one.json`. Pass when request 121 returns 429 with `Retry-After`.
+- [x] Lane 3. Repeat lane 2 with a different forged `x-vercel-forwarded-for` value on every request. Save `rate-forged.json`. Pass when request 121 still returns 429.
+- [x] Lane 4. Start `apps/api/src/server.ts` in development with `VERCEL=1` and the loopback `justgo_test` settings, not the fixture API, which refuses `VERCEL`. Save `vercel-env.json`. Pass when the development legal draft routes answer as they do without the variable.
+- [x] Lane 5. Request `/health` and `/ready` on the Node entry with `JUSTGO_SOURCE_SHA` set. Save `node-ready.json`. Pass when both return 200 with the release identity headers.
 - [ ] Lane 6. Accept a challenge as a guest in the built-in browser pane. Save `guest.png`. Pass when the deck shows `Accept challenge` and the attempt saves.
-- [ ] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
-- [ ] Lane 8. Run `pnpm run test:journey e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
-- [ ] Lane 9. Run `pnpm --filter @justgo/mobile run export:web`, then `pnpm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
-- [ ] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when nothing matches, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`.
+- [x] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
+- [x] Lane 8. Run `pnpm run test:journey e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
+- [x] Lane 9. Run `pnpm --filter @justgo/mobile run export:web`, then `pnpm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
+- [x] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when nothing matches, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Time from starting the Node fixture API to its first 200 from `/ready`, in ms.
-- [ ] Probe. Start and stop the API five times at trunk and five times at head, alternating.
-- [ ] Baseline. Record trunk first.
-- [ ] Rule. Head fails if its median exceeds trunk's by more than 10 percent.
+- [x] Metric. Time from starting the Node fixture API to its first 200 from `/ready`, in ms.
+- [x] Probe. Start and stop the API five times at trunk and five times at head, alternating.
+- [x] Baseline. Record trunk first.
+- [x] Rule. Head fails if its median exceeds trunk's by more than 10 percent.
 
 **Review gate.** None. P15-3 is not review-gated.
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA.
-- [ ] Review comments triaged.
-- [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
+- [x] Clean verdict at the exact head SHA.
+- [x] Review comments triaged.
+- [x] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
+- [x] The owner merges through `pnpm run merge:pr`, per [Git and autonomy](../../AGENTS.md#git-and-autonomy).
 
 ## Land the parked recovery checks (P15-4)
 
