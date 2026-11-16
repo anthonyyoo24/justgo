@@ -27,8 +27,7 @@ import { runVerdictPatch } from './verdict-status.mjs';
 //
 // The merge is pinned to --head with --match-head-commit, so GitHub refuses a
 // head the check did not see. A gh, git or network failure stops the script
-// before anything merges. .claude/hooks/merge-order-guard.mjs denies a raw
-// `gh pr merge` so that agents come through here.
+// before anything merges.
 //
 // Usage:
 //   pnpm run merge:pr <n> --head <sha> [--auto] [--squash]
