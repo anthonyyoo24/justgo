@@ -91,7 +91,7 @@ The other sentences stay word for word. The Terms
 and publishes with it. The support address is still a personal Gmail account,
 which waits for Anthony's choice.
 
-- **What makes it true.** Build 8 and every later build point at the new project and sends
+- **What makes it true.** Build 8 and every later build point at the new project and send
   `x-region: us-east-1` on every API request, so Supabase runs the `api`
   function beside the database. US-7 reads `x-sb-edge-region: us-east-1` back
   from build 8's code path.

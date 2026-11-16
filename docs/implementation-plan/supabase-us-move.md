@@ -2,7 +2,7 @@
 
 # Phase 15A plan to move the database and API to Supabase us-east-1
 
-**Status.** Done on November 16, 2026. Anthony settled its [decisions](#decisions) on November 13, and US-10 deleted the Canada project on November 16. The restore rehearsal from the first U.S. backup is still open as gate [#522](https://github.com/anthonyyoo24/justgo/issues/522). Unticked boxes below were skipped or not recorded, and each says why where it matters.
+**Status.** Done on November 16, 2026. Anthony settled its [decisions](#decisions) on November 13, and US-10 deleted the Canada project on November 16. The restore rehearsal from the first U.S. backup is still open as gate [#522](https://github.com/anthonyyoo24/justgo/issues/522). Unticked boxes below were skipped or not recorded. Some give the reason, and the US-7 bundle and region reads and the US-9 build and architecture checks were never recorded.
 
 This plan moves JustGO's Supabase database, Auth and the `api` Edge Function from project `kmcpcauaxlgpevkkenwd` in Canada Central (`ca-central-1`) to a new Supabase project in us-east-1 (North Virginia). The new project becomes the one the app uses. The Canada project stays until the app works on the new one, then Anthony deletes it.
 
