@@ -10,7 +10,7 @@ import {
 import { loggerOptions } from './http/diagnostics.js';
 import { createServerErrorReporter } from './http/server-error-reporter.js';
 import { IdentityService } from './identity/service.js';
-import { createBetaAccess } from './access/beta-access.js';
+import { createFreeAccess } from './access/free-access.js';
 import { createManagedAuthVerifier } from './identity/managed-verifier.js';
 import { createManagedAuthDeletion } from './identity/managed-deletion.js';
 
@@ -38,13 +38,9 @@ export function buildRuntimeApp(
     legacyIdentityEnabled: !config.MANAGED_AUTH_ENABLED,
     developmentLegalDrafts:
       config.NODE_ENV === 'development' && config.APP_ENVIRONMENT !== 'staging',
-    ...(config.APP_ENVIRONMENT === 'staging'
-      ? createBetaAccess(
-          config.BETA_ACCESS_GRANTS,
-          Date.now,
-          config.BETA_ACCESS_WINDOW,
-        )
-      : {}),
+    // The app is free in every environment, so the beta grants and window no
+    // longer decide access.
+    ...createFreeAccess(),
     ...(database
       ? {
           identity: new IdentityService(database.db, {
