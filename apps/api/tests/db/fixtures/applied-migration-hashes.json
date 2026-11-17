@@ -103,7 +103,11 @@
     "0025_users_id_immutable.sql": {
       "sha256": "598213d057b39636ff2802364f939a75aa03278eedef9ee186d9e6475e0cb62f",
       "when": 1794337657738
+    },
+    "0026_challenge_additions.sql": {
+      "sha256": "6b897ffdb36d9e345b9a33ed77b7587336166c8db90bae2ce1a2f7f84cea16ea",
+      "when": 1794870688607
     }
   },
-  "unapplied": ["0026_challenge_additions.sql"]
+  "unapplied": []
 }
