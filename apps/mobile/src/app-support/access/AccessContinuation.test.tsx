@@ -2,12 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Text } from 'react-native';
 import { fireEvent } from '@testing-library/react-native';
 import { router, Stack } from 'expo-router';
-import {
-  act,
-  renderRouter,
-  screen,
-  waitFor,
-} from 'expo-router/testing-library';
+import { act, renderRouter, screen } from 'expo-router/testing-library';
 import RootLayout, { unstable_settings } from '../../app/_layout';
 import AccessRoute from '../../app/access';
 import HomeRoute from '../../app/(tabs)/index';
@@ -15,14 +10,10 @@ import ChallengeRoute from '../../app/(challenge)/challenge';
 import ReflectionRoute from '../../app/(challenge)/reflection';
 import { ChallengeController } from '../../features/challenges/controller';
 import { AccountRepository } from '../../data/activity/repository';
-import {
-  memoryJournalBackend,
-  memoryLocalJournal,
-} from '../../../test-support/local-journal';
+import { memoryLocalJournal } from '../../../test-support/local-journal';
 import {
   MemoryStorage,
   card,
-  deferred,
   input,
   otherOwner,
   owner,
@@ -41,7 +32,6 @@ type Snapshot = {
     deletionStatus: 'pending' | 'cleanup' | 'deleted' | null;
     needsWelcome: boolean;
   };
-  access: { verified: boolean; isPending: boolean; refetch: jest.Mock };
   repository: AccountRepository | null;
 };
 let mockSnapshot: Snapshot;
@@ -54,7 +44,7 @@ const mockRuntime = {
     return mockChallenges;
   },
   activity: { getRepository: () => mockSnapshot.repository },
-  canStartChallenge: () => mockSnapshot.access.verified,
+  canStartChallenge: () => true,
 };
 
 jest.mock('expo-crypto', () => ({
@@ -85,7 +75,6 @@ jest.mock('../providers/AppProvider', () => {
   return {
     AppProvider: ({ children }: { children: ReactNode }) => children,
     useIdentity: () => useSnapshot().identity,
-    useAccess: () => useSnapshot().access,
     useJournal: () => useSnapshot().repository,
     useRuntime: () => mockRuntime,
   };
@@ -173,12 +162,6 @@ async function updateSnapshot(next: Snapshot) {
     for (const listener of mockListeners) listener();
   });
 }
-async function expireAccess() {
-  await updateSnapshot({
-    ...mockSnapshot,
-    access: { ...mockSnapshot.access, verified: false },
-  });
-}
 function openReflection(attemptId: string | undefined = uuid(1)) {
   return renderRouter(routes, {
     initialUrl: attemptId
@@ -209,7 +192,6 @@ beforeEach(async () => {
       deletionStatus: null,
       needsWelcome: false,
     },
-    access: { verified: true, isPending: false, refetch: jest.fn() },
     repository,
   };
   mockChallenges = new ChallengeController(
@@ -220,86 +202,6 @@ beforeEach(async () => {
 afterEach(() => {
   mockChallenges.dispose();
   for (const current of repositories.splice(0)) current.dispose();
-});
-
-it('preserves unsaved feeling and text across access expiry and saves them locally', async () => {
-  const navigation = await openReflection();
-  await fireEvent.press(
-    await screen.findByRole('radio', { name: 'A little bit better' }),
-  );
-  await fireEvent.changeText(
-    screen.getByLabelText('Your reflection'),
-    'Accepted challenge, unfinished reflection',
-  );
-  expect(repository.getAttempt(uuid(1))?.reflection).toBeNull();
-
-  await expireAccess();
-  expect(navigation.getPathname()).toBe('/reflection');
-  expect(mockReflectionUnmounted).not.toHaveBeenCalled();
-  expect(
-    screen.getByRole('radio', { name: 'A little bit better' }).props
-      .accessibilityState.checked,
-  ).toBe(true);
-  expect(screen.getByLabelText('Your reflection').props.value).toBe(
-    'Accepted challenge, unfinished reflection',
-  );
-  await fireEvent.press(
-    screen.getByRole('button', { name: 'Save Reflection' }),
-  );
-  expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-  expect(navigation.getPathname()).toBe('/');
-  expect(
-    (await memoryLocalJournal(owner, storage).get(uuid(1)))?.reflection,
-  ).toMatchObject({
-    feeling: 'a_little_better',
-    text: 'Accepted challenge, unfinished reflection',
-  });
-});
-
-it('retains newer typing when a save finishes after access expires', async () => {
-  const navigation = await openReflection();
-  await fireEvent.changeText(
-    await screen.findByLabelText('Your reflection'),
-    'Submitted before expiry',
-  );
-  const commit = deferred<void>();
-  const journalBackend = memoryJournalBackend(storage);
-  journalBackend.beforeCommit = () => commit.promise;
-  try {
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Save Reflection' }),
-    );
-    await expireAccess();
-    await fireEvent.changeText(
-      screen.getByLabelText('Your reflection'),
-      'Newer writing after expiry',
-    );
-    await act(async () => commit.resolve());
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save Reflection' }),
-      ).toBeEnabled(),
-    );
-    expect(navigation.getPathname()).toBe('/reflection');
-    expect(mockReflectionUnmounted).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Your reflection').props.value).toBe(
-      'Newer writing after expiry',
-    );
-    expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
-      'Submitted before expiry',
-    );
-    journalBackend.beforeCommit = null;
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Save Reflection' }),
-    );
-    expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-    expect(
-      (await memoryLocalJournal(owner, storage).get(uuid(1)))?.reflection.text,
-    ).toBe('Newer writing after expiry');
-  } finally {
-    commit.resolve();
-    journalBackend.beforeCommit = null;
-  }
 });
 
 it('discards the former owner’s editor when the active account changes', async () => {
@@ -337,7 +239,6 @@ it.each(['pending', 'cleanup', 'deleted'] as const)(
       await screen.findByLabelText('Your reflection'),
       'Unsaved synthetic writing before deletion',
     );
-    await expireAccess();
     await updateSnapshot({
       ...mockSnapshot,
       identity: { ...mockSnapshot.identity, deletionStatus },
@@ -357,23 +258,15 @@ it.each(['pending', 'cleanup', 'deleted'] as const)(
   },
 );
 
-it.each([true, false])(
-  'dismisses a cold challenge with no owner-local active start (verified=%s)',
-  async (verified) => {
-    mockSnapshot.access.verified = verified;
-    const navigation = await renderRouter(routes, {
-      initialUrl: '/challenge',
-    });
-    expect(
-      await screen.findByText(
-        verified ? 'Home ready' : 'We can’t verify access yet.',
-      ),
-    ).toBeTruthy();
-    expect(navigation.getPathname()).toBe('/');
-    expect(screen.queryByText('Success ready')).toBeNull();
-    expect(repository.store.getState().flowAttemptId).toBeNull();
-  },
-);
+it('dismisses a cold challenge with no owner-local active start', async () => {
+  const navigation = await renderRouter(routes, {
+    initialUrl: '/challenge',
+  });
+  expect(await screen.findByText('Home ready')).toBeTruthy();
+  expect(navigation.getPathname()).toBe('/');
+  expect(screen.queryByText('Success ready')).toBeNull();
+  expect(repository.store.getState().flowAttemptId).toBeNull();
+});
 
 it.each([null, uuid(99), uuid(2)])(
   'does not expose an editor or another owner’s writing for unavailable attempt %s',

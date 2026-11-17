@@ -89,10 +89,6 @@ function apiBase(baseUrl: string | undefined) {
     return null;
   }
 }
-/** Canonical API scope shared by transport validation and local access metadata. */
-export function apiOrigin(baseUrl: string | undefined): string | null {
-  return apiBase(baseUrl)?.origin ?? null;
-}
 export function createHttpClient(
   baseUrl: string | undefined,
   fetcher: typeof fetch = fetch,

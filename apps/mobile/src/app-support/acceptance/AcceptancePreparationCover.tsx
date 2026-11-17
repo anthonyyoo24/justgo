@@ -60,9 +60,7 @@ export function AcceptancePreparationCover({
           insets={insets}
           busy={!error}
           error={linkError || error}
-          busyLabel={
-            preparing ? 'Preparing your challenges' : 'Checking your access'
-          }
+          busyLabel="Preparing your challenges"
           actionLabel={error ? 'Try again' : 'Continue'}
           onContinue={() => {
             clearLinkError();

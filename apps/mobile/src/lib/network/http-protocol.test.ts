@@ -1,5 +1,5 @@
 import { okSchema } from '@justgo/contracts';
-import { ApiError, apiOrigin, createHttpClient } from './http';
+import { ApiError, createHttpClient } from './http';
 
 const jsonResponse = (mediaType = 'application/json') =>
   new Response(JSON.stringify({ ok: true }), {
@@ -117,15 +117,6 @@ it.each([
     );
   },
 );
-
-it.each([
-  'https://api.example.test',
-  prefixed,
-  `${prefixed}/`,
-  'https://api.example.test:443/prefix/../gateway/',
-])('keeps the access scope of base %s at its origin', (base) => {
-  expect(apiOrigin(base)).toBe('https://api.example.test');
-});
 
 it.each(['https://[invalid-target', '//[invalid-target'])(
   'normalizes an invalid target URL without fetching or exposing it',

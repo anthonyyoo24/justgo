@@ -23,7 +23,6 @@ let mockSnapshot = {
     deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
     needsWelcome: false,
   },
-  access: { verified: true, isPending: false, refetch: jest.fn() },
 };
 const mockListeners = new Set<() => void>();
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
@@ -50,7 +49,6 @@ jest.mock('./providers/AppProvider', () => {
   return {
     AppProvider: ({ children }: { children: ReactNode }) => children,
     useIdentity: () => useSnapshot().identity,
-    useAccess: () => useSnapshot().access,
   };
 });
 jest.mock('./identity/welcome/WelcomeTransition', () => ({
@@ -117,110 +115,51 @@ beforeEach(() => {
       deletionStatus: null,
       needsWelcome: false,
     },
-    access: { verified: true, isPending: false, refetch: jest.fn() },
   };
 });
 
-it('opens Home at the sole root URL when access is verified', async () => {
+it('opens Home at the sole root URL with no access check', async () => {
   const navigation = await renderRouter(routes, { initialUrl: '/' });
   expect(await screen.findByText('Home ready')).toBeTruthy();
   expect(navigation.getPathname()).toBe('/');
 });
 
 it.each(['/', '/access'])(
-  'keeps cold %s startup quiet until access is verified',
+  'keeps cold %s startup quiet while identity loads, then enters Home with no access check',
   async (initialUrl) => {
-    mockSnapshot.access = {
-      verified: false,
-      isPending: true,
-      refetch: jest.fn(),
+    mockSnapshot.identity = {
+      ...mockSnapshot.identity,
+      busy: true,
+      account: null,
+      collectionId: null,
     };
     const navigation = await renderRouter(routes, { initialUrl });
     expect(await screen.findByLabelText('Loading JustGO')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/access');
-    expect(screen.queryByText('Checking your access…')).toBeNull();
-    expect(screen.queryByText('Check access again')).toBeNull();
     expect(screen.queryByText('Home ready')).toBeNull();
     await act(() => {
       mockSnapshot = {
         ...mockSnapshot,
-        access: { ...mockSnapshot.access, verified: true, isPending: false },
+        identity: {
+          ...mockSnapshot.identity,
+          busy: false,
+          account: { userId: 'synthetic-account' },
+          collectionId: 'synthetic-account',
+        },
       };
       for (const listener of mockListeners) listener();
     });
     expect(await screen.findByText('Home ready')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/');
     expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
-    expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
   },
 );
-
-it('replaces startup loading with recovery when access cannot be verified', async () => {
-  mockSnapshot.access.verified = false;
-  mockSnapshot.access.isPending = true;
-  await renderRouter(routes, { initialUrl: '/' });
-  expect(await screen.findByLabelText('Loading JustGO')).toBeTruthy();
-  await act(() => {
-    mockSnapshot = {
-      ...mockSnapshot,
-      access: { ...mockSnapshot.access, isPending: false },
-    };
-    for (const listener of mockListeners) listener();
-  });
-  expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-  expect(screen.getByText('View saved history')).toBeTruthy();
-  expect(
-    screen.getByRole('button', { name: 'Check access again' }),
-  ).toBeTruthy();
-  expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
-  expect(screen.queryByText('Home ready')).toBeNull();
-});
-
-it.each([
-  ['/progress', 'Progress'],
-  ['/settings', 'Settings'],
-  ['/data', 'Data'],
-] as const)(
-  'keeps %s usable while admission is pending',
-  async (initialUrl, title) => {
-    mockSnapshot.access.verified = false;
-    mockSnapshot.access.isPending = true;
-    const navigation = await renderRouter(routes, { initialUrl });
-    expect(await screen.findByText(`${title} ready`)).toBeTruthy();
-    expect(navigation.getPathname()).toBe(initialUrl);
-    expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
-  },
-);
-
-it.each(['/challenge', '/success', '/reflection'])(
-  'keeps the owned %s flow mounted when access expires',
-  async (initialUrl) => {
-    mockSnapshot.access.verified = false;
-    const navigation = await renderRouter(routes, { initialUrl });
-    const title = initialUrl.slice(1);
-    expect(
-      await screen.findByText(
-        `${title[0]!.toUpperCase()}${title.slice(1)} ready`,
-      ),
-    ).toBeTruthy();
-    expect(navigation.getPathname()).toBe(initialUrl);
-  },
-);
-
-it('keeps the Home URL available while preventing challenge admission with stale access', async () => {
-  mockSnapshot.access.verified = false;
-  const navigation = await renderRouter(routes, { initialUrl: '/' });
-  expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-  expect(navigation.getPathname()).toBe('/');
-  expect(screen.queryByText('Home ready')).toBeNull();
-});
 
 it.each(['guest', 'account'] as const)(
-  'keeps the %s local collection readable while signed out and offline',
+  'keeps the %s local collection readable and Home open while signed out and offline',
   async (collectionKind) => {
     mockSnapshot.identity.account = null;
     mockSnapshot.identity.collectionKind = collectionKind;
-    mockSnapshot.access.verified = false;
     const navigation = await renderRouter(routes, { initialUrl: '/progress' });
     expect(await screen.findByText('Progress ready')).toBeTruthy();
     await act(() => router.push('/settings'));
@@ -234,8 +173,7 @@ it.each(['guest', 'account'] as const)(
     expect(await screen.findByText('Progress ready')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/progress');
     await act(() => router.replace('/'));
-    expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-    expect(screen.queryByText('Home ready')).toBeNull();
+    expect(await screen.findByText('Home ready')).toBeTruthy();
   },
 );
 
@@ -249,7 +187,6 @@ it.each(['guest', 'account'] as const)(
       collectionId: null,
       needsWelcome: true,
     };
-    mockSnapshot.access.verified = false;
     const navigation = await renderRouter(routes, { initialUrl: '/progress' });
     expect(screen.getByLabelText('Loading saved data')).toBeTruthy();
     expect(screen.queryByText('Welcome ready')).toBeNull();
@@ -268,7 +205,6 @@ it.each(['guest', 'account'] as const)(
     });
     expect(await screen.findByText('Progress ready')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/progress');
-    expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
   },
 );
 
@@ -280,19 +216,16 @@ it.each([
   ['/account/troubleshooting', 'Troubleshooting'],
   ['/settings', 'Settings'],
   ['/data', 'Data'],
+  ['/progress', 'Progress'],
   ['/account/sign-in', 'Sign in'],
   ['/auth/callback', 'Callback'],
   ['/recovery', 'Recovery'],
   ['/delete-account', 'Deletion'],
-] as const)(
-  'keeps %s outside the paid-access guard',
-  async (initialUrl, title) => {
-    mockSnapshot.access.verified = false;
-    const navigation = await renderRouter(routes, { initialUrl });
-    expect(await screen.findByText(`${title} ready`)).toBeTruthy();
-    expect(navigation.getPathname()).toBe(initialUrl);
-  },
-);
+] as const)('opens %s directly', async (initialUrl, title) => {
+  const navigation = await renderRouter(routes, { initialUrl });
+  expect(await screen.findByText(`${title} ready`)).toBeTruthy();
+  expect(navigation.getPathname()).toBe(initialUrl);
+});
 
 it.each(['/challenge', '/success', '/reflection'])(
   'preserves the grouped public URL %s',
@@ -313,13 +246,11 @@ it.each(['/account/toString', '/account/unknown', '/export-data'])(
 );
 
 it.each([
-  [true, true, 'Home ready', '/'],
-  [false, true, 'We can’t verify access yet.', '/access'],
-  [false, false, 'Recovery ready', '/recovery'],
+  [true, 'Home ready', '/'],
+  [false, 'Recovery ready', '/recovery'],
 ] as const)(
-  'leaves an unknown URL through the access gate (verified=%s, account=%s)',
-  async (verified, hasAccount, destination, pathname) => {
-    mockSnapshot.access.verified = verified;
+  'leaves an unknown URL through the startup route (account=%s)',
+  async (hasAccount, destination, pathname) => {
     if (!hasAccount) {
       mockSnapshot.identity.account = null;
       mockSnapshot.identity.collectionId = null;
@@ -403,14 +334,9 @@ it('routes a fresh installation to welcome without silently creating an account'
   expect(navigation.getPathname()).toBe('/welcome');
 });
 
-it('keeps Welcome mounted after provider authentication while its access handoff is pending', async () => {
+it('keeps Welcome mounted after provider authentication while its handoff is pending', async () => {
   mockSnapshot.identity.account = null;
   mockSnapshot.identity.needsWelcome = true;
-  mockSnapshot.access = {
-    verified: false,
-    isPending: true,
-    refetch: jest.fn(),
-  };
   const navigation = await renderRouter(routes, { initialUrl: '/welcome' });
   expect(await screen.findByText('Welcome ready')).toBeTruthy();
   await act(() => {
@@ -430,7 +356,7 @@ it('keeps Welcome mounted after provider authentication while its access handoff
 });
 
 it.each(['pending', 'cleanup'] as const)(
-  'resumes %s deletion before product access despite stale verification',
+  'resumes %s deletion before opening the app',
   async (deletionStatus) => {
     mockSnapshot.identity.deletionStatus = deletionStatus;
     const navigation = await renderRouter(routes, { initialUrl: '/' });

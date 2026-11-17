@@ -15,11 +15,9 @@ let mockJournal: {
   repository: { accountId: string } | null;
   state: { ready: boolean; hydrationError: string | null } | null;
 };
-const mockAdmission = jest.fn(() => ({ verified: false, isPending: true }));
 jest.mock('../providers/AppProvider', () => ({
   useIdentity: () => mockIdentity,
   useActivityState: () => mockJournal,
-  useAccess: () => mockAdmission(),
 }));
 jest.mock('../../platform/motion/motion', () => ({
   useMotionPreferences: () => ({ loading: false }),
@@ -65,7 +63,6 @@ it('waits for the selected guest collection instead of accepting an older ownerâ
   await screen.rerender(content());
   expect(hideNativeSplash).toHaveBeenCalledTimes(1);
   expect(screen.getByText('Guest content')).toBeTruthy();
-  expect(mockAdmission).not.toHaveBeenCalled();
 });
 
 it.each(['pending', 'cleanup', 'deleted', 'welcome', 'no collection'] as const)(
