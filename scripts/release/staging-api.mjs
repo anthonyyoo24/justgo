@@ -47,8 +47,6 @@ const failureCodes = new Set([
     'IDENTITY_RECOVERY_RATE_LIMIT',
     'ACTIVITY_WRITE_RATE_LIMIT',
     'ACCOUNT_EXPORT_RATE_LIMIT',
-    'BETA_ACCESS_WINDOW',
-    'BETA_ACCESS_GRANTS',
   ].map((name) => `STAGING_SUPABASE_SECRET_${name}_INVALID`),
 ]);
 const trustedFailures = new WeakMap();

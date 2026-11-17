@@ -282,10 +282,6 @@ export async function runEdgeSmoke(start: StartRuntime) {
       JUSTGO_AUTH_SECRET_KEY: authSecretKey,
       // The bundle's release module must win over a project-wide secret.
       JUSTGO_SOURCE_SHA: 'c'.repeat(40),
-      BETA_ACCESS_WINDOW: JSON.stringify({
-        startsAt: new Date(now - 60_000).toISOString(),
-        expiresAt: new Date(now + 3_600_000).toISOString(),
-      }),
       API_SENTRY_ENABLED: 'true',
       API_SENTRY_DSN: `https://${'c'.repeat(32)}@o1.ingest.us.sentry.io/1`,
       JUSTGO_EDGE_SMOKE_FETCH_MAP: fetchMap,

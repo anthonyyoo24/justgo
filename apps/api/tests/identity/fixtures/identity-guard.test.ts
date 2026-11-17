@@ -21,8 +21,6 @@ beforeEach(() => {
     MIGRATION_DATABASE_URL:
       'postgresql://justgo_migrator:fixture@localhost/justgo_test',
     DATABASE_SSL: 'disable',
-    BETA_ACCESS_GRANTS: '[]',
-    BETA_ACCESS_WINDOW: 'null',
   }))
     vi.stubEnv(name, value);
 });

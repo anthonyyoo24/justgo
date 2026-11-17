@@ -51,8 +51,6 @@ export const functionSecretNames = Object.freeze([
   'IDENTITY_RECOVERY_RATE_LIMIT',
   'ACTIVITY_WRITE_RATE_LIMIT',
   'ACCOUNT_EXPORT_RATE_LIMIT',
-  'BETA_ACCESS_GRANTS',
-  'BETA_ACCESS_WINDOW',
 ]);
 const requiredSecretNames = [
   'NODE_ENV',
@@ -70,44 +68,6 @@ const integer = (min, max) => (value) =>
   /^[1-9][0-9]{0,5}$/.test(value) &&
   Number(value) >= min &&
   Number(value) <= max;
-const instant = (value) =>
-  typeof value === 'string' &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(value) &&
-  !Number.isNaN(Date.parse(value)) &&
-  new Date(Date.parse(value)).toISOString().slice(0, 10) === value.slice(0, 10);
-const exactKeys = (record, required, optional = []) =>
-  record !== null &&
-  typeof record === 'object' &&
-  !Array.isArray(record) &&
-  required.every((key) => key in record) &&
-  Object.keys(record).every(
-    (key) => required.includes(key) || optional.includes(key),
-  );
-const ordered = (first, second) => Date.parse(first) < Date.parse(second);
-const json = (check) => (value) => {
-  try {
-    return check(JSON.parse(value));
-  } catch {
-    return false;
-  }
-};
-const uuid =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const accessWindow = (window) =>
-  exactKeys(window, ['startsAt', 'expiresAt']) &&
-  instant(window.startsAt) &&
-  instant(window.expiresAt) &&
-  ordered(window.startsAt, window.expiresAt);
-const grant = (entry) =>
-  exactKeys(entry, ['userId', 'startsAt', 'expiresAt'], ['revokedAt']) &&
-  typeof entry.userId === 'string' &&
-  uuid.test(entry.userId) &&
-  instant(entry.startsAt) &&
-  instant(entry.expiresAt) &&
-  ordered(entry.startsAt, entry.expiresAt) &&
-  (entry.revokedAt === undefined ||
-    (instant(entry.revokedAt) &&
-      Date.parse(entry.revokedAt) >= Date.parse(entry.startsAt)));
 
 /**
  * Values the function would refuse at boot. Each rule mirrors `readConfig()`
@@ -138,14 +98,6 @@ export const functionSecretRules = Object.freeze({
   IDENTITY_RECOVERY_RATE_LIMIT: integer(1, 100),
   ACTIVITY_WRITE_RATE_LIMIT: integer(1, 10000),
   ACCOUNT_EXPORT_RATE_LIMIT: integer(1, 10000),
-  BETA_ACCESS_WINDOW: json((window) => window === null || accessWindow(window)),
-  BETA_ACCESS_GRANTS: json(
-    (grants) =>
-      Array.isArray(grants) &&
-      grants.length <= 100 &&
-      grants.every(grant) &&
-      new Set(grants.map((entry) => entry.userId)).size === grants.length,
-  ),
 });
 
 /** The failure code that names a refused field, never its value. */
