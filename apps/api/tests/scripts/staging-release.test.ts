@@ -26,13 +26,30 @@ const entries: [MigrationEntry, MigrationEntry] = [
 ];
 const applied = [{ created_at: '1', hash: entries[0].hash }];
 const now = Date.parse('2026-10-27T12:00:00Z');
-function attestation() {
-  const plan = migrationPlan(entries, applied, sha, previous);
+function waiver(
+  plan: ReturnType<typeof migrationPlan>,
+  previousApiSha: string,
+) {
+  return {
+    kind: 'test-data-waiver',
+    version: 1,
+    project: stagingProject,
+    sourceSha: sha,
+    previousApiSha,
+    historyDigest: plan.historyDigest,
+    planDigest: plan.digest,
+    testDataOnly: true,
+    ownerApprovedAt: new Date(now - 60_000).toISOString(),
+    expiresAt: new Date(now + 60_000).toISOString(),
+  };
+}
+function attestation(history = applied, previousApiSha = previous) {
+  const plan = migrationPlan(entries, history, sha, previousApiSha);
   return {
     version: 1,
     project: stagingProject,
     sourceSha: sha,
-    previousApiSha: previous,
+    previousApiSha,
     historyDigest: plan.historyDigest,
     planDigest: plan.digest,
     backupSha256: 'e'.repeat(64),
@@ -153,23 +170,24 @@ describe('staging migration target and recovery fences', () => {
       expect.objectContaining({ reason: 'invalid_release_source' }),
     );
   });
-  it('accepts a first-release waiver only when it names the none marker', () => {
+  it('refuses a first-release waiver that names the none marker and binds a real attestation to it', () => {
     const plan = migrationPlan(entries, [], sha, 'none');
-    const waiver = {
-      kind: 'test-data-waiver',
-      version: 1,
-      project: stagingProject,
-      sourceSha: sha,
-      previousApiSha: 'none',
-      historyDigest: plan.historyDigest,
-      planDigest: plan.digest,
-      testDataOnly: true,
-      ownerApprovedAt: new Date(now - 60_000).toISOString(),
-      expiresAt: new Date(now + 60_000).toISOString(),
-    };
     expect(() =>
       requireRecoveryAttestation(
-        JSON.stringify(waiver),
+        JSON.stringify(waiver(plan, 'none')),
+        plan,
+        sha,
+        'none',
+        now,
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        reason: 'current_deletion_safe_recovery_attestation_required',
+      }),
+    );
+    expect(() =>
+      requireRecoveryAttestation(
+        JSON.stringify(attestation([], 'none')),
         plan,
         sha,
         'none',
@@ -179,7 +197,7 @@ describe('staging migration target and recovery fences', () => {
     for (const previousApiSha of [previous, undefined, null, ''])
       expect(() =>
         requireRecoveryAttestation(
-          JSON.stringify({ ...waiver, previousApiSha }),
+          JSON.stringify({ ...attestation([], 'none'), previousApiSha }),
           plan,
           sha,
           'none',
@@ -187,7 +205,7 @@ describe('staging migration target and recovery fences', () => {
         ),
       ).toThrow(
         expect.objectContaining({
-          reason: 'current_test_data_waiver_required',
+          reason: 'current_deletion_safe_recovery_attestation_required',
         }),
       );
   });
@@ -232,67 +250,28 @@ describe('staging migration target and recovery fences', () => {
         ),
       ).toThrow();
   });
-  it('accepts a test-data waiver only for this plan, for one day, and never mixed with a partial recovery proof', () => {
+  it('refuses a current test-data waiver for this plan and a recovery proof that names any kind', () => {
     const plan = migrationPlan(entries, applied, sha, previous);
-    const waiver = {
-      kind: 'test-data-waiver',
-      version: 1,
-      project: stagingProject,
-      sourceSha: sha,
-      previousApiSha: previous,
-      historyDigest: plan.historyDigest,
-      planDigest: plan.digest,
-      testDataOnly: true,
-      ownerApprovedAt: new Date(now - 60_000).toISOString(),
-      expiresAt: new Date(now + 60_000).toISOString(),
-    };
-    expect(() =>
-      requireRecoveryAttestation(
-        JSON.stringify(waiver),
-        plan,
-        sha,
-        previous,
-        now,
-      ),
-    ).not.toThrow();
-    for (const change of [
-      { kind: 'other' },
-      { version: 2 },
-      { project: 'other' },
-      { sourceSha: previous },
-      { previousApiSha: sha },
-      { historyDigest: 'f'.repeat(64) },
-      { planDigest: 'f'.repeat(64) },
-      { testDataOnly: false },
-      { testDataOnly: 'true' },
-      { ownerApprovedAt: new Date(now - 25 * 60 * 60_000).toISOString() },
-      { ownerApprovedAt: new Date(now + 1).toISOString() },
-      { ownerApprovedAt: 'invalid' },
-      { expiresAt: new Date(now - 1).toISOString() },
-      {
-        ownerApprovedAt: new Date(now - 60_000).toISOString(),
-        expiresAt: new Date(now + 24 * 60 * 60_000).toISOString(),
-      },
+    for (const proof of [
+      waiver(plan, previous),
+      { ...attestation(), ...waiver(plan, previous) },
+      { ...attestation(), kind: 'test-data-waiver' },
+      { ...attestation(), kind: 'recovery' },
+      { ...attestation(), kind: null },
     ])
       expect(() =>
         requireRecoveryAttestation(
-          JSON.stringify({ ...waiver, ...change }),
+          JSON.stringify(proof),
           plan,
           sha,
           previous,
           now,
         ),
-      ).toThrow();
-    // A real recovery proof that names the waiver kind is judged as a waiver.
-    expect(() =>
-      requireRecoveryAttestation(
-        JSON.stringify({ ...attestation(), kind: 'test-data-waiver' }),
-        plan,
-        sha,
-        previous,
-        now,
-      ),
-    ).toThrow();
+      ).toThrow(
+        expect.objectContaining({
+          reason: 'current_deletion_safe_recovery_attestation_required',
+        }),
+      );
   });
 });
 

@@ -214,7 +214,7 @@ second run cannot name a previous API. In this order:
 3. Run the `secrets` operation, and set the `SUPABASE_*` function secrets the
    lane refuses. With no `api` it probes nothing.
 4. Review the pending SQL, then dispatch `migrate-deploy` with the printed plan
-   digest. Its recovery attestation or test-data waiver names
+   digest. Its recovery attestation names
    `"previousApiSha": "none"`. The receipt names `previousApiSha` `none` and no
    previous version.
 5. Schedule the identity retention job. As `postgres`, run
@@ -241,14 +241,11 @@ owner-reviewed `STAGING_RECOVERY_ATTESTATION`. `apps/api/scripts/staging-release
 checks its fields and the 24-hour freshness window. Never create placeholder
 approval values or infer its booleans from a successful upload.
 
-While staging holds only test data, Anthony may approve a test-data waiver in
-place of that recovery proof (2026-11-12, while backups were paused). The
-secret then holds `kind: "test-data-waiver"`, `version`, `project`,
-`sourceSha`, `previousApiSha`, `historyDigest`, `planDigest`,
-`testDataOnly: true`, `ownerApprovedAt` and an `expiresAt` at most 24 hours
-after it. The guard binds it to that one plan. A waiver proves no recovery and
-leaves gate #98 open. Retire this path, in code and here, before outside
-testers store real journals. Backups resumed on 2026-11-13.
+No waiver replaces this recovery proof. A test-data waiver stood in for it
+from 2026-11-12, while backups were paused, and was retired at the production
+cutover, because the project becomes production at the free launch and holds
+real journals from then on. The guard refuses a
+proof that names any `kind`, including `test-data-waiver`.
 
 Encrypted R2 database and ledger receipts and the isolated restore in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation
