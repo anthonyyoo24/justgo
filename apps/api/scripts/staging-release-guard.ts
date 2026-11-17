@@ -158,28 +158,16 @@ export function requireRecoveryAttestation(
     Number.isFinite(date(key)) &&
     date(key) <= now &&
     now - date(key) <= 24 * 60 * 60_000;
-  const bound =
-    proof?.version === 1 &&
-    proof.project === stagingProject &&
-    proof.sourceSha === sourceSha &&
-    proof.previousApiSha === previousApiSha &&
-    proof.historyDigest === plan.historyDigest &&
-    proof.planDigest === plan.digest;
-  // Owner waiver while staging holds only test data. It proves no recovery, so
-  // it binds to one plan and one day, and is retired before testers store data.
-  if (proof?.kind === 'test-data-waiver') {
-    ensure(
-      bound &&
-        proof.testDataOnly === true &&
-        fresh('ownerApprovedAt') &&
-        date('expiresAt') > now &&
-        date('expiresAt') <= date('ownerApprovedAt') + 24 * 60 * 60_000,
-      'current_test_data_waiver_required',
-    );
-    return;
-  }
+  // The attestation names no kind. A retired test-data waiver, or any other
+  // kind of proof, is refused rather than read as recovery evidence.
   ensure(
-    bound &&
+    proof?.version === 1 &&
+      proof.kind === undefined &&
+      proof.project === stagingProject &&
+      proof.sourceSha === sourceSha &&
+      proof.previousApiSha === previousApiSha &&
+      proof.historyDigest === plan.historyDigest &&
+      proof.planDigest === plan.digest &&
       typeof proof.backupSha256 === 'string' &&
       /^[a-f0-9]{64}$/.test(proof.backupSha256) &&
       fresh('backupVerifiedAt') &&
