@@ -12,8 +12,6 @@ import { useWelcomePreparation } from './welcome-preparation';
 let mockDeleted: 'deleted' | null = 'deleted';
 let mockAccount: { userId: string } | null = null;
 let mockCollectionId: string | null = null;
-let mockPending = true;
-let mockVerified = false;
 let mockNeedsWelcome = false;
 const mockRefresh = jest.fn(async () => undefined);
 let mockCover: { onShow: () => void; onRetry: () => void } | null;
@@ -37,7 +35,6 @@ jest.mock('../../providers/AppProvider', () => ({
     collectionId: mockCollectionId,
     needsWelcome: mockNeedsWelcome,
   }),
-  useAccess: () => ({ isPending: mockPending, verified: mockVerified }),
   useRuntime: () => ({ challenges: { refresh: mockRefresh } }),
 }));
 let frames: Map<number, FrameRequestCallback>;
@@ -46,8 +43,6 @@ beforeEach(() => {
   mockDeleted = 'deleted';
   mockAccount = null;
   mockCollectionId = null;
-  mockPending = true;
-  mockVerified = false;
   mockNeedsWelcome = false;
   mockCover = null;
   mockRefresh.mockClear();
@@ -95,7 +90,7 @@ const entry = () => (
   </WelcomeTransition>
 );
 
-it('covers access, card loading and their first paint without remounting the prepared destination', async () => {
+it('covers card loading and its first paint without remounting the prepared destination', async () => {
   const screen = await render(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
   mockDeleted = null;
@@ -106,8 +101,6 @@ it('covers access, card loading and their first paint without remounting the pre
   ).toBeTruthy();
   expect(screen.getByTestId('cover')).toBeTruthy();
   expect(mockPreparation.active).toBe(false);
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   // Do not remove the outgoing route before the persistent modal is shown.
   expect(
@@ -125,8 +118,7 @@ it('covers access, card loading and their first paint without remounting the pre
   expect(screen.queryByTestId('cover')).toBeNull();
   expect(mockPreparation.active).toBe(false);
   expect(screen.queryByText('Welcome loading')).toBeNull();
-  // A later refresh belongs to normal app navigation, not the welcome handoff.
-  mockPending = true;
+  // A later render belongs to normal app navigation, not the welcome handoff.
   await screen.rerender(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
 });
@@ -135,8 +127,6 @@ async function prepare() {
   const screen = await render(entry());
   mockDeleted = null;
   mockAccount = { userId: 'replacement' };
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   await act(() => mockCover!.onShow());
   return screen;
@@ -201,23 +191,18 @@ it('cancels a pending paint when unmounted', async () => {
   expect(frames.size).toBe(0);
 });
 
-it('does not cover an existing account or hide a failed access check', async () => {
+it('does not cover an existing account', async () => {
   mockDeleted = null;
   mockAccount = { userId: 'existing-account' };
   const screen = await render(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
-  mockDeleted = 'deleted';
-  mockAccount = null;
-  await screen.rerender(entry());
-  mockDeleted = null;
-  mockAccount = { userId: 'replacement' };
-  mockPending = false;
   await screen.rerender(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
   expect(screen.queryByText('Welcome loading')).toBeNull();
+  expect(screen.queryByTestId('cover')).toBeNull();
 });
 
-it('prepares a fresh installation after Continue creates the account and access is verified', async () => {
+it('prepares a fresh installation after Continue creates the account', async () => {
   mockDeleted = null;
   mockNeedsWelcome = true;
   const screen = await render(entry());
@@ -226,8 +211,6 @@ it('prepares a fresh installation after Continue creates the account and access 
   expect(screen.queryByTestId('cover')).toBeNull();
   mockNeedsWelcome = false;
   mockAccount = { userId: 'first-account' };
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   expect(screen.getByTestId('cover')).toBeTruthy();
   await act(() => mockCover!.onShow());
@@ -244,8 +227,6 @@ it('reveals the prepared guest deck after Continue without a signed-in account',
   await act(() => mockBeginEntry());
   mockNeedsWelcome = false;
   mockCollectionId = 'local-guest';
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   expect(screen.getByTestId('cover')).toBeTruthy();
   await act(() => mockCover!.onShow());
@@ -265,8 +246,6 @@ it('keeps fresh-install recovery on account navigation without starting a welcom
   expect(screen.queryByTestId('cover')).toBeNull();
   mockNeedsWelcome = false;
   mockAccount = { userId: 'recovered-account' };
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
   expect(screen.queryByText('Welcome loading')).toBeNull();
@@ -287,8 +266,6 @@ it('cancels an explicit welcome entry before recovering an existing account', as
   await act(() => mockCancelEntry());
   mockNeedsWelcome = false;
   mockAccount = { userId: 'recovered-account' };
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
   expect(screen.queryByTestId('cover')).toBeNull();
@@ -313,8 +290,6 @@ it('lets provider loading suppress the post-deletion Terms cover while later gue
   await act(() => mockBeginEntry());
   mockDeleted = null;
   mockCollectionId = 'next-guest';
-  mockPending = false;
-  mockVerified = true;
   await screen.rerender(entry());
   expect(screen.getByTestId('cover')).toBeTruthy();
   await act(() => mockCover!.onShow());

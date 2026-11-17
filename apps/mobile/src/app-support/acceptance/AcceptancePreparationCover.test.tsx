@@ -132,7 +132,7 @@ it('times out stalled assets after 15 seconds and gives a retry attempt its full
   );
   expect(screen.queryByRole('alert')).toBeNull();
   expect(
-    screen.getByRole('progressbar', { name: 'Checking your access' }),
+    screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
 });
 

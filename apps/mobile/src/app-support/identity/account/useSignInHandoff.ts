@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
-  useAccess,
   useIdentity,
   useJournal,
   useRuntime,
 } from '../../providers/AppProvider';
 
-/** Keep the provider page in place until the verified owner's deck is available. */
+/** Keep the provider page in place until the signed-in owner’s deck is available. */
 export function useSignInHandoff(focused: boolean, returnToData: boolean) {
   const identity = useIdentity();
-  const access = useAccess();
   const repository = useJournal();
   const { challenges } = useRuntime();
   const [attempt, setAttempt] = useState(0);
@@ -23,10 +21,7 @@ export function useSignInHandoff(focused: boolean, returnToData: boolean) {
   const connected =
     focused && !!account && !identity.busy && !identity.deletionStatus;
   const canPrepare =
-    connected &&
-    !returnToData &&
-    access.verified &&
-    repository?.accountId === account?.userId;
+    connected && !returnToData && repository?.accountId === account?.userId;
 
   useEffect(() => {
     if (!canPrepare || !key || !repository) return;
@@ -55,17 +50,13 @@ export function useSignInHandoff(focused: boolean, returnToData: boolean) {
 
   const result =
     prepared?.key === key && prepared.attempt === attempt ? prepared : null;
-  const destination: '/data' | '/(tabs)' | '/access' | null = !connected
+  const destination: '/data' | '/(tabs)' | null = !connected
     ? null
     : returnToData
       ? '/data'
-      : access.verified
-        ? result?.ready
-          ? '/(tabs)'
-          : null
-        : !access.isPending && !access.isFetching
-          ? '/access'
-          : null;
+      : result?.ready
+        ? '/(tabs)'
+        : null;
   return {
     destination,
     error:

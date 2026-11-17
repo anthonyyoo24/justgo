@@ -20,7 +20,6 @@ let mockLegal = {
 };
 const mockContinueAsGuest = jest.fn(async () => undefined);
 const mockNavigate = jest.fn();
-const mockAccess = jest.fn(() => ({ verified: false, isPending: true }));
 let mockAwaitingPreparation = false;
 
 jest.mock('../identity/welcome/WelcomeTransition', () => ({
@@ -29,7 +28,6 @@ jest.mock('../identity/welcome/WelcomeTransition', () => ({
 
 jest.mock('../providers/AppProvider', () => ({
   useIdentity: () => mockIdentity,
-  useAccess: mockAccess,
   useRuntime: () => ({
     identity: {
       getSnapshot: () => mockIdentity,
@@ -117,13 +115,12 @@ it('shows direct document links without mutations and enters guest mode only aft
   await waitFor(() => expect(mockContinueAsGuest).toHaveBeenCalledTimes(1));
 });
 
-it('sends an existing account through the access gate without changing its collection', async () => {
+it('sends an existing account through the startup route without changing its collection', async () => {
   connect();
   const screen = await render(<AcceptanceScreen />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   expect(mockContinueAsGuest).not.toHaveBeenCalled();
-  expect(mockAccess).not.toHaveBeenCalled();
 });
 
 it('keeps Continue busy until the native deck preparation cover is shown', async () => {

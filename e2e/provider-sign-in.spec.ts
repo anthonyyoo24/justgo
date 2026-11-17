@@ -2,19 +2,15 @@ import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 
 for (const provider of ['apple', 'google'] as const) {
-  test(`${provider} keeps both provider buttons fixed through authorization, access and challenge preparation`, async ({
+  test(`${provider} keeps both provider buttons fixed through authorization and challenge preparation, with no access check`, async ({
     page,
   }) => {
     const providerLabel = provider === 'apple' ? 'Apple' : 'Google';
     const buttonName = `Sign in with ${providerLabel}`;
     let authorize = () => {};
-    let admit = () => {};
     let prepare = () => {};
     const authorization = new Promise<void>((resolve) => {
       authorize = resolve;
-    });
-    const access = new Promise<void>((resolve) => {
-      admit = resolve;
     });
     const catalog = new Promise<void>((resolve) => {
       prepare = resolve;
@@ -26,9 +22,10 @@ for (const provider of ['apple', 'google'] as const) {
         await route.continue();
       },
     );
-    await page.route(`${journeyApiUrl}/v1/access`, async (route) => {
-      await access;
-      await route.continue();
+    const accessRequests: string[] = [];
+    page.on('request', (request) => {
+      if (/\/v1\/(guest\/)?access$/.test(new URL(request.url()).pathname))
+        accessRequests.push(request.url());
     });
     await page.route(`${journeyApiUrl}/v1/challenges`, async (route) => {
       await catalog;
@@ -75,9 +72,6 @@ for (const provider of ['apple', 'google'] as const) {
           await expect(action).toBeDisabled();
         }
         await expect(
-          page.getByText('Checking your access…', { exact: true }),
-        ).toHaveCount(0);
-        await expect(
           page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
         ).toHaveCount(0);
         await expect(async () => {
@@ -117,23 +111,17 @@ for (const provider of ['apple', 'google'] as const) {
       };
       await button.click();
       await expectBusy();
-      const accessRequested = page.waitForRequest(`${journeyApiUrl}/v1/access`);
-      authorize();
-      await accessRequested;
-      await expectBusy();
       const catalogRequested = page.waitForRequest(
         `${journeyApiUrl}/v1/challenges`,
       );
-      admit();
+      authorize();
       await catalogRequested;
       await expectBusy();
       prepare();
       await expect(
         page.getByRole('button', { name: 'Accept challenge', exact: true }),
       ).toBeVisible();
-      await expect(
-        page.getByText('Checking your access…', { exact: true }),
-      ).toHaveCount(0);
+      expect(accessRequests).toEqual([]);
       await expect(
         page.getByRole('progressbar', {
           name: `Signing in with ${providerLabel}`,
@@ -142,7 +130,6 @@ for (const provider of ['apple', 'google'] as const) {
       ).toHaveCount(0);
     } finally {
       authorize();
-      admit();
       prepare();
       await page.unrouteAll({ behavior: 'wait' });
     }

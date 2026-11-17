@@ -82,6 +82,7 @@ const response = (body: unknown) =>
   new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },
   });
+const originalUrl = process.env.EXPO_PUBLIC_API_URL;
 let runtime: ReturnType<typeof createAppRuntime> | undefined;
 let controller: ManagedIdentityController | undefined;
 
@@ -97,18 +98,13 @@ beforeEach(async () => {
   for (const key of (await asyncStorageJournalStorage.getAllKeys?.()) ?? [])
     await asyncStorageJournalStorage.removeItem(key);
   jest.useFakeTimers({ doNotFake: ['performance', 'queueMicrotask'] });
+  process.env.EXPO_PUBLIC_API_URL = 'http://localhost:3000';
   jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({
     remove: jest.fn(),
   }));
   jest.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const path = String(input);
     if (path.endsWith('/auth/session')) return response(account);
-    if (path.endsWith('/access'))
-      return response({
-        status: 'verified',
-        checkedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      });
     if (path.includes('/completion-restores'))
       return response({ dataEpoch: 0, attempts: [], nextCursor: null });
     if (path.includes('/journal-sync'))
@@ -130,6 +126,8 @@ afterEach(async () => {
   await act(async () => jest.runOnlyPendingTimersAsync());
   jest.restoreAllMocks();
   jest.useRealTimers();
+  if (originalUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+  else process.env.EXPO_PUBLIC_API_URL = originalUrl;
 });
 
 // #175: a restored Google account showed the busy spinner on Apple.

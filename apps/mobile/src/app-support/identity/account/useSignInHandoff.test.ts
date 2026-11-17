@@ -9,7 +9,6 @@ let mockIdentity = {
   busy: false,
   deletionStatus: null as string | null,
 };
-let mockAccess = { verified: false, isPending: true, isFetching: true };
 let mockJournalState = { ready: true, hydrationError: null as string | null };
 let mockDeck = {
   selected: 'streets',
@@ -28,7 +27,6 @@ const mockChallenges = {
 };
 jest.mock('../../providers/AppProvider', () => ({
   useIdentity: () => mockIdentity,
-  useAccess: () => mockAccess,
   useJournal: () => mockRepository,
   useRuntime: () => ({ challenges: mockChallenges }),
 }));
@@ -46,14 +44,13 @@ beforeEach(() => {
     busy: false,
     deletionStatus: null,
   };
-  mockAccess = { verified: false, isPending: true, isFetching: true };
   mockJournalState = { ready: true, hydrationError: null };
   mockDeck = { selected: 'streets', queues: { streets: { cards: ['card'] } } };
   mockRepository.accountId = 'owner-a';
   mockChallenges.refresh.mockReset().mockResolvedValue(undefined);
 });
 
-it('holds the provider page through slow account, admission and catalog preparation, then enters Challenges directly', async () => {
+it('holds the provider page through slow account and catalog preparation, then enters Challenges directly with no access check', async () => {
   mockIdentity.busy = true;
   const pending = deferred();
   mockChallenges.refresh.mockReturnValue(pending.promise);
@@ -61,11 +58,8 @@ it('holds the provider page through slow account, admission and catalog preparat
     useSignInHandoff(true, false),
   );
   expect(result.current.destination).toBeNull();
-  mockIdentity.busy = false;
-  await rerender({});
-  expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
-  mockAccess = { verified: true, isPending: false, isFetching: false };
+  mockIdentity.busy = false;
   await rerender({});
   expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).toHaveBeenCalledTimes(1);
@@ -74,19 +68,7 @@ it('holds the provider page through slow account, admission and catalog preparat
   expect(result.current.error).toBe('');
 });
 
-it('preserves access denial and does not navigate while an access check is still fetching', async () => {
-  mockAccess.isPending = false;
-  const { result, rerender } = await renderHook(() =>
-    useSignInHandoff(true, false),
-  );
-  expect(result.current.destination).toBeNull();
-  mockAccess.isFetching = false;
-  await rerender({});
-  expect(result.current.destination).toBe('/access');
-  expect(mockChallenges.refresh).not.toHaveBeenCalled();
-});
-
-it('returns owner-authenticated import to Data without waiting for challenge access or a catalog', async () => {
+it('returns owner-authenticated import to Data without waiting for a catalog', async () => {
   const { result } = await renderHook(() => useSignInHandoff(true, true));
   expect(result.current.destination).toBe('/data');
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
@@ -95,7 +77,6 @@ it('returns owner-authenticated import to Data without waiting for challenge acc
 it.each(['missing cards', 'storage failure', 'rejected refresh'])(
   'shows a recoverable preparation error for %s and retries without another provider login',
   async (failure) => {
-    mockAccess = { verified: true, isPending: false, isFetching: false };
     if (failure === 'missing cards') mockDeck.queues = {};
     if (failure === 'storage failure')
       mockJournalState.hydrationError = 'unreadable';
@@ -116,7 +97,6 @@ it.each(['missing cards', 'storage failure', 'rejected refresh'])(
 it.each(['blur', 'session change', 'owner change'])(
   'ignores a late catalog result after %s',
   async (change) => {
-    mockAccess = { verified: true, isPending: false, isFetching: false };
     const old = deferred();
     const next = deferred();
     mockChallenges.refresh
@@ -139,7 +119,6 @@ it.each(['blur', 'session change', 'owner change'])(
 );
 
 it('never prepares another collection or a deleted account', async () => {
-  mockAccess = { verified: true, isPending: false, isFetching: false };
   mockRepository.accountId = 'other-owner';
   const { result, rerender } = await renderHook(() =>
     useSignInHandoff(true, false),
