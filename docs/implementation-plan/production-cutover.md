@@ -112,7 +112,7 @@ API error reporting is off (`API_SENTRY_ENABLED` defaults to `false`). Without i
 
 [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md#pending-migrations-and-recovery-evidence) says to retire the test-data waiver "before outside testers store real journals". After launch the project holds real journals, so a waiver is never true again.
 
-- [x] Remove the `test-data-waiver` path from `apps/api/scripts/staging-release-guard.ts`, its tests and the doc. A pending migration then needs a genuine `STAGING_RECOVERY_ATTESTATION` ([PC-8](#pc-8)).
+- [x] Remove the `test-data-waiver` path from `apps/api/scripts/staging-release-guard.ts`, its tests and the doc. A pending migration then needs a genuine `STAGING_RECOVERY_ATTESTATION` ([PC-8](#pc-8)). Done in [#540](https://github.com/anthonyyoo24/justgo/pull/540).
 
 **Check.** The guard test that fed a waiver now fails closed. `pnpm run test:db` and the release-script tests pass on CI.
 **Rollback.** Revert the PR.
