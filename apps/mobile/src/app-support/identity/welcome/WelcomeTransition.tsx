@@ -7,11 +7,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { View } from 'react-native';
-import {
-  useAccess,
-  useIdentity,
-  useRuntime,
-} from '../../providers/AppProvider';
+import { useIdentity, useRuntime } from '../../providers/AppProvider';
 import { WelcomePreparationContext } from './welcome-preparation';
 import { AcceptancePreparationCover } from '../../acceptance/AcceptancePreparationCover';
 
@@ -23,7 +19,7 @@ const CancelEntryContext = createContext<() => void>(() => {});
 export const useCancelWelcomeEntry = () => useContext(CancelEntryContext);
 
 type Handoff = {
-  phase: 'normal' | 'welcome' | 'checking' | 'preparing';
+  phase: 'normal' | 'welcome' | 'preparing';
   owner: string | null;
   attempt: number;
   shown: boolean;
@@ -33,7 +29,6 @@ type Handoff = {
 /** Keep Terms & Privacy above account navigation until its first deck paints. */
 export function WelcomeTransition({ children }: PropsWithChildren) {
   const identity = useIdentity();
-  const access = useAccess();
   const { challenges } = useRuntime();
   const deleted = identity.deletionStatus === 'deleted';
   const [entryRequested, setEntryRequested] = useState<boolean | null>(null);
@@ -66,21 +61,14 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
   } else if (!needsWelcome && handoff.phase !== 'normal') {
     if (!owner || (handoff.owner && handoff.owner !== owner)) {
       next = { ...handoff, phase: 'normal', ready: false };
-    } else if (handoff.phase === 'welcome' || handoff.phase === 'checking') {
-      const phase = access.isPending
-        ? 'checking'
-        : access.verified
-          ? 'preparing'
-          : 'normal';
-      if (handoff.phase !== phase || handoff.owner !== owner)
-        next = { ...handoff, phase, owner };
-    } else if (!access.verified) {
-      next = { ...handoff, phase: 'normal', ready: false };
+    } else if (handoff.phase === 'welcome') {
+      // JustGO is free, so a new owner prepares its deck with no access check.
+      next = { ...handoff, phase: 'preparing', owner };
     }
   }
   // Reconcile the handoff before rendering routes, so no intermediate page paints.
   if (handoff !== next) setHandoff(next);
-  const covered = next.phase === 'checking' || next.phase === 'preparing';
+  const covered = next.phase === 'preparing';
   const preparing = next.phase === 'preparing' && next.shown;
   const attempt = next.attempt;
 
@@ -136,12 +124,7 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
       }}
     >
       <EntryContext.Provider value={() => setEntryRequested(true)}>
-        <Context.Provider
-          value={
-            next.phase === 'checking' ||
-            (next.phase === 'preparing' && !next.shown)
-          }
-        >
+        <Context.Provider value={next.phase === 'preparing' && !next.shown}>
           <WelcomePreparationContext.Provider value={preparation}>
             <View style={{ flex: 1 }}>
               <View

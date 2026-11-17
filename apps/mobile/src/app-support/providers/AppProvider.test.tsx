@@ -11,8 +11,8 @@ import {
 import { AppState, Text, type AppStateStatus } from 'react-native';
 import { focusManager } from '@tanstack/react-query';
 import { z } from 'zod';
-import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
-import { card, deferred } from '../../../test-support/journal';
+import { type SessionResponse } from '@justgo/contracts';
+import { card } from '../../../test-support/journal';
 import { venues } from '@justgo/contracts';
 import { accountKey } from '../../lib/network/account-client';
 import { createIdentityApi } from '../identity/api';
@@ -24,15 +24,10 @@ import type {
   ManagedIdentityState,
   ManagedIdentityStorage,
 } from '../identity/auth/managed-state';
-import {
-  ProviderAuthError,
-  type ManagedAuth,
-  type ProviderSession,
-} from '../identity/auth/types';
+import { type ManagedAuth, type ProviderSession } from '../identity/auth/types';
 import {
   AppProvider,
   createAppRuntime,
-  useAccess,
   useActivityState,
   useIdentity,
   useRuntime,
@@ -84,7 +79,6 @@ let fetcher: jest.SpiedFunction<typeof fetch>;
 let onAppState: (value: AppStateStatus) => void;
 let removeListener: jest.Mock;
 let runtime: ReturnType<typeof createAppRuntime>;
-let access: AccessResponse;
 const originalUrl = process.env.EXPO_PUBLIC_API_URL;
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -98,13 +92,11 @@ function Probe() {
     runtime = currentRuntime;
   }, [currentRuntime]);
   const identity = useIdentity();
-  const access = useAccess();
   const activity = useActivityState();
   return (
     <>
       <Text>{identity.initialized ? 'initialized' : 'starting'}</Text>
       <Text>{identity.account?.userId ?? 'disconnected'}</Text>
-      <Text>{access.verified ? 'access verified' : 'access closed'}</Text>
       <Text>{identity.message}</Text>
       <Text>
         {activity.repository
@@ -128,24 +120,6 @@ async function mount() {
   return screen;
 }
 
-async function receiveAccess(value: AccessResponse) {
-  access = value;
-  await act(async () => {
-    if (value.source === 'free_beta') {
-      const lease = runtime.access.beginRequest({
-        id: userId,
-        kind: 'account',
-      })!;
-      await runtime.access.receive(lease, value, Date.now());
-    }
-    runtime.client.queries.setQueryData(
-      accountKey(userId, 'access', 'account'),
-      value,
-    );
-    await jest.advanceTimersByTimeAsync(0);
-  });
-}
-
 beforeEach(async () => {
   for (const key of (await asyncStorageJournalStorage.getAllKeys?.()) ?? [])
     await asyncStorageJournalStorage.removeItem(key);
@@ -157,11 +131,6 @@ beforeEach(async () => {
     deviceId: id(2),
     sessionId: id(3),
     expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-  };
-  access = {
-    status: 'verified',
-    checkedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 3600000).toISOString(),
   };
   vault = createMemoryVault();
   await vault.write({
@@ -251,7 +220,6 @@ beforeEach(async () => {
       if (path.endsWith('/sessions/current')) return response(session);
       if (path.endsWith('/devices')) return response({ devices: [] });
       if (path.endsWith('/credentials')) return response({ credentials: [] });
-      if (path.endsWith('/access')) return response(access);
       throw new Error(`Unexpected fixture request: ${path}`);
     });
   removeListener = jest.fn();
@@ -276,15 +244,13 @@ afterEach(async () => {
   else process.env.EXPO_PUBLIC_API_URL = originalUrl;
 });
 
-it('initializes one identity/runtime, provides its query cache and admits verified access', async () => {
+it('initializes one identity/runtime and provides its query cache without an access check', async () => {
   const screen = await mount();
   expect(screen.getByText(userId)).toBeTruthy();
-  await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
+  expect(screen.getByText(`Activity owner: ${userId}`)).toBeTruthy();
   expect(
-    runtime.client.queries.getQueryData(
-      accountKey(userId, 'access', 'account'),
-    ),
-  ).toEqual(access);
+    fetcher.mock.calls.some(([url]) => String(url).endsWith('/access')),
+  ).toBe(false);
   const originalRuntime = runtime;
   await screen.rerender(
     <AppProvider>
@@ -298,23 +264,21 @@ it('initializes one identity/runtime, provides its query cache and admits verifi
   ).toHaveLength(1);
 });
 
-it('keeps unavailable storage disconnected without bootstrapping or checking access', async () => {
+it('keeps unavailable storage disconnected without bootstrapping', async () => {
   jest.spyOn(managedStorage, 'read').mockRejectedValue(new Error('locked'));
   const screen = await mount();
   expect(screen.getByText('disconnected')).toBeTruthy();
-  expect(screen.getByText('access closed')).toBeTruthy();
   expect(screen.getByText('activity disconnected')).toBeTruthy();
   expect(screen.getByText(/Couldn’t finish connecting/)).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-it('loads guest access and catalog only after explicit Continue, without any account write', async () => {
+it('loads the guest catalog only after explicit Continue, without an access check or any account write', async () => {
   jest.spyOn(managedStorage, 'read').mockResolvedValue(null);
   jest.spyOn(vault, 'read').mockResolvedValue(null);
   jest.mocked(auth.initialize).mockResolvedValue(null);
   fetcher.mockImplementation(async (input) => {
     const path = String(input);
-    if (path.endsWith('/guest/access')) return response(access);
     if (path.endsWith('/guest/challenges'))
       return response({
         cards: venues.map(({ id }) => ({ ...card, id, venue: id })),
@@ -324,16 +288,16 @@ it('loads guest access and catalog only after explicit Continue, without any acc
   const screen = await mount();
   expect(fetcher).not.toHaveBeenCalled();
   await act(async () => controller.continueAsGuest());
-  await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByText(/^Activity owner: /)).toBeTruthy(),
+  );
   await act(async () => runtime.challenges.refresh());
   expect(runtime.activity.getRepository()?.store.getState().dataMode).toBe(
     'local',
   );
   expect(
     fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
-  ).toEqual(
-    expect.arrayContaining(['/v1/guest/access', '/v1/guest/challenges']),
-  );
+  ).toEqual(['/v1/guest/challenges']);
   expect(
     fetcher.mock.calls.every(
       ([, options]) => !new Headers(options?.headers).has('authorization'),
@@ -353,7 +317,6 @@ it('clears queries, mutations and challenge state synchronously on account loss 
   // Losing this session synchronously disconnects all account-scoped domains.
   await act(() => runtime.identity.rejectSession(token, 'SESSION_REVOKED'));
   expect(screen.getByText('disconnected')).toBeTruthy();
-  expect(screen.getByText('access closed')).toBeTruthy();
   expect(
     runtime.client.queries.getQueryData(accountKey(userId, 'progress')),
   ).toBeUndefined();
@@ -375,9 +338,7 @@ it('clears queries, mutations and challenge state synchronously on account loss 
   await waitFor(() => expect(screen.getByText(id(8))).toBeTruthy());
   await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
   expect(
-    runtime.client.queries.getQueryData(
-      accountKey(userId, 'access', 'account'),
-    ),
+    runtime.client.queries.getQueryData(accountKey(userId, 'progress')),
   ).toBeUndefined();
 });
 
@@ -433,13 +394,9 @@ it('connects to identity that hydrated after runtime construction, then follows 
   expect(repository?.accountId).toBe(userId);
   expect(repository?.store.getState().dataMode).toBe('cloud');
   expect(runtime.client.ownsAccount(userId)).toBe(true);
-  expect(runtime.access.getSnapshot()).toMatchObject({
-    authenticated: true,
-    owner: { id: userId, kind: 'account' },
-  });
   await controller.signOut();
   expect(repository?.store.getState().dataMode).toBe('local');
-  expect(runtime.access.getSnapshot().authenticated).toBe(false);
+  expect(runtime.client.ownsAccount(userId)).toBe(false);
   unsubscribe();
 });
 
@@ -472,105 +429,6 @@ it('pauses provider refresh on background, refreshes on foreground and releases 
   ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
-it.each(['expiry', 'freshness'] as const)(
-  'closes access at %s even while the next check is pending',
-  async (limit) => {
-    access = {
-      status: 'verified',
-      checkedAt: new Date(
-        Date.now() - (limit === 'freshness' ? 59000 : 0),
-      ).toISOString(),
-      expiresAt: new Date(
-        Date.now() + (limit === 'expiry' ? 1000 : 3600000),
-      ).toISOString(),
-    };
-    const screen = await mount();
-    await waitFor(() =>
-      expect(screen.getByText('access verified')).toBeTruthy(),
-    );
-    await act(async () => jest.advanceTimersByTimeAsync(1001));
-    expect(screen.getByText('access closed')).toBeTruthy();
-  },
-);
-
-it.each([25, 5_000])(
-  'admits a fresh server check %s ms ahead of the phone without extending expiry',
-  async (ahead) => {
-    const screen = await mount();
-    const receivedAt = Date.now();
-    await receiveAccess({
-      status: 'verified',
-      source: 'free_beta',
-      checkedAt: new Date(receivedAt + ahead).toISOString(),
-      expiresAt: new Date(receivedAt + ahead + 1_000).toISOString(),
-    });
-    expect(screen.getByText('access verified')).toBeTruthy();
-    await act(async () =>
-      jest.advanceTimersByTimeAsync(receivedAt + 999 - Date.now()),
-    );
-    expect(screen.getByText('access verified')).toBeTruthy();
-    await act(async () => jest.advanceTimersByTimeAsync(2));
-    expect(screen.getByText('access closed')).toBeTruthy();
-  },
-);
-
-it('does not admit an implausibly future server check', async () => {
-  const screen = await mount();
-  await receiveAccess({
-    status: 'verified',
-    checkedAt: new Date(Date.now() + 5_001).toISOString(),
-    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
-  });
-  expect(screen.getByText('access closed')).toBeTruthy();
-});
-
-it('closes a clock-aligned check after sixty seconds when polling is paused', async () => {
-  const screen = await mount();
-  const receivedAt = Date.now();
-  await receiveAccess({
-    status: 'verified',
-    checkedAt: new Date(Date.now() + 25).toISOString(),
-    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
-  });
-  expect(screen.getByText('access verified')).toBeTruthy();
-  focusManager.setFocused(false);
-  await act(async () =>
-    jest.advanceTimersByTimeAsync(receivedAt + 59_999 - Date.now()),
-  );
-  expect(screen.getByText('access verified')).toBeTruthy();
-  await act(async () => jest.advanceTimersByTimeAsync(1));
-  expect(screen.getByText('access closed')).toBeTruthy();
-});
-
-it.each(['unpaid', 'unavailable'] as const)(
-  'does not admit %s access and recovers after a verified retry',
-  async (status) => {
-    access = { status, checkedAt: new Date().toISOString() };
-    const screen = await mount();
-    expect(screen.getByText('access closed')).toBeTruthy();
-    access = {
-      status: 'verified',
-      checkedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 3600000).toISOString(),
-    };
-    await act(async () =>
-      runtime.client.queries.invalidateQueries({
-        queryKey: accountKey(userId, 'access', 'account'),
-      }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText('access verified')).toBeTruthy(),
-    );
-    fetcher.mockRejectedValue(new Error('offline'));
-    await act(async () =>
-      runtime.client.queries.invalidateQueries({
-        queryKey: accountKey(userId, 'access', 'account'),
-      }),
-    );
-    await waitFor(() => expect(screen.getByText('access closed')).toBeTruthy());
-  },
-);
-
 it('forwards connectivity to the active repository and refreshes only after reconnection', async () => {
   const screen = await mount();
   const repo = runtime.activity.getRepository()!;
@@ -595,10 +453,8 @@ it('restores a session while backgrounded without activating uploads until foreg
   const previous = AppState.currentState;
   AppState.currentState = 'background';
   try {
-    const screen = await mount();
-    // Inactive startup restores identity/history without starting access I/O.
-    expect(screen.getByText('access closed')).toBeTruthy();
-    expect(runtime.access.getSnapshot().active).toBe(false);
+    await mount();
+    // Inactive startup restores identity and history without starting uploads.
     expect(runtime.activity.getRepository()?.store.getState().active).toBe(
       false,
     );
@@ -607,7 +463,6 @@ it('restores a session while backgrounded without activating uploads until foreg
     expect(runtime.activity.getRepository()?.store.getState().active).toBe(
       true,
     );
-    expect(screen.getByText('access verified')).toBeTruthy();
   } finally {
     AppState.currentState = previous;
   }
@@ -619,77 +474,9 @@ it('requires a provider for runtime consumers', async () => {
   );
 });
 
-it.each(['selected', 'already fenced'] as const)(
-  'drains late access proof writes before erasing the %s account namespace',
-  async (selection) => {
-    const configure = jest.spyOn(controller, 'setAccountDataRemover');
-    await mount();
-    await runtime.access.settled();
-    const removeData = configure.mock.calls[0]![0];
-    const blocked = deferred<void>();
-    const proofStarted = deferred<void>();
-    const persist = asyncStorageJournalStorage.setItem;
-    jest
-      .spyOn(asyncStorageJournalStorage, 'setItem')
-      .mockImplementation(async (key, value) => {
-        if (key.endsWith(':recovery') && value !== 'denied:v1') {
-          proofStarted.resolve();
-          await blocked.promise;
-        }
-        await persist(key, value);
-      });
-    const erase = jest
-      .spyOn(runtime.activity, 'deleteAccount')
-      .mockImplementation(async (owner) => {
-        for (const key of (await asyncStorageJournalStorage.getAllKeys?.()) ??
-          []) {
-          if (key.startsWith(`justgo:v1:${owner}:`))
-            await asyncStorageJournalStorage.removeItem(key);
-        }
-      });
-    let saving!: Promise<void>, removing!: Promise<void>;
-    await act(async () => {
-      const lease = runtime.access.beginRequest({
-        id: userId,
-        kind: 'account',
-      })!;
-      saving = runtime.access.receive(
-        lease,
-        {
-          status: 'verified',
-          source: 'free_beta',
-          checkedAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
-        },
-        Date.now(),
-      );
-      await proofStarted.promise;
-    });
-    try {
-      await act(() => {
-        if (selection === 'already fenced') runtime.access.changeOwner(null);
-        removing = removeData(userId);
-      });
-      expect(runtime.access.getSnapshot().owner).toBeNull();
-      expect(erase).not.toHaveBeenCalled();
-    } finally {
-      await act(async () => {
-        blocked.resolve();
-        await Promise.all([saving, removing]);
-      });
-    }
-    expect(erase).toHaveBeenCalledWith(userId);
-    expect(
-      ((await asyncStorageJournalStorage.getAllKeys?.()) ?? []).filter((key) =>
-        key.startsWith(`justgo:v1:${userId}:`),
-      ),
-    ).toEqual([]);
-  },
-);
-
 it('initializes and refreshes account activity without legal receipt requests or a tracking runtime', async () => {
   const screen = await mount();
-  await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
+  expect(screen.getByText(`Activity owner: ${userId}`)).toBeTruthy();
   expect(runtime.activity.getRepository()?.accountId).toBe(userId);
   expect(runtime).not.toHaveProperty('acceptance');
   expect(
@@ -699,7 +486,8 @@ it('initializes and refreshes account activity without legal receipt requests or
   ).toBe(false);
   await act(() => onAppState('background'));
   await act(async () => onAppState('active'));
-  await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
+  await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
+  expect(screen.getByText(`Activity owner: ${userId}`)).toBeTruthy();
   expect(
     fetcher.mock.calls.some(([input]) =>
       String(input).includes('/account/acceptance'),
@@ -722,13 +510,9 @@ it('keeps the owner-bound local collection after sign-out while stopping account
 });
 
 it.each(['api', 'provider'] as const)(
-  'restores an account beta approval through %s unavailability without authorizing cloud requests',
+  'reopens an account collection through %s unavailability without authorizing cloud requests or checking access',
   async (failure) => {
-    access = { ...access, source: 'free_beta' };
     const first = await mount();
-    await waitFor(() =>
-      expect(first.getByText('access verified')).toBeTruthy(),
-    );
     await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
     await first.unmount();
     await runtime.client.queries.cancelQueries();
@@ -754,65 +538,16 @@ it.each(['api', 'provider'] as const)(
     fetcher.mockClear();
     fetcher.mockRejectedValue(new Error('offline'));
     const restarted = await mount();
-    await waitFor(() =>
-      expect(restarted.getByText('access verified')).toBeTruthy(),
-    );
+    expect(restarted.getByText(`Activity owner: ${userId}`)).toBeTruthy();
     expect(controller.currentSession()).toBeNull();
     expect(runtime.client.ownsAccount(userId)).toBe(false);
     expect(runtime.activity.getRepository()?.store.getState().dataMode).toBe(
       'local',
     );
-    expect(runtime.access.getSnapshot()).toMatchObject({
-      owner: { id: userId, kind: 'account' },
-      authenticated: false,
-    });
+    expect(runtime.canStartChallenge()).toBe(true);
     await act(async () => jest.advanceTimersByTimeAsync(61_000));
-    expect(restarted.getByText('access verified')).toBeTruthy();
     expect(
       fetcher.mock.calls.some(([url]) => String(url).endsWith('/access')),
     ).toBe(false);
-    await act(async () => controller.signOut());
-    expect(restarted.getByText('access closed')).toBeTruthy();
-    expect(runtime.access.getSnapshot().approval).toBeNull();
-  },
-);
-
-// A switch that never changed the SDK session keeps the old login, so its
-// cached beta admission must survive too.
-it.each(['cancel', 'failure'] as const)(
-  'keeps an offline account beta approval after a switch %s that never changed the SDK session',
-  async (outcome) => {
-    access = { ...access, source: 'free_beta' };
-    const screen = await mount();
-    await waitFor(() =>
-      expect(screen.getByText('access verified')).toBeTruthy(),
-    );
-    await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
-    // Offline, the cached beta approval keeps access open.
-    fetcher.mockRejectedValue(new Error('offline'));
-    await act(async () => jest.advanceTimersByTimeAsync(61_000));
-    expect(screen.getByText('access verified')).toBeTruthy();
-    const before = runtime.access.getSnapshot().approval;
-    expect(before).not.toBeNull();
-    // Account's off switch opens the provider page. The provider sheet is
-    // cancelled, or fails, before the SDK session changes.
-    if (outcome === 'cancel')
-      jest.mocked(auth.signIn).mockResolvedValueOnce(null);
-    else
-      jest
-        .mocked(auth.signIn)
-        .mockRejectedValueOnce(new ProviderAuthError('AUTH'));
-    await act(async () => controller.signIn('google'));
-    await act(async () => jest.advanceTimersByTimeAsync(0));
-    // The old login is kept ...
-    expect(screen.getByText(userId)).toBeTruthy();
-    expect(controller.currentSession()?.token).toBe(token);
-    // ... and so is its local beta admission.
-    expect({
-      access: screen.queryByText('access verified')
-        ? 'access verified'
-        : 'access closed',
-      approval: runtime.access.getSnapshot().approval,
-    }).toEqual({ access: 'access verified', approval: before });
   },
 );

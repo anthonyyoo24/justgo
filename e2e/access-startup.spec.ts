@@ -1,132 +1,85 @@
+import type { Page } from '@playwright/test';
+import type { Pool } from 'pg';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { continueAsGuest, signInFixture } from './support/managed-account';
+import { localJournalEntries } from './support/journal';
+import {
+  completeChallenge,
+  continueAsGuest,
+  signInFixture,
+} from './support/managed-account';
+
+// JustGO is free (Anthony, 2026-11-17), so startup never asks the server
+// whether a person may enter, and a phone that cannot reach it still opens.
+function recordAccessChecks(page: Page) {
+  const checks: string[] = [];
+  page.on('request', (request) => {
+    if (/\/v1\/(guest\/)?access$/.test(new URL(request.url()).pathname))
+      checks.push(request.url());
+  });
+  return checks;
+}
+async function failEveryApiRequest(page: Page) {
+  await page.route(`${journeyApiUrl}/v1/**`, (route) => route.abort());
+}
+async function expectHome(page: Page) {
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole('progressbar', { name: 'Loading JustGO', exact: true }),
+  ).toHaveCount(0);
+}
+async function attemptCount(database: Pool, userId: string) {
+  const result = await database.query<{ count: string }>(
+    'select count(*)::text as count from justgo.attempts where user_id=$1',
+    [userId],
+  );
+  return Number(result.rows[0]?.count);
+}
 
 for (const mode of ['guest', 'account'] as const) {
-  test(`${mode} cold startup stays quiet until admission succeeds`, async ({
+  test(`${mode} cold startup enters Home with no access check`, async ({
     page,
   }) => {
     if (mode === 'guest') await continueAsGuest(page);
     else await signInFixture(page);
-
-    let release = () => {};
-    const pending = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const accessUrl = `${journeyApiUrl}/v1/${mode === 'guest' ? 'guest/' : ''}access`;
-    await page.route(accessUrl, async (route) => {
-      await pending;
-      await route.continue();
-    });
-    try {
-      const accessRequested = page.waitForRequest(accessUrl);
-      await page.reload();
-      await accessRequested;
-      const loading = page.getByRole('progressbar', {
-        name: 'Loading JustGO',
-        exact: true,
-      });
-      await expect(loading).toBeVisible();
-      await expect(page).toHaveURL(/\/access$/);
-      const canvas = await loading.boundingBox();
-      const viewport = page.viewportSize();
-      if (!canvas || !viewport) throw new Error('Startup canvas is missing');
-      expect(canvas.y).toBe(0);
-      expect(canvas.height).toBe(viewport.height);
-      const mark = loading.locator('img');
-      await expect(mark).toBeVisible();
-      await expect(mark).toHaveJSProperty('naturalWidth', 425);
-      const markBounds = await mark.boundingBox();
-      if (!markBounds) throw new Error('Startup mark is missing');
-      expect(markBounds.width).toBe(194);
-      expect(markBounds.y + markBounds.height / 2).toBe(viewport.height / 2);
-      await expect(loading).toHaveCSS('background-color', 'rgb(249, 239, 232)');
-      expect(
-        await loading.evaluate(
-          (element) => element.getAnimations({ subtree: true }).length,
-        ),
-      ).toBe(0);
-      await expect(
-        page.getByText('Checking your access…', { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByText('Your account is connected.', { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByText('Checking access for this phone.', { exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByRole('button', { name: 'Check access again', exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByRole('link', { name: 'Preview app screens', exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByRole('button', { name: 'Accept challenge', exact: true }),
-      ).toHaveCount(0);
-      release();
-      await expect(
-        page.getByRole('button', { name: 'Accept challenge', exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('progressbar', { name: 'Loading JustGO', exact: true }),
-      ).toHaveCount(0);
-    } finally {
-      release();
-    }
+    const checks = recordAccessChecks(page);
+    await page.reload();
+    await expectHome(page);
+    expect(checks).toEqual([]);
   });
 }
 
-test('failed startup leaves loading and retains saved history and access retry', async ({
+test('a guest opens and finishes a challenge while every API request fails', async ({
   page,
 }) => {
-  await continueAsGuest(page);
-  const accessUrl = `${journeyApiUrl}/v1/guest/access`;
-  await page.route(accessUrl, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        status: 'unavailable',
-        checkedAt: new Date().toISOString(),
-      }),
-    }),
-  );
+  const guestId = await continueAsGuest(page);
+  await failEveryApiRequest(page);
   await page.reload();
-  // SDK 58 keeps inactive stack screens mounted but hidden from accessibility.
-  const failure = page.getByRole('heading', {
-    name: 'We can’t verify access yet.',
-    exact: true,
-  });
-  await expect(failure).toHaveCount(1);
-  await expect(failure).toBeVisible();
-  await expect(
-    page.getByRole('progressbar', { name: 'Loading JustGO', exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole('link', { name: 'View saved history', exact: true }),
-  ).toHaveCount(1);
-  await expect(
-    page.getByRole('button', { name: 'Check access again', exact: true }),
-  ).toHaveCount(1);
-  await page
-    .getByRole('link', { name: 'View saved history', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/progress$/);
-  await expect(
-    page.getByRole('heading', { name: 'Progress', exact: true }),
-  ).toBeVisible();
-  await page.goto('/');
-  await expect(failure).toHaveCount(1);
-  await expect(failure).toBeVisible();
-  await page.unroute(accessUrl);
-  await page
-    .getByRole('button', { name: 'Check access again', exact: true })
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
-  ).toBeVisible();
+  await expectHome(page);
+  await completeChallenge(page, 'Synthetic offline reflection.');
+  await expect
+    .poll(async () => (await localJournalEntries(page, guestId)).length)
+    .toBe(1);
+});
+
+test('an account’s offline challenge reaches the server once it reconnects', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const { userId } = await signInFixture(page);
+  expect(await attemptCount(fixtureDatabase, userId)).toBe(0);
+  await failEveryApiRequest(page);
+  await page.reload();
+  await expectHome(page);
+  await completeChallenge(page);
+  expect(await attemptCount(fixtureDatabase, userId)).toBe(0);
+  await page.unrouteAll({ behavior: 'wait' });
+  await page.reload();
+  await expectHome(page);
+  await expect
+    .poll(() => attemptCount(fixtureDatabase, userId), { timeout: 15_000 })
+    .toBe(1);
 });

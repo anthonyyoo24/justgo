@@ -299,7 +299,8 @@ finish App Privacy or request beta review.
 
 Gate [#97](https://github.com/anthonyyoo24/justgo/issues/97) owns the cohort,
 dates and invitations. Access is free for everyone with no end date since
-2026-11-17, so the server keeps no per-tester grants or access window.
+2026-11-17, so the server keeps no per-tester grants or access window, and
+the app shows no access screen and opens without reaching the server.
 
 ## Beta operating controls
 

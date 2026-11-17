@@ -15,9 +15,7 @@ import {
 } from '../../app-support/contact';
 import { showMessageToast } from '../../platform/toast/Toast';
 
-// Supply build metadata so a reintroduced footer also fails in a free test build.
 jest.mock('../../app-support/providers/AppProvider', () => ({
-  useAccess: () => ({ data: { source: 'free_beta' } }),
   useIdentity: () => ({ account: null }),
   useJournal: () => null,
   useRuntime: () => ({ client: { ownsAccount: () => false } }),

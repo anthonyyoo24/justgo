@@ -15,7 +15,16 @@ let mockController: ManagedIdentityController;
 let mockProvider = 'apple';
 let mockSwitchProvider = false;
 let mockFocused = true;
-const mockAccess = { verified: false, isPending: true, isFetching: true };
+// The signed-in owner's journal and a ready deck, so a finished sign-in can
+// hand off to Challenges. JustGO is free, so no access check gates it.
+const mockJournals = new Map<string, object>();
+const mockChallenges = {
+  refresh: async () => {},
+  getSnapshot: () => ({
+    selected: 'park',
+    queues: { park: { cards: [{ id: 'card' }] } },
+  }),
+};
 const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
@@ -25,9 +34,17 @@ const mockRouter = {
 const mockBegin = jest.fn();
 const mockCancelEntry = jest.fn();
 jest.mock('../../providers/AppProvider', () => ({
-  useRuntime: () => ({ identity: mockController }),
-  useAccess: () => mockAccess,
-  useJournal: () => null,
+  useRuntime: () => ({ identity: mockController, challenges: mockChallenges }),
+  useJournal: () => {
+    const owner = mockController.getSnapshot().account?.userId;
+    if (!owner) return null;
+    if (!mockJournals.has(owner))
+      mockJournals.set(owner, {
+        accountId: owner,
+        store: { getState: () => ({ ready: true, hydrationError: null }) },
+      });
+    return mockJournals.get(owner);
+  },
   useIdentity: () => {
     const React = require('react') as typeof import('react');
     return React.useSyncExternalStore(
@@ -134,9 +151,7 @@ beforeEach(() => {
   mockProvider = 'apple';
   mockSwitchProvider = false;
   mockFocused = true;
-  mockAccess.verified = false;
-  mockAccess.isPending = true;
-  mockAccess.isFetching = true;
+  mockJournals.clear();
 });
 afterEach(() => mockController?.dispose());
 
@@ -246,7 +261,7 @@ it.each(['apple', 'google'] as const)(
     ).toBeDisabled();
     expect(screen.getByRole('progressbar')).toBeTruthy();
     expect(screen.queryByText(label)).toBeNull();
-    expect(screen.queryByText('Redirect: /access')).toBeNull();
+    expect(screen.queryByText(/^Redirect: /)).toBeNull();
     expect(mockCancelEntry).toHaveBeenCalledTimes(1);
     await act(async () => cancel());
     expect(screen.queryByRole('progressbar')).toBeNull();
@@ -415,12 +430,10 @@ it.each(['cancel', 'failure', 'success'] as const)(
       );
     mockProvider = 'google';
     mockSwitchProvider = true;
-    mockAccess.isPending = false;
-    mockAccess.isFetching = false;
     const screen = await render(<ProviderSignInScreen />);
     const button = screen.getByRole('button', { name: 'Sign in with Google' });
     expect(button).toBeEnabled();
-    expect(screen.queryByText('Redirect: /access')).toBeNull();
+    expect(screen.queryByText(/^Redirect: /)).toBeNull();
     expect(screen.queryByRole('progressbar')).toBeNull();
     await fireEvent.press(button);
     await fireEvent.press(button);
@@ -441,9 +454,9 @@ it.each(['cancel', 'failure', 'success'] as const)(
       finish();
     });
     if (outcome === 'success')
-      expect(screen.getByText('Redirect: /access')).toBeTruthy();
+      expect(await screen.findByText('Redirect: /(tabs)')).toBeTruthy();
     else {
-      expect(screen.queryByText('Redirect: /access')).toBeNull();
+      expect(screen.queryByText(/^Redirect: /)).toBeNull();
       expect(
         screen.getByRole('button', { name: 'Sign in with Google' }),
       ).toBeEnabled();
@@ -490,15 +503,13 @@ it.each(['restored', 'hydrating'] as const)(
     const signIn = jest.spyOn(mockController, 'signIn');
     mockProvider = 'google';
     mockSwitchProvider = true;
-    mockAccess.isPending = false;
-    mockAccess.isFetching = false;
     const screen = await render(<ProviderSignInScreen />);
     if (stage === 'hydrating') {
-      expect(screen.queryByText('Redirect: /access')).toBeNull();
+      expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
       snapshot.mockReturnValue(connected);
       await screen.rerender(<ProviderSignInScreen />);
     }
-    expect(screen.getByText('Redirect: /access')).toBeTruthy();
+    expect(await screen.findByText('Redirect: /(tabs)')).toBeTruthy();
     expect(signIn).not.toHaveBeenCalled();
   },
 );

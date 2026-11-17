@@ -15,16 +15,12 @@ import { ActivityRuntime } from './activity-runtime';
 import { useActivityStore } from './activity-hooks';
 import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
-import { AccessStore } from '../access/verification/store';
-import {
-  canStartChallenge,
-  useAccessState,
-} from '../access/verification/useAccessState';
+import { canStartChallenge } from '../access/admission';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
 import { AccountClient } from '../../lib/network/account-client';
-import { apiOrigin, createHttpClient } from '../../lib/network/http';
+import { createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
 
 export function createAppRuntime<
@@ -40,15 +36,8 @@ export function createAppRuntime<
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
-  const access = new AccessStore(apiOrigin(url), storage);
   const activity = new ActivityRuntime(client, storage, { url });
-  identity.setAccountDataRemover(async (owner) => {
-    if (access.getSnapshot().owner?.id === owner) access.changeOwner(null);
-    // Permission metadata shares the erased namespace. Finish its pending writes
-    // before erasing, so a late recovery record cannot recreate an old owner key.
-    await access.settled();
-    await activity.deleteAccount(owner);
-  });
+  identity.setAccountDataRemover((owner) => activity.deleteAccount(owner));
   if (identity instanceof ManagedIdentityController) {
     identity.setGuestDataMerger(activity.mergeGuestData);
     identity.setGuestDataRetirer(activity.retireGuestData);
@@ -76,20 +65,6 @@ export function createAppRuntime<
     }
     client.changeAccount(next);
     client.changeCollection(collection);
-    access.setAuthenticated(!!next);
-    const accessAccount =
-      next ??
-      (identity instanceof ManagedIdentityController
-        ? identity.offlineAccountOwner()
-        : null);
-    access.changeOwner(
-      identity.getSnapshot().deletionStatus || !collection
-        ? null
-        : {
-            id: accessAccount ?? collection,
-            kind: accessAccount ? 'account' : 'guest',
-          },
-    );
     activity.setPendingGuestAdoption(
       'pendingGuestId' in snapshot &&
         typeof snapshot.pendingGuestId === 'string'
@@ -112,8 +87,7 @@ export function createAppRuntime<
     telemetry,
     challenges,
     activity,
-    access,
-    canStartChallenge: () => canStartChallenge(client, access),
+    canStartChallenge,
     subscribe: () => {
       sync();
       return identity.subscribe(sync);
@@ -135,7 +109,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     let online = true;
     const updateEnvironment = () => {
       runtime.activity.setEnvironment({ active, online });
-      runtime.access.setEnvironment({ active, online });
     };
     runtime.identity.setActive(active);
     updateEnvironment();
@@ -174,7 +147,6 @@ export function AppProvider({ children }: PropsWithChildren) {
       subscription.remove();
       unsubscribeNetwork();
       runtime.challenges.dispose();
-      runtime.access.setEnvironment({ active: false, online: false });
       // React can restart effects while retaining this state-owned runtime.
       // Parking stops its work and preserves unsaved data for reconnection.
       runtime.activity.changeAccount(null);
@@ -202,11 +174,6 @@ export function useIdentity() {
     identity.getSnapshot,
   );
 }
-export function useAccess() {
-  const { client, access } = useRuntime();
-  return useAccessState(client, access);
-}
-
 export function useJournal() {
   const { activity } = useRuntime();
   return useSyncExternalStore(

@@ -10,8 +10,6 @@ let mockIdentity = {
   account: { userId: 'existing-account' } as { userId: string } | null,
   needsWelcome: false,
 };
-let mockVerified = true;
-let mockPending = false;
 const mockRefreshChallenges = jest.fn(async () => {});
 const mockStackScreenOptions = new Map<string, unknown>();
 let mockFontsLoaded = true;
@@ -55,7 +53,6 @@ jest.mock('./providers/AppProvider', () => ({
       ? { ready: mockJournalReady, hydrationError: mockJournalError }
       : null,
   }),
-  useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
   useRuntime: () => ({ challenges: { refresh: mockRefreshChallenges } }),
 }));
 const heldWhileRootLoaded = jest.mocked(preventAutoHideAsync).mock.calls.length;
@@ -123,8 +120,6 @@ beforeEach(() => {
     account: { userId: 'existing-account' },
     needsWelcome: false,
   };
-  mockVerified = true;
-  mockPending = false;
   mockFontsLoaded = true;
   mockFontError = null;
   mockInitialized = true;
@@ -295,19 +290,17 @@ it('removes old account routes after deletion and keeps them removed through rep
     account: null,
     needsWelcome: false,
   };
-  mockVerified = false;
   await screen.rerender(<RootLayout />);
   expect(screen.queryByText('welcome')).toBeNull();
   expect(screen.getByText('settings')).toBeTruthy();
   expect(screen.queryByText('(tabs)')).toBeNull();
   mockIdentity.account = { userId: 'replacement' };
-  mockVerified = true;
   await screen.rerender(<RootLayout />);
   expect(screen.getByText('(tabs)')).toBeTruthy();
 });
 
 it.each(['pending', 'cleanup'] as const)(
-  'keeps %s cleanup available while closing product routes despite a stale access result',
+  'keeps %s cleanup available while closing product routes',
   async (deletionStatus) => {
     mockIdentity = {
       deletionStatus,
@@ -337,8 +330,6 @@ it('retains Welcome for provider handoff while Terms can still cover a guest des
     account: { userId: 'replacement' },
     needsWelcome: false,
   };
-  mockVerified = false;
-  mockPending = true;
   await screen.rerender(<RootLayout />);
   expect(
     screen.getByText('welcome', { includeHiddenElements: true }),
@@ -357,8 +348,6 @@ it('retains Welcome for provider handoff while Terms can still cover a guest des
   ).toHaveStyle({
     backgroundColor: '#F9EFE8',
   });
-  mockVerified = true;
-  mockPending = false;
   await screen.rerender(<RootLayout />);
   expect(
     screen.getByText('welcome', { includeHiddenElements: true }),
@@ -391,7 +380,7 @@ it('keeps verified existing accounts in the product without a legal receipt guar
     expect(screen.getByText(name)).toBeTruthy();
 });
 
-it('offers welcome and Terms on a new installation despite stale verified access', async () => {
+it('offers welcome and Terms on a new installation', async () => {
   mockIdentity.account = null;
   mockIdentity.needsWelcome = true;
   const screen = await render(<RootLayout />);
