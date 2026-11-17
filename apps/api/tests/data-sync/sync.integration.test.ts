@@ -18,7 +18,7 @@ import {
   type IdentityOptions,
 } from '../../src/identity/service.js';
 import { buildApp } from '../../src/build-app.js';
-import { createBetaAccess } from '../../src/access/beta-access.js';
+import { createFreeAccess } from '../../src/access/free-access.js';
 import { ApiError } from '../../src/http/api-error.js';
 import { loggerOptions } from '../../src/http/diagnostics.js';
 import type { VerifiedManagedIdentity } from '../../src/identity/managed-verifier.js';
@@ -506,10 +506,7 @@ describe('managed authentication and guest boundary', () => {
       identity,
       logger: false,
       checkDatabase: async () => {},
-      ...createBetaAccess([], Date.now, {
-        startsAt: new Date(Date.now() - 60000).toISOString(),
-        expiresAt: new Date(Date.now() + 60000).toISOString(),
-      }),
+      ...createFreeAccess(),
     });
 
     expect((await apiRequest(guest, '/v1/guest/access')).json().status).toBe(
@@ -924,19 +921,12 @@ describe('signed-in immutable journal versions and deletion', () => {
     expect(other.statusCode, other.body).toBe(200);
   });
   it('keeps the access grant for reads and uploads through delete-all', async () => {
-    const a = await signIn(),
-      expiresAt = new Date(Date.now() + 3600000).toISOString();
+    const a = await signIn();
     const granted = buildApp({
       identity,
       logger: false,
       checkDatabase: async () => {},
-      ...createBetaAccess([
-        {
-          userId: a.session.userId,
-          startsAt: new Date(Date.now() - 60000).toISOString(),
-          expiresAt,
-        },
-      ]),
+      ...createFreeAccess(),
     });
     const access = () =>
       apiRequest(granted, {
@@ -947,7 +937,7 @@ describe('signed-in immutable journal versions and deletion', () => {
       status: 'verified',
       source: 'free_beta',
       checkedAt: expect.any(String),
-      expiresAt,
+      expiresAt: expect.any(String),
     };
     expect((await access()).json()).toEqual(verifiedAccess);
     expect((await restore(a.token, [await completion()])).json().added).toBe(1);

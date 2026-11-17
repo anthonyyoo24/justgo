@@ -12,14 +12,6 @@ import { edgeConfigEnvironment } from '../../src/edge.js';
 // to the real boot path, so a value the lane accepts never fails readConfig().
 const sha = 'a'.repeat(40);
 const dsn = `https://${'b'.repeat(32)}@o1.ingest.us.sentry.io/2`;
-const window = {
-  startsAt: '2026-11-01T00:00:00Z',
-  expiresAt: '2026-12-01T00:00:00Z',
-};
-const grant = {
-  userId: '6f1c2a7e-3b4d-4e5f-8a9b-0c1d2e3f4a5b',
-  ...window,
-};
 const base: Record<string, string> = {
   NODE_ENV: 'production',
   APP_ENVIRONMENT: 'staging',
@@ -93,14 +85,6 @@ const probes = [
   localDevelopmentRateKey,
   dsn,
   'https://key@sentry.example/1',
-  JSON.stringify(window),
-  JSON.stringify({ startsAt: window.startsAt }),
-  JSON.stringify({ ...window, expiresAt: window.startsAt }),
-  JSON.stringify([grant]),
-  JSON.stringify([grant, grant]),
-  JSON.stringify([{ ...grant, userId: 'someone' }]),
-  JSON.stringify([{ ...grant, revokedAt: '2026-10-01T00:00:00Z' }]),
-  JSON.stringify([{ ...grant, startsAt: '2026-11-01T00:00:00+01:00' }]),
 ];
 
 describe('staging function secrets (#447)', () => {

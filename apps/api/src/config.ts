@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
 /** The default rate key for local runs. Production refuses it at boot. */
@@ -20,8 +19,6 @@ const configSchema = z.object({
     .length(40)
     .regex(/^[a-f0-9]{40}$/)
     .optional(),
-  BETA_ACCESS_GRANTS: z.string().default('[]'),
-  BETA_ACCESS_WINDOW: z.string().default('null'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -104,13 +101,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error(
       'Supabase Auth configuration must include URL and publishable key',
     );
-  const grants = readBetaGrants(config.BETA_ACCESS_GRANTS);
-  const accessWindow = readBetaAccessWindow(config.BETA_ACCESS_WINDOW);
-  if (
-    config.APP_ENVIRONMENT !== 'staging' &&
-    (grants.length > 0 || accessWindow)
-  )
-    throw new Error('Beta access is allowed only in staging');
   if (config.NODE_ENV === 'production' && !config.DATABASE_URL)
     throw new Error('DATABASE_URL is required in production');
   if (
@@ -127,8 +117,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
       config.API_SENTRY_RELEASE,
       config.APP_ENVIRONMENT,
     ),
-    BETA_ACCESS_GRANTS: grants,
-    BETA_ACCESS_WINDOW: accessWindow,
   };
 }
 export type Config = ReturnType<typeof readConfig>;

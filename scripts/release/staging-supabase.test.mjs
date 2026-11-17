@@ -305,8 +305,6 @@ const secretValues = {
   IDENTITY_RATE_LIMIT_KEY: 'r'.repeat(32),
   JUSTGO_AUTH_PUBLISHABLE_KEY: 'sb_publishable_synthetic',
   JUSTGO_AUTH_SECRET_KEY: 's'.repeat(40),
-  BETA_ACCESS_WINDOW:
-    '{"startsAt":"2026-11-01T00:00:00Z","expiresAt":"2026-12-01T00:00:00Z"}',
 };
 const secretText = envFileText(secretValues);
 
@@ -362,15 +360,6 @@ test('function secrets refuse a value the API config rejects', () => {
 });
 
 test('a refused value fails with a code that names its field, not its value', () => {
-  const grant = (fields) =>
-    JSON.stringify([
-      {
-        userId: '6f1c2a7e-3b4d-4e5f-8a9b-0c1d2e3f4a5b',
-        startsAt: '2026-11-01T00:00:00Z',
-        expiresAt: '2026-12-01T00:00:00Z',
-        ...fields,
-      },
-    ]);
   for (const [name, value, extra = {}] of [
     ['APP_ENVIRONMENT', 'production'],
     ['NODE_ENV', 'development'],
@@ -393,12 +382,6 @@ test('a refused value fails with a code that names its field, not its value', ()
       'local-development-rate-key-not-for-deployment',
     ],
     ['IDENTITY_RATE_LIMIT_KEY', 'r'.repeat(31)],
-    ['BETA_ACCESS_WINDOW', '{"startsAt":"2026-11-01T00:00:00Z"}'],
-    ['BETA_ACCESS_WINDOW', 'not json'],
-    ['BETA_ACCESS_GRANTS', grant({ userId: 'someone' })],
-    ['BETA_ACCESS_GRANTS', grant({ expiresAt: '2026-10-01T00:00:00Z' })],
-    ['BETA_ACCESS_GRANTS', grant({ startsAt: '2026-11-01T00:00:00+01:00' })],
-    ['BETA_ACCESS_GRANTS', grant({ note: 'extra' })],
   ]) {
     const values = { ...secretValues, ...extra, [name]: value };
     assert.throws(
@@ -431,8 +414,6 @@ test('a refused value fails with a code that names its field, not its value', ()
       IDENTITY_TRANSFER_MINUTES: '1',
       ACCOUNT_EXPORT_RATE_LIMIT: '10000',
     },
-    { BETA_ACCESS_WINDOW: 'null', BETA_ACCESS_GRANTS: '[]' },
-    { BETA_ACCESS_GRANTS: grant({ revokedAt: '2026-11-02T00:00:00.123Z' }) },
   ])
     functionSecrets(envFileText({ ...secretValues, ...change }));
 });

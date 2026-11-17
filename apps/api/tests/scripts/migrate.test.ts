@@ -35,8 +35,6 @@ beforeEach(() => {
     MIGRATION_DATABASE_URL: migrationUrl,
     DATABASE_SSL: 'disable',
     DATABASE_POOL_MAX: '5',
-    BETA_ACCESS_GRANTS: '[]',
-    BETA_ACCESS_WINDOW: 'null',
   }))
     vi.stubEnv(key, value);
   database.Pool.mockImplementation(function () {
@@ -84,7 +82,7 @@ describe('migration CLI setup and cleanup', () => {
   it.each([
     ['PORT', '0'],
     ['MIGRATION_DATABASE_URL', 'private invalid connection URL'],
-    ['BETA_ACCESS_GRANTS', 'private invalid grant configuration'],
+    ['LOG_LEVEL', 'private invalid log level'],
   ])(
     'reports rejected %s configuration without its value',
     async (key, value) => {

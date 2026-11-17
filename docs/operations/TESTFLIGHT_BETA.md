@@ -298,9 +298,8 @@ unchecked because guest use is available. These Test Information fields do not
 finish App Privacy or request beta review.
 
 Gate [#97](https://github.com/anthonyyoo24/justgo/issues/97) owns the cohort,
-dates and invitations. To stop a tester's access, keep their `BETA_ACCESS_GRANTS`
-entry and set its `revokedAt`. Do not remove the entry, because its interval keeps
-the completions they started inside it uploadable.
+dates and invitations. Access is free for everyone with no end date since
+2026-11-17, so the server keeps no per-tester grants or access window.
 
 ## Beta operating controls
 
