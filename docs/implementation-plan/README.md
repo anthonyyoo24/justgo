@@ -39,7 +39,8 @@ The remaining phases run in this order:
 2. 15 API hosting and recovery.
 3. 15A move to Supabase us-east-1.
 4. 14 free App Store launch. Anthony chose a free launch with no external
-   TestFlight beta on 2026-11-17.
+   TestFlight beta on 2026-11-17. The [production cutover](production-cutover.md)
+   lists what gate #106 still needs.
 5. 16 billing activation and acceptance.
 6. 14 paid release.
 7. 17 analytics.
