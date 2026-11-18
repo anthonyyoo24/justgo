@@ -87,8 +87,9 @@ agreement.
 
 ## Regional assessment
 
-Only the US, Canada and the UK have a regional assessment. The note on Norway,
-Iceland and Liechtenstein records their exclusion. These notes are not a legal opinion or proof of worldwide compliance.
+The US, Canada and the UK have a regional assessment. Australia has one too, but
+it stays unavailable until Anthony decides. The note on Norway, Iceland and
+Liechtenstein records their exclusion. These notes are not a legal opinion or proof of worldwide compliance.
 
 - **Canada.** OPC guidance on
   [meaningful consent](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/)
@@ -110,6 +111,19 @@ Iceland and Liechtenstein records their exclusion. These notes are not a legal o
   ([#108](https://github.com/anthonyyoo24/justgo/issues/108)). The items below
   are open for the UK and tracked in
   [#541](https://github.com/anthonyyoo24/justgo/issues/541).
+- **Australia.** Anthony asked for this review on November 18, 2026, and
+  Australia stays off the App Store until he decides. The open items are tracked
+  in [#545](https://github.com/anthonyyoo24/justgo/issues/545). The Privacy Act
+  usually exempts a business with turnover of $3 million or less, but the
+  [OAIC](https://www.oaic.gov.au/privacy/privacy-guidance-for-organisations-and-government-agencies/organisations/small-business)
+  covers any health service provider whatever its turnover, and reads health
+  service as including emotional and mental health. Journal text can reveal
+  health, so decide whether JustGO is covered before relying on the exemption,
+  which the government has also agreed in principle to remove. If covered,
+  health information needs consent (APP 3), U.S. storage needs reasonable steps
+  for APP-equivalent handling (APP 8), and the Privacy Policy must say how
+  JustGO handles a privacy complaint (APP 1.4). The statutory tort for serious
+  invasions of privacy applies whether or not the Act does.
 - **Norway, Iceland and Liechtenstein.** Anthony excluded these at first on
   October 20, 2026, and that choice is settled. For the UK, and before any EEA
   availability, resolve any required representative, purpose-specific lawful
