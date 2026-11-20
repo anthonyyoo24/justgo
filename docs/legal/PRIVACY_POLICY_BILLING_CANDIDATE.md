@@ -52,9 +52,9 @@ We use Superwall to show the subscription screen and to record purchases made th
 - your purchase history in JustGO, such as the plan, price, free trial, dates, renewals, cancellations and refunds, from the app and from Apple;
 - your JustGO account identifier when you're signed in. Without sign-in, Superwall uses a random identifier it creates on your phone;
 - device information, such as the model, system and app versions, language, region, time zone, an identifier for JustGO on this device and your IP address;
-- events about the subscription screen, such as when it opens or closes and when a purchase or restore starts, finishes or fails.
+- events from Superwall's software in the app, such as when the app opens, when the subscription screen opens or closes, and when a purchase or restore starts, finishes or fails.
 
-The app sends Superwall only the events it needs to show the subscription screen and record purchases. Superwall receives no journal entries, feelings, reflections, email address or sign-in tokens. We use this information to provide and restore your subscription and to see how well the subscription screen works, for example by comparing two versions of it. We don't use it for ads, we don't share it with ad networks and we don't use it to track you across other companies' apps or websites.
+The app sends Superwall no other information about how you use JustGO. Superwall receives no journal entries, feelings, reflections, email address or sign-in tokens. We use this information to provide and restore your subscription and to see how well the subscription screen works, for example by comparing two versions of it. We don't use it for ads, we don't share it with ad networks and we don't use it to track you across other companies' apps or websites.
 
 ## How we use information
 
@@ -76,7 +76,7 @@ JustGO and its service providers can process synchronized account content, inclu
 - **Error reports:** for the period set with our error-reporting provider. Reports carry no account identifier, so deleting your account can't find them. Email us the time and app version if you want us to look for one.
 - **Server logs:** for a limited period set by our service plan.
 - **Subscription records:** we keep each subscription's record, with its Apple transaction identifiers, plan, dates and refunds, after it ends and after you delete your account. It keeps a subscription from ever passing to another account and lets us answer billing questions. It contains no journal content.
-- **Superwall:** while we use Superwall, unless we ask it to delete your information sooner. When you delete your account, we ask Superwall to delete its information about you. Superwall deletes it about 25 days later and keeps only revenue amounts and dates, with your identifiers removed.
+- **Superwall:** while we use Superwall, unless we ask it to delete your information sooner. When you delete your account, we ask Superwall to delete its information about you. Superwall deletes it about 25 days later. It keeps some purchase records, such as revenue amounts and dates, with your identifiers removed.
 - **Support emails:** 12 months, unless your request is still open or the law requires longer.
 - **Security records:** after a deletion, we keep a small record, such as account identifiers and dates, so deleted data and revoked sign-ins can't come back. It contains no journal content.
 

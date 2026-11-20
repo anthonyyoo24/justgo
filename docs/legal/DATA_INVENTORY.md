@@ -163,8 +163,8 @@ These provider facts do not establish a current production configuration. They d
 
 ## Billing and Superwall
 
-Phase 16 adds paid subscriptions. On November 20, 2026, Anthony chose
-Superwall's `superwallOnly` event tracking (plan Appendix E). The SDK lives only
+Phase 16 adds paid subscriptions. The Phase 16 plan sets Superwall's
+`superwallOnly` event tracking ([P16-7](../implementation-plan/phase-16-billing.md#install-superwall-in-the-app-p16-7)). The SDK lives only
 in `apps/mobile/src/app-support/billing`, configured with
 `eventTrackingBehavior: 'superwallOnly'`, which `superwall.test.ts` pins, and
 `justgo/import-boundaries` keeps `expo-superwall` there. It stays off until the
@@ -211,9 +211,9 @@ Privacy Policy.
 **Retention and deletion.** Superwall keeps data while JustGO uses it. Its
 [user deletion](https://superwall.com/docs/dashboard/guides/delete-user-data),
 by dashboard or API, holds a request for about 25 days, then deletes the user's
-events, attributes, aliases and subscription records. It keeps revenue amounts
-and dates with the user ID, device IDs, attributes, IP addresses and user agents
-removed. Deletion does not cancel an App Store subscription. P16-11 makes Delete
+events, attributes, aliases and subscription records. It keeps some purchase
+records, such as revenue amounts and dates, with the user ID, device IDs, attributes, IP addresses and user agents
+removed; its page lists what it keeps. Deletion does not cancel an App Store subscription. P16-11 makes Delete
 account ask Superwall to delete that owner, and the Privacy candidate says so,
 so the candidate publishes only after P16-11 lands. A guest has no owner ID to
 delete by, so its Superwall alias stays until Superwall's own retention ends or
