@@ -475,7 +475,7 @@ test('RLS context lint accepts ordinary SQL, messages and built-in connection op
     `
     import { sql } from 'drizzle-orm';
     import { Pool } from 'pg';
-    import { users } from '../db/schema.js';
+    import { users } from '../db/schema/index.js';
     export const update = (id: string) =>
       sql\`update \${users} set deleted_at = now() where \${users.id} = \${id}\`;
     export const upsert = (id: string) =>
