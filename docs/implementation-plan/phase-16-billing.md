@@ -2,9 +2,9 @@
 
 # Phase 16 plan, paid subscriptions through Superwall
 
-JustGO goes paid after the free launch, with a hard paywall. Starting a challenge needs a subscription. Recovery, settings, legal pages, data export and deletion stay free.
+JustGO launches paid, with a hard paywall. There is no free App Store launch, so Phase 16 blocks the launch (Anthony, 2026-11-19). Starting a challenge needs a subscription. Recovery, settings, legal pages, data export and deletion stay free.
 Superwall's paywall editor shows the paywall and buys through StoreKit. The JustGO API decides access, and it verifies every purchase with Apple.
-The offer is Annual US$59.99 with a 7-day free trial, preselected, and Monthly US$12.99 with no trial. Free-launch users get the same paywall and trial.
+The offer is Annual US$59.99 with a 7-day free trial, preselected, and Monthly US$12.99 with no trial. TestFlight beta users get the same paywall and trial.
 Guests can buy without signing in. Their subscription moves into the account they later sign in to.
 The program enforces one rule. No client flag, Superwall status or webhook payload unlocks paid use until the API has confirmed the subscription with Apple.
 PRs in order are P16-1 to P16-12. Appendix E keeps the nine subscription rules and the decisions in force.
@@ -24,18 +24,19 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 ### Arm the program
 
 - [ ] State the protocol and this plan to Anthony, then stop. Start execution only on his explicit go.
-- [ ] Confirm the free launch has shipped and Anthony has said payments may start. Phase 16 never blocks the free launch.
+- [ ] Confirm Anthony has said Phase 16 may start. The App Store launch waits for it, because JustGO launches paid.
 - [ ] Read these at program start. Re-read them at every tick.
   - [ ] `git show origin/main:AGENTS.md`
   - [ ] `git show origin/main:docs/implementation-plan/phase-16-billing.md`
   - [ ] `git show origin/main:.claude/skills/verify-justgo/SKILL.md`
   - [ ] `pstack/skills/poteto-mode/playbooks/autopilot-full.md`, `pstack/skills/poteto-mode/playbooks/opening-a-pr.md` and `pstack/skills/poteto-mode/playbooks/shipping.md` from the installed pstack plugin.
 - [ ] Anthony finishes the owner steps. Each box names its evidence.
+  - [ ] If JustGO sells through a company, the company exists, Apple has converted the developer account to an organization, and the Terms and Privacy Policy name it. This comes before the Paid Apps agreement. Evidence is the seller name in `docs/operations/APPLE_SETUP.md`.
   - [ ] Paid Apps agreement, tax and banking are active in App Store Connect Business. Evidence is the agreement status in `docs/operations/APPLE_SETUP.md`.
   - [ ] JustGO is enrolled in the App Store Small Business Program. Evidence is Apple's acceptance email date in `docs/operations/APPLE_SETUP.md`.
   - [ ] The subscription group `JustGO Pro` holds `com.anthonyyoo.justgo.pro.annual` (US$59.99, 7-day free trial) and `com.anthonyyoo.justgo.pro.monthly` (US$12.99). Prices for CA and UK come from Apple's price table. Evidence is the product list in `docs/operations/APPLE_SETUP.md`.
   - [ ] An In-App Purchase key exists. Its key ID and issuer ID are recorded, and the `.p8` file stays in his password manager. Evidence is the key ID in `docs/operations/APPLE_SETUP.md`, with no secret.
-  - [ ] Anthony can open the Superwall project, and the app and the In-App Purchase key are connected there. Evidence is a screenshot with keys masked.
+  - [ ] Anthony can open the Superwall project, and the app and the In-App Purchase key are connected there. A test public API key exists for prototype question 6. Evidence is a screenshot with keys masked.
   - [ ] Superwall answers in writing on the fee basis, a DPA, deleting one user's data, appAccountToken from `identify()`, and which events `eventTrackingBehavior` keeps. Evidence is the reply saved under `.local/phase-16/`.
 - [ ] Answer every unproven question in Appendix A by prototype before **Spawn owners**. Record the branch, the SHA and the evidence there.
 - [ ] On Anthony's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.
@@ -747,15 +748,15 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 ## Appendix A. Prototype evidence
 
-No prototype has run yet. Each question below stays unproven until a throwaway branch answers it, with the branch, SHA and evidence recorded here.
+Prototypes ran on 2026-11-19 on the throwaway branch `proto/phase16-superwall`, commit `55dca0b4` on base `481e1bcf`, local only and never to merge. They used `expo-superwall` 1.8.0, which pins SuperwallKit 4.18.3. Version 1.9.0 came out the same day and was not tried. The full notes are in `.local/phase-16/superwall-prototypes.md` in the main checkout. In the citations, `SK/` means `apps/mobile/ios/Pods/SuperwallKit/Sources/SuperwallKit/` in the prototype worktree.
 
-1. Does `expo-superwall` build and run on Expo SDK 58 and React Native 0.88 in a development build? Superwall documents Expo SDK 53 and up and iOS 16.4 for SDK 56 and up. JustGO already targets iOS 16.4.
-2. With `identify()` given the owner UUID, does Superwall pass it to StoreKit as the appAccountToken? Its webhook docs hint at UUID user IDs reaching the store, but no page says so.
-3. Does the purchase or restore result, or `getCustomerInfo()`, give the phone the transaction ID that P16-4 needs?
-4. With `eventTrackingBehavior` at `none` or `superwallOnly`, do gated paywalls, purchases and webhooks still work?
-5. Does Apple's App Store Server Library, or a WebCrypto check of the signed chain, run in the pinned Supabase Edge runtime under `pnpm run test:edge`?
-6. Does a StoreKit configuration file work with an Expo development build in the simulator, so native lanes run without sandbox accounts?
-7. Can a Superwall paywall show Apple's required disclosures and a trial reminder, and can Superwall delete one user's data?
+1. **Does `expo-superwall` build and run on Expo SDK 58 and React Native 0.88 in a development build? Yes, in the simulator.** `pod install` finished with 152 pods. The Debug simulator build succeeded in 666 s, and Welcome showed Superwall configured with no error. Two details belong in P16-7. pnpm skips the package's build script, which only checks the Expo version, so add it to `allowBuilds`. Expo's own pod step needs a UTF-8 locale. A Release build, EAS and a physical phone were not tried.
+2. **Does `identify()` with the owner UUID become the StoreKit appAccountToken? Yes, from source.** `SK/Identity/IdentityManager.swift:35-43` uses the identified ID when it parses as a UUID, and `ProductPurchaserSK2.swift:91-92` passes it to the purchase. A guest who never identifies gets Superwall's own random UUID, so guest purchases stay keyed by the original transaction ID.
+3. **Does the phone get the transaction ID P16-4 needs? Yes, from source.** It is in `getCustomerInfo().subscriptions[].transactionId` and in the `transactionComplete` event as `transaction.storeTransactionId`. The `purchase()` and `restorePurchases()` results carry none, and the signed transaction never reaches the phone. So P16-4 fetches each transaction from the App Store Server API by ID, as planned.
+4. **Do paywalls and purchases work with tracking reduced? Partly, from source.** Paywalls and purchases work under `none` and `superwallOnly`. With `none` the SDK sends no transaction events. With `superwallOnly` it still sends them but drops user attributes. The default `all` sent events at startup, before any purchase, so P16-7 must pass the setting to `configure`. Whether webhooks still fire under `none` is unproven, though Superwall's docs say they come from Apple's server notifications.
+5. **Does Apple's signed-chain check run in the pinned Supabase Edge runtime? Unproven.** This Mac has no Docker or Deno, so `pnpm run test:edge` could not run, and CI must run it in P16-4. A WebCrypto-only verifier with no Node built-ins passed 1 valid and 5 negative cases on Node 24 and Bun against a self-made Apple-shaped chain. Apple's App Store Server Library also verifies, but it needs Node's X509 support and bundles `node-fetch`, which goes around `outboundFetch()`. Prefer the WebCrypto verifier.
+6. **Does a StoreKit configuration file work in the simulator? Unproven, blocked.** The `.storekit` file was written and attached, but `purchase()` waits for Superwall's server config (`SK/Superwall.swift:949-957`). With a placeholder key it never resolved, and neither did `getCustomerInfo()`. Rerun it with a real Superwall test key, launched from Xcode, before P16-7 starts.
+7. **Can the paywall show Apple's disclosures, a trial reminder and user deletion? Partly.** Price, period, trial, Restore and link actions are documented. No auto-renew text variable is, so P16-9 writes that wording into the paywall by hand. The trial reminder uses iOS notifications directly, so `expo-notifications` is not needed, and it fires only for purchases made from a Superwall paywall. Deleting one user's data is documented as `POST /v2/applications/{id}/user_erasures`, which P16-11 calls.
 
 ## Appendix B. Alternatives rejected
 
@@ -765,11 +766,13 @@ No prototype has run yet. Each question below stays unproven until a throwaway b
 - Trusting Superwall's subscription status or webhook payload for access. Neither is signed by Apple, so the API confirms every change with Apple.
 - Pointing App Store Server Notifications at the JustGO API. Superwall needs that URL for its own revenue records, so JustGO receives Superwall's webhook and confirms with Apple.
 - Creating a server identity for guests. Guests have none today, so a guest purchase is keyed by Apple's original transaction ID and gets its owner on sign-in.
-- A free grace period or lifetime free access for free-launch users. Anthony chose the same paywall and trial for everyone.
+- A free grace period or lifetime free access for TestFlight beta users. Anthony chose the same paywall and trial for everyone.
 
 ## Appendix C. Risks
 
 - Superwall's 1% fee applies to revenue through its paywalls, above the free tier. Watch it in P16-9 and confirm the basis in writing first.
+- Buying depends on Superwall's servers. `purchase()` waits for Superwall's config, so on a first launch offline or during a Superwall outage the purchase hangs. P16-9 needs an honest pending state and a timeout.
+- `SuperwallProvider` passes every non-Expo link to Superwall's link handler, including `justgo://auth/callback`. P16-7 must keep sign-in links away from it, and P16-12 reviews what it sees.
 - Superwall's paywalls need its event tracking, which is close to the product analytics `AGENTS.md` keeps for Phase 17. P16-7 and P16-12 must name exactly what is sent, and the analytics rule may need a recorded exception.
 - A guest transaction ID that leaks could be claimed by someone else before the guest signs in. P16-4 watches for a transaction already bound to another owner.
 - Installed free builds accept only `free_beta`. When `BILLING_ENABLED` turns on, old builds may stop working. P16-2 records the update path.
@@ -796,7 +799,8 @@ Decisions.
 - Provider. Superwall (Anthony, 2026-10-28, confirmed 2026-11-19). If a prototype in Appendix A fails, ask Anthony before switching provider.
 - Paywall. Hard, shown by Superwall's paywall editor (Anthony, 2026-11-19). Recovery, settings, legal pages, data export and deletion stay reachable without paying.
 - Offer. Annual US$59.99 with a 7-day free trial, preselected, and Monthly US$12.99 with no trial. No weekly plan. CA and UK prices come from Apple's price table (Anthony, 2026-11-19).
-- Free-launch users. Same paywall and trial as new users. Their history and journal stay (Anthony, 2026-11-19).
+- Paid launch. No free App Store launch. Phase 16 and gates #110, #105 and #118 block the launch (Anthony, 2026-11-19).
+- TestFlight beta users. Same paywall and trial as new users. Their history and journal stay (Anthony, 2026-11-19).
 - Guests. Can buy without signing in. The subscription moves into the account they later sign in to (Anthony, 2026-11-19).
 - Reference. Onboarding and paywall follow the Gleam app's screens, adapted as the Gleam analysis says (Anthony, 2026-11-19).
 - Keep out. No Stripe checkout, Redis or always-on worker. No client premium flag. No private-history recovery from a receipt. No provider call inside a database transaction. General analytics stays in Phase 17.
@@ -808,7 +812,7 @@ The nine subscription rules.
 3. **Immediate access.** On open, use a still-valid saved verification at once, offline too. Validity depends on the verified expiry, not on a freshness cutoff or a failed background query.
 4. **Background refresh.** On open, foreground return or reconnection, check when verification is missing or the last successful check is more than five minutes old. Coalesce overlapping triggers. A network failure never replaces a still-valid saved verification.
 5. **Purchase and restore.** Verify through the API at once after a purchase or restore, bypassing the five-minute threshold. Keep honest pending states.
-6. **No constant polling.** The free launch removed 30-second access requests and the one-minute cutoff on 2026-11-17. Do not bring them back. Five minutes passing alone triggers neither a request nor a block.
+6. **No constant polling.** JustGO removed 30-second access requests and the one-minute cutoff on 2026-11-17. Do not bring them back. Five minutes passing alone triggers neither a request nor a block.
 7. **Network failure before expiry.** Keep paid use from the still-valid saved verification.
 8. **At the saved expiry.** Require an online check before paid use continues. A verified renewal extends access. With none, paid features lock. There is no offline grace period and no exception for finishing a challenge in progress (Anthony, 2026-09-21). Saved reps and reflections stay.
 9. **Upload earlier reps after expiry.** Reps recorded while verified access was valid upload after expiry, with authentication and ownership checks. Earlier-upload eligibility stays separate from unlocking new paid activity.

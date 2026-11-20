@@ -26,7 +26,7 @@ and [App Store release][store] milestones.
 | 14 — Release validation & launch                                    | The free app launches on the App Store with no outside beta, then the paid product follows once billing is accepted.               | 08–13 and 15A for free launch; accepted 16 for paid | Internal TestFlight build 5 delivered        |
 | [15 — API hosting & recovery](phase-15-supabase-api.md)             | Move the Hono API to one Supabase Edge Function, keeping PostgreSQL, Auth and the R2 recovery path.                                | 14 internal beta; before 14 free launch             | Serving staging                              |
 | [15A — Move to Supabase us-east-1](supabase-us-move.md)             | Move the database, Auth and API to a new free Supabase project in us-east-1, then retire Canada.                                   | 15; before 14 free launch                           | Done Nov 16                                  |
-| [16 — Native subscriptions & reliable billing](phase-16-billing.md) | A hard paywall through Superwall. The API verifies every purchase with Apple.                                                      | 07.5; activate after free launch                    | Planned; starts after free launch            |
+| [16 — Native subscriptions & reliable billing](phase-16-billing.md) | A hard paywall through Superwall. The API verifies every purchase with Apple.                                                      | 07.5; blocks the paid launch                        | Planned; blocks the launch                   |
 
 [beta]: https://github.com/anthonyyoo24/justgo/milestone/1
 [store]: https://github.com/anthonyyoo24/justgo/milestone/2
