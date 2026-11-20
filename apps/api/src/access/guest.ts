@@ -20,11 +20,7 @@ export class GuestService {
   }
   async catalog() {
     const access = await this.read();
-    if (
-      !hasVerifiedAccess(access) ||
-      (access.status === 'verified' &&
-        Date.parse(access.expiresAt) <= Date.now())
-    )
+    if (!hasVerifiedAccess(access))
       throw new ApiError(
         access.status === 'unavailable' ? 'UNAVAILABLE' : 'ACCESS_REQUIRED',
         access.status === 'unavailable' ? 503 : 403,

@@ -15,7 +15,7 @@ export class AccessService {
     }),
   ) {}
 
-  get(token: string) {
+  get(token: string): Promise<AccessResponse> {
     return this.identity.withSession(token, async (tx) => {
       const access = accessResponseSchema.parse(await this.read(tx));
       if (
@@ -25,7 +25,7 @@ export class AccessService {
         return {
           status: 'unpaid' as const,
           checkedAt: new Date().toISOString(),
-          ...(access.source ? { source: access.source } : {}),
+          ...(access.source === 'free_beta' ? { source: access.source } : {}),
         };
       return access;
     });

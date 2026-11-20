@@ -4,7 +4,7 @@ import { openApiDocument } from './openapi.js';
 const now = Date.now();
 const time = (delta: number) => new Date(now + delta).toISOString();
 describe('verified access', () => {
-  it('fails closed for unavailable, unpaid, expired, stale and future-dated verification', () => {
+  it('fails closed for unavailable, unpaid, expired and future-dated verification', () => {
     expect(hasVerifiedAccess(undefined, now)).toBe(false);
     for (const status of ['unpaid', 'unavailable'] as const)
       expect(hasVerifiedAccess({ status, checkedAt: time(0) }, now)).toBe(
@@ -12,7 +12,6 @@ describe('verified access', () => {
       );
     for (const [checkedAt, expiresAt] of [
       [0, 0],
-      [-60_000, 60_000],
       [1, 60_000],
     ])
       expect(
@@ -31,6 +30,48 @@ describe('verified access', () => {
         now,
       ),
     ).toBe(true);
+  });
+  it('keeps verification valid until its expiry, however long ago it was checked', () => {
+    expect(
+      hasVerifiedAccess(
+        { status: 'verified', checkedAt: time(-60_000), expiresAt: time(1) },
+        now,
+      ),
+    ).toBe(true);
+  });
+  it.each(['subscription', 'guest_subscription'] as const)(
+    'accepts a %s with its product ID until the verified Apple expiry',
+    (source) => {
+      const access = accessResponseSchema.parse({
+        status: 'verified',
+        source,
+        productId: 'com.anthonyyoo.justgo.pro.annual',
+        checkedAt: time(0),
+        expiresAt: time(86_400_000),
+      });
+      expect(hasVerifiedAccess(access, now + 3_600_000)).toBe(true);
+      expect(hasVerifiedAccess(access, now + 86_400_000)).toBe(false);
+    },
+  );
+  it('refuses a paid source without its product ID or expiry, and unknown sources', () => {
+    const paid = {
+      status: 'verified',
+      source: 'subscription',
+      productId: 'com.anthonyyoo.justgo.pro.monthly',
+      checkedAt: time(0),
+      expiresAt: time(60_000),
+    };
+    expect(accessResponseSchema.safeParse(paid).success).toBe(true);
+    for (const invalid of [
+      { ...paid, productId: undefined },
+      { ...paid, expiresAt: undefined },
+      { ...paid, productId: '' },
+      { ...paid, productId: 'com.example/annual' },
+      { ...paid, source: 'free_beta' },
+      { ...paid, source: 'superwall' },
+      { status: 'unpaid', source: 'subscription', checkedAt: time(0) },
+    ])
+      expect(accessResponseSchema.safeParse(invalid).success).toBe(false);
   });
   it('rejects client premium flags and incomplete verified responses', () => {
     expect(
