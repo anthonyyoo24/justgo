@@ -60,6 +60,15 @@ const configSchema = z.object({
     .optional(),
   APPLE_IAP_PRIVATE_KEY: z.string().includes('PRIVATE KEY').optional(),
   APPLE_IAP_ENVIRONMENT: z.enum(['Production', 'Sandbox']).optional(),
+  // Superwall's Svix endpoint secret, and the bearer the scheduled repair sends.
+  SUPERWALL_WEBHOOK_SECRET: z
+    .string()
+    .regex(/^whsec_[A-Za-z0-9+/]{32,}={0,2}$/)
+    .optional(),
+  BILLING_REPAIR_SECRET: z
+    .string()
+    .regex(/^[\x21-\x7e]{32,512}$/)
+    .optional(),
   IDENTITY_RATE_LIMIT_KEY: z.string().min(32).default(localDevelopmentRateKey),
   IDENTITY_SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
   IDENTITY_TRANSFER_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
@@ -123,6 +132,17 @@ function appleBilling(
   return { keyId, issuerId, bundleId, privateKey, environment };
 }
 
+function billingEvents(config: z.infer<typeof configSchema>) {
+  if (!config.BILLING_ENABLED) return undefined;
+  const {
+    SUPERWALL_WEBHOOK_SECRET: webhookSecret,
+    BILLING_REPAIR_SECRET: repairSecret,
+  } = config;
+  if (!webhookSecret || !repairSecret)
+    throw new Error('Billing requires the webhook and repair secrets');
+  return { webhookSecret, repairSecret };
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
@@ -148,6 +168,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   return {
     ...config,
     APPLE_BILLING: appleBilling(config),
+    BILLING_EVENTS: billingEvents(config),
     API_SENTRY: serverDiagnosticConfiguration(
       config.API_SENTRY_ENABLED,
       config.API_SENTRY_DSN,

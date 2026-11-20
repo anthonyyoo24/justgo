@@ -243,14 +243,19 @@ export type StoreRequest = {
   header: Record<string, unknown>;
 };
 /**
- * Get Transaction Info at the sandbox origin. It answers only a bearer the
- * connect key signed, and 404 for a transaction it does not hold.
+ * Get Transaction Info and Get All Subscription Statuses at the sandbox
+ * origin. It answers only a bearer the connect key signed, and 404 for an ID
+ * it does not hold. `subscriptions` maps an original transaction ID to its
+ * latest transaction, which a test changes to move Apple's answer.
  */
 export function createTestStore(
   chain: TestChain,
   publicKey: CryptoKey,
   transactions: Map<string, Record<string, unknown>>,
-  options: { forge?: boolean } = {},
+  options: {
+    forge?: boolean;
+    subscriptions?: Map<string, Record<string, unknown>>;
+  } = {},
 ) {
   const requests: StoreRequest[] = [];
   const transport: typeof fetch = async (input, init) => {
@@ -272,6 +277,31 @@ export function createTestStore(
       header: JSON.parse(Buffer.from(header, 'base64url').toString('utf8')),
       claims: JSON.parse(Buffer.from(claims, 'base64url').toString('utf8')),
     });
+    const statuses =
+      /^https:\/\/api\.storekit-sandbox\.itunes\.apple\.com\/inApps\/v1\/subscriptions\/(\d+)$/.exec(
+        url,
+      );
+    if (statuses?.[1]) {
+      const latest = options.subscriptions?.get(statuses[1]);
+      if (!latest)
+        return new Response('{"errorCode":4040010}', { status: 404 });
+      return Response.json({
+        environment: testBilling.environment,
+        bundleId: testBilling.bundleId,
+        data: [
+          {
+            subscriptionGroupIdentifier: '21000000',
+            lastTransactions: [
+              {
+                originalTransactionId: statuses[1],
+                status: 1,
+                signedTransactionInfo: await chain.sign(latest, options.forge),
+              },
+            ],
+          },
+        ],
+      });
+    }
     const match =
       /^https:\/\/api\.storekit-sandbox\.itunes\.apple\.com\/inApps\/v1\/transactions\/(\d+)$/.exec(
         url,

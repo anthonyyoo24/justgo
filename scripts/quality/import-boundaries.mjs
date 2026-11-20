@@ -17,6 +17,12 @@ const targetOf = (filename, specifier) =>
   path.isAbsolute(specifier)
     ? relative(path.resolve(path.dirname(filename), specifier))
     : specifier.replace(/^@justgo\/api\//, 'apps/api/');
+// Billing sets RLS context only after Apple's signed answer or a Svix signature verifies.
+const billingRlsModules = new Set([
+  'apps/api/src/billing/verify.ts',
+  'apps/api/src/billing/webhook.ts',
+  'apps/api/src/billing/repair.ts',
+]);
 const setsRlsContext = (target) =>
   target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
 const featureData = [
@@ -89,9 +95,9 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     setsRlsContext(target) &&
     !under(file, 'apps/api/src/identity') &&
     file !== 'apps/api/src/access/guest.ts' &&
-    file !== 'apps/api/src/billing/verify.ts'
+    !billingRlsModules.has(file)
   )
-    return 'Only identity services, the guest catalog and the billing verifier set RLS context, after verifying the bearer or Apple signature. Run owner work inside IdentityService.withSession.';
+    return 'Only identity services, the guest catalog and the billing verifier, webhook and repair set RLS context, after verifying the bearer or the Apple or Svix signature. Run owner work inside IdentityService.withSession.';
   const mobileTarget = target.startsWith('@justgo/mobile/src/')
     ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
     : target;

@@ -137,18 +137,45 @@ describe('safe operational configuration', () => {
       APPLE_IAP_PRIVATE_KEY: pem,
       APPLE_IAP_ENVIRONMENT: testBilling.environment,
     };
+    const secrets = {
+      SUPERWALL_WEBHOOK_SECRET: `whsec_${Buffer.alloc(24, 7).toString('base64')}`,
+      BILLING_REPAIR_SECRET: 'r'.repeat(32),
+    };
     // Settings without the flag leave billing off.
-    expect(readConfig(settings).APPLE_BILLING).toBeUndefined();
+    expect(
+      readConfig({ ...settings, ...secrets }).APPLE_BILLING,
+    ).toBeUndefined();
+    expect(
+      readConfig({ ...settings, ...secrets }).BILLING_EVENTS,
+    ).toBeUndefined();
     for (const missing of Object.keys(settings))
       expect(() =>
         readConfig({
           ...settings,
+          ...secrets,
           BILLING_ENABLED: 'true',
           [missing]: undefined,
         }),
       ).toThrow('Billing requires every App Store Server API setting');
+    for (const missing of Object.keys(secrets))
+      expect(() =>
+        readConfig({
+          ...settings,
+          ...secrets,
+          BILLING_ENABLED: 'true',
+          [missing]: undefined,
+        }),
+      ).toThrow('Billing requires the webhook and repair secrets');
+    for (const invalid of [
+      { SUPERWALL_WEBHOOK_SECRET: 'not-a-svix-secret' },
+      { BILLING_REPAIR_SECRET: 'short' },
+    ])
+      expect(() => readConfig({ ...settings, ...secrets, ...invalid })).toThrow(
+        'Invalid API environment configuration',
+      );
     const billing = readConfig({
       ...settings,
+      ...secrets,
       BILLING_ENABLED: 'true',
       // The pool never connects; the route needs identity to mount.
       DATABASE_URL: 'postgresql://justgo@127.0.0.1:1/unused',
@@ -157,6 +184,10 @@ describe('safe operational configuration', () => {
     expect(billing.APPLE_BILLING).toEqual({
       ...testBilling,
       privateKey: pem,
+    });
+    expect(billing.BILLING_EVENTS).toEqual({
+      webhookSecret: secrets.SUPERWALL_WEBHOOK_SECRET,
+      repairSecret: secrets.BILLING_REPAIR_SECRET,
     });
     const database = createDatabase(billing);
     try {

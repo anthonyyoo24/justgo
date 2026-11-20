@@ -117,6 +117,19 @@ against the real `readConfig()`, so a rule that drifts looser fails it. It write
 `api` when it exists. The receipt holds names only. Never put secret values in
 process arguments, source, receipts or chat.
 
+### Billing secrets
+
+Billing stays off on staging, so the lane does not accept its names yet. Before
+`BILLING_ENABLED` turns on anywhere, the function secrets need the App Store
+Server API settings in [Apple setup](APPLE_SETUP.md#verifying-a-purchase),
+`SUPERWALL_WEBHOOK_SECRET` and `BILLING_REPAIR_SECRET`, and
+`functionSecretNames` and `functionSecretRules` need those names. Point
+Superwall's webhook at `/v1/billing/superwall-events` on the function URL, and
+schedule a Supabase Cron job that posts to `/v1/billing/repair` about every 15
+minutes with the repair secret from Vault. [Apple setup](APPLE_SETUP.md#superwall-events-and-repair)
+describes both routes. Never put either secret's value in source, receipts or
+chat.
+
 ## Credentials and approval protection
 
 The workflow reads these from the protected `justgo-staging` environment. No

@@ -34,7 +34,14 @@ it.each(modes)(
       checkDatabase: async () => {},
       legacyIdentityEnabled,
       ...(billing
-        ? { billing: () => Promise.reject(new Error('not called')) }
+        ? {
+            billing: () => Promise.reject(new Error('not called')),
+            billingEvents: {
+              subscriptions: () => Promise.reject(new Error('not called')),
+              webhookSecret: `whsec_${'A'.repeat(44)}`,
+              repairSecret: 'r'.repeat(32),
+            },
+          }
         : {}),
     });
 
@@ -247,7 +254,16 @@ function probeApp(
     guestAccessReader: offline('guest'),
     entitlementReader: offline('entitlement'),
     uploadEligibilityReader: offline('upload'),
-    ...(billing ? { billing: offline('apple') } : {}),
+    ...(billing
+      ? {
+          billing: offline('apple'),
+          billingEvents: {
+            subscriptions: offline('apple'),
+            webhookSecret: `whsec_${'A'.repeat(44)}`,
+            repairSecret: 'r'.repeat(32),
+          },
+        }
+      : {}),
   });
 }
 

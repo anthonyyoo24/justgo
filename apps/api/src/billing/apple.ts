@@ -22,6 +22,9 @@ export type VerifiedTransaction = {
 export type AppleTransactionReader = (
   transactionId: string,
 ) => Promise<VerifiedTransaction>;
+export type AppleSubscriptionReader = (
+  originalTransactionId: string,
+) => Promise<VerifiedTransaction>;
 
 /** SHA-256 of Apple Root CA - G3 (apple.com/certificateauthority), the root of every App Store signature. */
 export const appleRootFingerprints = [
@@ -355,41 +358,32 @@ async function bearerToken(
   return `${input}.${Buffer.from(signature).toString('base64url')}`;
 }
 
+type AppleClientOptions = {
+  transport?: typeof fetch;
+  rootFingerprints?: readonly string[];
+  now?: () => number;
+};
+
 /**
- * Read one transaction from Apple's Get Transaction Info and verify it. Apple
- * I/O goes through outboundFetch(), so it fails before sending inside an
- * owner transaction.
+ * The App Store Server API calls both readers share. Apple I/O goes through
+ * outboundFetch(), so it fails before sending inside an owner transaction.
  */
-export function createAppleTransactions(
-  config: AppleBillingConfig,
-  options: {
-    transport?: typeof fetch;
-    rootFingerprints?: readonly string[];
-    now?: () => number;
-  } = {},
-): AppleTransactionReader {
+function appleClient(config: AppleBillingConfig, options: AppleClientOptions) {
   const request = outboundFetch(options.transport);
   const now = options.now ?? Date.now;
   const rootFingerprints = options.rootFingerprints ?? appleRootFingerprints;
   let key: Promise<CryptoKey> | undefined;
-  return async (transactionId) => {
-    if (!transactionIdSchema.safeParse(transactionId).success)
-      throw new ApiError('INVALID_REQUEST', 400);
+  /** GET one Apple path and parse its body, or fail as the API answers. */
+  async function read<T>(path: string, body: z.ZodType<T>): Promise<T> {
     let response: Response;
     try {
       key ??= signingKey(config.privateKey);
-      response = await request(
-        new URL(
-          `/inApps/v1/transactions/${transactionId}`,
-          origins[config.environment],
-        ),
-        {
-          headers: {
-            authorization: `Bearer ${await bearerToken(config, await key, now())}`,
-          },
-          signal: AbortSignal.timeout(5000),
+      response = await request(new URL(path, origins[config.environment]), {
+        headers: {
+          authorization: `Bearer ${await bearerToken(config, await key, now())}`,
         },
-      );
+        signal: AbortSignal.timeout(5000),
+      });
     } catch {
       throw new ApiError('UNAVAILABLE', 503);
     }
@@ -400,20 +394,31 @@ export function createAppleTransactions(
         throw new ApiError('NOT_FOUND', 404);
       throw new ApiError('UNAVAILABLE', 503);
     }
-    let signed: string;
     try {
-      signed = z
-        .object({ signedTransactionInfo: z.string().max(64 * 1024) })
-        .parse(await response.json()).signedTransactionInfo;
+      return body.parse(await response.json());
     } catch {
       throw new ApiError('UNAVAILABLE', 503);
     }
+  }
+  /**
+   * Verify a signed transaction for this app and environment. A broken chain
+   * throws a plain Error (503, retryable). A payload that names another
+   * transaction, app or environment answers 400.
+   */
+  async function transaction(
+    signed: string,
+    expected: { transactionId?: string; originalTransactionId?: string },
+  ): Promise<VerifiedTransaction> {
     const payload = payloadSchema.safeParse(
       await verifySignedPayload(signed, { rootFingerprints, now: now() }),
     );
     if (
       !payload.success ||
-      payload.data.transactionId !== transactionId ||
+      (expected.transactionId !== undefined &&
+        payload.data.transactionId !== expected.transactionId) ||
+      (expected.originalTransactionId !== undefined &&
+        payload.data.originalTransactionId !==
+          expected.originalTransactionId) ||
       payload.data.bundleId !== config.bundleId ||
       payload.data.environment !== config.environment ||
       payload.data.type !== 'Auto-Renewable Subscription'
@@ -434,5 +439,67 @@ export function createAppleTransactions(
         ? purchase.appAccountToken.toLowerCase()
         : null,
     };
+  }
+  return { read, transaction };
+}
+
+const signedTransaction = z.string().max(64 * 1024);
+
+/** Read one transaction from Apple's Get Transaction Info and verify it. */
+export function createAppleTransactions(
+  config: AppleBillingConfig,
+  options: AppleClientOptions = {},
+): AppleTransactionReader {
+  const apple = appleClient(config, options);
+  return async (transactionId) => {
+    if (!transactionIdSchema.safeParse(transactionId).success)
+      throw new ApiError('INVALID_REQUEST', 400);
+    const { signedTransactionInfo } = await apple.read(
+      `/inApps/v1/transactions/${transactionId}`,
+      z.object({ signedTransactionInfo: signedTransaction }),
+    );
+    return apple.transaction(signedTransactionInfo, { transactionId });
+  };
+}
+
+/**
+ * Read a subscription's latest transaction from Apple's Get All Subscription
+ * Statuses and verify it. This is Apple's current answer, so it carries a
+ * renewal, an expiry or a refund whatever order the events arrived in.
+ */
+export function createAppleSubscriptions(
+  config: AppleBillingConfig,
+  options: AppleClientOptions = {},
+): AppleSubscriptionReader {
+  const apple = appleClient(config, options);
+  return async (originalTransactionId) => {
+    if (!transactionIdSchema.safeParse(originalTransactionId).success)
+      throw new ApiError('INVALID_REQUEST', 400);
+    const statuses = await apple.read(
+      `/inApps/v1/subscriptions/${originalTransactionId}`,
+      z.object({
+        data: z
+          .array(
+            z.object({
+              lastTransactions: z
+                .array(
+                  z.object({
+                    originalTransactionId: z.string(),
+                    signedTransactionInfo: signedTransaction,
+                  }),
+                )
+                .max(100),
+            }),
+          )
+          .max(100),
+      }),
+    );
+    const latest = statuses.data
+      .flatMap((group) => group.lastTransactions)
+      .find((entry) => entry.originalTransactionId === originalTransactionId);
+    if (!latest) throw new ApiError('INVALID_REQUEST', 400);
+    return apple.transaction(latest.signedTransactionInfo, {
+      originalTransactionId,
+    });
   };
 }

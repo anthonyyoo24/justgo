@@ -422,6 +422,29 @@ const cases = [
     loadedRestricted: true,
   },
   {
+    name: 'the billing webhook may set RLS context after the Svix signature and Apple verify',
+    file: 'apps/api/src/billing/webhook.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'the billing repair may set RLS context to scan and store what Apple confirms',
+    file: 'apps/api/src/billing/repair.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'a billing module beside the allowed ones cannot set RLS context',
+    file: 'apps/api/src/billing/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: true,
+  },
+  {
     name: 'other billing modules cannot set RLS context',
     file: 'apps/api/src/billing/apple.ts',
     source:
