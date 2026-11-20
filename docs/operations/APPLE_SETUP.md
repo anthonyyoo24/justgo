@@ -40,6 +40,26 @@ signing keys, banking or tax values in this repository.
 | Product, entitlement and paywall mapping | None yet.                                                                                                                                                                                                                | Waits on the agreed offer. Phase 16.                                                                                                                                                                            |
 | Sandbox purchase and restore             | None yet.                                                                                                                                                                                                                | Not run. Phase 16, [#110][g110].                                                                                                                                                                                |
 
+## What the API stores about purchases
+
+Migration `0027_billing_tables` adds two tables in the private `justgo`
+schema. No route reads or writes them yet. They hold no receipt, signed
+transaction, key or secret.
+
+- `app_store_subscriptions` has one row per Apple original transaction ID. It
+  holds the owner's JustGO user ID (empty for a guest purchase), the product ID,
+  the environment (`Production` or `Sandbox`), the verified expiry, the
+  revocation time after a refund, the latest transaction ID and the
+  `appAccountToken`. An owner reads only its own rows. A guest row is reached
+  only through the one original transaction ID the API verified with Apple in
+  that request. The owner, once set, never changes, and the API cannot delete a
+  row. Delete-all and account deletion keep the row bound to its owner, so a
+  deleted account's purchase never passes to someone else. The recovery ledger
+  replays the table, so a restore keeps owner bindings and refunds.
+- `billing_events` holds each Superwall event ID and when it arrived, so a
+  redelivered event does nothing. A restore may lose recent IDs, and a
+  redelivery then confirms the purchase with Apple again.
+
 ## Owner tasks still open
 
 - Complete banking, tax and the paid-app agreement before sales.
