@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  hasVerifiedAccess,
   type ProgressSummary,
   type ProgressCalendar,
   type CompletionProgressDayResponse,
@@ -8,7 +7,10 @@ import {
 import { z } from 'zod';
 import type { IdentityService } from '../identity/service.js';
 import { ApiError } from '../http/api-error.js';
-import type { EntitlementReader } from '../access/service.js';
+import {
+  requireVerifiedAccess,
+  type EntitlementReader,
+} from '../access/service.js';
 import {
   attemptQuery,
   projectCompletion,
@@ -44,12 +46,7 @@ export class ProgressResources {
     return this.identity.withSession(token, async (tx, session) => {
       // The owner lock also serializes completion creates across devices, so totals
       // and rows in these multi-query reads share one product-write boundary.
-      const access = await this.entitlement?.(tx);
-      if (!hasVerifiedAccess(access))
-        throw new ApiError(
-          access?.status === 'unpaid' ? 'ACCESS_REQUIRED' : 'UNAVAILABLE',
-          access?.status === 'unpaid' ? 403 : 503,
-        );
+      requireVerifiedAccess(await this.entitlement?.(tx));
       return work(tx, session.userId);
     });
   }
