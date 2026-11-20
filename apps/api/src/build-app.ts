@@ -19,7 +19,10 @@ import { accessRoutes } from './access/routes.js';
 import {
   openApiDocument,
   managedOpenApiDocument,
+  withBilling,
 } from '@justgo/contracts/openapi';
+import type { AppleTransactionReader } from './billing/apple.js';
+import { billingRoutes } from './billing/verify.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
 import { GuestService, type GuestAccessReader } from './access/guest.js';
 import { managedIdentityRoutes } from './identity/managed-routes.js';
@@ -45,6 +48,8 @@ export function buildApp(
     developmentLegalDrafts?: boolean;
     guestAccessReader?: GuestAccessReader;
     legacyIdentityEnabled?: boolean;
+    /** Set only when BILLING_ENABLED is on. */
+    billing?: AppleTransactionReader;
   },
 ) {
   const app = createHttpApp(options);
@@ -61,14 +66,14 @@ export function buildApp(
       healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
     ),
   );
-  app.get('/openapi.json', (context) =>
-    context.json(
-      options.legacyIdentityEnabled === false
-        ? managedOpenApiDocument
-        : openApiDocument,
-    ),
-  );
   const identity = options.identity;
+  const billing = identity ? options.billing : undefined;
+  const document =
+    options.legacyIdentityEnabled === false
+      ? managedOpenApiDocument
+      : openApiDocument;
+  const served = billing ? withBilling(document) : document;
+  app.get('/openapi.json', (context) => context.json(served));
   if (identity) {
     const guest = new GuestService(identity, options.guestAccessReader);
     app.get('/v1/guest/access', async (context) =>
@@ -79,6 +84,8 @@ export function buildApp(
     );
     mount('/v1/auth', (scope) => managedIdentityRoutes(scope, identity));
     mount('/v1', (scope) => dataSyncRoutes(scope, identity));
+    if (billing)
+      mount('/v1/billing', (scope) => billingRoutes(scope, identity, billing));
   }
   if (options.developmentLegalDrafts && process.env.NODE_ENV !== 'production')
     developmentLegalDraftRoutes(app);

@@ -88,9 +88,10 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     apiSource &&
     setsRlsContext(target) &&
     !under(file, 'apps/api/src/identity') &&
-    file !== 'apps/api/src/access/guest.ts'
+    file !== 'apps/api/src/access/guest.ts' &&
+    file !== 'apps/api/src/billing/verify.ts'
   )
-    return 'Only identity services set RLS context, after verifying the bearer. Run owner work inside IdentityService.withSession.';
+    return 'Only identity services, the guest catalog and the billing verifier set RLS context, after verifying the bearer or Apple signature. Run owner work inside IdentityService.withSession.';
   const mobileTarget = target.startsWith('@justgo/mobile/src/')
     ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
     : target;

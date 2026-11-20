@@ -4,6 +4,14 @@ import { ownerTransactions } from '../src/db/owner-transaction.js';
 import { createManagedAuthVerifier } from '../src/identity/managed-verifier.js';
 import { createServerErrorReporter } from '../src/http/server-error-reporter.js';
 import { serverDiagnosticConfiguration } from '../src/http/sentry-configuration.js';
+import { createAppleTransactions } from '../src/billing/apple.js';
+import {
+  createConnectKey,
+  createTestChain,
+  createTestStore,
+  testBilling,
+  transactionPayload,
+} from './apple-test-store.js';
 
 /**
  * Exercise production adapters with the Edge runtime's native Request
@@ -112,4 +120,44 @@ export async function checkOutboundAdapters() {
   now += 59_999;
   await report(diagnostic);
   assert.equal(reports, 2, 'Redirect rejected with backoff and no retry');
+
+  const [chain, connect] = await Promise.all([
+    createTestChain(),
+    createConnectKey(),
+  ]);
+  const purchase = transactionPayload();
+  const store = createTestStore(
+    chain,
+    connect.publicKey,
+    new Map([[String(purchase.transactionId), purchase]]),
+  );
+  let appleCalls = 0;
+  let appleStatus = 200;
+  const appleTransport: typeof fetch = async (input, init) => {
+    const request = new Request(input, init);
+    assert.equal(request.redirect, 'manual');
+    appleCalls++;
+    return appleStatus === 200
+      ? store.transport(input, init)
+      : new Response(null, {
+          status: appleStatus,
+          headers: { location: 'https://untrusted.invalid/apple' },
+        });
+  };
+  const apple = createAppleTransactions(
+    { ...testBilling, privateKey: connect.pem },
+    { transport: appleTransport, rootFingerprints: [chain.rootFingerprint] },
+  );
+  const transactionId = String(purchase.transactionId);
+  assert.equal((await apple(transactionId)).transactionId, transactionId);
+  await ownerTransactions(database).transaction(async () => {
+    await assert.rejects(apple(transactionId), { code: 'UNAVAILABLE' });
+  });
+  assert.equal(appleCalls, 1, 'Owner transaction refused Apple I/O');
+  appleStatus = 307;
+  await assert.rejects(apple(transactionId), {
+    code: 'UNAVAILABLE',
+    status: 503,
+  });
+  assert.equal(appleCalls, 2);
 }

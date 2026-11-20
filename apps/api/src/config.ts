@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
+import type { AppleBillingConfig } from './billing/apple.js';
 
 /** The default rate key for local runs. Production refuses it at boot. */
 export const localDevelopmentRateKey =
@@ -40,6 +41,25 @@ const configSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  // Paid access stays off until every App Store Server API value is set.
+  BILLING_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  APPLE_IAP_KEY_ID: z
+    .string()
+    .regex(/^[A-Z0-9]{10}$/)
+    .optional(),
+  APPLE_IAP_ISSUER_ID: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    .optional(),
+  APPLE_BUNDLE_ID: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]{1,155}$/)
+    .optional(),
+  APPLE_IAP_PRIVATE_KEY: z.string().includes('PRIVATE KEY').optional(),
+  APPLE_IAP_ENVIRONMENT: z.enum(['Production', 'Sandbox']).optional(),
   IDENTITY_RATE_LIMIT_KEY: z.string().min(32).default(localDevelopmentRateKey),
   IDENTITY_SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
   IDENTITY_TRANSFER_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
@@ -87,6 +107,22 @@ export function readDatabaseConfig(env: NodeJS.ProcessEnv) {
   return validateDatabase(result.data);
 }
 
+function appleBilling(
+  config: z.infer<typeof configSchema>,
+): AppleBillingConfig | undefined {
+  if (!config.BILLING_ENABLED) return undefined;
+  const {
+    APPLE_IAP_KEY_ID: keyId,
+    APPLE_IAP_ISSUER_ID: issuerId,
+    APPLE_BUNDLE_ID: bundleId,
+    APPLE_IAP_PRIVATE_KEY: privateKey,
+    APPLE_IAP_ENVIRONMENT: environment,
+  } = config;
+  if (!keyId || !issuerId || !bundleId || !privateKey || !environment)
+    throw new Error('Billing requires every App Store Server API setting');
+  return { keyId, issuerId, bundleId, privateKey, environment };
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
@@ -111,6 +147,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   validateDatabase(config);
   return {
     ...config,
+    APPLE_BILLING: appleBilling(config),
     API_SENTRY: serverDiagnosticConfiguration(
       config.API_SENTRY_ENABLED,
       config.API_SENTRY_DSN,

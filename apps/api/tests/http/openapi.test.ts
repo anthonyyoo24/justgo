@@ -5,13 +5,27 @@ import { z } from 'zod';
 import {
   openApiDocument,
   managedOpenApiDocument,
+  withBilling,
 } from '@justgo/contracts/openapi';
 import { buildApp } from '../../src/build-app.js';
 import { IdentityService } from '../../src/identity/service.js';
 
-it.each([true, false])(
-  'keeps documented methods equal to registered routes with legacy identity enabled=%s',
-  async (legacyIdentityEnabled) => {
+const modes = [
+  [true, false],
+  [false, false],
+  [true, true],
+  [false, true],
+] as const;
+const documentFor = (legacyIdentityEnabled: boolean, billing: boolean) => {
+  const document = legacyIdentityEnabled
+    ? openApiDocument
+    : managedOpenApiDocument;
+  return billing ? withBilling(document) : document;
+};
+
+it.each(modes)(
+  'keeps documented methods equal to registered routes with legacy identity enabled=%s and billing=%s',
+  async (legacyIdentityEnabled, billing) => {
     const database = drizzle.mock();
     const transaction = vi.spyOn(database, 'transaction');
     const app = buildApp({
@@ -19,6 +33,9 @@ it.each([true, false])(
       identity: new IdentityService(database, { rateKey: 'route-contract' }),
       checkDatabase: async () => {},
       legacyIdentityEnabled,
+      ...(billing
+        ? { billing: () => Promise.reject(new Error('not called')) }
+        : {}),
     });
 
     const registered = new Set(
@@ -42,9 +59,7 @@ it.each([true, false])(
       'head',
       'options',
     ]);
-    const document = legacyIdentityEnabled
-      ? openApiDocument
-      : managedOpenApiDocument;
+    const document = documentFor(legacyIdentityEnabled, billing);
     expect((await apiRequest(app, '/openapi.json')).json()).toEqual(document);
     const documented = Object.entries(document.paths).flatMap(([url, path]) =>
       Object.keys(path)
@@ -119,9 +134,13 @@ const validInput: Record<string, { query?: string; payload?: unknown }> = {
   'delete /v1/data': { payload: { expectedEpoch: 0 } },
   'get /v1/progress/summary': { query: 'timeZone=UTC' },
   'get /v1/progress/calendar': { query: 'month=2026-10' },
+  'post /v1/billing/verifications': {
+    payload: { transactionId: '2000000000000001' },
+  },
 };
 
-type Dependency = 'managed verifier' | 'guest' | 'entitlement' | 'upload';
+type Dependency =
+  'managed verifier' | 'guest' | 'entitlement' | 'upload' | 'apple';
 type Probe = {
   status: string;
   rateLimit: 'open' | 'down';
@@ -203,6 +222,7 @@ const probes: Record<string, Probe> = {
 
 function probeApp(
   legacyIdentityEnabled: boolean,
+  billing: boolean,
   rateLimit: Probe['rateLimit'],
   reached = new Set<Dependency>(),
 ) {
@@ -227,14 +247,16 @@ function probeApp(
     guestAccessReader: offline('guest'),
     entitlementReader: offline('entitlement'),
     uploadEligibilityReader: offline('upload'),
+    ...(billing ? { billing: offline('apple') } : {}),
   });
 }
 
-describe.each([true, false])(
-  'documented statuses with legacy identity enabled=%s',
-  (legacyIdentityEnabled) => {
-    const paths: Record<string, PathItem> = (
-      legacyIdentityEnabled ? openApiDocument : managedOpenApiDocument
+describe.each(modes)(
+  'documented statuses with legacy identity enabled=%s and billing=%s',
+  (legacyIdentityEnabled, billing) => {
+    const paths: Record<string, PathItem> = documentFor(
+      legacyIdentityEnabled,
+      billing,
     ).paths;
     const operations = Object.entries(paths).flatMap(([path, item]) =>
       documentedMethods.flatMap((method) => {
@@ -266,7 +288,7 @@ describe.each([true, false])(
           const request = probe.request(key, method, path, parameters);
           if (!request) continue;
           const response = await apiRequest(
-            probeApp(legacyIdentityEnabled, probe.rateLimit, reached),
+            probeApp(legacyIdentityEnabled, billing, probe.rateLimit, reached),
             {
               method: method.toUpperCase(),
               url: request.url,
@@ -300,8 +322,12 @@ describe.each([true, false])(
         }
         expect(mismatches).toEqual([]);
         expect(exercised).toBeGreaterThan(0);
+        // Apple is asked before the database, so it is reached while both are down.
         expect([...reached]).toEqual(
-          expect.arrayContaining(probe.reaches ?? []),
+          expect.arrayContaining([
+            ...(probe.reaches ?? []),
+            ...(billing && probe.reaches ? ['apple'] : []),
+          ]),
         );
       },
     );
@@ -327,7 +353,7 @@ describe.each([true, false])(
         limits.flatMap(({ key, method, path, bytes }) =>
           [bytes, bytes + 1].map(async (size) => {
             const response = await apiRequest(
-              probeApp(legacyIdentityEnabled, 'open'),
+              probeApp(legacyIdentityEnabled, billing, 'open'),
               {
                 method: method.toUpperCase(),
                 url: fill(path, id),

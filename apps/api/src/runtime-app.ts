@@ -13,6 +13,7 @@ import { IdentityService } from './identity/service.js';
 import { createFreeAccess } from './access/free-access.js';
 import { createManagedAuthVerifier } from './identity/managed-verifier.js';
 import { createManagedAuthDeletion } from './identity/managed-deletion.js';
+import { createAppleTransactions } from './billing/apple.js';
 
 export function buildRuntimeApp(
   config: Config,
@@ -41,6 +42,9 @@ export function buildRuntimeApp(
     // The app is free in every environment, so the beta grants and window no
     // longer decide access.
     ...createFreeAccess(),
+    ...(config.APPLE_BILLING
+      ? { billing: createAppleTransactions(config.APPLE_BILLING) }
+      : {}),
     ...(database
       ? {
           identity: new IdentityService(database.db, {
