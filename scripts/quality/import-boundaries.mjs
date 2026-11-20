@@ -147,6 +147,13 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
   )
     return 'Mobile uses Supabase only for provider sessions, in apps/mobile/src/app-support/identity/auth/managed-auth.ts. Read and write application data through the JustGO API, never database tables.';
   if (
+    under(file, 'apps/mobile') &&
+    under(target, 'expo-superwall') &&
+    !under(file, 'apps/mobile/src/app-support/billing') &&
+    !testSource
+  )
+    return 'Load expo-superwall only in apps/mobile/src/app-support/billing. Its SuperwallProvider hands every link the app opens to Superwall, including the justgo://auth/callback sign-in link, so billing configures Superwall without it and passes only the owner ID.';
+  if (
     mobileSource &&
     under(mobileModule, 'apps/mobile/src/app-support/diagnostics') &&
     ['app-support/identity', 'data', 'features'].some((owner) =>

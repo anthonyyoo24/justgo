@@ -2,6 +2,7 @@ import { createElement, useEffect } from 'react';
 import { act, cleanup, render, waitFor } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 import { focusManager } from '@tanstack/react-query';
+import { useSuperwallStore } from 'expo-superwall';
 import type { SessionResponse } from '@justgo/contracts';
 import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import { listenToConnectivity } from '../../platform/connectivity/connectivity';
@@ -9,6 +10,10 @@ import { createIdentityApi } from '../identity/api';
 import { createMemoryVault } from '../identity/storage';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
+import {
+  nativeCalls,
+  superwallNative,
+} from '../../../test-support/superwall-native';
 import type {
   ManagedIdentityState,
   ManagedIdentityStorage,
@@ -154,6 +159,15 @@ beforeEach(async () => {
   jest.setSystemTime(start);
   process.env.EXPO_PUBLIC_API_URL = api;
   process.env.EXPO_PUBLIC_BILLING_ENABLED = 'true';
+  superwallNative.reset();
+  useSuperwallStore.setState({
+    isConfigured: false,
+    isLoading: false,
+    listenersInitialized: false,
+    configurationError: null,
+    user: null,
+  });
+  jest.spyOn(console, 'log').mockImplementation(() => {});
   offline = false;
   session = {
     userId,
@@ -417,6 +431,55 @@ it("switches to the signed-in account's own snapshot and never reuses another ac
   expect(bearers).toEqual([`Bearer ${firstToken}`, `Bearer ${otherToken}`]);
 });
 
+it('tells Superwall only the owner ID of the account on the phone and resets it on sign-out', async () => {
+  const superwallCalls = () =>
+    nativeCalls
+      .filter(({ method }) => ['identify', 'reset'].includes(method))
+      .map(({ method, args }) => [method, ...args]);
+  await mount();
+  await waitFor(() =>
+    expect(superwallCalls()).toEqual([['identify', userId, undefined]]),
+  );
+
+  await act(async () =>
+    controller.rejectSession(firstToken, 'SESSION_REVOKED'),
+  );
+  await waitFor(() =>
+    expect(superwallCalls()).toEqual([
+      ['identify', userId, undefined],
+      ['reset'],
+    ]),
+  );
+  session = { ...session, userId: otherUserId };
+  providerSession = {
+    ...providerSession,
+    authUserId: id(80),
+    accessToken: otherToken,
+  };
+  await act(async () => controller.signIn('apple'));
+  await waitFor(() =>
+    expect(superwallCalls()).toEqual([
+      ['identify', userId, undefined],
+      ['reset'],
+      ['identify', otherUserId, undefined],
+    ]),
+  );
+  expect(nativeCalls.filter(({ method }) => method === 'configure')).toEqual([
+    {
+      method: 'configure',
+      args: [
+        'pk_weeyKXc6nLaH3eMSkyjhB',
+        expect.objectContaining({ eventTrackingBehavior: 'superwallOnly' }),
+        false,
+        expect.any(String),
+      ],
+    },
+  ]);
+  expect(nativeCalls.map(({ method }) => method)).not.toContain(
+    'setUserAttributes',
+  );
+});
+
 it("reads a guest's access from the guest route under the guest's own key", async () => {
   stored = null;
   jest.mocked(auth.initialize).mockResolvedValue(null);
@@ -430,6 +493,11 @@ it("reads a guest's access from the guest route under the guest's own key", asyn
   expect(runtime.canStartChallenge()).toBe(false);
   await act(async () => controller.continueAsGuest());
   await waitFor(() => expect(runtime.canStartChallenge()).toBe(true));
+  // A guest stays anonymous in Superwall.
+  expect(useSuperwallStore.getState().isConfigured).toBe(true);
+  expect(
+    nativeCalls.filter(({ method }) => ['identify', 'reset'].includes(method)),
+  ).toEqual([]);
   const guest = runtime.activity.getRepository()!.accountId;
   expect((await saved(keyOf(guest, 'guest')))?.access.status).toBe('verified');
   expect(
@@ -442,6 +510,7 @@ it('starts challenges with no access request or saved snapshot when the flag is 
   offline = true;
   await mount();
   expect(runtime.access).toBeNull();
+  expect(runtime.superwall).toBeNull();
   expect(runtime.canStartChallenge()).toBe(true);
   offline = false;
   await act(async () => onAppState('active'));
@@ -452,4 +521,5 @@ it('starts challenges with no access request or saved snapshot when the flag is 
       key.includes(':access:'),
     ),
   ).toEqual([]);
+  expect(nativeCalls).toEqual([]);
 });

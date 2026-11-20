@@ -590,6 +590,31 @@ const cases = [
     restricted: false,
   },
   {
+    name: 'only billing may load the Superwall SDK',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.tsx',
+    source: "import { SuperwallProvider } from 'expo-superwall';",
+    restricted: true,
+    fix: 'justgo://auth/callback',
+  },
+  {
+    name: 'only billing may load Superwall subpaths',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
+    source: "import { useSuperwall } from 'expo-superwall/compat';",
+    restricted: true,
+  },
+  {
+    name: 'billing loads the Superwall SDK',
+    file: 'apps/mobile/src/app-support/billing/superwall.ts',
+    source: "import { useSuperwallStore } from 'expo-superwall';",
+    restricted: false,
+  },
+  {
+    name: 'mobile tests may load the Superwall SDK',
+    file: 'apps/mobile/src/app-support/access/BoundaryFixture.test.ts',
+    source: "import { useSuperwallStore } from 'expo-superwall';",
+    restricted: false,
+  },
+  {
     name: 'only managed auth may load the Supabase SDK',
     file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
     source: "import { createClient } from '@supabase/supabase-js';",

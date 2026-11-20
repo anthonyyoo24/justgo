@@ -354,4 +354,72 @@ describe('Expo project configuration', () => {
       ).toEqual([]);
     }
   });
+
+  it('gives local builds the App Store products for simulator purchases and keeps them out of store builds', () => {
+    const storekit = './plugins/with-storekit-config.cjs';
+    const pluginNames = (config: { plugins: unknown[] }) =>
+      config.plugins.map((plugin) =>
+        Array.isArray(plugin) ? plugin[0] : plugin,
+      );
+    const { default: local } = require('./app.config');
+    expect(pluginNames(local)).toContain(storekit);
+
+    const products = JSON.parse(
+      readFileSync(path.join(__dirname, 'storekit/JustGO.storekit'), 'utf8'),
+    );
+    expect(products.subscriptionGroups).toHaveLength(1);
+    const [group] = products.subscriptionGroups;
+    expect(group.name).toBe('JustGo Pro');
+    expect(
+      group.subscriptions.map((product: Record<string, unknown>) => [
+        product.productID,
+        product.displayPrice,
+        product.recurringSubscriptionPeriod,
+        product.introductoryOffer,
+      ]),
+    ).toEqual([
+      [
+        'com.anthonyyoo.justgo.pro.annual',
+        '59.99',
+        'P1Y',
+        expect.objectContaining({
+          paymentMode: 'free',
+          subscriptionPeriod: 'P1W',
+        }),
+      ],
+      ['com.anthonyyoo.justgo.pro.monthly', '12.99', 'P1M', undefined],
+    ]);
+
+    const { attach } = require('./plugins/with-storekit-config.cjs');
+    const scheme = [
+      '<Scheme>',
+      '   <LaunchAction buildConfiguration = "Debug">',
+      '   </LaunchAction>',
+      '   <ArchiveAction buildConfiguration = "Release">',
+      '   </ArchiveAction>',
+      '</Scheme>',
+      '',
+    ].join('\n');
+    const attached = attach(scheme, 'JustGO');
+    expect(attach(attached, 'JustGO')).toBe(attached);
+    expect(attached.match(/StoreKitConfigurationFileReference/g)).toHaveLength(
+      2,
+    );
+    expect(
+      attached.slice(
+        attached.indexOf('<LaunchAction'),
+        attached.indexOf('</LaunchAction>'),
+      ),
+    ).toContain('identifier = "../../JustGO/JustGO.storekit"');
+
+    const eas = require('./eas.json');
+    jest.resetModules();
+    process.env = {
+      ...process.env,
+      ...eas.build.beta.env,
+      EAS_BUILD_PROFILE: 'beta',
+    };
+    const { default: store } = require('./app.config');
+    expect(pluginNames(store)).not.toContain(storekit);
+  });
 });
