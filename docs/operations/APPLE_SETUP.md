@@ -143,7 +143,6 @@ Each gate has an issue. Single-phone results do not close them.
 - Files download, import and deletion cleanup: [#84][g84].
 - Haptics recheck on the signed beta build: [#88][g88].
 - Settings rating and social rows, once their destinations exist: [#111][g111].
-- Mobile tooling advisories: [#103][g103].
 
 ## Add an iPhone
 
@@ -193,7 +192,6 @@ a phone that is already registered, use [DEVELOPMENT_BUILDS.md](DEVELOPMENT_BUIL
 [g94]: https://github.com/anthonyyoo24/justgo/issues/94
 [g97]: https://github.com/anthonyyoo24/justgo/issues/97
 [g99]: https://github.com/anthonyyoo24/justgo/issues/99
-[g103]: https://github.com/anthonyyoo24/justgo/issues/103
 [g107]: https://github.com/anthonyyoo24/justgo/issues/107
 [g110]: https://github.com/anthonyyoo24/justgo/issues/110
 [g111]: https://github.com/anthonyyoo24/justgo/issues/111
