@@ -91,7 +91,8 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 - [ ] Delete `apps/api/src/db/schema.ts`.
 - [ ] Create `apps/api/src/db/schema/identity.ts`, `schema/catalog.ts`, `schema/activity.ts` and `schema/index.ts`.
-- [ ] Edit `apps/api/drizzle.config.ts` and every import of the old path.
+- [ ] Edit `apps/api/drizzle.config.ts` and every import of the old path, including `scripts/backups/ledger-coverage.test.mjs` and `apps/api/tests/db/migration-metadata.test.ts`.
+- [ ] Edit `scripts/quality/sensitive-paths.mjs` so the new `apps/api/src/db/schema/` folder stays sensitive, and its cases in `scripts/quality/verify-batch.test.mjs`.
 
 **Build.**
 
@@ -143,11 +144,11 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 **Files.**
 
 - [ ] Edit `packages/contracts/src/access.ts` and `packages/contracts/src/access.test.ts`.
-- [ ] Edit the mobile readers of `hasVerifiedAccess()` and their tests.
+- [ ] Edit the API readers of `hasVerifiedAccess()` in `apps/api/src/access/guest.ts`, `apps/api/src/challenges/service.ts` and `apps/api/src/progress/service.ts`, and their tests.
 
 **Build.**
 
-- [ ] Widen `accessResponseSchema.source` to `free_beta`, `subscription` and `guest_subscription`, and add the verified `expiresAt` and the product ID for paid sources.
+- [ ] Widen `accessResponseSchema.source` to `free_beta`, `subscription` and `guest_subscription`, and add the product ID for paid sources. The existing `expiresAt` carries the verified Apple expiry.
 - [ ] Replace the 60-second freshness cutoff in `hasVerifiedAccess()` with the verified expiry, as rule 3 says.
 - [ ] Keep installed free builds working. The API keeps sending `free_beta` while `BILLING_ENABLED` is off, and the PR records the update path for old builds once it is on.
 
