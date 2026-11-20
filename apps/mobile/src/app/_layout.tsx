@@ -123,6 +123,7 @@ function Navigation() {
       <Stack.Protected guard={!deleted && !awaitingAccess && open}>
         <Stack.Screen name="settings" />
         <Stack.Screen name="data" />
+        <Stack.Screen name="subscription" />
       </Stack.Protected>
       <Stack.Protected guard={!deleted && !awaitingAccess}>
         <Stack.Screen name="delete-account" />

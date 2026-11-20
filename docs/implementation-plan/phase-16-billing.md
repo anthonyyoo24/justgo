@@ -652,7 +652,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Settings tests cover subscribed, trial, expired and guest states. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/features/settings/subscription`.
+- [ ] Settings tests cover subscribed, trial, expired and guest states. Run `pnpm --filter @justgo/mobile run test src/features/settings/subscription`. Jest finds no tests when `--runTestsByPath` names a folder.
 - [ ] Deletion and adoption cases. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/app-support/identity/deletion src/app-support/providers/activity-runtime.managed.test.ts`.
 - [ ] API adoption and deletion cases. Run `pnpm run test:db`.
 
