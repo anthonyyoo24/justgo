@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { AccessResponse, ChallengeCard } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 import { setTransactionContext } from '../db/transaction-context.js';
-import { requireVerifiedAccess } from './service.js';
+import { currentAccess, requireVerifiedAccess } from './service.js';
 export type GuestAccessReader = () => Promise<AccessResponse>;
 export const unavailableGuestAccess: GuestAccessReader = async () => ({
   status: 'unpaid',
@@ -14,8 +14,8 @@ export class GuestService {
     private readonly identity: IdentityService,
     private readonly read: GuestAccessReader = unavailableGuestAccess,
   ) {}
-  access() {
-    return this.read();
+  async access() {
+    return currentAccess(await this.read());
   }
   async catalog() {
     requireVerifiedAccess(await this.read());

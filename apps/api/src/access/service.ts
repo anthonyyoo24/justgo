@@ -18,6 +18,16 @@ export function requireVerifiedAccess(access: AccessResponse | undefined) {
     ? new ApiError('UNAVAILABLE', 503)
     : new ApiError('ACCESS_REQUIRED', 403);
 }
+/** A verified answer past its expiry reads as unpaid on every access route. */
+export function currentAccess(access: AccessResponse): AccessResponse {
+  if (access.status !== 'verified' || Date.parse(access.expiresAt) > Date.now())
+    return access;
+  return {
+    status: 'unpaid',
+    checkedAt: new Date().toISOString(),
+    ...(access.source === 'free_beta' ? { source: access.source } : {}),
+  };
+}
 export class AccessService {
   constructor(
     private readonly identity: IdentityService,
@@ -28,18 +38,8 @@ export class AccessService {
   ) {}
 
   get(token: string): Promise<AccessResponse> {
-    return this.identity.withSession(token, async (tx) => {
-      const access = accessResponseSchema.parse(await this.read(tx));
-      if (
-        access.status === 'verified' &&
-        Date.parse(access.expiresAt) <= Date.now()
-      )
-        return {
-          status: 'unpaid' as const,
-          checkedAt: new Date().toISOString(),
-          ...(access.source === 'free_beta' ? { source: access.source } : {}),
-        };
-      return access;
-    });
+    return this.identity.withSession(token, async (tx) =>
+      currentAccess(accessResponseSchema.parse(await this.read(tx))),
+    );
   }
 }

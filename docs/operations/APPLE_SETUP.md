@@ -87,6 +87,22 @@ unless every App Store Server API setting is present: `APPLE_IAP_KEY_ID`,
 values in the function secrets only. Tests use a self-made certificate chain
 and a stub store from `apps/api/scripts/apple-test-store.ts`, never Apple.
 
+## Reading access
+
+With `BILLING_ENABLED` on, `apps/api/src/access/paid-access.ts` answers access
+from the saved rows only, whatever readers the runtime passes in.
+
+- `/v1/access` is `verified` with the row's product and expiry while the bearer
+  owns an unrevoked row that has not expired, and `unpaid` otherwise. Only the
+  bearer names the owner.
+- An upload is eligible when its completion started before the row's expiry, or
+  its revocation if earlier, so a completion made while paid still uploads after
+  the subscription ends. A completion started later is refused.
+- Rows belong to the owner, not to a data epoch, so delete-all keeps access.
+- A guest request carries no transaction Apple confirmed, so `/v1/guest/access`
+  answers `unpaid` and `/v1/guest/challenges` answers 403. A guest learns of its
+  subscription only from `POST /v1/billing/verifications`.
+
 ## Owner tasks still open
 
 - Complete banking, tax and the paid-app agreement before sales.
@@ -127,7 +143,6 @@ Each gate has an issue. Single-phone results do not close them.
 - Files download, import and deletion cleanup: [#84][g84].
 - Haptics recheck on the signed beta build: [#88][g88].
 - Settings rating and social rows, once their destinations exist: [#111][g111].
-- Mobile tooling advisories: [#103][g103].
 
 ## Add an iPhone
 
@@ -177,7 +192,6 @@ a phone that is already registered, use [DEVELOPMENT_BUILDS.md](DEVELOPMENT_BUIL
 [g94]: https://github.com/anthonyyoo24/justgo/issues/94
 [g97]: https://github.com/anthonyyoo24/justgo/issues/97
 [g99]: https://github.com/anthonyyoo24/justgo/issues/99
-[g103]: https://github.com/anthonyyoo24/justgo/issues/103
 [g107]: https://github.com/anthonyyoo24/justgo/issues/107
 [g110]: https://github.com/anthonyyoo24/justgo/issues/110
 [g111]: https://github.com/anthonyyoo24/justgo/issues/111
