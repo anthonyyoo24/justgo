@@ -260,7 +260,7 @@ export function readDataBackup(
       .object({
         formatVersion: z.union([z.literal(1), z.literal(2)]),
         exportedAt: z.iso.datetime(),
-        account: z.object({ id: z.uuid() }).passthrough(),
+        account: z.object({ id: z.uuid() }).loose(),
         attempts: z.array(attemptSchema).max(JOURNAL_BACKUP_MAX_ENTRIES),
         localChanges: z
           .array(
@@ -269,12 +269,12 @@ export function readDataBackup(
                 status: z.enum(['pending_upload', 'needs_attention']),
                 attempt: attemptSchema,
               })
-              .passthrough(),
+              .loose(),
           )
           .max(JOURNAL_BACKUP_MAX_ENTRIES),
         preferences: preferencesSchema,
       })
-      .passthrough()
+      .loose()
       .safeParse(data);
     if (!previous.success) invalid();
     if (
