@@ -90,6 +90,56 @@ it('aborts guest reads when their collection changes or the caller cancels', asy
   ).rejects.toMatchObject({ code: 'CANCELLED' });
   expect(client.ownsCollection('guest-a')).toBe(false);
 });
+it('posts a guest purchase verification once, without credentials, fenced to its collection', async () => {
+  let finish!: (result: ReturnType<typeof ok>) => void;
+  const fetcher = jest
+    .fn()
+    .mockImplementationOnce(async () => {
+      throw new Error('lost response');
+    })
+    .mockImplementationOnce(
+      () =>
+        new Promise<ReturnType<typeof ok>>((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValue(ok());
+  const { client } = setup(fetcher);
+  client.changeAccount(null);
+  await expect(
+    client.postGuest('/v1/billing/verifications', okSchema, {
+      transactionId: '2000000123',
+    }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(fetcher).not.toHaveBeenCalled();
+  client.changeCollection('guest-a');
+  await expect(
+    client.postGuest('/v1/billing/verifications', okSchema, {
+      transactionId: '2000000123',
+    }),
+  ).rejects.toMatchObject({ code: 'NETWORK' });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  const [url, options] = (fetcher.mock.calls as [string, RequestInit][])[0]!;
+  expect(new URL(url).pathname).toBe('/v1/billing/verifications');
+  expect(options.method).toBe('POST');
+  expect(JSON.parse(String(options.body))).toEqual({
+    transactionId: '2000000123',
+  });
+  expect(new Headers(options.headers).has('authorization')).toBe(false);
+  const moved = client
+    .postGuest('/v1/billing/verifications', okSchema, {
+      transactionId: '2000000123',
+    })
+    .catch((error: unknown) => error);
+  client.changeCollection('guest-b');
+  finish(ok());
+  expect(await moved).toMatchObject({ code: 'CANCELLED' });
+  await expect(
+    client.postGuest('/v1/billing/verifications', okSchema, {
+      transactionId: '2000000123',
+    }),
+  ).resolves.toEqual({ ok: true });
+});
 it('accepts encoded read query parameters only within the API origin and v1 path', async () => {
   const fetcher = jest.fn(async (url: string) => {
     expect(url).toContain('/v1/progress?');
