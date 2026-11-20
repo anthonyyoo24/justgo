@@ -89,7 +89,9 @@ beforeEach(async () => {
   });
   client.changeAccount(userId);
   store = {
-    present: jest.fn(async () => ({ type: 'declined' }) as PaywallOutcome),
+    present: jest.fn<Promise<PaywallOutcome>, ['start_challenge']>(
+      async () => ({ type: 'declined' }) as PaywallOutcome,
+    ),
     latestTransactionId: jest.fn(async () => transaction),
   };
   access = new PaidAccess({
