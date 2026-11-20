@@ -273,6 +273,20 @@ const cases = [
       ].map((filePath) => ['no-restricted-syntax', source, filePath]),
     ),
   ),
+  // scripts/quality/routes.test.mjs finds the installation providers by their literal JSX tag.
+  ...[
+    "import { AppProvider as Root } from '../app-support/providers/AppProvider'; export const Layout = () => <Root />;",
+    "import * as Motion from '../platform/motion/MotionPreferencesProvider'; export const Layout = () => <Motion.MotionPreferencesProvider />;",
+    "export { HapticsPreferencesProvider as Haptics } from '../platform/haptics/HapticsPreferencesProvider';",
+    "import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider'; export default HapticsPreferencesProvider;",
+    "import { AppProvider } from '../app-support/providers/AppProvider'; const Root = AppProvider; export const Layout = () => <Root />;",
+    "import * as Providers from '../app-support/providers/AppProvider'; const { AppProvider: Root } = Providers; export const Layout = () => <Root />;",
+    "import * as Providers from '../app-support/providers/AppProvider'; export const Root = Providers.AppProvider;",
+  ].map((source) => [
+    'no-restricted-syntax',
+    source,
+    'apps/mobile/src/app/_layout.tsx',
+  ]),
   [
     'no-restricted-syntax',
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
@@ -587,6 +601,35 @@ test('Mobile syntax bans exempt tests, which load modules lazily and seed data d
         'apps/mobile/src/features/settings/data/SettingsDataScreen.test.tsx',
       ),
     },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'no-restricted-syntax',
+    ),
+    [],
+  );
+});
+
+test('Mobile syntax bans accept installation providers imported and rendered by their own names', async () => {
+  const [result] = await eslint.lintText(
+    `
+    import { AppProvider, useIdentity } from '../app-support/providers/AppProvider';
+    import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
+    import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
+    export { AppProvider };
+    const Shell = () => { useIdentity(); return null; };
+    export const Layout = () => (
+      <MotionPreferencesProvider>
+        <HapticsPreferencesProvider>
+          <AppProvider>
+            <Shell />
+          </AppProvider>
+        </HapticsPreferencesProvider>
+      </MotionPreferencesProvider>
+    );
+  `,
+    { filePath: path.join(root, 'apps/mobile/src/app/_layout.tsx') },
   );
   assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
   assert.deepEqual(

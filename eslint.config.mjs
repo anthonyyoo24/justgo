@@ -74,6 +74,28 @@ const scopedKey = (path) =>
   `:not([${path}.type='Identifier'], [${path}.callee.name='accountKey'], [${path}.elements.0.argument.callee.name='accountKey'])`;
 const queryKeyMethods =
   '/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/';
+const installationProviders = [
+  'AppProvider',
+  'MotionPreferencesProvider',
+  'HapticsPreferencesProvider',
+];
+const providerNames = `/^(${installationProviders.join('|')})$/`;
+// scripts/quality/routes.test.mjs finds these providers by their literal JSX tag.
+const installationProviderBans = [
+  ...installationProviders.flatMap((name) => [
+    `ImportSpecifier[imported.name='${name}'][local.name!='${name}']`,
+    `ExportSpecifier[local.name='${name}'][exported.name!='${name}']`,
+  ]),
+  `ExportDefaultDeclaration[declaration.name=${providerNames}]`,
+  `MemberExpression[property.name=${providerNames}]`,
+  `JSXMemberExpression[property.name=${providerNames}]`,
+  `ObjectPattern > Property[key.name=${providerNames}]`,
+  `VariableDeclarator[init.name=${providerNames}]`,
+].map((selector) => ({
+  selector,
+  message:
+    'Import AppProvider, MotionPreferencesProvider and HapticsPreferencesProvider by their own names and render each as a plain JSX tag. scripts/quality/routes.test.mjs finds them by that literal tag to keep both preference providers once in the root layout, above AppProvider, so an alias, a namespace, a renamed or default re-export or a variable hides them.',
+}));
 const mobileSyntaxBans = [
   {
     selector: `Property:matches(${namedBy('key', "'queryKey'")})${scopedKey('value')}`,
@@ -100,6 +122,7 @@ const mobileSyntaxBans = [
     message:
       'Load modules with a static import or a literal require(). In development, import() fetches a separate split bundle, so opening saved data can fail on that request.',
   },
+  ...installationProviderBans,
 ];
 const coordinatedDataOperations =
   '/^(clearData|erase|restoreJournal|mergeCompletions|mergeSyncedJournal|observeDataEpoch|withDataMigration)$/';

@@ -15,6 +15,10 @@ import { challengeScale, timerOutline } from '../challenge-design';
 import { ChallengeCard } from '../deck/ChallengeDeck';
 import type { ChallengeStart } from '../controller';
 import { remainingSeconds } from './countdown';
+// Longer than a typical double-tap interval. With reduced motion the active
+// view appears at once, so without it the second tap of a double tap on
+// Accept challenge lands on Completed (#562).
+export const outcomeArmDelayMs = 500;
 export function ActiveChallenge({
   attempt,
   turn = 0,
@@ -40,6 +44,13 @@ export function ActiveChallenge({
   // original color instead of briefly applying the next queue's turn.
   const [cardTurn] = useState(turn);
   const [now, setNow] = useState(Date.now);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setArmed(true), outcomeArmDelayMs);
+    return () => clearTimeout(timer);
+  }, []);
+  const giveUpBlocked = giveUpDisabled || !armed;
+  const completeBlocked = disabled || !armed;
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     const listener = AppState.addEventListener('change', (state) => {
@@ -126,8 +137,8 @@ export function ActiveChallenge({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Give up"
-          accessibilityState={{ disabled: giveUpDisabled }}
-          disabled={giveUpDisabled}
+          accessibilityState={{ disabled: giveUpBlocked }}
+          disabled={giveUpBlocked}
           onPress={() => void finish('given_up')}
           style={[
             styles.outcomeTarget,
@@ -152,8 +163,11 @@ export function ActiveChallenge({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={savingVisible ? 'Saving completion' : 'Completed'}
-          accessibilityState={{ disabled, busy: savingVisible }}
-          disabled={disabled}
+          accessibilityState={{
+            disabled: completeBlocked,
+            busy: savingVisible,
+          }}
+          disabled={completeBlocked}
           onPress={() => void finish('completed')}
           style={[
             styles.outcomeTarget,
