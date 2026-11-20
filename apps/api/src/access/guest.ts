@@ -1,9 +1,8 @@
 import { sql } from 'drizzle-orm';
 import type { AccessResponse, ChallengeCard } from '@justgo/contracts';
-import { hasVerifiedAccess } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
-import { ApiError } from '../http/api-error.js';
 import { setTransactionContext } from '../db/transaction-context.js';
+import { requireVerifiedAccess } from './service.js';
 export type GuestAccessReader = () => Promise<AccessResponse>;
 export const unavailableGuestAccess: GuestAccessReader = async () => ({
   status: 'unpaid',
@@ -19,12 +18,7 @@ export class GuestService {
     return this.read();
   }
   async catalog() {
-    const access = await this.read();
-    if (!hasVerifiedAccess(access))
-      throw new ApiError(
-        access.status === 'unavailable' ? 'UNAVAILABLE' : 'ACCESS_REQUIRED',
-        access.status === 'unavailable' ? 503 : 403,
-      );
+    requireVerifiedAccess(await this.read());
     return this.identity.db.transaction(async (tx) => {
       await setTransactionContext(tx, 'app.guest_catalog', 'on');
       return {

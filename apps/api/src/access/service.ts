@@ -1,11 +1,23 @@
-import { accessResponseSchema, type AccessResponse } from '@justgo/contracts';
+import {
+  accessResponseSchema,
+  hasVerifiedAccess,
+  type AccessResponse,
+} from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
+import { ApiError } from '../http/api-error.js';
 
 // Billing or explicitly configured staging grants supply verified access. Provider calls
 // must happen outside the owner's short transaction. Tests inject isolated fixtures.
 export type EntitlementReader = (
   tx: Parameters<Parameters<IdentityService['withSession']>[1]>[0],
 ) => Promise<AccessResponse>;
+/** A lapsed or unpaid verification needs access, so only a missing or unavailable reader is a 503. */
+export function requireVerifiedAccess(access: AccessResponse | undefined) {
+  if (hasVerifiedAccess(access)) return;
+  throw !access || access.status === 'unavailable'
+    ? new ApiError('UNAVAILABLE', 503)
+    : new ApiError('ACCESS_REQUIRED', 403);
+}
 export class AccessService {
   constructor(
     private readonly identity: IdentityService,
