@@ -1,6 +1,7 @@
 import { apiRequest } from '../request.js';
 import { service, app, account } from './fixtures/identity.js';
 
+import { accessResponseSchema } from '@justgo/contracts';
 import { expect, it } from 'vitest';
 
 import { buildApp } from '../../src/build-app.js';
@@ -76,4 +77,45 @@ it('rejects stale paid access and does not accept request premium flags as autho
     headers: { authorization: `Bearer ${owner.input.sessionToken}` },
   });
   expect(result.json().status).toBe('unpaid');
+});
+
+it('keeps paid access open until its Apple expiry and drops the paid source once it lapses', async () => {
+  const owner = await account();
+  const headers = { authorization: `Bearer ${owner.input.sessionToken}` };
+  let expiresIn = 86_400_000;
+  const paid = (source: 'subscription' | 'guest_subscription') => ({
+    status: 'verified' as const,
+    source,
+    productId: 'com.anthonyyoo.justgo.pro.annual',
+    checkedAt: new Date(Date.now() - 3_600_000).toISOString(),
+    expiresAt: new Date(Date.now() + expiresIn).toISOString(),
+  });
+  const api = buildApp({
+    logger: false,
+    checkDatabase: async () => {},
+    identity: service,
+    entitlementReader: async () => paid('subscription'),
+    guestAccessReader: async () => paid('guest_subscription'),
+  });
+  const gated = [
+    '/v1/challenges',
+    '/v1/progress/summary?timeZone=UTC',
+    '/v1/guest/challenges',
+  ];
+  expect(
+    (await apiRequest(api, { url: '/v1/access', headers })).json(),
+  ).toMatchObject({
+    status: 'verified',
+    source: 'subscription',
+    productId: 'com.anthonyyoo.justgo.pro.annual',
+  });
+  for (const url of gated)
+    expect((await apiRequest(api, { url, headers })).statusCode).toBe(200);
+
+  expiresIn = -1;
+  const lapsed = (await apiRequest(api, { url: '/v1/access', headers })).json();
+  expect(lapsed).toEqual({ status: 'unpaid', checkedAt: expect.any(String) });
+  expect(accessResponseSchema.safeParse(lapsed).success).toBe(true);
+  for (const url of gated)
+    expect((await apiRequest(api, { url, headers })).statusCode).toBe(403);
 });

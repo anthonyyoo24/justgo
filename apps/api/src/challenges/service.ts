@@ -1,8 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { hasVerifiedAccess, type ChallengeCard } from '@justgo/contracts';
+import type { ChallengeCard } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
-import { ApiError } from '../http/api-error.js';
-import type { EntitlementReader } from '../access/service.js';
+import {
+  requireVerifiedAccess,
+  type EntitlementReader,
+} from '../access/service.js';
 export class ChallengeService {
   constructor(
     private readonly identity: IdentityService,
@@ -14,12 +16,7 @@ export class ChallengeService {
    */
   catalog(token: string) {
     return this.identity.withSession(token, async (tx) => {
-      const access = await this.entitlement?.(tx);
-      if (!hasVerifiedAccess(access))
-        throw new ApiError(
-          access?.status === 'unpaid' ? 'ACCESS_REQUIRED' : 'UNAVAILABLE',
-          access?.status === 'unpaid' ? 403 : 503,
-        );
+      requireVerifiedAccess(await this.entitlement?.(tx));
       return {
         cards: [
           ...(
