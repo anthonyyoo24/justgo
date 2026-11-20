@@ -23,6 +23,12 @@ overrides:
   minimatch: 11.0.5
   test-exclude@6>glob: 7.2.3
   test-exclude@6>minimatch: 3.1.5
+  # drizzle-kit 0.31.11, the latest stable release, still depends on the
+  # deprecated @esbuild-kit/esm-loader, whose core-utils pins esbuild ~0.18.20
+  # (GHSA-67mh-4wv8-2f99, Dependabot alert #5). Its bundle never loads that
+  # loader, and only drizzle-kit 1.0 drops it, so lift that esbuild to the one
+  # drizzle-kit itself uses. Remove this when drizzle-kit no longer needs it.
+  '@esbuild-kit/core-utils>esbuild': 0.25.12
 
 minimumReleaseAgeExclude:
   - '@expo/cli@58.1.21'
