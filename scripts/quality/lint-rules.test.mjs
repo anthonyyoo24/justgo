@@ -218,6 +218,15 @@ const cases = [
       `queries.${method}(['progress']);`,
       `queries['${method}'](['progress']);`,
       `queries[\`${method}\`](['progress']);`,
+      // Reading the method without a direct call hides its key.
+      `queries.${method}.call(queries, ['progress']);`,
+      `queries['${method}'].apply(queries, [['progress']]);`,
+      `export const read = queries.${method}.bind(queries);`,
+      `Reflect.apply(queries.${method}, queries, [['progress']]);`,
+      `Reflect.get(queries, '${method}');`,
+      `Reflect.get(queries, \`${method}\`);`,
+      `const { ${method} } = queries;`,
+      `const { '${method}': read } = queries;`,
     ]),
   ].map((source) => ['no-restricted-syntax', source]),
   // The route and feature block replaces the mobile syntax bans unless it repeats them.
@@ -230,6 +239,7 @@ const cases = [
       "import { useQuery } from '@tanstack/react-query'; export const useRead = () => useQuery({ queryKey: ['progress'], queryFn: () => 1 });",
       "import type { QueryClient } from '@tanstack/react-query'; export const seed = (queries: QueryClient) => queries.setQueryData(['progress'], 1);",
       "export const open = () => import('./native-store');",
+      "import type { QueryClient } from '@tanstack/react-query'; export const read = (queries: QueryClient) => queries.getQueryData.call(queries, ['progress']);",
     ].map((source) => ['no-restricted-syntax', source, filePath]),
   ),
   ...[
@@ -533,8 +543,11 @@ test('Mobile syntax bans accept scoped query keys, type-only imports and coordin
       queries.setQueryData(accountKey(owner, 'progress', 'day'), 1);
       queries.setQueryData([...accountKey(owner, 'progress'), 'week'], 1);
       useQuery({ queryKey: [...accountKey(owner, 'progress'), 'month'], queryFn: () => 1 });
+      queries.getQueryState?.(accountKey(owner, 'progress', 'year'));
+      queries['setQueryDefaults'](accountKey(owner, 'access'), {});
       return useQuery({ queryKey: accountKey(owner, 'access'), queryFn: () => queries.getQueryData(queryKey) });
     };
+    export type ReadKey = QueryClient['getQueryData'];
     export const wipe = (activity: ActivityRuntime) => activity.deleteAllData();
   `,
     {

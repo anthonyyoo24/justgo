@@ -72,6 +72,8 @@ const namedBy = (path, pattern) =>
   ].join(', ');
 const scopedKey = (path) =>
   `:not([${path}.type='Identifier'], [${path}.callee.name='accountKey'], [${path}.elements.0.argument.callee.name='accountKey'])`;
+const queryKeyMethods =
+  '/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/';
 const mobileSyntaxBans = [
   {
     selector: `Property:matches(${namedBy('key', "'queryKey'")})${scopedKey('value')}`,
@@ -80,10 +82,19 @@ const mobileSyntaxBans = [
   {
     selector: `CallExpression:matches(${namedBy(
       'callee.property',
-      '/^(getQueryData|getQueryDefaults|getQueryState|setQueryData|setQueryDefaults)$/',
+      queryKeyMethods,
     )})${scopedKey('arguments.0')}`,
     message: accountKeyFix,
   },
+  // A key method read without a direct call hides its key from the check above.
+  ...[
+    `MemberExpression:matches(${namedBy('property', queryKeyMethods)}):not(CallExpression > MemberExpression.callee)`,
+    `ObjectPattern > Property:matches(${namedBy('key', queryKeyMethods)})`,
+    `CallExpression[callee.object.name='Reflect'] > :matches(Literal[value=${queryKeyMethods}], TemplateLiteral[expressions.length=0][quasis.0.value.cooked=${queryKeyMethods}])`,
+  ].map((selector) => ({
+    selector,
+    message: `Call a QueryClient key method directly, as queries.setQueryData(accountKey(owner, ...), value), so this check can read its key. .call, .apply, .bind, Reflect and destructuring hide the key. ${accountKeyFix}`,
+  })),
   {
     selector: 'ImportExpression',
     message:
