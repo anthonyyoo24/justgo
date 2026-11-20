@@ -62,6 +62,30 @@ it.each(['Give up', 'Completed'] as const)(
   },
 );
 
+// #562: with reduced motion the active view appears at once, so the second tap
+// of a double tap on Accept challenge landed on Completed and saved a rep.
+it.failing.each(['Give up', 'Completed'] as const)(
+  'ignores a %s press carried over from the accept gesture, then accepts one after the arm delay (#562)',
+  async (name) => {
+    const finish = jest.fn(async () => {});
+    const screen = await render(
+      <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
+    );
+    const button = screen.getByRole('button', { name });
+    expect(button).toBeDisabled();
+    for (const view of button.queryAll((node) => node.type === 'View')) {
+      expect(StyleSheet.flatten(view.props.style)?.opacity ?? 1).toBe(1);
+    }
+    await fireEvent.press(button);
+    await act(() => jest.advanceTimersByTime(400));
+    await fireEvent.press(screen.getByRole('button', { name }));
+    expect(finish).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTime(100));
+    expect(screen.getByRole('button', { name })).toBeEnabled();
+    await fireEvent.press(screen.getByRole('button', { name }));
+    expect(finish).toHaveBeenCalledTimes(1);
+  },
+);
 it('blocks both outcomes during a save without dimming either button', async () => {
   const finish = jest.fn(async () => {});
   const screen = await render(
