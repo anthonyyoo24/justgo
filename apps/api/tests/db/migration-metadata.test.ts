@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { generateDrizzleJson } from 'drizzle-kit/api';
 import { describe, expect, it } from 'vitest';
-import * as schema from '../../src/db/schema.js';
+import * as schema from '../../src/db/schema/index.js';
 
 const root = new URL('../../drizzle/', import.meta.url);
 describe('reviewed migration history', () => {

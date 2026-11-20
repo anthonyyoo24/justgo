@@ -124,6 +124,8 @@ test('privacy code, private writing and the legal pages are sensitive', () => {
     'apps/api/src/http/outbound-fetch.ts',
     'apps/api/src/http/server-error-reporter.ts',
     'apps/api/src/db/owner-transaction.ts',
+    'apps/api/src/db/schema/index.ts',
+    'apps/api/src/db/schema/billing.ts',
     'apps/mobile/src/app-support/providers/AppProvider.tsx',
     'apps/mobile/src/app-support/diagnostics/event.ts',
     'apps/mobile/src/data/activity/model.ts',
