@@ -167,6 +167,8 @@ afterAll(async () => {
     );
     for (const owner of owners) {
       for (const table of [
+        // Billing rows reference the user, and the runtime cannot delete them.
+        'app_store_subscriptions',
         'journal_versions',
         'managed_auth_deletions',
         'attempt_patch_receipts',
@@ -920,50 +922,79 @@ describe('signed-in immutable journal versions and deletion', () => {
     const other = await request(second.sessionToken, '/sessions/current');
     expect(other.statusCode, other.body).toBe(200);
   });
-  it('keeps the access grant for reads and uploads through delete-all', async () => {
-    const a = await signIn();
-    const granted = buildApp({
-      identity,
-      logger: false,
-      checkDatabase: async () => {},
-      ...createFreeAccess(),
-    });
-    const access = () =>
-      apiRequest(granted, {
-        url: '/v1/access',
-        headers: { authorization: `Bearer ${a.token}` },
+  it.each([
+    ['free access', false],
+    ['a verified subscription', true],
+  ])(
+    'keeps %s for reads and uploads through delete-all',
+    async (_name, paid) => {
+      const a = await signIn();
+      const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
+      if (paid)
+        await admin.query(
+          `insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,latest_transaction_id) values ($1,$2,'justgo.annual','Sandbox',$3,$1)`,
+          [
+            String(6_000_000_000_000_000 + Math.floor(Math.random() * 1e12)),
+            a.session.userId,
+            expiresAt,
+          ],
+        );
+      const granted = buildApp({
+        identity,
+        logger: false,
+        checkDatabase: async () => {},
+        ...createFreeAccess(),
+        ...(paid
+          ? { billing: () => Promise.reject(new Error('Apple is not called')) }
+          : {}),
       });
-    const verifiedAccess = {
-      status: 'verified',
-      source: 'free_beta',
-      checkedAt: expect.any(String),
-      expiresAt: expect.any(String),
-    };
-    expect((await access()).json()).toEqual(verifiedAccess);
-    expect((await restore(a.token, [await completion()])).json().added).toBe(1);
-    const deleted = await request(a.token, '/data', 'DELETE', {
-      expectedEpoch: 0,
-    });
-    expect(deleted.statusCode, deleted.body).toBe(200);
-    const after = await access();
-    expect(after.statusCode, after.body).toBe(200);
-    expect(after.json()).toEqual(verifiedAccess);
-    const entry = await completion({ startedAt: new Date().toISOString() });
-    const upload = await apiRequest(granted, {
-      method: 'POST',
-      url: '/v1/attempts',
-      headers: { authorization: `Bearer ${a.token}` },
-      payload: {
-        id: entry.id,
-        challengeId: entry.challengeId,
-        venue: entry.venue,
-        startedAt: entry.startedAt,
-        startTimeZone: entry.startTimeZone,
-        expectedEpoch: 1,
-      },
-    });
-    expect(upload.statusCode, upload.body).toBe(201);
-  });
+      const access = () =>
+        apiRequest(granted, {
+          url: '/v1/access',
+          headers: { authorization: `Bearer ${a.token}` },
+        });
+      const verifiedAccess = paid
+        ? {
+            status: 'verified',
+            source: 'subscription',
+            productId: 'justgo.annual',
+            checkedAt: expect.any(String),
+            expiresAt,
+          }
+        : {
+            status: 'verified',
+            source: 'free_beta',
+            checkedAt: expect.any(String),
+            expiresAt: expect.any(String),
+          };
+      expect((await access()).json()).toEqual(verifiedAccess);
+      expect((await restore(a.token, [await completion()])).json().added).toBe(
+        1,
+      );
+      const deleted = await request(a.token, '/data', 'DELETE', {
+        expectedEpoch: 0,
+      });
+      expect(deleted.statusCode, deleted.body).toBe(200);
+      const after = await access();
+      expect(after.statusCode, after.body).toBe(200);
+      expect(after.json()).toEqual(verifiedAccess);
+      const entry = await completion({ startedAt: new Date().toISOString() });
+      const upload = await apiRequest(granted, {
+        method: 'POST',
+        url: '/v1/attempts',
+        headers: { authorization: `Bearer ${a.token}` },
+        payload: {
+          id: entry.id,
+          challengeId: entry.challengeId,
+          venue: entry.venue,
+          startedAt: entry.startedAt,
+          startTimeZone: entry.startTimeZone,
+          expectedEpoch: 1,
+        },
+      });
+      expect(upload.statusCode, upload.body).toBe(201);
+    },
+  );
   it('rejects any write that lowers a data epoch, from the API role or a migration, and keeps advancing it', async () => {
     const a = await signIn(),
       owner = a.session.userId;

@@ -87,6 +87,22 @@ unless every App Store Server API setting is present: `APPLE_IAP_KEY_ID`,
 values in the function secrets only. Tests use a self-made certificate chain
 and a stub store from `apps/api/scripts/apple-test-store.ts`, never Apple.
 
+## Reading access
+
+With `BILLING_ENABLED` on, `apps/api/src/access/paid-access.ts` answers access
+from the saved rows only, whatever readers the runtime passes in.
+
+- `/v1/access` is `verified` with the row's product and expiry while the bearer
+  owns an unrevoked row that has not expired, and `unpaid` otherwise. Only the
+  bearer names the owner.
+- An upload is eligible when its completion started before the row's expiry, or
+  its revocation if earlier, so a completion made while paid still uploads after
+  the subscription ends. A completion started later is refused.
+- Rows belong to the owner, not to a data epoch, so delete-all keeps access.
+- A guest request carries no transaction Apple confirmed, so `/v1/guest/access`
+  answers `unpaid` and `/v1/guest/challenges` answers 403. A guest learns of its
+  subscription only from `POST /v1/billing/verifications`.
+
 ## Owner tasks still open
 
 - Complete banking, tax and the paid-app agreement before sales.
