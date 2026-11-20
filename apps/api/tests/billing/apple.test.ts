@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   appleRootFingerprints,
+  createAppleSubscriptions,
   createAppleTransactions,
   verifySignedPayload,
 } from '../../src/billing/apple.js';
@@ -79,6 +80,7 @@ describe('Apple transaction verification', () => {
       expiresAt: new Date(now + 3_600_000),
       revokedAt: null,
       appAccountToken: 'a1b2c3d4-0000-4000-8000-000000000001',
+      signedAt: expect.any(Date),
     });
     expect(requests).toHaveLength(1);
     const [request] = requests;
@@ -311,5 +313,102 @@ describe('Apple transaction verification', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(JSON.stringify(error)).not.toContain('PRIVATE');
     expect(String(error)).not.toMatch(/eyJ|app\.other/);
+  });
+});
+
+describe('Apple subscription status', () => {
+  const original = '2000000000000001';
+  function statuses(latest?: Record<string, unknown>, forge = false) {
+    const store = createTestStore(chain, connect.publicKey, new Map(), {
+      forge,
+      subscriptions: new Map(latest ? [[original, latest]] : []),
+    });
+    return {
+      ...store,
+      read: createAppleSubscriptions(config(), {
+        transport: store.transport,
+        rootFingerprints: [chain.rootFingerprint],
+      }),
+    };
+  }
+
+  it("reads Get All Subscription Statuses and returns Apple's latest transaction, renewal or refund", async () => {
+    const now = Date.now();
+    const renewal = statuses(
+      transactionPayload({
+        transactionId: '2000000000000007',
+        expiresDate: now + 60 * 86_400_000,
+      }),
+    );
+    await expect(renewal.read(original)).resolves.toMatchObject({
+      transactionId: '2000000000000007',
+      originalTransactionId: original,
+      expiresAt: new Date(now + 60 * 86_400_000),
+      revokedAt: null,
+    });
+    expect(renewal.requests.map(({ url }) => url)).toEqual([
+      `https://api.storekit-sandbox.itunes.apple.com/inApps/v1/subscriptions/${original}`,
+    ]);
+    const refund = statuses(transactionPayload({ revocationDate: now - 1000 }));
+    await expect(refund.read(original)).resolves.toMatchObject({
+      revokedAt: new Date(now - 1000),
+    });
+  });
+
+  it('answers NOT_FOUND for an ID Apple does not know and refuses one not in Apple digits before sending', async () => {
+    await expect(statuses().read(original)).rejects.toEqual(
+      failure('NOT_FOUND', 404),
+    );
+    const transport = vi.fn<typeof fetch>();
+    const read = createAppleSubscriptions(config(), { transport });
+    for (const id of ['', 'abc', '1/../2', '1'.repeat(33)])
+      await expect(read(id)).rejects.toEqual(failure('INVALID_REQUEST', 400));
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it('refuses a signed transaction for another subscription, app or environment', async () => {
+    for (const overrides of [
+      { originalTransactionId: '2000000000000009' },
+      { bundleId: 'app.other' },
+      { environment: 'Production' },
+    ])
+      await expect(
+        statuses(transactionPayload(overrides)).read(original),
+      ).rejects.toEqual(failure('INVALID_REQUEST', 400));
+  });
+
+  it('refuses an answer that lists no transaction for the asked subscription', async () => {
+    const transport = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        data: [
+          {
+            lastTransactions: [
+              {
+                originalTransactionId: '2000000000000009',
+                signedTransactionInfo: await chain.sign(transactionPayload()),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await expect(
+      createAppleSubscriptions(config(), {
+        transport,
+        rootFingerprints: [chain.rootFingerprint],
+      })(original),
+    ).rejects.toEqual(failure('INVALID_REQUEST', 400));
+  });
+
+  it('keeps a forged signature and an Apple outage retryable', async () => {
+    await expect(
+      statuses(transactionPayload(), true).read(original),
+    ).rejects.toThrow('Apple signature rejected: SIGNATURE');
+    const down = vi.fn<typeof fetch>(
+      async () => new Response('{}', { status: 503 }),
+    );
+    await expect(
+      createAppleSubscriptions(config(), { transport: down })(original),
+    ).rejects.toEqual(failure('UNAVAILABLE', 503));
   });
 });

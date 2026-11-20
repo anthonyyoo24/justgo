@@ -21,8 +21,13 @@ import {
   managedOpenApiDocument,
   withBilling,
 } from '@justgo/contracts/openapi';
-import type { AppleTransactionReader } from './billing/apple.js';
+import type {
+  AppleSubscriptionReader,
+  AppleTransactionReader,
+} from './billing/apple.js';
 import { billingRoutes } from './billing/verify.js';
+import { billingEventRoutes } from './billing/webhook.js';
+import { billingRepairRoutes } from './billing/repair.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
 import { createPaidAccess } from './access/paid-access.js';
 import { GuestService, type GuestAccessReader } from './access/guest.js';
@@ -51,6 +56,12 @@ export function buildApp(
     legacyIdentityEnabled?: boolean;
     /** Set only when BILLING_ENABLED is on. */
     billing?: AppleTransactionReader;
+    /** Superwall events and the scheduled repair, also only with BILLING_ENABLED. */
+    billingEvents?: {
+      subscriptions: AppleSubscriptionReader;
+      webhookSecret: string;
+      repairSecret: string;
+    };
   },
 ) {
   const app = createHttpApp(options);
@@ -75,7 +86,8 @@ export function buildApp(
     options.legacyIdentityEnabled === false
       ? managedOpenApiDocument
       : openApiDocument;
-  const served = billing ? withBilling(document) : document;
+  const events = billing ? options.billingEvents : undefined;
+  const served = billing ? withBilling(document, Boolean(events)) : document;
   app.get('/openapi.json', (context) => context.json(served));
   if (identity) {
     const guest = new GuestService(identity, access.guestAccessReader);
@@ -88,7 +100,13 @@ export function buildApp(
     mount('/v1/auth', (scope) => managedIdentityRoutes(scope, identity));
     mount('/v1', (scope) => dataSyncRoutes(scope, identity));
     if (billing)
-      mount('/v1/billing', (scope) => billingRoutes(scope, identity, billing));
+      mount('/v1/billing', (scope) => {
+        billingRoutes(scope, identity, billing);
+        if (events) {
+          billingEventRoutes(scope, identity, events);
+          billingRepairRoutes(scope, identity, events);
+        }
+      });
   }
   if (options.developmentLegalDrafts && process.env.NODE_ENV !== 'production')
     developmentLegalDraftRoutes(app);

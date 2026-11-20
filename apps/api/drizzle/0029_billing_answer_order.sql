@@ -1,0 +1,1 @@
+ALTER TABLE "justgo"."app_store_subscriptions" ADD COLUMN "signed_at" timestamp with time zone;

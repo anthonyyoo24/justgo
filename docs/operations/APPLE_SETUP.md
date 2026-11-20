@@ -43,9 +43,11 @@ signing keys, banking or tax values in this repository.
 ## What the API stores about purchases
 
 Migration `0027_billing_tables` adds two tables in the private `justgo`
-schema. `POST /v1/billing/verifications` writes `app_store_subscriptions`, and
-no route reads `billing_events` yet. They hold no receipt, signed transaction,
-key or secret.
+schema, `0028_billing_confirmation` adds the columns the webhook and
+repair use, and `0029_billing_answer_order` adds the signing time that orders
+Apple's answers. `POST /v1/billing/verifications` writes `app_store_subscriptions`,
+and the Superwall webhook writes `billing_events`. They hold no receipt, signed
+transaction, payload, key or secret.
 
 - `app_store_subscriptions` has one row per Apple original transaction ID. It
   holds the owner's JustGO user ID (empty for a guest purchase), the product ID,
@@ -57,9 +59,20 @@ key or secret.
   row. Delete-all and account deletion keep the row bound to its owner, so a
   deleted account's purchase never passes to someone else. The recovery ledger
   replays the table, so a restore keeps owner bindings and refunds.
-- `billing_events` holds each Superwall event ID and when it arrived, so a
-  redelivered event does nothing. A restore may lose recent IDs, and a
-  redelivery then confirms the purchase with Apple again.
+  `checked_at` records when the webhook or repair last stored Apple's answer.
+- The row keeps the newest Apple answer, whatever order answers commit in. An
+  answer replaces the stored one only when its period ends later, or when it
+  covers the same period and Apple signed it later (`signed_at`, from the
+  transaction's `signedDate`). Apple signs each answer when it gives it, so an
+  answer read before a refund and saved after it changes nothing, and a newer
+  answer that shows a refund reversed restores access. The expiry never moves
+  back, because Apple also signs an old transaction afresh when asked about it.
+- `billing_events` holds each Superwall event ID, when it arrived, the original
+  transaction ID it names and when Apple's answer for it was stored, so a
+  redelivered event does nothing. The API may mark an event confirmed and change
+  nothing else about it, and it can delete no event. Rows are never purged yet.
+  A restore may lose recent IDs, and a redelivery then confirms the purchase
+  with Apple again.
 
 ## Verifying a purchase
 
@@ -102,6 +115,50 @@ from the saved rows only, whatever readers the runtime passes in.
 - A guest request carries no transaction Apple confirmed, so `/v1/guest/access`
   answers `unpaid` and `/v1/guest/challenges` answers 403. A guest learns of its
   subscription only from `POST /v1/billing/verifications`.
+
+## Superwall events and repair
+
+Superwall sends its webhooks through Svix to
+`POST /v1/billing/superwall-events`. The API checks the `svix-id`,
+`svix-timestamp` and `svix-signature` headers against the endpoint secret
+before it reads the body, and refuses a send time more than five minutes off.
+It then saves the event ID once. When the event names an App Store original
+transaction ID, the API asks Apple's Get All Subscription Statuses for it with
+no database transaction open and stores Apple's latest signed transaction. The
+payload never grants or ends access: its type, expiry and price are ignored,
+and Apple's answer wins whatever order events arrive in. A later expiry still
+wins, so a stale answer never shortens access. Apple's answer reaches only a
+row a purchase verification already stored. It never creates a row and never
+binds or moves an owner, which the `app_store_subscriptions_confirmed_owner_fixed`
+trigger enforces.
+
+- A duplicate event ID answers 200 with `duplicate` and asks Apple nothing.
+- An unsigned, stale or wrongly signed event answers 400 and saves nothing.
+- When Apple or the database is down the route answers 503, the event stays
+  unconfirmed, and Superwall's retry or the repair finishes it.
+- An event Apple refuses (unknown or not this app's), and an event that names
+  no App Store purchase, is closed and answers `ignored`.
+
+`POST /v1/billing/repair` re-reads from Apple each subscription whose expiry
+passed since its last check and each subscription an unconfirmed event names,
+in batches of 25 and at most 100 stored answers or 20 seconds a run. Each row
+leaves the due list in the same transaction that stores Apple's answer, so a
+run that dies resumes with what is still due and repeats nothing it finished.
+It answers `{ checked, failed, remaining }`, and 503 when Apple is down. The
+route takes the repair secret as a bearer and nothing else.
+
+The trigger is a Supabase Cron job (`pg_cron` with `pg_net`) that posts to the
+repair route about every 15 minutes, reading the bearer from Supabase Vault. It
+is a scheduled request, not an always-on worker, and nothing runs while billing
+is off. The hosted cron job and the Superwall endpoint are not set up yet.
+
+Both routes exist only when `BILLING_ENABLED` is `true`, and the API then also
+refuses to start without `SUPERWALL_WEBHOOK_SECRET` (the Svix `whsec_` endpoint
+secret from Superwall) and `BILLING_REPAIR_SECRET` (32 or more printable
+characters the cron job sends). Keep their values in the function secrets and
+Vault only. Tests sign with self-made secrets from
+`apps/api/tests/billing/svix.ts` and answer from the stub store, never
+Superwall or Apple.
 
 ## Owner tasks still open
 

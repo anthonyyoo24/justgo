@@ -243,16 +243,28 @@ export type StoreRequest = {
   header: Record<string, unknown>;
 };
 /**
- * Get Transaction Info at the sandbox origin. It answers only a bearer the
- * connect key signed, and 404 for a transaction it does not hold.
+ * Get Transaction Info and Get All Subscription Statuses at the sandbox
+ * origin. It answers only a bearer the connect key signed, and 404 for an ID
+ * it does not hold. `subscriptions` maps an original transaction ID to its
+ * latest transaction, which a test changes to move Apple's answer. Like Apple,
+ * it signs each answer when it gives it, so a later answer always carries a
+ * later `signedDate`.
  */
 export function createTestStore(
   chain: TestChain,
   publicKey: CryptoKey,
   transactions: Map<string, Record<string, unknown>>,
-  options: { forge?: boolean } = {},
+  options: {
+    forge?: boolean;
+    subscriptions?: Map<string, Record<string, unknown>>;
+  } = {},
 ) {
   const requests: StoreRequest[] = [];
+  let lastSigned = 0;
+  const answer = (payload: Record<string, unknown>) => {
+    lastSigned = Math.max(Date.now(), lastSigned + 1);
+    return chain.sign({ ...payload, signedDate: lastSigned }, options.forge);
+  };
   const transport: typeof fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
     const authorization = new Headers(init?.headers).get('authorization') ?? '';
@@ -272,6 +284,31 @@ export function createTestStore(
       header: JSON.parse(Buffer.from(header, 'base64url').toString('utf8')),
       claims: JSON.parse(Buffer.from(claims, 'base64url').toString('utf8')),
     });
+    const statuses =
+      /^https:\/\/api\.storekit-sandbox\.itunes\.apple\.com\/inApps\/v1\/subscriptions\/(\d+)$/.exec(
+        url,
+      );
+    if (statuses?.[1]) {
+      const latest = options.subscriptions?.get(statuses[1]);
+      if (!latest)
+        return new Response('{"errorCode":4040010}', { status: 404 });
+      return Response.json({
+        environment: testBilling.environment,
+        bundleId: testBilling.bundleId,
+        data: [
+          {
+            subscriptionGroupIdentifier: '21000000',
+            lastTransactions: [
+              {
+                originalTransactionId: statuses[1],
+                status: 1,
+                signedTransactionInfo: await answer(latest),
+              },
+            ],
+          },
+        ],
+      });
+    }
     const match =
       /^https:\/\/api\.storekit-sandbox\.itunes\.apple\.com\/inApps\/v1\/transactions\/(\d+)$/.exec(
         url,
@@ -279,7 +316,7 @@ export function createTestStore(
     const payload = match?.[1] ? transactions.get(match[1]) : undefined;
     if (!payload) return new Response('{"errorCode":4040010}', { status: 404 });
     return Response.json({
-      signedTransactionInfo: await chain.sign(payload, options.forge),
+      signedTransactionInfo: await answer(payload),
     });
   };
   return { transport, requests };

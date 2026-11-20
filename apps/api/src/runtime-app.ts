@@ -13,7 +13,10 @@ import { IdentityService } from './identity/service.js';
 import { createFreeAccess } from './access/free-access.js';
 import { createManagedAuthVerifier } from './identity/managed-verifier.js';
 import { createManagedAuthDeletion } from './identity/managed-deletion.js';
-import { createAppleTransactions } from './billing/apple.js';
+import {
+  createAppleSubscriptions,
+  createAppleTransactions,
+} from './billing/apple.js';
 
 export function buildRuntimeApp(
   config: Config,
@@ -44,6 +47,14 @@ export function buildRuntimeApp(
     ...createFreeAccess(),
     ...(config.APPLE_BILLING
       ? { billing: createAppleTransactions(config.APPLE_BILLING) }
+      : {}),
+    ...(config.APPLE_BILLING && config.BILLING_EVENTS
+      ? {
+          billingEvents: {
+            subscriptions: createAppleSubscriptions(config.APPLE_BILLING),
+            ...config.BILLING_EVENTS,
+          },
+        }
       : {}),
     ...(database
       ? {

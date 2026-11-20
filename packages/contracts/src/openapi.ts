@@ -5,7 +5,12 @@ import { identityErrorSchema, type IdentityErrorCode } from './errors.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
-import { billingVerificationRequestSchema } from './billing.ts';
+import {
+  billingEventResponseSchema,
+  billingRepairResponseSchema,
+  billingVerificationRequestSchema,
+  superwallEventSchema,
+} from './billing.ts';
 import { completionExportPageSchema } from './data-export.ts';
 import * as managed from './managed-auth.ts';
 import * as sync from './data-sync.ts';
@@ -385,12 +390,75 @@ export const managedOpenApiDocument = {
   },
 };
 
-/** The billing route exists only while BILLING_ENABLED is on. */
-export function withBilling<T extends { paths: object }>(document: T) {
+const svixHeader = (name: string, description: string) => ({
+  name,
+  in: 'header',
+  required: true,
+  description,
+  schema: { type: 'string', maxLength: 4096 },
+});
+/** Superwall delivery and the scheduled repair. Neither one takes a device session. */
+const billingEventPaths = {
+  '/v1/billing/superwall-events': {
+    post: {
+      ...withParameters(
+        operation(billingEventResponseSchema, superwallEventSchema, false),
+        [
+          svixHeader('svix-id', 'Svix message ID, the same on each retry'),
+          svixHeader('svix-timestamp', 'Svix send time in Unix seconds'),
+          svixHeader(
+            'svix-signature',
+            'Space-separated v1 HMAC-SHA256 signatures',
+          ),
+        ],
+      ),
+      description:
+        'Receive a Superwall webhook. The Svix signature and a five-minute timestamp window are checked before the body is parsed, and each message ID is handled once. The event only names a subscription: the server asks Apple for its current state and stores that, so the event never grants access and a late or out-of-order event changes nothing Apple does not confirm. 400 INVALID_REQUEST for a missing, stale or wrong signature. 503 UNAVAILABLE while Apple cannot be reached, so Superwall retries.',
+    },
+  },
+  '/v1/billing/repair': {
+    post: {
+      ...operation(billingRepairResponseSchema),
+      security: [{ billingRepair: [] }],
+      responses: {
+        ...operation(billingRepairResponseSchema).responses,
+        '401': failure('UNAUTHORIZED', 'missing or wrong repair secret'),
+      },
+      description:
+        'Scheduled repair. Re-reads from Apple a bounded batch of subscriptions whose expiry passed since their last check and of events whose confirmation failed, committing each one as it goes. remaining is true when more are due.',
+    },
+  },
+};
+
+/** The billing routes exist only while BILLING_ENABLED is on. */
+export function withBilling<T extends { paths: object; components: object }>(
+  document: T,
+  events = true,
+) {
   return {
     ...document,
+    ...(events
+      ? {
+          components: {
+            ...document.components,
+            securitySchemes: {
+              ...(
+                document.components as {
+                  securitySchemes?: Record<string, unknown>;
+                }
+              ).securitySchemes,
+              billingRepair: {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'Repair job secret',
+              },
+            },
+          },
+        }
+      : {}),
     paths: {
       ...document.paths,
+      ...(events ? billingEventPaths : {}),
       '/v1/billing/verifications': {
         post: {
           ...operation(accessResponseSchema, billingVerificationRequestSchema),
