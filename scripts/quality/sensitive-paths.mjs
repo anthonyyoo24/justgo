@@ -16,7 +16,7 @@ export const sensitivePaths = [
   'apps/api/src/http/outbound-fetch.ts',
   'apps/api/src/http/sentry-configuration.ts',
   'apps/api/src/http/server-error-reporter.ts',
-  'apps/api/src/db/schema.ts',
+  'apps/api/src/db/schema/',
   'apps/api/src/db/managed-session-check.ts',
   'apps/api/src/db/owner-transaction.ts',
   'apps/api/src/db/transaction-context.ts',

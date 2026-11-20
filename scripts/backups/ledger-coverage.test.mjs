@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { is } from 'drizzle-orm';
 import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
-import * as schema from '../../apps/api/src/db/schema.ts';
+import * as schema from '../../apps/api/src/db/schema/index.ts';
 import {
   dumpOnlyLedgerColumns,
   dumpOnlyTables,
@@ -25,7 +25,10 @@ test('every schema table is either a ledger table or dump-only', () => {
       `Put justgo.${name} in exactly one of ledgerTables and dumpOnlyTables in scripts/backups/snapshot.mjs. A restore replays only ledgerTables over the older dump, so a table that records a deletion, revocation or tombstone is a ledger table.`,
     );
   for (const name of [...Object.keys(ledgerTables), ...dumpOnlyTables])
-    assert.ok(tables.has(name), `${name} is not a table in schema.ts`);
+    assert.ok(
+      tables.has(name),
+      `${name} is not a table in apps/api/src/db/schema`,
+    );
 });
 
 test('every column of a ledger table is either replayed or dump-only', () => {
