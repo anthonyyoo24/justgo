@@ -72,11 +72,14 @@ export class SuperwallBilling {
         if (!state.isConfigured) return;
         const owner = this.owner;
         if (owner === identifiedUser(state.user)) continue;
-        if (owner) await state.identify(owner);
-        else await state.reset();
+        try {
+          if (owner) await state.identify(owner);
+          else await state.reset();
+        } catch {
+          // Billing never blocks the app. An owner change queued during this
+          // pass still runs, and otherwise the next change or launch retries.
+        }
       } while (this.again);
-    } catch {
-      // Billing never blocks the app. The next owner change or launch retries.
     } finally {
       this.running = false;
     }
