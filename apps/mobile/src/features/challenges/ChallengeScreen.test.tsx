@@ -46,6 +46,14 @@ let mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
 const mockCard = { ...card, venue: 'cafe' as const };
 const finishedAttempt = { ...attempt(), venue: 'cafe' as const };
 let mockSnapshot: ChallengeSnapshot;
+const mockIdlePaywall = { status: 'idle' } as const;
+let mockPaywall: {
+  subscribe: () => () => void;
+  getSnapshot: () => { status: 'idle' };
+  open: jest.Mock<Promise<boolean>, []>;
+  retry: jest.Mock;
+  dismiss: jest.Mock;
+} | null = null;
 const mockController = {
   subscribe: () => () => {},
   getSnapshot: () => mockSnapshot,
@@ -80,6 +88,7 @@ jest.mock('expo-router', () => ({
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({
     challenges: mockController,
+    paywall: mockPaywall,
     canStartChallenge: () => true,
   }),
   useIdentity: () => ({
@@ -174,9 +183,11 @@ beforeEach(() => {
   mockCollectionId = null;
   mockRepository = { accountId: mockAccount.userId };
   mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
+  mockPaywall = null;
   mockSnapshot = {
     selected: 'cafe',
     error: '',
+    locked: false,
     loading: false,
     saving: false,
     completionStarted: false,
@@ -230,6 +241,54 @@ it('replaces the spinner with catalog recovery after a failed load', async () =>
     screen.getByRole('button', { name: 'Refresh challenges' }),
   );
   expect(mockController.refresh).toHaveBeenCalledTimes(2);
+});
+
+it('explains a locked deck and refreshes it after the paywall unlocks', async () => {
+  mockPaywall = {
+    subscribe: () => () => {},
+    getSnapshot: () => mockIdlePaywall,
+    open: jest.fn().mockResolvedValue(true),
+    retry: jest.fn(),
+    dismiss: jest.fn(),
+  };
+  mockSnapshot = { ...mockSnapshot, queues: {}, locked: true };
+  const screen = await render(<Flow />);
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Challenges unlock with a subscription.',
+  );
+  expect(screen.queryByText(/couldn’t load/)).toBeNull();
+  expect(screen.queryByTestId('mock-deck')).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Unlock challenges' }),
+  );
+  expect(mockPaywall.open).toHaveBeenCalledTimes(1);
+  expect(mockController.refresh).toHaveBeenCalledTimes(2);
+});
+
+it('leaves a locked deck alone when the paywall closes without access', async () => {
+  mockPaywall = {
+    subscribe: () => () => {},
+    getSnapshot: () => mockIdlePaywall,
+    open: jest.fn().mockResolvedValue(false),
+    retry: jest.fn(),
+    dismiss: jest.fn(),
+  };
+  mockSnapshot = { ...mockSnapshot, queues: {}, locked: true };
+  const screen = await render(<Flow />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Unlock challenges' }),
+  );
+  expect(mockController.refresh).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Challenges unlock with a subscription.',
+  );
+});
+
+it('ends Welcome preparation on a locked deck instead of waiting for a card', async () => {
+  mockPreparation = { active: true, attempt: 1, markReady: mockMarkReady };
+  mockSnapshot = { ...mockSnapshot, queues: {}, locked: true };
+  await render(<Flow />);
+  expect(mockMarkReady).toHaveBeenCalledTimes(1);
 });
 
 it('starts its catalog read when the matching repository becomes available after identity', async () => {

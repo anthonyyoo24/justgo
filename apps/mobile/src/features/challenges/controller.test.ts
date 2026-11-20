@@ -1,5 +1,6 @@
 import { venues, type Catalog } from '@justgo/contracts';
 import { ChallengeController, type ChallengeStart } from './controller';
+import { ApiError } from '../../lib/network/http';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -145,6 +146,27 @@ it('shows a first-download recovery state and clears it after a successful downl
   await controller.refresh();
   expect(controller.getSnapshot().queues.streets?.cards).toHaveLength(2);
   expect(controller.getSnapshot().error).toBe('');
+});
+it('says the deck is locked, not broken, when the catalog needs a subscription', async () => {
+  repository.setEnvironment({ online: true, active: true });
+  request.mockRejectedValueOnce(new ApiError('ACCESS_REQUIRED', 'x'));
+  await controller.refresh();
+  expect(controller.getSnapshot()).toMatchObject({
+    locked: true,
+    error: '',
+    queues: {},
+  });
+  await controller.refresh();
+  expect(controller.getSnapshot().queues.streets?.cards).toHaveLength(2);
+  expect(controller.getSnapshot().locked).toBe(false);
+});
+it('keeps a cached deck when a refresh needs a subscription', async () => {
+  await downloaded();
+  repository.setEnvironment({ online: true, active: true });
+  request.mockRejectedValueOnce(new ApiError('ACCESS_REQUIRED', 'x'));
+  await controller.refresh();
+  expect(controller.getSnapshot().queues.streets?.cards).toHaveLength(2);
+  expect(controller.getSnapshot().locked).toBe(false);
 });
 it('coalesces downloads and leaves a cached deck usable during failed or incomplete refresh', async () => {
   await downloaded();

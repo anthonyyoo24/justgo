@@ -69,6 +69,13 @@ function ChallengeFlow() {
   const successRouteAttemptId = useRef<string | null>(null);
   const wasFocused = useRef(focused);
   const router = useRouter();
+  const [unlocking, setUnlocking] = useState(false);
+  const { markReady } = preparation;
+  const preparing = preparation.active;
+  useEffect(() => {
+    // A locked deck has no card to draw, so preparation ends on the notice.
+    if (preparing && state.locked) markReady();
+  }, [preparing, state.locked, markReady]);
   useEffect(() => {
     if (focused && owner && repository?.accountId === owner)
       void challenges.refresh();
@@ -113,6 +120,28 @@ function ChallengeFlow() {
           onSelect={(v) => void challenges.select(v)}
         />
         {!active && paywall && <PaywallNotice paywall={paywall} />}
+        {!active && state.locked && (
+          <View style={styles.notice}>
+            <Text accessibilityRole="alert" style={styles.body}>
+              Challenges unlock with a subscription.
+            </Text>
+            {paywall && (
+              <PrimaryButton
+                label="Unlock challenges"
+                busy={unlocking || state.loading}
+                onPress={() => {
+                  setUnlocking(true);
+                  void paywall
+                    .open()
+                    .then((unlocked) =>
+                      unlocked ? challenges.refresh() : undefined,
+                    )
+                    .finally(() => setUnlocking(false));
+                }}
+              />
+            )}
+          </View>
+        )}
         {!active && !!state.error && (
           <View style={styles.notice}>
             <Text accessibilityRole="alert" style={styles.body}>

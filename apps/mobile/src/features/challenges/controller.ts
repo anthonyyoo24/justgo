@@ -9,6 +9,7 @@ import {
   type Venue,
 } from '@justgo/contracts';
 import type { AccountClient } from '../../lib/network/account-client';
+import { ApiError } from '../../lib/network/http';
 import type { AccountRepository } from '../../data/activity/repository';
 import { readChallengeCatalog } from './api';
 import { reconcileDeckOrder } from './deck/deck-order';
@@ -29,6 +30,8 @@ export type ChallengeSnapshot = {
   saving: boolean;
   completionStarted: boolean;
   error: string;
+  /** The catalog needs a subscription and the phone has no cards saved. */
+  locked: boolean;
 };
 const initial = (): ChallengeSnapshot => ({
   selected: 'streets',
@@ -38,6 +41,7 @@ const initial = (): ChallengeSnapshot => ({
   saving: false,
   completionStarted: false,
   error: '',
+  locked: false,
 });
 
 /** Shared browsing and completion context; unfinished challenges belong to React. */
@@ -130,7 +134,7 @@ export class ChallengeController {
       };
     }
     this.currentCatalog = catalog;
-    this.update({ queues, error: '' });
+    this.update({ queues, error: '', locked: false });
     this.savePreferences();
     return true;
   }
@@ -161,9 +165,12 @@ export class ChallengeController {
         if (generation !== this.generation) return;
         if (!this.adoptCatalog(catalog)) throw new Error('INVALID_CATALOG');
         await repository.cacheCatalog(catalog);
-      } catch {
+      } catch (error) {
         // Optional refresh/cache failure never disables previously downloaded cards.
-        if (generation === this.generation && !this.currentCatalog)
+        if (generation !== this.generation || this.currentCatalog) return;
+        if (error instanceof ApiError && error.code === 'ACCESS_REQUIRED')
+          this.update({ locked: true, error: '' });
+        else
           this.update({
             error:
               'Your challenges couldn’t load. Check your connection and try again.',
