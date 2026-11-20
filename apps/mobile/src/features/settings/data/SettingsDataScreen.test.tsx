@@ -273,22 +273,41 @@ it.each(['blur', 'owner'] as const)(
     expect(mockActivity.importData).not.toHaveBeenCalled();
   },
 );
-it('deletes only after an explicit confirmation, retaining the account and separately saved files', async () => {
-  const screen = await render(<SettingsDataScreen />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: 'Delete all my data' }),
-  );
-  expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
-  await fireEvent.press(
-    within(
-      screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete' }),
-  );
-  await screen.findByText(
-    'All saved data was deleted. Your account and downloaded files were kept.',
-  );
-  expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(1);
-});
+const deletionCopy = {
+  guest: {
+    confirmation:
+      'Your challenge history, feelings and reflections on this phone and in associated iCloud copies will be deleted. Backup files you saved remain. This cannot be undone.',
+    result: 'All saved data was deleted. Backup files you saved were kept.',
+  },
+  account: {
+    confirmation:
+      'Your challenge history, feelings and reflections on this phone, in your JustGO account and in associated iCloud copies will be deleted. Your account, login methods and downloaded files remain. This cannot be undone.',
+    result:
+      'All saved data was deleted. Your account and downloaded files were kept.',
+  },
+} as const;
+it.each([
+  ['guest', false, 'account'],
+  ['account', true, 'guest'],
+] as const)(
+  'deletes a %s collection only after an explicit confirmation that names what it keeps (#563)',
+  async (kind, signedIn, other) => {
+    mockKind = kind;
+    mockSignedIn = signedIn;
+    const screen = await render(<SettingsDataScreen />);
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Delete all my data' }),
+    );
+    expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
+    const dialog = within(screen.getByLabelText('Delete all saved data?'));
+    expect(dialog.getByText(deletionCopy[kind].confirmation)).toBeTruthy();
+    expect(dialog.queryByText(deletionCopy[other].confirmation)).toBeNull();
+    await fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
+    await screen.findByText(deletionCopy[kind].result);
+    expect(screen.queryByText(deletionCopy[other].result)).toBeNull();
+    expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(1);
+  },
+);
 
 it('shows durable unfinished deletion on reopening and resumes it while import remains blocked', async () => {
   mockDeletionPending = true;
@@ -314,9 +333,7 @@ it('shows durable unfinished deletion on reopening and resumes it while import r
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
     ).getByRole('button', { name: 'Delete' }),
   );
-  await screen.findByText(
-    'All saved data was deleted. Your account and downloaded files were kept.',
-  );
+  await screen.findByText(deletionCopy.guest.result);
   expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(1);
   expect(importButton).toBeEnabled();
   expect(mockActivity.importData).not.toHaveBeenCalled();
@@ -420,9 +437,7 @@ it('authenticates before deleting an account journal while signed out', async ()
     screen.getByRole('button', { name: 'Delete all my data' }),
   );
   await confirmDeletion();
-  await screen.findByText(
-    'All saved data was deleted. Your account and downloaded files were kept.',
-  );
+  await screen.findByText(deletionCopy.account.result);
   expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(1);
 });
 

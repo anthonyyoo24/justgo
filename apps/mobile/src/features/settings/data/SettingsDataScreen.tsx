@@ -208,7 +208,9 @@ function DataSession() {
       setConfirmDelete(null);
       setPreview(null);
       setMessage(
-        'All saved data was deleted. Your account and downloaded files were kept.',
+        owner.kind === 'guest'
+          ? 'All saved data was deleted. Backup files you saved were kept.'
+          : 'All saved data was deleted. Your account and downloaded files were kept.',
       );
     } catch {
       if (!controller.signal.aborted && client.ownsCollection(owner.id))
@@ -310,7 +312,11 @@ function DataSession() {
               ? 'Finish deleting saved data?'
               : 'Delete all saved data?'
           }
-          message="Your challenge history, feelings and reflections on this phone, in your JustGO account and in associated iCloud copies will be deleted. Your account, login methods and downloaded files remain. This cannot be undone."
+          message={
+            owner?.kind === 'guest'
+              ? 'Your challenge history, feelings and reflections on this phone and in associated iCloud copies will be deleted. Backup files you saved remain. This cannot be undone.'
+              : 'Your challenge history, feelings and reflections on this phone, in your JustGO account and in associated iCloud copies will be deleted. Your account, login methods and downloaded files remain. This cannot be undone.'
+          }
           confirmLabel="Delete"
           progressLabel="Deleting saved data"
           busy={busy === 'delete'}
