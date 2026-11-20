@@ -94,7 +94,11 @@ export class AccountClient {
     {
       signal,
       ...options
-    }: { method: 'GET' | 'POST'; body?: unknown; signal?: AbortSignal },
+    }: {
+      method: 'GET' | 'POST';
+      body?: unknown;
+      signal?: AbortSignal | undefined;
+    },
   ): Promise<T> {
     if (!this.collectionId) throw new ApiError('UNAUTHORIZED');
     const epoch = this.epoch;
