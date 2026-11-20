@@ -29,6 +29,7 @@ import { billingRoutes } from './billing/verify.js';
 import { billingEventRoutes } from './billing/webhook.js';
 import { billingRepairRoutes } from './billing/repair.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
+import { createPaidAccess } from './access/paid-access.js';
 import { GuestService, type GuestAccessReader } from './access/guest.js';
 import { managedIdentityRoutes } from './identity/managed-routes.js';
 import { dataSyncRoutes } from './data-sync/routes.js';
@@ -79,6 +80,8 @@ export function buildApp(
   );
   const identity = options.identity;
   const billing = identity ? options.billing : undefined;
+  // With billing on, only saved Apple subscriptions grant access.
+  const access = billing ? createPaidAccess() : options;
   const document =
     options.legacyIdentityEnabled === false
       ? managedOpenApiDocument
@@ -87,7 +90,7 @@ export function buildApp(
   const served = billing ? withBilling(document, Boolean(events)) : document;
   app.get('/openapi.json', (context) => context.json(served));
   if (identity) {
-    const guest = new GuestService(identity, options.guestAccessReader);
+    const guest = new GuestService(identity, access.guestAccessReader);
     app.get('/v1/guest/access', async (context) =>
       context.json(accessResponseSchema.parse(await guest.access())),
     );
@@ -111,7 +114,7 @@ export function buildApp(
     accessRoutes(
       scope,
       identity
-        ? new AccessService(identity, options.entitlementReader)
+        ? new AccessService(identity, access.entitlementReader)
         : undefined,
     ),
   );
@@ -122,13 +125,13 @@ export function buildApp(
     mount('/v1/challenges', (scope) =>
       challengeRoutes(
         scope,
-        new ChallengeService(identity, options.entitlementReader),
+        new ChallengeService(identity, access.entitlementReader),
       ),
     );
     mount('/v1/progress', (scope) =>
       progressRoutes(
         scope,
-        new ProgressResources(identity, options.entitlementReader),
+        new ProgressResources(identity, access.entitlementReader),
       ),
     );
     mount('/v1', (scope) =>
@@ -137,8 +140,8 @@ export function buildApp(
     mount('/v1/attempts', (scope) =>
       attemptRoutes(
         scope,
-        new AttemptService(identity, options.uploadEligibilityReader),
-        new ProgressResources(identity, options.entitlementReader),
+        new AttemptService(identity, access.uploadEligibilityReader),
+        new ProgressResources(identity, access.entitlementReader),
       ),
     );
   }
