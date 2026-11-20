@@ -496,3 +496,79 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
     /ordinary automatic crash reporting are disabled/,
   );
 });
+
+// P16-12: the paid-billing Privacy candidate waits for Anthony's approval in its
+// own file. When it replaces the draft, move these checks to the draft test.
+test('the billing Privacy candidate names Superwall, stays unapproved and publishes only once approved and dated', async () => {
+  const [candidate, termsSource] = await Promise.all([
+    readFile(
+      new URL(
+        '../../docs/legal/PRIVACY_POLICY_BILLING_CANDIDATE.md',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    readFile(
+      new URL('../../docs/legal/TERMS_DRAFT.md', import.meta.url),
+      'utf8',
+    ),
+  ]);
+  const document = parseDocument(candidate);
+  assert.equal(document.status, 'owner-review-required');
+  assert.equal(document.effectiveDate, 'pending');
+  assert.equal(document.version, 'privacy-billing-candidate');
+  assert.throws(
+    () =>
+      renderSite({ privacySource: candidate, termsSource, production: true }),
+    /explicit owner approval/,
+  );
+  const approved = candidate
+    .replace(
+      '<!-- publication-status: owner-review-required -->',
+      '<!-- publication-status: owner-approved -->',
+    )
+    .replace(
+      '<!-- effective-date: pending -->',
+      '<!-- effective-date: 2026-12-01 -->',
+    );
+  const privacy = renderSite({
+    privacySource: approved,
+    termsSource,
+    production: true,
+  }).get('privacy/index.html');
+  assert.deepEqual(
+    [...privacy.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)].map((match) => match[1]),
+    [
+      'Information we collect',
+      'Where your journal is kept',
+      'Subscriptions and Superwall',
+      'How we use information',
+      'Who receives it',
+      'How long we keep it',
+      'Your choices and rights',
+      'Keeping your data safe',
+      'Age',
+      'Changes',
+      'Contact',
+    ],
+  );
+  for (const promise of [
+    /We use Superwall to show the subscription screen and to record purchases made through Apple\./,
+    /Superwall processes this information for us as our service provider\./,
+    /your JustGO account identifier when you&#39;re signed in\. Without sign-in, Superwall uses a random identifier/,
+    /Superwall receives no journal entries, feelings, reflections, email address or sign-in tokens\./,
+    /We don&#39;t use it for ads, we don&#39;t share it with ad networks and we don&#39;t use it to track you across other companies&#39; apps or websites\./,
+    /We never receive your payment card or Apple account details\./,
+    /When you delete your account, we ask Superwall to delete its information about you\./,
+    /Cancel your subscription<\/strong> in your Apple account&#39;s subscription settings\./,
+    /Deleting the app, your journal or your account does not cancel it\./,
+    /JustGO has no ads and no general product analytics\./,
+  ])
+    assert.match(privacy, promise);
+  // Internal labels, other providers and the tracking setting stay out of the
+  // public text, as in the published notice.
+  assert.doesNotMatch(
+    privacy,
+    /superwallOnly|QStash|Supabase|Cloudflare|Sentry|Vercel|Gmail|us-east|Workers|Hyperdrive|\bbeta\b|<!--|DATA_INVENTORY|P16-/,
+  );
+});
