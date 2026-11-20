@@ -76,6 +76,11 @@ export class DeleteAccountService {
         return { receipt, pending };
       },
     );
+    // Superwall erasure is best effort. Its failure never blocks the deletion
+    // or its receipt, and a replayed deletion asks again.
+    await this.identity
+      .superwallErasure?.(result.receipt.userId)
+      .catch(() => {});
     if (result.pending && !result.pending.completed_at) {
       if (!this.identity.managedAuthDeletion)
         throw new ApiError('UNAVAILABLE', 503);

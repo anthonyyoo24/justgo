@@ -183,6 +183,26 @@ Vault only. Tests sign with self-made secrets from
 `apps/api/tests/billing/svix.ts` and answer from the stub store, never
 Superwall or Apple.
 
+## Superwall erasure on account deletion
+
+After account deletion commits, the API asks Superwall to erase that owner
+with `POST https://api.superwall.com/v2/applications/<application id>/user_erasures`,
+whose `app_user_id` is the JustGO owner ID the phone identifies with. It runs
+with no owner transaction open and before the Auth user deletion, through
+`outboundFetch()`. It sends `acknowledge_active_subscriptions: true`, because
+deleting the account never cancels the App Store subscription and the delete
+screens say so. Superwall holds the request 25 days before it erases, and a
+repeat returns the request it already scheduled. The erasure is best effort: a
+refusal, a timeout or an outage still returns the deletion receipt, and only a
+replayed deletion asks again. Nothing from Superwall's answer reaches a
+response or a log.
+
+With `BILLING_ENABLED` on, the API refuses to start without
+`SUPERWALL_API_KEY` (a Superwall API key with the `app_users:erase` scope, 16 to
+512 printable characters) and `SUPERWALL_APPLICATION_ID` (the numeric
+application ID). Keep the key in the function secrets only. Tests answer from a
+fake transport, never Superwall.
+
 ## Owner tasks still open
 
 - Complete banking, tax and the paid-app agreement before sales.
