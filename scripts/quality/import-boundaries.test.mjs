@@ -499,6 +499,15 @@ const cases = [
       'react-native-safe-area-context',
     ],
     ["import { devtools } from 'zustand/middleware';", 'zustand/middleware'],
+    // A list loaded at runtime reads no banned name that lint can see.
+    [
+      "import { VirtualizedList } from '@react-native/virtualized-lists';",
+      '@react-native/virtualized-lists',
+    ],
+    [
+      "import FlatList from 'react-native/Libraries/Lists/FlatList';",
+      'react-native/Libraries/Lists/FlatList',
+    ],
   ].map(([source, specifier]) => ({
     name: `mobile code loads ${specifier} only with a static import`,
     file: 'apps/mobile/src/features/progress/day-details/BoundaryFixture.tsx',
