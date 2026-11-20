@@ -220,6 +220,8 @@ const probes: Record<string, Probe> = {
   },
 };
 
+// With billing on, build-app serves its own guest reader, which reads nothing.
+const paidGuestRoutes = ['get /v1/guest/access', 'get /v1/guest/challenges'];
 function probeApp(
   legacyIdentityEnabled: boolean,
   billing: boolean,
@@ -285,6 +287,7 @@ describe.each(modes)(
         const reached = new Set<Dependency>();
         let exercised = 0;
         for (const { key, method, path, operation, parameters } of operations) {
+          if (billing && paidGuestRoutes.includes(key)) continue;
           const request = probe.request(key, method, path, parameters);
           if (!request) continue;
           const response = await apiRequest(
@@ -325,10 +328,34 @@ describe.each(modes)(
         // Apple is asked before the database, so it is reached while both are down.
         expect([...reached]).toEqual(
           expect.arrayContaining([
-            ...(probe.reaches ?? []),
+            ...(probe.reaches ?? []).filter(
+              (dependency) => !billing || dependency !== 'guest',
+            ),
             ...(billing && probe.reaches ? ['apple'] : []),
           ]),
         );
+      },
+    );
+
+    it.runIf(billing)(
+      'answers guests unpaid with no dependency, because no guest request names a verified transaction',
+      async () => {
+        const reached = new Set<Dependency>();
+        const read = (url: string) =>
+          apiRequest(
+            probeApp(legacyIdentityEnabled, billing, 'down', reached),
+            url,
+          );
+        const access = await read('/v1/guest/access');
+        expect(access.statusCode).toBe(200);
+        expect(access.json()).toEqual({
+          status: 'unpaid',
+          checkedAt: expect.any(String),
+        });
+        const catalog = await read('/v1/guest/challenges');
+        expect(catalog.statusCode).toBe(403);
+        expect(catalog.json().code).toBe('ACCESS_REQUIRED');
+        expect([...reached]).toEqual([]);
       },
     );
 
