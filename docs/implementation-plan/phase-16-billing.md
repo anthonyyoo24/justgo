@@ -5,9 +5,9 @@
 JustGO goes paid after the free launch, with a hard paywall. Starting a challenge needs a subscription. Recovery, settings, legal pages, data export and deletion stay free.
 Superwall's paywall editor shows the paywall and buys through StoreKit. The JustGO API decides access, and it verifies every purchase with Apple.
 The offer is Annual US$59.99 with a 7-day free trial, preselected, and Monthly US$12.99 with no trial. Free-launch users get the same paywall and trial.
-Guests can buy without signing in. Their subscription moves into the account they later sign in to.
+Guests can buy without signing in. Continuing without sign-in gives the phone an anonymous server account, and a later Apple or Google sign-in keeps that account and its subscription.
 The program enforces one rule. No client flag, Superwall status or webhook payload unlocks paid use until the API has confirmed the subscription with Apple.
-PRs in order are P16-1 to P16-12. Appendix E keeps the nine subscription rules and the decisions in force.
+PRs are P16-1 to P16-15. P16-13 to P16-15 were added on 2026-11-20 and run before P16-9 finishes. Appendix E keeps the nine subscription rules and the decisions in force.
 
 ## How to read this
 
@@ -52,9 +52,12 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
   - [ ] P16-5 after P16-4.
   - [ ] P16-6 after P16-4.
   - [ ] P16-8 after P16-2 and P16-5.
-  - [ ] P16-9 after P16-7 and P16-8.
+  - [ ] P16-13 after P16-4 and P16-5.
+  - [ ] P16-14 after P16-13 and P16-8.
+  - [ ] P16-15 after P16-13.
+  - [ ] P16-9 after P16-7, P16-8 and P16-14.
   - [ ] P16-10 after P16-9.
-  - [ ] P16-11 after P16-6 and P16-9.
+  - [ ] P16-11 after P16-6, P16-9 and P16-14.
 - [ ] Hold the file boundaries. API PRs touch only `apps/api/**`, `packages/contracts/**` and the docs they make necessary. Mobile PRs touch only `apps/mobile/**` and their docs. P16-12 touches only `docs/legal/**`, `docs/operations/**`, the legal reader and `scripts/quality/policy-copy.test.mjs`.
 - [ ] Hold the review gate. P16-9, P16-10 and P16-11 change an interaction. They wait for Anthony's review in chat with screenshots and a video before merge.
 - [ ] Keep every paid path behind `BILLING_ENABLED` on the API and the matching mobile flag until #110 passes. Free access stays the default.
@@ -257,7 +260,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 **Build.**
 
 - [ ] Add `POST /v1/billing/verifications`. The phone sends the transaction ID that Superwall's purchase or restore produced. The server asks the App Store Server API for that transaction through `outboundFetch()`, before any owner transaction opens, and checks Apple's signature.
-- [ ] For a signed-in owner, accept the transaction only when its appAccountToken is empty or equals the owner ID, then save it under that owner. For a guest, save it with no owner and return a `guest_subscription` access response.
+- [ ] For a signed-in owner, accept the transaction only when its appAccountToken is empty or equals the owner ID, then save it under that owner. For a guest, save it with no owner and return a `guest_subscription` access response. P16-13 replaces the guest path, since a guest then verifies with its guest account's bearer.
 - [ ] Read the Apple key from function secrets through `config.ts`. Keep the route off unless `BILLING_ENABLED` is on.
 
 **You see.**
@@ -419,7 +422,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 - [ ] Add `expo-superwall` at the version the prototype proved on Expo SDK 58.
 - [ ] Configure it once at startup with the public API key and `eventTrackingBehavior: 'superwallOnly'`, or `'none'` if the prototype shows paywalls and purchases still work with it.
-- [ ] Call `identify()` with the owner ID on account change, and `reset()` on logout. A guest stays anonymous. Never send onboarding answers, journal text or reflections as user attributes.
+- [ ] Call `identify()` with the owner ID on account change, and `reset()` on logout. A guest stays anonymous until P16-14 gives it a guest account, whose ID it then identifies with. Never send onboarding answers, journal text or reflections as user attributes.
 
 **You see.**
 
@@ -435,7 +438,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 - [ ] Lane 1. Regression lane against trunk. Build and launch trunk and head in the simulator. Save `launch-trunk-head.png`. Pass when both reach the first screen.
 - [ ] Lane 2. Sign in a fixture account. Save `identify.png`. Pass when the debug log shows one `identify` with the owner ID and nothing else.
 - [ ] Lane 3. Log out. Save `reset.png`. Pass when the log shows `reset`.
-- [ ] Lane 4. Stay a guest. Save `guest.png`. Pass when no `identify` call happens.
+- [ ] Lane 4. Stay a guest. Save `guest.png`. Pass when no `identify` call happens. After P16-14, a guest identifies with its guest account ID.
 - [ ] Lane 5. Capture the network with the simulator proxy while opening the app. Save `network.txt`. Pass when Superwall requests carry no journal or onboarding text.
 - [ ] Lane 6. Start and finish a challenge. Save `challenge.png`. Pass when it works as on trunk, since no gate exists yet.
 - [ ] Lane 7. Run the web export. Save `export-web.txt`. Pass when `export:web` succeeds and the web bundle loads no Superwall native module.
@@ -513,9 +516,186 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 - [ ] `main` merged in after the verdict, with `verdict-patch.mjs` saying `carries`.
 - [ ] The owner merges through `pnpm run merge:pr`.
 
+## Give each guest an anonymous server account, API side (P16-13)
+
+**Depends on.** P16-4 and P16-5. P16-13, P16-14 and P16-15 were added on 2026-11-20 and run before P16-9 finishes.
+
+A guest gets a Supabase anonymous user and a JustGO account when they continue without signing in. The account holds no name, no email and no private history. It exists so a guest's purchase, access check and catalog download have an owner. Signing in later links Apple or Google to that same Auth user, so the account and its subscription stay.
+
+**Files.**
+
+- [ ] Edit `apps/api/src/identity/managed-verifier.ts`, `apps/api/src/identity/managed-service.ts`, `apps/api/src/billing/verify.ts`, the owner routes that refuse a guest account, and `packages/contracts/src/` for the session response.
+- [ ] Create a migration after `0029_billing_answer_order.sql`, with its schema change in `apps/api/src/db/schema/` and its pin in `apps/api/tests/db/fixtures/applied-migration-hashes.json` under `unapplied`.
+- [ ] Add tests under `apps/api/tests/identity/` and `apps/api/tests/billing/`.
+- [ ] Edit `apps/api/scripts/fixture-providers.ts` so journeys can make an anonymous user and link it.
+- [ ] Edit `docs/operations/ACCOUNT_SYNC_SETUP.md` for the anonymous sign-in setting and its rate limit.
+
+**Build.**
+
+- [ ] With `BILLING_ENABLED` on, the managed verifier accepts a Supabase user whose `is_anonymous` is true and who has no identity. It still refuses an anonymous user with an identity, and any other user without an Apple or Google identity. With the flag off, it refuses anonymous users as today.
+- [ ] `managed_auth_accounts` gains a `guest` column, set from the verified Auth user at each exchange. A trigger lets it change from true to false and never back.
+- [ ] `POST /v1/auth/session` makes the `users` row and the mapping for a guest as it does for an account, and its response says whether the account is a guest.
+- [ ] A guest account may call `GET /v1/access`, `GET /v1/challenges`, `POST /v1/billing/verifications`, the `/v1/auth/session` and `/v1/auth/logout` routes, and `DELETE /v1/account`. Completion restores, journal sync, delete-all, attempts, progress and account export refuse it with 403 and write nothing.
+- [ ] Verification needs a bearer. Remove the no-owner guest path from `verify.ts`. The migration makes `app_store_subscriptions.user_id` NOT NULL and drops the null-owner branch of `owner_or_verified_guest`. No hosted database has run the billing migrations, so no row has a null owner.
+- [ ] The move rule. A verified transaction whose row belongs to a guest account moves to the caller, guest or signed in. A row that belongs to a signed-in account stays, and any other caller gets 409 `CONFLICT`. The appAccountToken check refuses only a token that names a different signed-in account. The migration replaces `owner_fixed` so an owner can change only away from a guest account. Webhooks and repair still never move an owner.
+- [ ] `GET /v1/guest/access` and `GET /v1/guest/challenges` stay for the free launch. With billing on they keep answering `unpaid`.
+
+**You see.**
+
+- [ ] With billing on, an anonymous Supabase token exchanges at `POST /v1/auth/session`, verifies a sandbox transaction and reads the level-1 catalog from `GET /v1/challenges`.
+
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] `managed-verifier.test.ts` covers an anonymous user with the flag on and off, an anonymous user with an identity, and a linked user. Run `pnpm --filter @justgo/api run test`.
+- [ ] Database cases for a guest exchange, the `guest` column going from true to false and refusing to go back, every refused owner route, verification as a guest, a link that keeps the user and its row, a move from a guest, a refused move from a signed-in account, and a guest deletion. Run `pnpm run test:db`.
+- [ ] Contracts and OpenAPI. Run `pnpm run build:contracts && pnpm run typecheck`, and `pnpm run test:edge`.
+
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe, against the fixture API.
+
+- [ ] Lane 1. Regression lane against trunk. With the flag off, exchange an anonymous token at trunk and head. Save `flag-off.json`. Pass when both refuse it with 401 and write nothing.
+- [ ] Lane 2. With the flag on, exchange an anonymous token. Save `guest-exchange.json`. Pass when it returns a guest session, with one `users` row and one mapping marked guest.
+- [ ] Lane 3. Read the catalog as the new guest. Save `guest-unpaid.json`. Pass when it returns 403 `ACCESS_REQUIRED`.
+- [ ] Lane 4. Verify a transaction as the guest, then read the catalog. Save `guest-paid.json`. Pass when the row's owner is the guest and level-1 cards return.
+- [ ] Lane 5. As the guest, call completion restores, journal sync, delete-all, attempts and export. Save `guest-refused.json`. Pass when each returns 403 and no row changes.
+- [ ] Lane 6. Link Apple to the same Auth user in the fixture and exchange again. Save `link.json`. Pass when the user ID is unchanged, the mapping is no longer guest and the row keeps its owner.
+- [ ] Lane 7. Verify a second guest's transaction as a different signed-in account. Save `move.json`. Pass when the row moves to that account.
+- [ ] Lane 8. Verify that same transaction as a third caller. Save `move-refused.json`. Pass when it returns 409 and the row is unchanged.
+- [ ] Lane 9. Delete a paid guest's account, then verify its transaction as a new guest. Save `deleted-guest.json`. Pass when the deletion leaves a `managed_auth_deletions` row and the row moves to the new guest.
+- [ ] Lane 10. Grep the API log for bearer tokens and signed payloads. Save `log-scan.txt`. Pass when none appear.
+
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Metric. p95 of `POST /v1/auth/session` and `GET /v1/challenges`.
+- [ ] Probe. 100 requests each for a signed-in account at trunk and head, and for a guest at head, interleaved in batches of 20.
+- [ ] Baseline. Record the trunk p95 for the signed-in account first.
+- [ ] Rule. Fail when either head p95 is more than 10% above trunk.
+
+**Review gate.** None. P16-13 is not review-gated. It is sensitive, so its verdict says `Sensitive: yes`.
+
+**Merge.**
+
+- [ ] A covering verdict at the exact head SHA.
+- [ ] Review comments triaged.
+- [ ] `main` merged in after the verdict, with `verdict-patch.mjs` saying `carries`.
+- [ ] The owner merges through `pnpm run merge:pr`.
+
+## Make the guest account on the phone and keep it through sign-in (P16-14)
+
+**Depends on.** P16-13 and P16-8.
+
+**Files.**
+
+- [ ] Edit `apps/mobile/src/app-support/identity/auth/managed-auth.ts`, `types.ts`, `managed-controller.ts` and `managed-state.ts`, with their tests.
+- [ ] Edit `apps/mobile/src/app-support/providers/AppProvider.tsx`, `apps/mobile/src/app-support/access/paid-access.ts` and `apps/mobile/src/app-support/billing/superwall.ts`, with their tests.
+- [ ] Edit `apps/mobile/test-support/journey-managed-auth.ts`, `e2e/support/managed-account.ts` and the affected journeys.
+- [ ] Edit `docs/operations/ACCOUNT_SYNC_SETUP.md` for the guest account and sign-in linking.
+
+**Build.**
+
+- [ ] Add `signInAnonymously()` to `ManagedAuth`, on the same Supabase client and Keychain storage as sign-in.
+- [ ] With the billing flag on, Continue enters guest mode at once, as today. The app then makes the guest account in the background with an anonymous sign-in and `POST /v1/auth/session`. A guest saved before this build gets one at its next launch. A failure retries on open, foreground and reconnect. Offline, the guest still enters the app, and the paywall says it cannot check yet. With the flag off, no account is made.
+- [ ] The guest account's bearer goes only to access, the catalog and verification. The local collection, journal, history and iCloud stay as today. The snapshot keeps `account` null for a guest and adds the guest account ID.
+- [ ] `PaidAccess` owns access by the guest account ID. Superwall's `identify()` gets the guest account ID, so the appAccountToken of a guest purchase names it. The catalog reads `GET /v1/challenges` with the guest bearer.
+- [ ] Sign-in from a guest links the provider to the anonymous user with `linkIdentity`, so the Auth user, the JustGO account and its subscription stay the same. #492 adoption then moves the phone's collection into the account as today.
+- [ ] When the provider identity already belongs to an account (`IDENTITY_EXISTS`), the app signs in to that account instead, and #492 adoption runs as today. The app then reads the phone's current subscription from the store, as a restore does, and verifies it with the new bearer, so the API moves the row under the P16-13 move rule. The app revokes the guest account's JustGO session and leaves the account to P16-15.
+- [ ] A guest account that the server deleted answers 401. The app then makes a new guest account and never sends the guest to sign-in for it.
+- [ ] A guest's Delete all data also deletes the guest account through `DELETE /v1/account`, then makes a new one.
+- [ ] The journey auth fake supports anonymous sessions and linking them.
+
+**You see.**
+
+- [ ] With billing on, a fresh install that taps Continue has a guest account in the database. After buying, it downloads the catalog. After signing in with Apple, it has the same user ID and keeps access.
+
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] `managed-controller.test.ts` covers Continue online and offline, retry on foreground and reconnect, the flag off, link on sign-in, `IDENTITY_EXISTS` with the re-verify, a deleted guest account and a restart during each step. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/app-support/identity/auth/managed-controller.test.ts`.
+- [ ] `AppProvider.test.tsx` checks which requests carry the guest bearer, and `AppProvider.token-canary.test.tsx` passes with the anonymous refresh token among its secrets. Run `pnpm --filter @justgo/mobile run test`.
+- [ ] Affected journeys. Run `pnpm run test:journey`.
+
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe, on the web app with the fixture API, and in the iOS Simulator with the StoreKit file for lanes 4 to 6.
+
+- [ ] Lane 1. Regression lane against trunk. With the flag off, tap Continue at trunk and head. Save `flag-off.png`. Pass when neither makes a `users` row and the guest catalog loads.
+- [ ] Lane 2. With the flag on, tap Continue on a fresh install. Save `guest-account.png`. Pass when one guest account exists and the app reaches the next screen without waiting on the network.
+- [ ] Lane 3. Tap Continue offline, then reconnect. Save `offline-continue.png`. Pass when the guest enters the app offline and exactly one guest account appears after reconnect.
+- [ ] Lane 4. Buy as a guest and download the catalog. Save `guest-buy.png`. Pass when the row's owner is the guest account and cards show.
+- [ ] Lane 5. Sign in with a new Apple identity. Save `link.png`. Pass when the user ID is unchanged, the account is no longer a guest, access stays verified and the local history moved.
+- [ ] Lane 6. Sign in with an identity that already owns an account. Save `existing.png`. Pass when the phone is in that account, the subscription row moved to it and the local history moved.
+- [ ] Lane 7. Kill the app during guest account creation, three times. Save `relaunch.png`. Pass when the app ends with one working guest account.
+- [ ] Lane 8. Delete the guest account on the server, then reopen. Save `recreate.png`. Pass when the app makes a new guest account and never shows sign-in.
+- [ ] Lane 9. Read the network log as a guest through a challenge and a reflection. Save `network.txt`. Pass when no completion, journal or reflection request leaves the phone.
+- [ ] Lane 10. Run the token canary. Save `canary.txt`. Pass when `AppProvider.token-canary.test.tsx` passes.
+
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Metric. Time from tapping Continue to the next screen, and from Continue to a ready guest account.
+- [ ] Probe. Ten fresh web installs each at trunk and head, interleaved.
+- [ ] Baseline. Record the trunk median to the next screen first.
+- [ ] Rule. Fail when the head is more than 50 ms slower to the next screen, or the guest account takes more than 2 seconds against the loopback API.
+
+**Review gate.** None. Sign-in looks the same. It is sensitive, so its verdict says `Sensitive: yes`.
+
+**Merge.**
+
+- [ ] A covering verdict at the exact head SHA.
+- [ ] Review comments triaged.
+- [ ] `main` merged in after the verdict, with `verdict-patch.mjs` saying `carries`.
+- [ ] The owner merges through `pnpm run merge:pr`.
+
+## Clean up abandoned guest accounts (P16-15)
+
+**Depends on.** P16-13.
+
+**Files.**
+
+- [ ] Create `apps/api/scripts/guest-account-cleanup.ts` beside `auth-deletion-cleanup.ts`, with its test, and a script in `apps/api/package.json`.
+- [ ] Edit `docs/operations/ACCOUNT_SYNC_SETUP.md` for the command and when to run it.
+
+**Build.**
+
+- [ ] The command picks guest accounts made more than 30 days ago that hold no subscription unexpired in the last 30 days. It deletes each one through the account deletion path, so each gets a `managed_auth_deletions` row and `auth:cleanup` deletes its Auth user. It never touches a signed-in account. It takes at most 100 per run and has `--dry-run`.
+- [ ] It needs the `justgo_migrator` connection, like `auth:cleanup`. Running it against staging or production is a deploy step and needs Anthony's go. Scheduling it is a `gate` issue.
+- [ ] Anonymous Auth users that never reached `POST /v1/auth/session` exist only in Supabase. The doc gives the Supabase SQL that deletes them, run only with Anthony's go.
+
+**You see.**
+
+- [ ] `--dry-run` on `justgo_test` lists an old unpaid guest and leaves a paid guest and a signed-in account out.
+
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Database cases for an old unpaid guest, a young guest, a guest with a live subscription, a guest whose subscription lapsed 31 days ago, a linked account and a batch limit. Run `pnpm --filter @justgo/api run test:db:file tests/scripts/guest-account-cleanup.integration.test.ts`.
+
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, against loopback `justgo_test`.
+
+- [ ] Lane 1. Regression lane against trunk. Run `auth:cleanup` at trunk and head on the same seed. Save `auth-cleanup.txt`. Pass when both finish the same pending deletions.
+- [ ] Lane 2. Run `--dry-run` on a mixed seed. Save `dry-run.txt`. Pass when it lists only the expected guests and writes nothing.
+- [ ] Lane 3. Run it for real. Save `run.txt`. Pass when only those guests are soft-deleted, each with a deletion row.
+- [ ] Lane 4. Run it twice. Save `rerun.txt`. Pass when the second run finds nothing.
+- [ ] Lane 5. Seed 250 old guests. Save `batch.txt`. Pass when one run takes 100.
+- [ ] Lane 6. Call `GET /v1/access` with a cleaned guest's token. Save `cleaned-401.json`. Pass when it returns 401.
+- [ ] Lane 7. Verify a cleaned guest's lapsed transaction as a new guest. Save `resubscribe.json`. Pass when the row moves to the new guest.
+- [ ] Lane 8. Point it at a non-loopback URL. Save `refuse-remote.txt`. Pass when it refuses without a migrator connection.
+- [ ] Lane 9. Stop the database mid-run. Save `db-down.txt`. Pass when it fails without a half-deleted account.
+- [ ] Lane 10. Grep its output for tokens and user data. Save `log-scan.txt`. Pass when only counts and user IDs appear.
+
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Metric. Time for one run of 100 deletions.
+- [ ] Probe. Three runs on a seed of 10,000 guests.
+- [ ] Baseline. Record the time of `auth:cleanup` for 100 pending rows at trunk first.
+- [ ] Rule. Fail when a run takes more than 30 seconds.
+
+**Review gate.** None. P16-15 is not review-gated. It is sensitive, so its verdict says `Sensitive: yes`.
+
+**Merge.**
+
+- [ ] A covering verdict at the exact head SHA.
+- [ ] Review comments triaged.
+- [ ] `main` merged in after the verdict, with `verdict-patch.mjs` saying `carries`.
+- [ ] The owner merges through `pnpm run merge:pr`.
+
 ## Show the hard paywall and verify each purchase (P16-9)
 
-**Depends on.** P16-7 and P16-8.
+**Depends on.** P16-7, P16-8 and P16-14.
 
 **Files.**
 
@@ -525,7 +705,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 **Build.**
 
 - [ ] When `canStartChallenge()` refuses, register the Superwall placement `start_challenge`, gated in the dashboard. Superwall shows the paywall Anthony designs in its editor.
-- [ ] After `purchased` or `restored`, send the transaction to `POST /v1/billing/verifications` at once, bypassing the five-minute threshold (rule 5). Unlock only on a verified response. Show an honest pending state while it runs.
+- [ ] After `purchased` or `restored`, send the transaction to `POST /v1/billing/verifications` at once, bypassing the five-minute threshold (rule 5). Unlock only on a verified response. Show an honest pending state while it runs. A guest verifies with its guest account's bearer from P16-14.
 - [ ] A cancelled or failed purchase returns to the previous screen with nothing unlocked.
 
 **You see.**
@@ -544,7 +724,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 - [ ] Lane 3. Cancel the purchase sheet. Save `cancel.png`. Pass when nothing unlocks.
 - [ ] Lane 4. Make the API refuse verification. Save `refused.png`. Pass when the app explains it and stays locked.
 - [ ] Lane 5. Block the API during verification. Save `pending.png`. Pass when the app shows pending and unlocks once the API returns.
-- [ ] Lane 6. Restore on a fresh install. Save `restore.png`. Pass when access returns after verification.
+- [ ] Lane 6. Restore on a fresh install. Save `restore.png`. Pass when access returns after verification and the row moves to the new guest account.
 - [ ] Lane 7. Check the paywall for price, period, trial terms, auto-renew text, Terms of Use, Privacy Policy and Restore. Save `disclosures.png`. Pass when every item is visible.
 - [ ] Lane 8. Use VoiceOver on the paywall. Save `voiceover.png`. Pass when every button has a label.
 - [ ] Lane 9. Turn the paid flag off. Save `flag-off.png`. Pass when no paywall shows.
@@ -629,7 +809,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 ## Add subscription settings and deletion handling (P16-11)
 
-**Depends on.** P16-6 and P16-9.
+**Depends on.** P16-6, P16-9 and P16-14.
 
 **Files.**
 
@@ -640,7 +820,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 - [ ] Settings shows the plan and renewal date, a Manage Subscription button that opens Apple's page, and Restore Purchases.
 - [ ] Account deletion keeps the notice that deleting does not cancel the Apple subscription, and asks Superwall to delete that user's data by the method Superwall confirmed.
-- [ ] A guest who signs in hands the guest subscription to the account during #492 adoption, and the API saves the owner on that row.
+- [ ] Settings shows a guest's subscription under its guest account. Sign-in keeps or moves it as P16-14 builds, and this step adds no other handover.
 
 **You see.**
 
@@ -699,6 +879,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 - [ ] Name Superwall as a processor, what it receives (purchase history, the owner ID, device and usage events at the chosen tracking level), why, how long, and how deletion works.
 - [ ] Add Purchases and, when tracking is on, Product Interaction under App Functionality and Analytics. Nothing is used for tracking.
 - [ ] Add the Terms of Use (Apple's standard EULA) and Privacy Policy links the paywall needs.
+- [ ] Replace the line that says JustGO makes no server account without sign-in. With billing on, a guest gets an anonymous account with a random ID, its sign-in sessions and its subscription, and no name, email, journal or history. Say how it is deleted, and that Supabase keeps sign-in logs for it. Update the data inventory to match.
 
 **You see.**
 
@@ -756,6 +937,9 @@ No prototype has run yet. Each question below stays unproven until a throwaway b
 5. Does Apple's App Store Server Library, or a WebCrypto check of the signed chain, run in the pinned Supabase Edge runtime under `pnpm run test:edge`?
 6. Does a StoreKit configuration file work with an Expo development build in the simulator, so native lanes run without sandbox accounts?
 7. Can a Superwall paywall show Apple's required disclosures and a trial reminder, and can Superwall delete one user's data?
+8. Does linking an Apple or Google ID token to a Supabase anonymous user keep its user ID and set `is_anonymous` to false? It needs anonymous sign-ins turned on in staging Supabase, which waits for Anthony's yes.
+9. After a native link fails with `identity_already_exists`, can the same provider token sign in to the existing user, or does the person see a second Apple or Google prompt?
+10. Does an anonymous session persist in the Keychain through `createAuthStorage()` and refresh like a provider session?
 
 ## Appendix B. Alternatives rejected
 
@@ -764,14 +948,19 @@ No prototype has run yet. Each question below stays unproven until a throwaway b
 - `expo-iap` with only Apple on the server. It adds no processor and no fee, but loses the paywall editor Anthony wants.
 - Trusting Superwall's subscription status or webhook payload for access. Neither is signed by Apple, so the API confirms every change with Apple.
 - Pointing App Store Server Notifications at the JustGO API. Superwall needs that URL for its own revenue records, so JustGO receives Superwall's webhook and confirms with Apple.
-- Creating a server identity for guests. Guests have none today, so a guest purchase is keyed by Apple's original transaction ID and gets its owner on sign-in.
+- A guest purchase with no owner, keyed by Apple's original transaction ID until sign-in. A guest could then never download the catalog, since a guest request names no purchase. Anthony chose guest server accounts on 2026-11-20.
+- Serving the catalog free to guests, or sending the purchase number with each guest request. Anthony chose guest server accounts instead on 2026-11-20.
+- Guest accounts made by the JustGO API without Supabase. Sign-in would then need its own merge of two accounts, while a Supabase identity link keeps one user.
+- Syncing a guest's journal and history to the guest account. They stay on the phone until sign-in, as before.
 - A free grace period or lifetime free access for free-launch users. Anthony chose the same paywall and trial for everyone.
 
 ## Appendix C. Risks
 
 - Superwall's 1% fee applies to revenue through its paywalls, above the free tier. Watch it in P16-9 and confirm the basis in writing first.
 - Superwall's paywalls need its event tracking, which is close to the product analytics `AGENTS.md` keeps for Phase 17. P16-7 and P16-12 must name exactly what is sent, and the analytics rule may need a recorded exception.
-- A guest transaction ID that leaks could be claimed by someone else before the guest signs in. P16-4 watches for a transaction already bound to another owner.
+- A leaked transaction ID could move a subscription away from a guest account, since a guest-held row moves to whoever verifies it. A row held by a signed-in account never moves. A restore on a new phone needs this move.
+- A script can make many anonymous accounts. Supabase's anonymous sign-in limit per IP address, the JustGO `managed-auth` limit and P16-15 bound it. CAPTCHA or App Attest is a later step if abuse shows.
+- With billing on, the privacy policy's line that JustGO makes no account without sign-in becomes false. P16-12 changes it, and billing stays off until Anthony approves that text.
 - Installed free builds accept only `free_beta`. When `BILLING_ENABLED` turns on, old builds may stop working. P16-2 records the update path.
 - Apple App Review guideline 3.1.2 requires the price, period, trial terms, auto-renew text, Terms and Privacy on the paywall. P16-9 lane 7 checks it before submission.
 - Apple App Review guideline 5.1.1 rejects forced sign-in before purchase. Guest purchase covers it.
@@ -797,7 +986,7 @@ Decisions.
 - Paywall. Hard, shown by Superwall's paywall editor (Anthony, 2026-11-19). Recovery, settings, legal pages, data export and deletion stay reachable without paying.
 - Offer. Annual US$59.99 with a 7-day free trial, preselected, and Monthly US$12.99 with no trial. No weekly plan. CA and UK prices come from Apple's price table (Anthony, 2026-11-19).
 - Free-launch users. Same paywall and trial as new users. Their history and journal stay (Anthony, 2026-11-19).
-- Guests. Can buy without signing in. The subscription moves into the account they later sign in to (Anthony, 2026-11-19).
+- Guests. Can buy without signing in (Anthony, 2026-11-19). With billing on, continuing without sign-in makes a Supabase anonymous user and a JustGO guest account. Apple or Google sign-in links to that same user and keeps the subscription. When the identity already owns an account, the phone signs in there and the subscription moves to it. The journal and history stay on the phone (Anthony, 2026-11-20, replacing the guest purchase with no owner).
 - Reference. Onboarding and paywall follow the Gleam app's screens, adapted as the Gleam analysis says (Anthony, 2026-11-19).
 - Keep out. No Stripe checkout, Redis or always-on worker. No client premium flag. No private-history recovery from a receipt. No provider call inside a database transaction. General analytics stays in Phase 17.
 
