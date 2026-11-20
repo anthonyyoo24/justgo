@@ -2,7 +2,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import type { ChallengeStart } from '../controller';
 import { AppState, StyleSheet, type AppStateStatus } from 'react-native';
 import { ChallengeCard } from '../deck/ChallengeDeck';
-import { ActiveChallenge } from './ActiveChallenge';
+import { ActiveChallenge, outcomeArmDelayMs } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../../app-support/providers/AppProvider', () => ({}));
 jest.mock('../deck/ChallengeDeck', () => ({
@@ -48,6 +48,7 @@ it.each(['Give up', 'Completed'] as const)(
     const screen = await render(
       <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
     );
+    await act(() => jest.advanceTimersByTime(outcomeArmDelayMs));
     expect(screen.getByText('00:00')).toBeTruthy();
     expect(screen.getByText("Time's up. Give it a go.")).toBeTruthy();
     expect(screen.getByLabelText("Time's up. Give it a go.")).toBeTruthy();
@@ -64,7 +65,7 @@ it.each(['Give up', 'Completed'] as const)(
 
 // #562: with reduced motion the active view appears at once, so the second tap
 // of a double tap on Accept challenge landed on Completed and saved a rep.
-it.failing.each(['Give up', 'Completed'] as const)(
+it.each(['Give up', 'Completed'] as const)(
   'ignores a %s press carried over from the accept gesture, then accepts one after the arm delay (#562)',
   async (name) => {
     const finish = jest.fn(async () => {});
@@ -77,10 +78,10 @@ it.failing.each(['Give up', 'Completed'] as const)(
       expect(StyleSheet.flatten(view.props.style)?.opacity ?? 1).toBe(1);
     }
     await fireEvent.press(button);
-    await act(() => jest.advanceTimersByTime(400));
+    await act(() => jest.advanceTimersByTime(outcomeArmDelayMs - 1));
     await fireEvent.press(screen.getByRole('button', { name }));
     expect(finish).not.toHaveBeenCalled();
-    await act(() => jest.advanceTimersByTime(100));
+    await act(() => jest.advanceTimersByTime(1));
     expect(screen.getByRole('button', { name })).toBeEnabled();
     await fireEvent.press(screen.getByRole('button', { name }));
     expect(finish).toHaveBeenCalledTimes(1);
@@ -125,6 +126,7 @@ it('replaces completion contents with a spinner only when delayed feedback is vi
   expect(screen.getByTestId('completion-submit-spinner')).toBeTruthy();
   expect(screen.queryByText('Completed')).toBeNull();
   expect(screen.queryByText('Saving…')).toBeNull();
+  await act(() => jest.advanceTimersByTime(outcomeArmDelayMs));
   await fireEvent.press(button);
   expect(finish).not.toHaveBeenCalled();
   await screen.rerender(
