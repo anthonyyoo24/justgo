@@ -15,6 +15,12 @@ module.exports = {
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: {
     '^@sentry/react-native$': '<rootDir>/test-support/sentry-sdk.ts',
+    // expo-superwall exports only an `import` condition, so Jest loads its
+    // build directly. Its store then runs on a recorded fake native module.
+    '^expo-superwall$':
+      '<rootDir>/../../node_modules/expo-superwall/build/src/index.js',
+    '^(\\.{1,2}/)+SuperwallExpoModule$':
+      '<rootDir>/test-support/superwall-native.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     // Hoisted Expo Router tests must use this workspace's installed renderer.
     '^@testing-library/react-native$':

@@ -17,6 +17,7 @@ import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
 import { canStartChallenge } from '../access/admission';
 import { PaidAccess } from '../access/paid-access';
+import { createSuperwallBilling } from '../billing/superwall';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
@@ -40,6 +41,7 @@ export function createAppRuntime<
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage, { url });
   const access = billing ? new PaidAccess({ url, storage, client }) : null;
+  const superwall = createSuperwallBilling(billing);
   // Saved access shares the erased namespace, so its writes finish first.
   const beforeErase = async (owner: string) => {
     if (access?.ownerId() === owner) access.changeOwner(null);
@@ -80,12 +82,15 @@ export function createAppRuntime<
     }
     client.changeAccount(next);
     client.changeCollection(collection);
+    const accessAccount =
+      next ??
+      (identity instanceof ManagedIdentityController
+        ? identity.offlineAccountOwner()
+        : null);
+    // Superwall knows only the account that owns the phone. A guest, or an
+    // account being deleted, stays anonymous.
+    superwall?.changeOwner(snapshot.deletionStatus ? null : accessAccount);
     if (access) {
-      const accessAccount =
-        next ??
-        (identity instanceof ManagedIdentityController
-          ? identity.offlineAccountOwner()
-          : null);
       access.changeOwner(
         snapshot.deletionStatus || !collection
           ? null
@@ -120,6 +125,7 @@ export function createAppRuntime<
     challenges,
     activity,
     access,
+    superwall,
     canStartChallenge: () => canStartChallenge(access),
     subscribe: () => {
       sync();
@@ -146,6 +152,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     runtime.identity.setActive(active);
     updateEnvironment();
     const unsubscribe = runtime.subscribe();
+    const stopSuperwall = runtime.superwall?.start();
     const unsubscribeNetwork = listenToConnectivity((nextOnline) => {
       const wasOnline = online;
       online = nextOnline;
@@ -180,6 +187,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => {
       runtime.identity.setActive(false);
       unsubscribe();
+      stopSuperwall?.();
       subscription.remove();
       unsubscribeNetwork();
       runtime.challenges.dispose();

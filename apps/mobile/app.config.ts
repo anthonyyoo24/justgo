@@ -152,6 +152,16 @@ const config: ExpoConfig = {
           ] as [string, Record<string, unknown>],
         ]
       : []),
+    // Local subscription products for Superwall purchases in the simulator.
+    // Store builds keep App Store Connect's real products only.
+    ...(!profile || profile.startsWith('development')
+      ? [
+          [
+            './plugins/with-storekit-config.cjs',
+            { source: './storekit/JustGO.storekit' },
+          ] as [string, Record<string, unknown>],
+        ]
+      : []),
     [
       'expo-build-properties',
       {
