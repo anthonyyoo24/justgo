@@ -638,6 +638,87 @@ const cases = [
     source: "import { initializeApp } from 'firebase/app';",
     restricted: false,
   },
+  // JavaScript files follow the same boundaries as TypeScript files.
+  ...[
+    [
+      'a JavaScript feature',
+      'apps/mobile/src/features/progress/BoundaryFixture.js',
+      "import '../../data/journal/storage';",
+      'AccountRepository or ActivityRuntime',
+    ],
+    [
+      'a JavaScript module outside diagnostics',
+      'apps/mobile/src/lib/BoundaryFixture.mjs',
+      "import * as Sentry from '@sentry/react-native';",
+      'privacy review',
+    ],
+    [
+      'a CommonJS module outside managed auth',
+      'apps/mobile/src/app-support/identity/BoundaryFixture.cjs',
+      "import { createClient } from '@supabase/supabase-js';",
+      'provider sessions',
+    ],
+    [
+      'JavaScript identity code',
+      'apps/mobile/src/app-support/identity/auth/BoundaryFixture.jsx',
+      "import '../../diagnostics/reporter';",
+      'diagnostics delivery',
+    ],
+    [
+      'a JavaScript provider module',
+      'apps/mobile/src/app-support/providers/BoundaryFixture.js',
+      "import './AppProvider';",
+      'module cycle',
+    ],
+    [
+      'a JavaScript mobile plugin',
+      'apps/mobile/plugins/BoundaryFixture.cjs',
+      "import PostHog from 'posthog-react-native';",
+      'Phase 17',
+    ],
+    [
+      'a JavaScript API script',
+      'apps/api/scripts/BoundaryFixture.mjs',
+      "import '../../mobile/src/lib/network/http';",
+      'mobile code',
+    ],
+    [
+      'a JavaScript contracts module',
+      'packages/contracts/src/BoundaryFixture.mjs',
+      "import '../../../apps/api/src/build-app';",
+      'app implementation',
+    ],
+    [
+      'the Metro configuration with another Sentry entry',
+      'apps/mobile/metro.config.mjs',
+      "import * as Sentry from '@sentry/react-native';",
+      'privacy review',
+    ],
+    [
+      'the Sentry privacy plugin with another Sentry entry',
+      'apps/mobile/plugins/with-sentry-privacy.cjs',
+      "import '@sentry/react-native/expo';",
+      'privacy review',
+    ],
+  ].map(([where, file, source, fix]) => ({
+    name: `${where} keeps the import boundaries`,
+    file,
+    source,
+    restricted: true,
+    fix,
+  })),
+  {
+    name: 'the Metro configuration may load the Sentry serializer',
+    file: 'apps/mobile/metro.config.mjs',
+    source: "import sentryMetro from '@sentry/react-native/metro.js';",
+    restricted: false,
+  },
+  {
+    name: 'the Sentry privacy plugin may read the SDK version',
+    file: 'apps/mobile/plugins/with-sentry-privacy.cjs',
+    source: "import '@sentry/react-native/package.json';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {

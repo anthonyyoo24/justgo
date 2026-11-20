@@ -186,8 +186,8 @@ export default tseslint.config(
   },
   {
     files: [
-      'apps/**/*.{ts,tsx,mts,cts}',
-      'packages/contracts/**/*.{ts,tsx,mts,cts}',
+      'apps/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'packages/contracts/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ],
     plugins: { justgo },
     rules: { 'justgo/import-boundaries': 'error' },
