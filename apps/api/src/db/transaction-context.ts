@@ -10,7 +10,9 @@ type TransactionContextKey =
   | 'app.credential_digest'
   | 'app.transfer_digest'
   | 'app.rate_key'
-  | 'app.guest_catalog';
+  | 'app.guest_catalog'
+  | 'app.original_transaction_id'
+  | 'app.billing_event_id';
 
 export const setTransactionContext = (
   tx: Transaction,

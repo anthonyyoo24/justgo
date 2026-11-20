@@ -76,6 +76,7 @@ export function validateRecovery(ledger, evidence, artifacts) {
             'attempt_id',
             'rotated_to',
             'session_id',
+            'app_account_token',
           ].includes(key)
         ) {
           if (value !== null && !z.uuid().safeParse(value).success)
@@ -122,6 +123,19 @@ export async function reconcileLedger(client, ledger) {
   await client.query(
     `insert into justgo.deleted_completion_ids select * from recovery_deleted_completion_ids on conflict do nothing`,
   );
+  // A subscription owner never changes once set, so the newer ledger may only bind a guest row.
+  const {
+    rows: [subscriptionConflict],
+  } =
+    await client.query(`select exists(select 1 from recovery_app_store_subscriptions r join justgo.app_store_subscriptions s
+    using(original_transaction_id) where s.user_id is not null and s.user_id is distinct from r.user_id) as found`);
+  if (subscriptionConflict.found)
+    throw new Error('Recovery subscription ownership conflict');
+  await client.query(`insert into justgo.app_store_subscriptions(${ledgerTables.app_store_subscriptions})
+    select ${ledgerTables.app_store_subscriptions} from recovery_app_store_subscriptions
+    on conflict(original_transaction_id) do update set user_id=excluded.user_id,product_id=excluded.product_id,
+      environment=excluded.environment,expires_at=excluded.expires_at,revoked_at=excluded.revoked_at,
+      latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token`);
   for (const table of [
     'journal_versions',
     'attempt_patch_receipts',

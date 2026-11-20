@@ -34,6 +34,8 @@ const deleted = randomUUID(),
   liveSubject = randomUUID(),
   managedSession = randomUUID(),
   completion = randomUUID();
+const guestPurchase = '2000000000000001',
+  deletedPurchase = '2000000000000002';
 const receipt = hex();
 const digest = hex();
 const old = "now() - interval '90 days'";
@@ -157,6 +159,27 @@ const tombstones: Record<
         [live, completion],
       ),
   },
+  app_store_subscriptions: {
+    write: async () => {
+      await run(
+        `update justgo.app_store_subscriptions set user_id=$2,revoked_at=${old} where original_transaction_id=$1`,
+        [guestPurchase, live],
+      );
+      await run(
+        "insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,latest_transaction_id) values($1,$2,'justgo.monthly','Sandbox',now(),$1)",
+        [deletedPurchase, deleted],
+      );
+    },
+    holds: async () =>
+      (await exists(
+        'select 1 from justgo.app_store_subscriptions where original_transaction_id=$1 and user_id=$2 and revoked_at is not null',
+        [guestPurchase, live],
+      )) &&
+      exists(
+        'select 1 from justgo.app_store_subscriptions where original_transaction_id=$1 and user_id=$2',
+        [deletedPurchase, deleted],
+      ),
+  },
 };
 const writeTombstones = async () => {
   for (const tombstone of Object.values(tombstones)) await tombstone.write();
@@ -210,6 +233,10 @@ beforeAll(async () => {
     "insert into justgo.managed_auth_sessions(id,auth_user_id,user_id,device_id,expires_at) values($1,$2,$3,$4,now()+interval '1 day')",
     [managedSession, liveSubject, live, device],
   );
+  await run(
+    "insert into justgo.app_store_subscriptions(original_transaction_id,product_id,environment,expires_at,latest_transaction_id) values($1,'justgo.monthly','Sandbox',now(),$1)",
+    [guestPurchase],
+  );
 });
 beforeEach(async () => {
   await client.query('savepoint recovery_ledger_case');
@@ -256,5 +283,20 @@ describe('recovery ledger tombstones', () => {
     expect(await holding()).toEqual(every(false));
     await reconcileLedger(client, ledger);
     expect(await holding()).toEqual(every(true));
+  });
+
+  it('refuses a ledger that moves a subscription to another owner', async () => {
+    await run(
+      'update justgo.app_store_subscriptions set user_id=$2 where original_transaction_id=$1',
+      [guestPurchase, live],
+    );
+    const ledger = JSON.parse(
+      await captureLedger(client, { capturedAt: new Date().toISOString() }),
+    ) as { tables: Record<string, Record<string, unknown>[]> };
+    for (const row of ledger.tables.app_store_subscriptions!)
+      if (row.original_transaction_id === guestPurchase) row.user_id = deleted;
+    await expect(reconcileLedger(client, ledger)).rejects.toThrow(
+      'Recovery subscription ownership conflict',
+    );
   });
 });
