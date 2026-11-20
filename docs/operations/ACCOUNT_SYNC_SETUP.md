@@ -258,6 +258,74 @@ No hosted worker, cron job or workflow runs this command. Before production
 activation, assign an operator and an approved retry and alert cadence, so that
 erasure does not depend on the phone reconnecting.
 
+## Abandoned guest accounts
+
+A guest account (P16-13) that nobody uses still holds a `users` row, a mapping
+and a Supabase anonymous user. The operator command deletes guest accounts made
+more than 30 days ago that hold no subscription whose expiry falls within the
+last 30 days or later. It never touches an account that Apple or Google has
+linked. Each one goes through the account deletion path, so it gets a
+`managed_auth_deletions` row, and `auth:cleanup` then hard-deletes its Auth user.
+
+```sh
+pnpm --filter @justgo/api run guest:cleanup --dry-run
+pnpm --filter @justgo/api run guest:cleanup
+pnpm --filter @justgo/api run auth:cleanup
+```
+
+- It needs `MIGRATION_DATABASE_URL` resolving to `justgo_migrator`, separate
+  from `DATABASE_URL`, and refuses any other connection or role. It sends no
+  provider request, so it needs no Supabase secret.
+- `--dry-run` lists the accounts and writes nothing. A run takes at most 100
+  accounts, so rerun it until it reports `count` 0. It prints only counts and
+  user IDs, and exits nonzero on any failure.
+- Each account is deleted in one transaction under its owner lock, after the
+  command checks it again. A guest that links or subscribes during the run is
+  kept, a failure leaves no half-deleted account, and a rerun is safe.
+- A cleaned guest keeps no deletion receipt. Its bearer answers 401, and the
+  phone makes a new guest account (P16-14). A subscription the old guest held
+  moves to the next account that verifies it.
+
+Running it against staging or production is a deploy step and needs Anthony's
+go. No hosted job runs it yet. Scheduling it is gate
+[#581](https://github.com/anthonyyoo24/justgo/issues/581).
+
+### Anonymous Auth users with no account
+
+An anonymous Auth user that never reached `POST /v1/auth/session` exists only
+in Supabase, so the command cannot see it. Delete those in the Supabase SQL
+editor, only with Anthony's go. Count them first:
+
+```sql
+SELECT count(*) FROM auth.users u
+WHERE u.is_anonymous IS TRUE
+  AND u.created_at < now() - interval '30 days'
+  AND NOT EXISTS (
+    SELECT 1 FROM justgo.managed_auth_accounts m WHERE m.auth_user_id = u.id
+  );
+```
+
+Then delete them in one transaction. The guard stops it when the editor's role
+cannot read the mappings, because forced RLS would otherwise hide every mapping
+and the delete would reach anonymous users that hold an account:
+
+```sql
+BEGIN;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM justgo.managed_auth_accounts) THEN
+    RAISE EXCEPTION 'justgo.managed_auth_accounts is not readable here';
+  END IF;
+END $$;
+DELETE FROM auth.users u
+WHERE u.is_anonymous IS TRUE
+  AND u.created_at < now() - interval '30 days'
+  AND NOT EXISTS (
+    SELECT 1 FROM justgo.managed_auth_accounts m WHERE m.auth_user_id = u.id
+  );
+COMMIT;
+```
+
 ## Gate cases not yet in an issue
 
 Each gate below has an open issue, but the issue does not name these cases.
