@@ -806,6 +806,9 @@ Decisions.
 - Event tracking. `superwallOnly`, so Superwall's dashboard shows paywall conversion and can run paywall A/B tests. Events go to Superwall only, never to other analytics. This needs the analytics exception and privacy review before launch: the policy, DATA_INVENTORY, App Privacy answers and Superwall's DPA (Anthony, 2026-11-20).
 - Paid guests. A guest who bought can start challenges without signing in. Guest requests carry the guest's purchase, and the server grants access only from a purchase it has verified with Apple. Requiring sign-in before purchase was rejected (guideline 5.1.1). P16-9 settles the exact form (Anthony, 2026-11-20).
 - Forged Apple signatures. A transaction whose signature or certificate chain fails Apple's check is refused for good with a 4xx and files no server error report, so the phone never retries it. Apple being unreachable stays 503 `UNAVAILABLE` (Anthony, 2026-11-20).
+- Refunds of an earlier period. Apple refunding an earlier billing period does not end access for the period the subscriber is in now. Only a refund or revocation of the current period ends access (Anthony, 2026-11-20).
+- Restores while unpaid (#561). `POST /v1/completion-restores` stays open to an account without access, so sync, guest adoption and import keep working. The paywall gates starting a challenge, not saving history (Anthony, 2026-11-20).
+- Offline clock tampering (#567). Accepted. Saved access can outlive its expiry only while the phone is offline and someone has set its clock back on purpose. The next online access check ends it. RevenueCat's offline cache has the same limit (Anthony, 2026-11-20).
 - Keep out. No Stripe checkout, Redis or always-on worker. No client premium flag. No private-history recovery from a receipt. No provider call inside a database transaction. General analytics stays in Phase 17.
 
 The nine subscription rules.
