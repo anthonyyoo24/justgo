@@ -105,6 +105,11 @@ const verify = (transactionId: string, token?: string) =>
     remoteAddress: `127.40.0.${++address}`,
     ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
   });
+const access = (token: string) =>
+  apiRequest(app, {
+    url: '/v1/access',
+    headers: { authorization: `Bearer ${token}` },
+  });
 const stored = async (original: string) =>
   (
     await admin.query<{
@@ -138,6 +143,11 @@ describe('POST /v1/billing/verifications', () => {
         latest_transaction_id: transactionId,
       }),
     ]);
+    expect((await access(owner.token)).json()).toMatchObject({
+      status: 'verified',
+      source: 'subscription',
+      productId: 'app.justgo.monthly',
+    });
   });
 
   it('stores a guest purchase with no owner', async () => {
@@ -219,6 +229,7 @@ describe('POST /v1/billing/verifications', () => {
       checkedAt: expect.any(String),
     });
     expect(await stored(original)).toHaveLength(1);
+    expect((await access(owner.token)).json().status).toBe('unpaid');
   });
 
   it('keeps the latest expiry when an older renewal arrives late', async () => {
