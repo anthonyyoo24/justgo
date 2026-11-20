@@ -43,8 +43,9 @@ signing keys, banking or tax values in this repository.
 ## What the API stores about purchases
 
 Migration `0027_billing_tables` adds two tables in the private `justgo`
-schema, and `0028_billing_confirmation` adds the columns the webhook and
-repair use. `POST /v1/billing/verifications` writes `app_store_subscriptions`,
+schema, `0028_billing_confirmation` adds the columns the webhook and
+repair use, and `0029_billing_answer_order` adds the signing time that orders
+Apple's answers. `POST /v1/billing/verifications` writes `app_store_subscriptions`,
 and the Superwall webhook writes `billing_events`. They hold no receipt, signed
 transaction, payload, key or secret.
 
@@ -59,6 +60,13 @@ transaction, payload, key or secret.
   deleted account's purchase never passes to someone else. The recovery ledger
   replays the table, so a restore keeps owner bindings and refunds.
   `checked_at` records when the webhook or repair last stored Apple's answer.
+- The row keeps the newest Apple answer, whatever order answers commit in. An
+  answer replaces the stored one only when its period ends later, or when it
+  covers the same period and Apple signed it later (`signed_at`, from the
+  transaction's `signedDate`). Apple signs each answer when it gives it, so an
+  answer read before a refund and saved after it changes nothing, and a newer
+  answer that shows a refund reversed restores access. The expiry never moves
+  back, because Apple also signs an old transaction afresh when asked about it.
 - `billing_events` holds each Superwall event ID, when it arrived, the original
   transaction ID it names and when Apple's answer for it was stored, so a
   redelivered event does nothing. The API may mark an event confirmed and change

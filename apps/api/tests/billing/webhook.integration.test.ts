@@ -40,6 +40,8 @@ const users = new Set<string>(),
   events = new Set<string>();
 let appleDown = false;
 let statusReads: string[] = [];
+/** Apple's next answer about this ID, held after Apple gives it until the gate opens. */
+let hold: { id: string; answered: () => void; gate: Promise<void> } | undefined;
 let app: ReturnType<typeof buildApp>;
 
 beforeAll(async () => {
@@ -54,9 +56,17 @@ beforeAll(async () => {
     const url = input instanceof Request ? input.url : String(input);
     const asked = /\/subscriptions\/(\d+)$/.exec(url)?.[1];
     if (asked) statusReads.push(asked);
-    return appleDown
-      ? Promise.resolve(new Response('{}', { status: 503 }))
-      : store.transport(input, init);
+    if (appleDown) return Promise.resolve(new Response('{}', { status: 503 }));
+    const held = hold;
+    if (held && /\/(\d+)$/.exec(url)?.[1] === held.id) {
+      hold = undefined;
+      return store.transport(input, init).then(async (answer) => {
+        held.answered();
+        await held.gate;
+        return answer;
+      });
+    }
+    return store.transport(input, init);
   };
   const apple = {
     transport,
@@ -154,6 +164,37 @@ function deliver(body: string, signed = svixHeaders(secret, body)) {
     remoteAddress: remoteAddress(),
   });
 }
+/**
+ * Let Apple answer the next read about `id` at once and hold that answer on
+ * its way to the API, as network delay or a slow handler would, until
+ * `release()`. `answered` settles once Apple has answered.
+ */
+function holdNextAnswer(id: string) {
+  let release!: () => void;
+  let answered!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const ready = new Promise<void>((resolve) => (answered = resolve));
+  hold = { id, answered, gate };
+  return { answered: ready, release };
+}
+async function owned() {
+  const sessionToken = randomBytes(32).toString('hex');
+  const owner = await identity.bootstrap({
+    deviceId: randomUUID(),
+    sessionId: randomUUID(),
+    sessionToken,
+    credential: randomBytes(32).toString('hex'),
+  });
+  users.add(owner.userId);
+  return { sessionToken, userId: owner.userId };
+}
+const access = async (token: string) =>
+  (
+    await apiRequest(app, {
+      url: '/v1/access',
+      headers: { authorization: `Bearer ${token}` },
+    })
+  ).json<{ status: string }>().status;
 const row = async (original: string) =>
   (
     await admin.query<{
@@ -291,6 +332,100 @@ describe('POST /v1/billing/superwall-events', () => {
       revoked_at: new Date(revokedAt),
       user_id: owner.userId,
     });
+  });
+
+  it("keeps a refund when Apple's earlier answer about the same period reaches the API after it", async () => {
+    const { sessionToken, userId } = await owned();
+    const original = await subscribed(
+      { appAccountToken: userId },
+      sessionToken,
+    );
+    const expiry = (await row(original))!.expires_at.getTime();
+    // Apple answers a renewal event before the refund, and that answer arrives late.
+    const late = holdNextAnswer(original);
+    const renewal = deliver(superwallEvent('renewal', original));
+    await late.answered;
+    const revokedAt = Date.now() - 1000;
+    const refunded = appleSays(original, {
+      appAccountToken: userId,
+      expiresDate: expiry,
+      revocationDate: revokedAt,
+    });
+    const refund = await deliver(superwallEvent('refund', original));
+    expect(refund.json()).toEqual({ status: 'confirmed' });
+    expect(await access(sessionToken)).toBe('unpaid');
+    late.release();
+    expect((await renewal).json()).toEqual({ status: 'confirmed' });
+    expect(await row(original)).toMatchObject({
+      revoked_at: new Date(revokedAt),
+      latest_transaction_id: refunded,
+      expires_at: new Date(expiry),
+    });
+    expect(await access(sessionToken)).toBe('unpaid');
+  });
+
+  it("keeps a refund when the phone's verification read Apple before it and saves after it", async () => {
+    const { sessionToken, userId } = await owned();
+    const original = await subscribed(
+      { appAccountToken: userId },
+      sessionToken,
+    );
+    const expiry = (await row(original))!.expires_at.getTime();
+    const late = holdNextAnswer(original);
+    const verification = apiRequest(app, {
+      method: 'POST',
+      url: '/v1/billing/verifications',
+      payload: { transactionId: original },
+      remoteAddress: remoteAddress(),
+      headers: { authorization: `Bearer ${sessionToken}` },
+    });
+    await late.answered;
+    const revokedAt = Date.now() - 1000;
+    const refunded = appleSays(original, {
+      appAccountToken: userId,
+      expiresDate: expiry,
+      revocationDate: revokedAt,
+    });
+    expect((await deliver(superwallEvent('refund', original))).json()).toEqual({
+      status: 'confirmed',
+    });
+    late.release();
+    const answer = await verification;
+    expect(answer.statusCode).toBe(200);
+    expect(answer.json()).toMatchObject({ status: 'unpaid' });
+    expect(await row(original)).toMatchObject({
+      revoked_at: new Date(revokedAt),
+      latest_transaction_id: refunded,
+    });
+    expect(await access(sessionToken)).toBe('unpaid');
+  });
+
+  it('restores access when a newer Apple answer for the same period shows the refund reversed', async () => {
+    const { sessionToken, userId } = await owned();
+    const original = await subscribed(
+      { appAccountToken: userId },
+      sessionToken,
+    );
+    const expiry = (await row(original))!.expires_at.getTime();
+    appleSays(original, {
+      appAccountToken: userId,
+      expiresDate: expiry,
+      revocationDate: Date.now() - 1000,
+    });
+    await deliver(superwallEvent('refund', original));
+    expect(await access(sessionToken)).toBe('unpaid');
+    const restored = appleSays(original, {
+      appAccountToken: userId,
+      expiresDate: expiry,
+    });
+    expect((await deliver(superwallEvent('renewal', original))).json()).toEqual(
+      { status: 'confirmed' },
+    );
+    expect(await row(original)).toMatchObject({
+      revoked_at: null,
+      latest_transaction_id: restored,
+    });
+    expect(await access(sessionToken)).toBe('verified');
   });
 
   it('answers 503 while Apple is down, leaves the event pending, and confirms it on redelivery', async () => {

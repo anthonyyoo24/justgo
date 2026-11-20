@@ -26,9 +26,10 @@ export const ledgerTables = Object.freeze({
     'id,auth_user_id,user_id,device_id,expires_at,revoked_at',
   managed_auth_deletions: 'user_id,auth_user_id,requested_at,completed_at',
   deleted_completion_ids: 'user_id,attempt_id',
-  // Replayed so an owner binding or a refund after the dump survives a restore.
+  // Replayed so an owner binding or a refund after the dump survives a restore,
+  // with the signing time that keeps an older Apple answer from undoing it.
   app_store_subscriptions:
-    'original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token',
+    'original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token,signed_at',
 });
 export const dumpOnlyTables = Object.freeze([
   'identity_rate_buckets',

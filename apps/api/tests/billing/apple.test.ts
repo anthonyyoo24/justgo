@@ -80,6 +80,7 @@ describe('Apple transaction verification', () => {
       expiresAt: new Date(now + 3_600_000),
       revokedAt: null,
       appAccountToken: 'a1b2c3d4-0000-4000-8000-000000000001',
+      signedAt: expect.any(Date),
     });
     expect(requests).toHaveLength(1);
     const [request] = requests;

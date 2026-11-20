@@ -27,6 +27,7 @@ export const appStoreSubscriptions = appSchema
       latestTransactionId: text('latest_transaction_id').notNull(),
       appAccountToken: uuid('app_account_token'),
       checkedAt: time('checked_at'),
+      signedAt: time('signed_at'),
     },
     (t) => [
       index('app_store_subscriptions_owner_idx').on(t.userId),

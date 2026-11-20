@@ -78,6 +78,7 @@ function apple(fail?: (id: string) => Error | undefined) {
       expiresAt: renewedUntil,
       revokedAt: null,
       appAccountToken: null,
+      signedAt: new Date(),
     };
     return Promise.resolve(purchase);
   };

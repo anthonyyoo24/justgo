@@ -246,7 +246,9 @@ export type StoreRequest = {
  * Get Transaction Info and Get All Subscription Statuses at the sandbox
  * origin. It answers only a bearer the connect key signed, and 404 for an ID
  * it does not hold. `subscriptions` maps an original transaction ID to its
- * latest transaction, which a test changes to move Apple's answer.
+ * latest transaction, which a test changes to move Apple's answer. Like Apple,
+ * it signs each answer when it gives it, so a later answer always carries a
+ * later `signedDate`.
  */
 export function createTestStore(
   chain: TestChain,
@@ -258,6 +260,11 @@ export function createTestStore(
   } = {},
 ) {
   const requests: StoreRequest[] = [];
+  let lastSigned = 0;
+  const answer = (payload: Record<string, unknown>) => {
+    lastSigned = Math.max(Date.now(), lastSigned + 1);
+    return chain.sign({ ...payload, signedDate: lastSigned }, options.forge);
+  };
   const transport: typeof fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
     const authorization = new Headers(init?.headers).get('authorization') ?? '';
@@ -295,7 +302,7 @@ export function createTestStore(
               {
                 originalTransactionId: statuses[1],
                 status: 1,
-                signedTransactionInfo: await chain.sign(latest, options.forge),
+                signedTransactionInfo: await answer(latest),
               },
             ],
           },
@@ -309,7 +316,7 @@ export function createTestStore(
     const payload = match?.[1] ? transactions.get(match[1]) : undefined;
     if (!payload) return new Response('{"errorCode":4040010}', { status: 404 });
     return Response.json({
-      signedTransactionInfo: await chain.sign(payload, options.forge),
+      signedTransactionInfo: await answer(payload),
     });
   };
   return { transport, requests };

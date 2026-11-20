@@ -15,6 +15,7 @@ import { ApiError } from '../http/api-error.js';
 import type { IdentityService } from '../identity/service.js';
 import { setTransactionContext } from '../db/transaction-context.js';
 import type { AppleSubscriptionReader, VerifiedTransaction } from './apple.js';
+import { newestAnswer } from './newest-answer.js';
 
 /** Svix refuses a message more than five minutes from its send time. */
 const tolerance = 300;
@@ -73,8 +74,8 @@ export function verifySvix(
  * that named it confirmed. The setting that opens these rows is set only here,
  * after Apple's signed answer verified. It reaches a stored subscription only:
  * it never inserts one and never binds or moves an owner, so a webhook alone
- * can never create paid access. A later expiry wins, as in the verifier, so a
- * stale answer committed late never shortens access.
+ * can never create paid access. The newest Apple answer wins, as in the
+ * verifier, so an answer committed late never undoes a newer one.
  */
 export async function applyConfirmed(
   identity: IdentityService,
@@ -87,7 +88,7 @@ export async function applyConfirmed(
       purchase.originalTransactionId,
     );
     await tx.execute(
-      sql`update justgo.app_store_subscriptions set product_id=case when expires_at<=${purchase.expiresAt} then ${purchase.productId} else product_id end, revoked_at=case when expires_at<=${purchase.expiresAt} then ${purchase.revokedAt} else revoked_at end, latest_transaction_id=case when expires_at<=${purchase.expiresAt} then ${purchase.transactionId} else latest_transaction_id end, expires_at=greatest(expires_at,${purchase.expiresAt}), checked_at=now() where original_transaction_id=${purchase.originalTransactionId}`,
+      sql`update justgo.app_store_subscriptions set ${newestAnswer(purchase)}, checked_at=now() where original_transaction_id=${purchase.originalTransactionId}`,
     );
     await tx.execute(
       sql`update justgo.billing_events set confirmed_at=now() where original_transaction_id=${purchase.originalTransactionId} and confirmed_at is null`,

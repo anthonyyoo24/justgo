@@ -18,6 +18,8 @@ export type VerifiedTransaction = {
   expiresAt: Date;
   revokedAt: Date | null;
   appAccountToken: string | null;
+  /** When Apple signed this answer, which orders answers about the same period. */
+  signedAt: Date;
 };
 export type AppleTransactionReader = (
   transactionId: string,
@@ -57,6 +59,7 @@ const payloadSchema = z.object({
   environment: z.string(),
   expiresDate: z.number().int().positive(),
   revocationDate: z.number().int().positive().optional(),
+  signedDate: z.number().int().positive(),
   appAccountToken: z.union([z.literal(''), z.string().regex(uuid)]).optional(),
 });
 
@@ -438,6 +441,7 @@ function appleClient(config: AppleBillingConfig, options: AppleClientOptions) {
       appAccountToken: purchase.appAccountToken
         ? purchase.appAccountToken.toLowerCase()
         : null,
+      signedAt: new Date(purchase.signedDate),
     };
   }
   return { read, transaction };

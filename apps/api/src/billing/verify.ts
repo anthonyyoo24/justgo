@@ -12,6 +12,7 @@ import { parse } from '../http/parse.js';
 import type { IdentityService } from '../identity/service.js';
 import { setTransactionContext } from '../db/transaction-context.js';
 import type { AppleTransactionReader, VerifiedTransaction } from './apple.js';
+import { newestAnswer } from './newest-answer.js';
 
 type Tx = Parameters<Parameters<IdentityService['withSession']>[1]>[0];
 type Subscription = {
@@ -50,7 +51,7 @@ async function save(
     purchase.originalTransactionId,
   );
   await tx.execute(
-    sql`insert into justgo.app_store_subscriptions (original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token) values (${purchase.originalTransactionId},${owner},${purchase.productId},${purchase.environment},${purchase.expiresAt},${purchase.revokedAt},${purchase.transactionId},${purchase.appAccountToken}) on conflict (original_transaction_id) do nothing`,
+    sql`insert into justgo.app_store_subscriptions (original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token,signed_at) values (${purchase.originalTransactionId},${owner},${purchase.productId},${purchase.environment},${purchase.expiresAt},${purchase.revokedAt},${purchase.transactionId},${purchase.appAccountToken},${purchase.signedAt}) on conflict (original_transaction_id) do nothing`,
   );
   const [stored] = (
     await tx.execute<Subscription>(
@@ -62,10 +63,10 @@ async function save(
   const holder =
     stored.user_id ??
     (owner !== null && purchase.appAccountToken === owner ? owner : null);
-  // A later expiry wins, so an older renewal posted late never shortens access.
+  // The newest Apple answer wins, so one posted late never undoes a newer one.
   const [row] = (
     await tx.execute<Subscription>(
-      sql`update justgo.app_store_subscriptions set user_id=${holder}, product_id=case when expires_at<=${purchase.expiresAt} then ${purchase.productId} else product_id end, revoked_at=case when expires_at<=${purchase.expiresAt} then ${purchase.revokedAt} else revoked_at end, latest_transaction_id=case when expires_at<=${purchase.expiresAt} then ${purchase.transactionId} else latest_transaction_id end, expires_at=greatest(expires_at,${purchase.expiresAt}) where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at`,
+      sql`update justgo.app_store_subscriptions set user_id=${holder}, ${newestAnswer(purchase)} where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at`,
     )
   ).rows;
   if (!row) throw new ApiError('CONFLICT', 409);
