@@ -39,7 +39,7 @@ describe('verified access', () => {
       ),
     ).toBe(true);
   });
-  it.each(['subscription', 'guest_subscription'] as const)(
+  it.each(['subscription'] as const)(
     'accepts a %s with its product ID until the verified Apple expiry',
     (source) => {
       const access = accessResponseSchema.parse({
@@ -69,6 +69,8 @@ describe('verified access', () => {
       { ...paid, productId: 'com.example/annual' },
       { ...paid, source: 'free_beta' },
       { ...paid, source: 'superwall' },
+      // Every purchase has an owner since guests hold an account (P16-13).
+      { ...paid, source: 'guest_subscription' },
       { status: 'unpaid', source: 'subscription', checkedAt: time(0) },
     ])
       expect(accessResponseSchema.safeParse(invalid).success).toBe(false);

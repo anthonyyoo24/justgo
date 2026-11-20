@@ -6,6 +6,8 @@ export type VerifiedManagedIdentity = {
   authUserId: string;
   sessionId: string;
   expiresAt: string;
+  /** An anonymous Auth user with no identity, accepted only while billing is on. */
+  guest: boolean;
 };
 export type ManagedAuthVerifier = (
   token: string,
@@ -29,6 +31,7 @@ export function createManagedAuthVerifier(
   url: string,
   publishableKey: string,
   transport?: typeof fetch,
+  { guests = false }: { guests?: boolean } = {},
 ): ManagedAuthVerifier {
   const origin = new URL(url);
   if (
@@ -68,12 +71,18 @@ export function createManagedAuthVerifier(
           Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
         ),
       );
+      // A guest is an anonymous user that no identity has joined yet. Linking
+      // Apple or Google clears is_anonymous, so a user is one or the other.
+      const guest =
+        guests && user.is_anonymous === true && user.identities.length === 0;
+      const account =
+        user.is_anonymous !== true &&
+        user.identities.some(
+          ({ provider }) => provider === 'apple' || provider === 'google',
+        );
       if (
         claims.sub !== user.id ||
-        user.is_anonymous ||
-        !user.identities.some(
-          ({ provider }) => provider === 'apple' || provider === 'google',
-        ) ||
+        !(guest || account) ||
         claims.iss !== new URL('/auth/v1', origin).href ||
         claims.exp * 1000 <= Date.now()
       )
@@ -82,6 +91,7 @@ export function createManagedAuthVerifier(
         authUserId: user.id,
         sessionId: claims.session_id,
         expiresAt: new Date(claims.exp * 1000).toISOString(),
+        guest,
       };
     } catch {
       throw new ApiError('UNAUTHORIZED');

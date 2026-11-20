@@ -41,9 +41,12 @@ const identityLinkRequest = linkRequest
 const signOutRequest = z
   .object({ accessToken: z.string().min(1).max(1000) })
   .strict();
+const anonymousRequest = z.object({}).strict();
 type Subject = {
   handle: string;
   id: string;
+  // Empty for an anonymous user, as Supabase gives one no identity until a
+  // provider links. A link makes it a permanent user.
   providers: Set<'apple' | 'google'>;
   deleted: boolean;
 };
@@ -57,6 +60,8 @@ type Session = {
 export class FixtureProviders {
   private readonly subjects = new Map<string, Subject>();
   private readonly sessions = new Map<string, Session>();
+  /** `guests` mirrors BILLING_ENABLED: only then does the API accept an anonymous user. */
+  constructor(private readonly options: { guests?: boolean } = {}) {}
   private view(session: Session) {
     return {
       subjectHandle: session.subject.handle,
@@ -86,6 +91,18 @@ export class FixtureProviders {
       this.subjects.set(handle, subject);
     }
     subject.providers.add(input.provider);
+    return this.view(this.open(subject));
+  }
+  /** Supabase's anonymous sign-in: a new subject with no identity. */
+  anonymous(value: unknown) {
+    parse(anonymousRequest, value);
+    const subject: Subject = {
+      handle: randomBytes(16).toString('hex'),
+      id: randomUUID(),
+      providers: new Set(),
+      deleted: false,
+    };
+    this.subjects.set(subject.handle, subject);
     return this.view(this.open(subject));
   }
   private open(subject: Subject) {
@@ -154,10 +171,13 @@ export class FixtureProviders {
       Date.parse(session.expiresAt) <= Date.now()
     )
       throw new ApiError('UNAUTHORIZED');
+    const guest = session.subject.providers.size === 0;
+    if (guest && !this.options.guests) throw new ApiError('UNAUTHORIZED');
     return {
       authUserId: session.subject.id,
       sessionId: session.id,
       expiresAt: session.expiresAt,
+      guest,
     };
   };
   readonly live: ManagedLiveSessionReader = async (
@@ -197,6 +217,9 @@ export function fixtureProviderRoutes(
   });
   app.post('/provider-sessions', parseRequestBody(), (context) =>
     context.json(providers.create(requestBody(context))),
+  );
+  app.post('/anonymous-sessions', parseRequestBody(), (context) =>
+    context.json(providers.anonymous(requestBody(context))),
   );
   app.post('/provider-links', parseRequestBody(), (context) =>
     context.json(providers.link(requestBody(context))),

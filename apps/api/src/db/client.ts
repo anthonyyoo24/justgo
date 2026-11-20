@@ -65,7 +65,11 @@ const managedRelations = {
     grants: ['select', 'insert', 'update'],
   },
   managed_auth_accounts: {
-    columns: { auth_user_id: ['uuid', true], user_id: ['uuid', true] },
+    columns: {
+      auth_user_id: ['uuid', true],
+      user_id: ['uuid', true],
+      guest: ['boolean', true],
+    },
     grants: ['select', 'insert'],
   },
   managed_auth_sessions: {

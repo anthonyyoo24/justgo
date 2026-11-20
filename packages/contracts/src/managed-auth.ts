@@ -5,7 +5,13 @@ export const managedSessionRequestSchema = z
   .object({ deviceId: z.uuid(), legacySessionToken: secretSchema.optional() })
   .strict();
 export const managedSessionResponseSchema = sessionResponseSchema
-  .extend({ authUserId: z.uuid(), dataEpoch: z.number().int().nonnegative() })
+  .extend({
+    authUserId: z.uuid(),
+    dataEpoch: z.number().int().nonnegative(),
+    // An anonymous Auth user's account. A session saved before guests existed
+    // has no field and is an account.
+    guest: z.boolean().default(false),
+  })
   .strict();
 export const managedLogoutRequestSchema = z
   .object({ scope: z.enum(['session', 'all']) })

@@ -59,10 +59,26 @@ export class ManagedIdentityService {
   }
   private async mapping(tx: Tx, authUserId: string) {
     return (
-      await tx.execute<{ user_id: string }>(
-        sql`select user_id from justgo.managed_auth_accounts where auth_user_id=${authUserId}`,
+      await tx.execute<{ user_id: string; guest: boolean }>(
+        sql`select user_id,guest from justgo.managed_auth_accounts where auth_user_id=${authUserId}`,
       )
     ).rows[0];
+  }
+  /**
+   * The guest flag follows the verified Auth user. Linking Apple or Google to
+   * a guest's Auth user keeps its account and ends the guest, and nothing
+   * makes an account a guest again. Call it with the owner locked.
+   */
+  private async settleGuest(
+    tx: Tx,
+    identity: VerifiedManagedIdentity,
+    mapping: { guest: boolean },
+  ) {
+    if (identity.guest && !mapping.guest) throw new ApiError('UNAUTHORIZED');
+    if (mapping.guest && !identity.guest)
+      await tx.execute(
+        sql`update justgo.managed_auth_accounts set guest=false where auth_user_id=${identity.authUserId} and guest`,
+      );
   }
   private async hasMapping(token: string) {
     const identity = await this.verified(token);
@@ -82,6 +98,9 @@ export class ManagedIdentityService {
         await this.prepare(tx, identity);
         const mapping = await this.mapping(tx, identity.authUserId);
         missingMapping = !mapping;
+        // A guest account holds no history, so it never takes over a legacy one.
+        if (identity.guest && input.legacySessionToken)
+          throw new ApiError('CONFLICT', 409);
         const legacyOwner = input.legacySessionToken
           ? await this.legacy(tx, input.legacySessionToken, mapping?.user_id)
           : undefined;
@@ -96,7 +115,7 @@ export class ManagedIdentityService {
             );
           await this.lockOwner(tx, userId);
           const inserted = await tx.execute<{ user_id: string }>(
-            sql`insert into justgo.managed_auth_accounts(auth_user_id,user_id) values(${identity.authUserId},${userId}) on conflict(auth_user_id) do nothing returning user_id`,
+            sql`insert into justgo.managed_auth_accounts(auth_user_id,user_id,guest) values(${identity.authUserId},${userId},${identity.guest}) on conflict(auth_user_id) do nothing returning user_id`,
           );
           if (!inserted.rows.length) throw new MappingCreatedConcurrently();
           if (legacyOwner) {
@@ -112,6 +131,7 @@ export class ManagedIdentityService {
           }
         }
         const owner = await this.lockOwner(tx, userId);
+        if (mapping) await this.settleGuest(tx, identity, mapping);
         if (!(await this.live(tx, identity)))
           throw new ApiError('SESSION_REVOKED');
         const previous = (
@@ -164,6 +184,7 @@ export class ManagedIdentityService {
       const mapping = await this.mapping(tx, identity.authUserId);
       if (!mapping) throw new ApiError('UNAUTHORIZED');
       const owner = await this.lockOwner(tx, mapping.user_id);
+      await this.settleGuest(tx, identity, mapping);
       const session = (
         await tx.execute<{ device_id: string; revoked_at: Date | null }>(
           sql`select device_id,revoked_at from justgo.managed_auth_sessions where id=${identity.sessionId} and auth_user_id=${identity.authUserId} and user_id=${mapping.user_id}`,

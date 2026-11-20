@@ -8,7 +8,7 @@ import type { IdentityService } from '../../src/identity/service.js';
 const userId = '00000000-0000-4000-8000-000000000001';
 const lapsed: AccessResponse = {
   status: 'verified',
-  source: 'guest_subscription',
+  source: 'subscription',
   productId: 'justgo.annual',
   checkedAt: '2026-01-01T00:00:00.000Z',
   expiresAt: '2026-02-01T00:00:00.000Z',

@@ -8,6 +8,7 @@ const identity = {
   authUserId: '10000000-0000-4000-8000-000000000040',
   sessionId: '10000000-0000-4000-8000-000000000041',
   expiresAt: '2030-01-01T00:00:00.000Z',
+  guest: false,
 };
 
 describe('default private live-session reader', () => {

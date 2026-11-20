@@ -136,7 +136,10 @@ async function subscribed(
     url: '/v1/billing/verifications',
     payload: { transactionId },
     remoteAddress: remoteAddress(),
-    ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
+    // Every purchase has an owner, so a case that names none gets a fresh one.
+    headers: {
+      authorization: `Bearer ${token ?? (await owned()).sessionToken}`,
+    },
   });
   expect(response.statusCode).toBe(200);
   return transactionId;

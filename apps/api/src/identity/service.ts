@@ -88,7 +88,7 @@ export type IdentityOptions = {
   managedAuthDeletion?: ManagedAuthDeletion;
 };
 export type AuthenticatedSession = SessionResponse &
-  Partial<Pick<ManagedSessionResponse, 'authUserId' | 'dataEpoch'>>;
+  Partial<Pick<ManagedSessionResponse, 'authUserId' | 'dataEpoch' | 'guest'>>;
 export class IdentityService {
   readonly managed?: ManagedIdentityService;
   readonly managedAuthDeletion: ManagedAuthDeletion | undefined;
@@ -199,13 +199,23 @@ export class IdentityService {
     );
     if (!valid) fail('SESSION_EXPIRED');
   }
+  /**
+   * A guest account holds a purchase and nothing else, so it reaches only the
+   * work that passes `guests: true`. Every other owner route refuses it here,
+   * before it reads or writes, and a new route refuses it by default.
+   */
   async withSession<T>(
     token: string,
     work: (tx: Tx, session: AuthenticatedSession) => Promise<T>,
+    { guests = false }: { guests?: boolean } = {},
   ): Promise<T> {
     if (token.includes('.')) {
       if (!this.managed) throw new ApiError('UNAUTHORIZED');
-      return this.managed.withSession(token, work);
+      return this.managed.withSession(token, (tx, session) => {
+        if (session.guest && !guests)
+          throw new ApiError('SIGN_IN_REQUIRED', 403);
+        return work(tx, session);
+      });
     }
     return this.db.transaction(async (tx) => {
       const row = await this.findSession(tx, token);

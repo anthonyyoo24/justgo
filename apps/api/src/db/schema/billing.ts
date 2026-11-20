@@ -3,9 +3,12 @@ import { check, index, pgPolicy, text, uuid } from 'drizzle-orm/pg-core';
 import { users } from './identity.ts';
 import { appSchema, maintenance, time } from './shared.ts';
 
-// An owner reaches its own rows. A guest row (no owner) is reachable only through
-// the one original transaction ID the server verified with Apple and set for this transaction.
-const ownerOrVerifiedGuest = sql`user_id = (select justgo.current_user_id()) OR (user_id is null AND original_transaction_id = (select current_setting('app.original_transaction_id',true)))`;
+// An owner reaches its own rows. A row a guest account holds is also reachable
+// through the one original transaction ID the server verified with Apple and set
+// for this transaction, so the verifying caller can take it over. Every row has
+// an owner, and a write always leaves the row with the caller.
+const owned = sql`user_id = (select justgo.current_user_id())`;
+const ownerOrVerifiedGuest = sql`${owned} OR (original_transaction_id = (select current_setting('app.original_transaction_id',true)) AND EXISTS (select 1 from justgo.managed_auth_accounts m where m.user_id = app_store_subscriptions.user_id and m.guest))`;
 // The webhook and the repair job hold no owner. They reach a subscription and its
 // events only through the one original transaction ID Apple just confirmed, and
 // they read and update but never insert.
@@ -19,7 +22,9 @@ export const appStoreSubscriptions = appSchema
     'app_store_subscriptions',
     {
       originalTransactionId: text('original_transaction_id').primaryKey(),
-      userId: uuid('user_id').references(() => users.id),
+      userId: uuid('user_id')
+        .notNull()
+        .references(() => users.id),
       productId: text('product_id').notNull(),
       environment: text().notNull(),
       expiresAt: time('expires_at').notNull(),
@@ -47,7 +52,7 @@ export const appStoreSubscriptions = appSchema
       pgPolicy('owner_or_verified_guest', {
         to: 'justgo_runtime',
         using: ownerOrVerifiedGuest,
-        withCheck: ownerOrVerifiedGuest,
+        withCheck: owned,
       }),
       pgPolicy('apple_confirmed_read', {
         for: 'select',

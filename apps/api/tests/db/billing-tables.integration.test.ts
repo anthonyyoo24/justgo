@@ -33,6 +33,10 @@ type Context = {
 
 const alice = randomUUID();
 const bob = randomUUID();
+// Two guest accounts: an anonymous Auth user mapped with guest set.
+const gina = randomUUID();
+const gus = randomUUID();
+const guests = [gina, gus];
 const serial = () =>
   String(3_000_000_000_000_000n + BigInt(Math.floor(Math.random() * 1e15)));
 const alicePurchase = serial();
@@ -89,10 +93,15 @@ const sqlState = (work: Promise<unknown>) =>
   );
 
 beforeAll(async () => {
-  await admin.query('insert into justgo.users(id) values($1),($2)', [
+  await admin.query('insert into justgo.users(id) values($1),($2),($3),($4)', [
     alice,
     bob,
+    ...guests,
   ]);
+  await admin.query(
+    'insert into justgo.managed_auth_accounts(auth_user_id,user_id,guest) select gen_random_uuid(),id,true from unnest($1::uuid[]) id',
+    [guests],
+  );
   await within({ owner: alice }, (tx) =>
     tx.execute(insertSubscription(alicePurchase, alice)),
   );
@@ -104,14 +113,18 @@ afterAll(async () => {
   try {
     await admin.query(
       'delete from justgo.app_store_subscriptions where user_id = any($1) or original_transaction_id = any($2)',
-      [[alice, bob], purchases],
+      [[alice, bob, ...guests], purchases],
+    );
+    await admin.query(
+      'delete from justgo.managed_auth_accounts where user_id = any($1)',
+      [guests],
     );
     await admin.query(
       'delete from justgo.billing_events where event_id = any($1)',
       [events],
     );
     await admin.query('delete from justgo.users where id = any($1)', [
-      [alice, bob],
+      [alice, bob, ...guests],
     ]);
   } finally {
     await Promise.all([admin.end(), runtime.pool.end()]);
@@ -170,32 +183,39 @@ describe('billing tables under the restricted runtime role', () => {
     ).toEqual(['succeeded', bob]);
   });
 
-  it('writes and finds a guest purchase only through its verified original transaction ID', async () => {
+  it('reaches a guest account purchase only through its verified original transaction ID', async () => {
     const purchase = serial();
     purchases.push(purchase);
+    // The verified ID alone writes no row, with an owner or without.
+    for (const owner of [null, gina])
+      expect(
+        await sqlState(
+          within({ purchase }, (tx) =>
+            tx.execute(insertSubscription(purchase, owner)),
+          ),
+        ),
+      ).toBe('42501');
     expect(
       await sqlState(
-        within({}, (tx) => tx.execute(insertSubscription(purchase, null))),
+        admin.query(
+          "insert into justgo.app_store_subscriptions(original_transaction_id,product_id,environment,expires_at,latest_transaction_id) values($1,'justgo.monthly','Sandbox',now(),$1)",
+          [purchase],
+        ),
       ),
-    ).toBe('42501');
-    await within({ purchase }, (tx) =>
-      tx.execute(insertSubscription(purchase, null)),
+    ).toBe('23502');
+    await within({ owner: gina }, (tx) =>
+      tx.execute(insertSubscription(purchase, gina)),
     );
     expect(await visible({ purchase })).toEqual([
-      { id: purchase, owner: null },
+      { id: purchase, owner: gina },
     ]);
     expect(await visible({ purchase: serial() })).toEqual([]);
+    // A signed-in account's row stays out of reach of its verified ID.
+    expect(await visible({ purchase: alicePurchase })).toEqual([]);
     expect(await visible({ owner: alice })).toEqual([
       { id: alicePurchase, owner: alice },
     ]);
-    const other = serial();
-    expect(
-      await sqlState(
-        within({ purchase: other }, (tx) =>
-          tx.execute(insertSubscription(other, alice)),
-        ),
-      ),
-    ).toBe('42501');
+    // The verified ID alone cannot move the row: a write leaves it with the caller.
     expect(
       await sqlState(
         within({ purchase }, (tx) =>
@@ -205,13 +225,43 @@ describe('billing tables under the restricted runtime role', () => {
         ),
       ),
     ).toBe('42501');
+    // Guest mappings show only while a verified ID is set, and never change there.
+    const mappings = (context: Context) =>
+      within(context, async (tx) =>
+        (
+          await tx.execute<{ user_id: string }>(
+            sql`select user_id from justgo.managed_auth_accounts where user_id in (${gina},${gus},${alice}) order by 1`,
+          )
+        ).rows.map(({ user_id }) => user_id),
+      );
+    expect(await mappings({})).toEqual([]);
+    expect(await mappings({ purchase })).toEqual([...guests].sort());
+    expect(
+      await within({ purchase }, async (tx) => [
+        (
+          await tx.execute(
+            sql`select 1 from justgo.managed_auth_accounts where user_id=${gina} for share`,
+          )
+        ).rows.length,
+        await sqlState(
+          tx.execute(
+            sql`update justgo.managed_auth_accounts set guest=false where user_id=${gus}`,
+          ),
+        ),
+      ]),
+    ).toEqual([1, '42501']);
   });
 
-  it('lets an owner adopt a verified guest purchase and never moves it again', async () => {
+  it('moves a guest account purchase to the verifying owner, then never again', async () => {
     const purchase = serial();
     purchases.push(purchase);
-    await within({ purchase }, (tx) =>
-      tx.execute(insertSubscription(purchase, null)),
+    await within({ owner: gina }, (tx) =>
+      tx.execute(insertSubscription(purchase, gina)),
+    );
+    await within({ owner: gus, purchase }, (tx) =>
+      tx.execute(
+        sql`update justgo.app_store_subscriptions set user_id=${gus} where original_transaction_id=${purchase}`,
+      ),
     );
     await within({ owner: alice, purchase }, (tx) =>
       tx.execute(
@@ -231,8 +281,12 @@ describe('billing tables under the restricted runtime role', () => {
           ),
         ),
       ),
-    ).toBe('23514');
-    for (const owner of [bob, null])
+    ).toBe('42501');
+    for (const [owner, state] of [
+      [bob, '23514'],
+      [gina, '23514'],
+      [null, '23502'],
+    ] as const)
       expect(
         await sqlState(
           admin.query(
@@ -240,7 +294,7 @@ describe('billing tables under the restricted runtime role', () => {
             [purchase, owner],
           ),
         ),
-      ).toBe('23514');
+      ).toBe(state);
     const {
       rows: [row],
     } = await admin.query<{ user_id: string }>(
@@ -248,6 +302,56 @@ describe('billing tables under the restricted runtime role', () => {
       [purchase],
     );
     expect(row?.user_id).toBe(alice);
+  });
+
+  it('ends a guest once and never makes an account a guest again', async () => {
+    const auth = randomUUID();
+    const user = randomUUID();
+    await admin.query('insert into justgo.users(id) values($1)', [user]);
+    await admin.query(
+      'insert into justgo.managed_auth_accounts(auth_user_id,user_id,guest) values($1,$2,true)',
+      [auth, user],
+    );
+    try {
+      const own = (guest: boolean) =>
+        runtime.db.transaction(async (tx) => {
+          await setTransactionContext(tx, 'app.auth_user_id', auth);
+          await setTransactionContext(tx, 'app.user_id', user);
+          return (
+            await tx.execute(
+              sql`update justgo.managed_auth_accounts set guest=${guest} where auth_user_id=${auth}`,
+            )
+          ).rowCount;
+        });
+      expect(await own(false)).toBe(1);
+      expect(await sqlState(own(true))).toBe('23514');
+      expect(
+        await sqlState(
+          admin.query(
+            'update justgo.managed_auth_accounts set guest=true where auth_user_id=$1',
+            [auth],
+          ),
+        ),
+      ).toBe('23514');
+      // The runtime may change only the guest column of its own mapping.
+      expect(
+        await sqlState(
+          runtime.db.transaction(async (tx) => {
+            await setTransactionContext(tx, 'app.auth_user_id', auth);
+            await setTransactionContext(tx, 'app.user_id', user);
+            await tx.execute(
+              sql`update justgo.managed_auth_accounts set user_id=${user} where auth_user_id=${auth}`,
+            );
+          }),
+        ),
+      ).toBe('42501');
+    } finally {
+      await admin.query(
+        'delete from justgo.managed_auth_accounts where auth_user_id=$1',
+        [auth],
+      );
+      await admin.query('delete from justgo.users where id=$1', [user]);
+    }
   });
 
   it('records a Superwall event once, so a redelivery is a no-op', async () => {
@@ -274,8 +378,8 @@ describe('billing tables under the restricted runtime role', () => {
   it('lets an Apple-confirmed ID read and update only its own subscription and events, never insert one or move an owner', async () => {
     const guest = serial();
     purchases.push(guest);
-    await within({ purchase: guest }, (tx) =>
-      tx.execute(insertSubscription(guest, null)),
+    await within({ owner: gina }, (tx) =>
+      tx.execute(insertSubscription(guest, gina)),
     );
     const named = eventId();
     const other = eventId();
@@ -290,7 +394,7 @@ describe('billing tables under the restricted runtime role', () => {
       ),
     );
     expect(await visible({ confirmed: guest })).toEqual([
-      { id: guest, owner: null },
+      { id: guest, owner: gina },
     ]);
     expect(await visible({ confirmed: alicePurchase })).toEqual([
       { id: alicePurchase, owner: alice },
@@ -308,19 +412,18 @@ describe('billing tables under the restricted runtime role', () => {
       ).rowCount,
     ]);
     expect(updated).toEqual([1, 1]);
-    // A fresh purchase, an owner bound to a guest row, an owner moved and another column of an event.
+    // A fresh purchase, a guest row moved, an owner moved and another column of an event.
     const fresh = serial();
     expect(
       await sqlState(
         within({ confirmed: fresh }, (tx) =>
-          tx.execute(insertSubscription(fresh, null)),
+          tx.execute(insertSubscription(fresh, alice)),
         ),
       ),
     ).toBe('42501');
     for (const [confirmed, purchase, owner] of [
       [guest, guest, alice],
       [alicePurchase, alicePurchase, bob],
-      [alicePurchase, alicePurchase, null],
     ] as const)
       expect(
         await sqlState(
@@ -350,13 +453,13 @@ describe('billing tables under the restricted runtime role', () => {
       ),
     ).toBe('42501');
     const { rows } = await admin.query<{
-      user_id: string | null;
+      user_id: string;
       checked: boolean;
     }>(
       'select user_id, checked_at is not null as checked from justgo.app_store_subscriptions where original_transaction_id=$1',
       [guest],
     );
-    expect(rows).toEqual([{ user_id: null, checked: true }]);
+    expect(rows).toEqual([{ user_id: gina, checked: true }]);
   });
 
   it('lets the repair scan list only lapsed unchecked subscriptions and unconfirmed events, read-only', async () => {
@@ -364,8 +467,8 @@ describe('billing tables under the restricted runtime role', () => {
     const checked = serial();
     purchases.push(lapsed, checked);
     for (const purchase of [lapsed, checked])
-      await within({ purchase }, (tx) =>
-        tx.execute(insertSubscription(purchase, null)),
+      await within({ owner: gina }, (tx) =>
+        tx.execute(insertSubscription(purchase, gina)),
       );
     await admin.query(
       "update justgo.app_store_subscriptions set expires_at=now()-interval '1 hour', checked_at=case when original_transaction_id=$2 then now() else null end where original_transaction_id in ($1,$2)",
