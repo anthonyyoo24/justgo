@@ -34,9 +34,11 @@ const featureDataTypes = [
   'activity/repository',
   'activity/persistence/deck-preferences',
 ];
-// eslint.config.mjs bans names from these packages, which a runtime load hides.
+// eslint.config.mjs bans names or whole entries of these packages, which a
+// runtime load hides. react-native covers its react-native/Libraries/Lists/ paths.
 const namedBanPackages = [
   'expo-crypto',
+  '@react-native/virtualized-lists',
   'react-native',
   'react-native-safe-area-context',
   'zustand/middleware',
@@ -44,6 +46,15 @@ const namedBanPackages = [
 const sentryModules = ['event', 'reporter', 'start', 'transport'].map(
   (module) => `apps/mobile/src/app-support/diagnostics/${module}.ts`,
 );
+// Build configuration loads Sentry's Metro serializer and reads its version.
+// Neither calls an SDK API at runtime, so each file keeps its one load.
+const sentryBuildLoads = new Map([
+  ['apps/mobile/metro.config.mjs', '@sentry/react-native/metro.js'],
+  [
+    'apps/mobile/plugins/with-sentry-privacy.cjs',
+    '@sentry/react-native/package.json',
+  ],
+]);
 const appProvider = 'apps/mobile/src/app-support/providers/AppProvider';
 let composedByAppProvider;
 const composedBy = () =>
@@ -124,6 +135,7 @@ function boundaryMessage(filename, specifier, kind, typeOnly) {
     under(file, 'apps/mobile') &&
     target.startsWith('@sentry/') &&
     !sentryModules.includes(file) &&
+    sentryBuildLoads.get(file) !== specifier &&
     !testSource
   )
     return 'Load @sentry/* packages only in apps/mobile/src/app-support/diagnostics. A new Sentry API, such as setUser, addAttachment, a user, segment or replay scope, or a manual span, needs a privacy review against docs/legal/DATA_INVENTORY.md#sentry-diagnostic-boundary before its file joins sentryModules in scripts/quality/import-boundaries.mjs.';
