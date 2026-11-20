@@ -46,6 +46,7 @@ let transaction: string | null;
 let access: PaidAccess;
 let store: {
   present: jest.Mock<Promise<PaywallOutcome>, ['start_challenge']>;
+  restore: jest.Mock<Promise<'restored' | 'failed'>, []>;
   latestTransactionId: jest.Mock<Promise<string | null>, []>;
 };
 let paywall: Paywall;
@@ -92,6 +93,7 @@ beforeEach(async () => {
     present: jest.fn<Promise<PaywallOutcome>, ['start_challenge']>(
       async () => ({ type: 'declined' }) as PaywallOutcome,
     ),
+    restore: jest.fn(async () => 'restored' as const),
     latestTransactionId: jest.fn(async () => transaction),
   };
   access = new PaidAccess({
@@ -302,4 +304,52 @@ it('drops a pending purchase when the owner changes, and never verifies under th
   await expect(opened).resolves.toBe(false);
   expect(status()).toEqual({ status: 'idle' });
   expect(verifications()).toHaveLength(1);
+});
+
+describe('restore', () => {
+  it('verifies the restored transaction without presenting the paywall', async () => {
+    store.restore.mockImplementationOnce(async () => {
+      transaction = purchase;
+      return 'restored';
+    });
+    const states: string[] = [];
+    paywall.subscribe(() => states.push(status().status));
+    await expect(paywall.restore()).resolves.toBe(true);
+    expect(store.present).not.toHaveBeenCalled();
+    expect(states).toEqual(['restoring', 'verifying', 'idle']);
+    expect(access.hasAccess()).toBe(true);
+    expect(verifications()).toHaveLength(1);
+  });
+
+  it.each([
+    ['the store fails', async () => 'failed' as const],
+    [
+      'the store throws',
+      async (): Promise<'failed'> => {
+        throw new Error('store unavailable');
+      },
+    ],
+    ['no transaction is found', async () => 'restored' as const],
+  ])('says nothing was restored when %s', async (_name, restore) => {
+    store.restore.mockImplementationOnce(restore);
+    await expect(paywall.restore()).resolves.toBe(false);
+    expect(status()).toEqual({ status: 'unrestored' });
+    expect(verifications()).toHaveLength(0);
+    expect(access.hasAccess()).toBe(false);
+  });
+
+  it('says a restored purchase the API refuses stays locked', async () => {
+    transaction = purchase;
+    verification = unpaid;
+    await expect(paywall.restore()).resolves.toBe(false);
+    expect(status()).toEqual({ status: 'refused' });
+  });
+
+  it('joins a paywall that is already open', async () => {
+    outcome('purchased');
+    const opening = paywall.open();
+    expect(paywall.restore()).toBe(opening);
+    await expect(opening).resolves.toBe(true);
+    expect(store.restore).not.toHaveBeenCalled();
+  });
 });

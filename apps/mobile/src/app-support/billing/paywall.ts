@@ -12,6 +12,8 @@ export type PaywallOutcome =
 /** The store SDK, kept behind a port so nothing here imports it. */
 export type PaywallStore = {
   present(placement: 'start_challenge'): Promise<PaywallOutcome>;
+  /** Asks the App Store for this Apple ID's purchases. */
+  restore(): Promise<'restored' | 'failed'>;
   latestTransactionId(): Promise<string | null>;
 };
 /**
@@ -22,10 +24,12 @@ export type PaywallStore = {
 export type PaywallState =
   | { status: 'idle' }
   | { status: 'presenting' }
+  | { status: 'restoring' }
   | { status: 'verifying' }
   | { status: 'pending'; awaiting: 'confirmation' | 'approval' }
   | { status: 'refused' }
   | { status: 'failed' }
+  | { status: 'unrestored' }
   | { status: 'verified' };
 
 // Answers that mean the API looked at the purchase and will not grant it.
@@ -36,10 +40,14 @@ const refusals = new Set<ClientErrorCode>([
   'INVALID_REQUEST',
 ]);
 const idle: PaywallState = { status: 'idle' };
+const unconfirmed: PaywallState = {
+  status: 'pending',
+  awaiting: 'confirmation',
+};
 
 /**
- * Opens the paywall when a challenge needs access and unlocks only on the
- * API's verified answer. A pending purchase unlocks later through any check
+ * Opens the paywall or restores a purchase, and unlocks only on the API's
+ * verified answer. A pending purchase unlocks later through any check
  * that verifies it, and never starts a challenge by itself.
  */
 export class Paywall {
@@ -65,12 +73,18 @@ export class Paywall {
   };
   getSnapshot = () => this.state;
   /** Resolves true only when the API verified access. Concurrent calls present once. */
-  open = (): Promise<boolean> => {
-    this.opening ??= this.present().finally(() => {
+  open = (): Promise<boolean> => this.once(() => this.present());
+  /**
+   * Restores this Apple ID's purchase and resolves true only when the API
+   * verified it. It never presents the paywall, and joins an open one.
+   */
+  restore = (): Promise<boolean> => this.once(() => this.recover());
+  private once(work: () => Promise<boolean>) {
+    this.opening ??= work().finally(() => {
       this.opening = null;
     });
     return this.opening;
-  };
+  }
   /** Asks the API again for a purchase waiting on confirmation. It never presents the paywall. */
   retry = async () => {
     const { state } = this;
@@ -81,7 +95,7 @@ export class Paywall {
     )
       return;
     const flow = this.begin({ status: 'verifying' });
-    const result = await this.confirm();
+    const result = await this.confirm(unconfirmed);
     if (this.flow !== flow) return;
     this.settle(result === 'verified' ? { status: 'verified' } : result);
   };
@@ -116,8 +130,28 @@ export class Paywall {
       case 'entitled':
         break;
     }
+    return this.unlock(flow, unconfirmed);
+  }
+  private async recover() {
+    const flow = this.begin({ status: 'restoring' });
+    let restored: 'restored' | 'failed';
+    try {
+      restored = await this.options.store.restore();
+    } catch {
+      restored = 'failed';
+    }
+    if (this.flow !== flow) return false;
+    if (restored === 'failed') {
+      this.settle({ status: 'unrestored' });
+      return false;
+    }
+    // A restore that finds no transaction has nothing to verify.
+    return this.unlock(flow, { status: 'unrestored' });
+  }
+  /** Verifies the store's newest transaction and ends the flow on the answer. */
+  private async unlock(flow: object, missing: PaywallState) {
     this.set({ status: 'verifying' });
-    const result = await this.confirm();
+    const result = await this.confirm(missing);
     if (this.flow !== flow) return false;
     if (result === 'verified') {
       this.dismiss();
@@ -126,37 +160,40 @@ export class Paywall {
     this.settle(result);
     return false;
   }
-  /** Posts the store's newest transaction, giving up to pending after the timeout. */
-  private async confirm(): Promise<'verified' | PaywallState> {
+  /**
+   * Posts the store's newest transaction, giving up to pending after the
+   * timeout. `missing` is the answer when the store has no transaction.
+   */
+  private async confirm(
+    missing: PaywallState,
+  ): Promise<'verified' | PaywallState> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<PaywallState>((resolve) => {
       timer = setTimeout(
-        () => resolve({ status: 'pending', awaiting: 'confirmation' }),
+        () => resolve(unconfirmed),
         this.options.timeoutMs ?? 10_000,
       );
     });
     try {
-      return await Promise.race([this.verify(), timeout]);
+      return await Promise.race([this.verify(missing), timeout]);
     } finally {
       clearTimeout(timer);
     }
   }
-  private async verify(): Promise<'verified' | PaywallState> {
+  private async verify(
+    missing: PaywallState,
+  ): Promise<'verified' | PaywallState> {
     const { access, store } = this.options;
-    const pending: PaywallState = {
-      status: 'pending',
-      awaiting: 'confirmation',
-    };
     try {
       const transactionId = await store.latestTransactionId();
-      if (!transactionId) return pending;
+      if (!transactionId) return missing;
       const answer = await access.verifyPurchase(transactionId);
       if (answer.status === 'verified' && access.hasAccess()) return 'verified';
-      return answer.status === 'unpaid' ? { status: 'refused' } : pending;
+      return answer.status === 'unpaid' ? { status: 'refused' } : unconfirmed;
     } catch (error) {
       return error instanceof ApiError && refusals.has(error.code)
         ? { status: 'refused' }
-        : pending;
+        : unconfirmed;
     }
   }
   private begin(state: PaywallState) {

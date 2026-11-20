@@ -157,6 +157,15 @@ export class SuperwallPaywallStore implements PaywallStore {
     });
   }
 
+  async restore() {
+    try {
+      const { result } = await this.store.getState().restorePurchases();
+      return result;
+    } catch {
+      return 'failed' as const;
+    }
+  }
+
   /** The newest App Store transaction on this phone, for the API to verify. */
   async latestTransactionId() {
     const info = await this.store.getState().getCustomerInfo();

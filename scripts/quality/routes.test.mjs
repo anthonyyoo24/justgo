@@ -66,6 +66,7 @@ test('the installed Router resolves each application URL to exactly one file', (
       '/challenge',
       '/data',
       '/delete-account',
+      '/locked',
       '/preview',
       '/progress',
       '/recovery',

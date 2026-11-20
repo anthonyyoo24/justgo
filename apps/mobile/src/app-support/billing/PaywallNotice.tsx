@@ -5,38 +5,50 @@ import { ScaledText as Text } from '../../components/typography/ScaledText';
 import { colors, layout, radii, spacing, typography } from '../../theme/tokens';
 import type { Paywall, PaywallState } from './paywall';
 
-type Notice = { message: string; retry?: string; busy?: boolean };
+type Notice = {
+  message: string;
+  retry?: string;
+  busy?: boolean;
+  closable?: boolean;
+};
 
 const notices: Record<
   Exclude<PaywallState['status'], 'idle' | 'presenting'>,
   (state: PaywallState) => Notice
 > = {
+  // Apple can ask for a sign-in during a restore, so it can be closed.
+  restoring: () => ({
+    message: 'Restoring your purchase.',
+    busy: true,
+    closable: true,
+  }),
   verifying: () => ({ message: 'Confirming your purchase.', busy: true }),
   pending: (state) =>
     state.status === 'pending' && state.awaiting === 'approval'
       ? {
           message:
-            'Your purchase is waiting for approval. Challenges unlock once it is approved.',
+            'Your purchase is waiting for approval. JustGO opens once it is approved.',
         }
       : {
           message:
-            'We could not confirm your purchase yet. Challenges unlock as soon as it is confirmed.',
+            'We could not confirm your purchase yet. JustGO opens as soon as it is confirmed.',
           retry: 'Check again',
         },
   refused: () => ({
     message:
-      'We could not verify this purchase, so challenges stay locked. Swipe right on a challenge to try again or restore a purchase.',
+      'We could not verify this purchase, so JustGO stays locked. Subscribe or restore a purchase to try again.',
   }),
   failed: () => ({
+    message: 'The purchase did not finish, so nothing changed.',
+  }),
+  unrestored: () => ({
     message:
-      'The purchase did not finish, so nothing changed. Swipe right on a challenge to try again.',
+      'No purchase to restore was found for this Apple ID. Subscribe, or sign in to the account that paid.',
   }),
-  verified: () => ({
-    message: 'Your purchase is confirmed. Swipe right on a challenge to start.',
-  }),
+  verified: () => ({ message: 'Your purchase is confirmed.' }),
 };
 
-/** The paywall's progress after Superwall's sheet closes, shown above the deck. */
+/** The paywall's progress after Superwall's sheet closes or a restore starts. */
 export function PaywallNotice({
   paywall,
 }: {
@@ -67,7 +79,7 @@ export function PaywallNotice({
           onPress={() => void paywall.retry()}
         />
       )}
-      {!notice.busy && (
+      {(!notice.busy || notice.closable) && (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"

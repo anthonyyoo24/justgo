@@ -9,6 +9,7 @@ let alias = 0;
 let attributes: Attributes = {};
 let configureResult: Promise<void> = Promise.resolve();
 let customerInfo: unknown = null;
+let restoration: unknown = { result: 'restored' };
 // Each registered placement, granted when its test calls `grant`.
 const placements: { handlerId: string; grant: () => void; fail: () => void }[] =
   [];
@@ -24,6 +25,7 @@ const methods: Record<string, (...args: never[]) => unknown> = {
   getUserAttributes: () => Promise.resolve({ ...attributes }),
   getSubscriptionStatus: () => Promise.resolve({ status: 'INACTIVE' }),
   getCustomerInfo: () => Promise.resolve(customerInfo),
+  restorePurchases: () => Promise.resolve(restoration),
   registerPlacement: (
     _placement: string,
     _params: unknown,
@@ -62,10 +64,14 @@ export const superwallNative = {
     attributes = anonymous();
     configureResult = Promise.resolve();
     customerInfo = null;
+    restoration = { result: 'restored' };
     placements.length = 0;
   },
   setCustomerInfo(info: unknown) {
     customerInfo = info;
+  },
+  setRestoration(result: unknown) {
+    restoration = result;
   },
   /** The newest registered placement. */
   placement: () => placements.at(-1),

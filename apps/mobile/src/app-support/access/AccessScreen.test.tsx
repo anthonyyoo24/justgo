@@ -2,11 +2,18 @@ import { render } from '@testing-library/react-native';
 import { AccessScreen } from './AccessScreen';
 import { useIdentity } from '../providers/AppProvider';
 let mockWelcomePending = false;
+let mockLock: 'open' | 'checking' | 'locked' | null = null;
 jest.mock('../identity/welcome/WelcomeTransition', () => ({
   useWelcomeTransition: () => mockWelcomePending,
 }));
 jest.mock('../providers/AppProvider', () => ({
   useIdentity: jest.fn(),
+  useRuntime: () => ({
+    access: mockLock && {
+      subscribe: () => () => {},
+      status: () => mockLock,
+    },
+  }),
 }));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
@@ -17,6 +24,7 @@ jest.mock('expo-router', () => {
 const identity = useIdentity as jest.Mock;
 beforeEach(() => {
   mockWelcomePending = false;
+  mockLock = null;
   identity.mockReturnValue({
     initialized: true,
     busy: false,
@@ -116,3 +124,38 @@ it.each(['guest', 'signed-out'] as const)(
     expect(screen.queryByText('Redirect: /recovery')).toBeNull();
   },
 );
+
+describe('with billing on', () => {
+  it('waits on the loading screen while the first access answer is on its way', async () => {
+    mockLock = 'checking';
+    const screen = await render(<AccessScreen />);
+    expect(screen.getByLabelText('Loading JustGO')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+    expect(screen.queryByText('Redirect: /locked')).toBeNull();
+  });
+
+  it('sends an owner without verified access to the locked screen', async () => {
+    mockLock = 'locked';
+    const screen = await render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /locked')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+  });
+
+  it('enters the app with verified access', async () => {
+    mockLock = 'open';
+    const screen = await render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /(tabs)')).toBeTruthy();
+  });
+
+  it('sends a fresh installation to welcome before any lock', async () => {
+    mockLock = 'locked';
+    identity.mockReturnValue({
+      initialized: true,
+      busy: false,
+      account: null,
+      needsWelcome: true,
+    });
+    const screen = await render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
+  });
+});

@@ -31,6 +31,7 @@ const allowedNative = new Set([
   'identify',
   'registerPlacement',
   'reset',
+  'restorePurchases',
 ]);
 
 const settle = async () => {
@@ -359,5 +360,16 @@ describe('the paywall store', () => {
       entitlements: [],
     });
     await expect(store.latestTransactionId()).resolves.toBe('2000000003');
+  });
+
+  it('reports a restore as restored or failed, and a thrown restore as failed', async () => {
+    useSuperwallStore.setState({ isConfigured: true });
+    const store = new SuperwallPaywallStore();
+    await expect(store.restore()).resolves.toBe('restored');
+    expect(callsTo('restorePurchases')).toHaveLength(1);
+    superwallNative.setRestoration({ result: 'failed', errorMessage: null });
+    await expect(store.restore()).resolves.toBe('failed');
+    superwallNative.failNext('restorePurchases');
+    await expect(store.restore()).resolves.toBe('failed');
   });
 });

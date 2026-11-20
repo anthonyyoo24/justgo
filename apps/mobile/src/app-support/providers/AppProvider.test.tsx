@@ -428,6 +428,7 @@ it.each([true, false])(
     });
     const store = {
       present: jest.fn(async () => ({ type: 'purchased' }) as const),
+      restore: async () => 'failed' as const,
       // The phone holds a transaction only once the paywall sold one.
       latestTransactionId: async () =>
         store.present.mock.calls.length ? '2000000001' : null,

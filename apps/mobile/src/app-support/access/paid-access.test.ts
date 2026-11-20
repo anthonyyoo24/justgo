@@ -719,6 +719,36 @@ describe('purchase verification', () => {
     );
   });
 
+  it('checks while the first answer is on its way, then opens or locks and tells listeners each time', async () => {
+    const { gate, open } = release();
+    held = { path: '/v1/access', release: gate };
+    const access = paidAccess('account');
+    const listener = jest.fn();
+    access.subscribe(listener);
+    const check = access.refresh();
+    expect(access.status()).toBe('checking');
+    open();
+    await check;
+    expect(access.status()).toBe('open');
+    expect(listener).toHaveBeenCalled();
+
+    access.changeOwner(null);
+    expect(access.status()).toBe('locked');
+  });
+
+  it.each([
+    ['answers unpaid', unpaid],
+    ['fails', () => 503],
+  ])('locks when the first check %s', async (_name, answer) => {
+    answers[firstToken] = answer;
+    const access = paidAccess('account');
+    const listener = jest.fn();
+    access.subscribe(listener);
+    await access.refresh().catch(() => {});
+    expect(access.status()).toBe('locked');
+    expect(listener).toHaveBeenCalled();
+  });
+
   it('posts the latest transaction instead of asking the guest route, so a paid guest keeps access', async () => {
     verifications[''] = guestVerified;
     const access = paidAccess('guest', async () => purchase);

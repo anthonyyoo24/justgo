@@ -119,10 +119,14 @@ export class PaidAccess {
       () => this.finish(run),
       () => this.finish(run),
     );
+    this.emit();
     return result;
   }
   private finish(run: object) {
-    if (this.latest === run) this.check = null;
+    if (this.latest !== run) return;
+    this.check = null;
+    // A failed first check leaves no answer, so the app moves from checking to locked.
+    this.emit();
   }
   /** Checks with the API when the snapshot is missing or older than five minutes. Concurrent calls share one check. */
   refresh(): Promise<void> {
@@ -213,6 +217,15 @@ export class PaidAccess {
   /** Whether the saved verification grants access now. It starts no check. */
   hasAccess() {
     return grantsAccess(this.saved, this.now());
+  }
+  /**
+   * Whether the app opens: `open` with a saved verification that grants
+   * access now, `checking` while the owner's first answer is on its way, and
+   * otherwise `locked`. A check that fails leaves the app locked.
+   */
+  status(): 'open' | 'checking' | 'locked' {
+    if (this.hasAccess()) return 'open';
+    return this.owner && this.check && !this.saved ? 'checking' : 'locked';
   }
   /** Whether the saved verification still grants access. A refusal starts an online check. */
   canStart() {

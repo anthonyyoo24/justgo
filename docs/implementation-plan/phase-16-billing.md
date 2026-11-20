@@ -520,31 +520,35 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 **Files.**
 
 - [ ] Create `apps/mobile/src/app-support/billing/paywall.ts` and its test.
-- [ ] Edit the challenge start path and `apps/mobile/src/app-support/billing/superwall.ts`.
+- [ ] Create the locked screen (`apps/mobile/src/app-support/access/LockedScreen.tsx`, route `app/locked.tsx`) and its test.
+- [ ] Edit the root stack guards, `AccessScreen`, the challenge start path and `apps/mobile/src/app-support/billing/superwall.ts`.
 
 **Build.**
 
-- [ ] When `canStartChallenge()` refuses, register the Superwall placement `start_challenge`, gated in the dashboard. Superwall shows the paywall Anthony designs in its editor.
+- [ ] Lock the whole app with billing on (Anthony, 2026-11-20). An owner without verified access sees only the locked screen: Subscribe (the Superwall paywall), Restore purchase, Sign in for someone who paid on another phone, Terms of Use and Privacy Policy. Home, Progress, Settings and Data stay closed. Sign-in, recovery and account deletion stay reachable. With billing off nothing locks.
+- [ ] While the owner's first access answer is on its way, startup shows the loading screen. A failed first check locks.
+- [ ] Subscribe registers the Superwall placement `start_challenge`, gated in the dashboard. Superwall shows the paywall Anthony designs in its editor. When `canStartChallenge()` refuses because access ended while the app was open, the same paywall opens from the deck.
 - [ ] After `purchased` or `restored`, send the transaction to `POST /v1/billing/verifications` at once, bypassing the five-minute threshold (rule 5). Unlock only on a verified response. Show an honest pending state while it runs.
-- [ ] A cancelled or failed purchase returns to the previous screen with nothing unlocked.
+- [ ] Restore purchase asks the store to restore and then verifies the newest transaction the same way. A restore that finds nothing says so.
+- [ ] A cancelled or failed purchase returns to the locked screen with nothing unlocked.
 
 **You see.**
 
-- [ ] In the simulator with the StoreKit file, buying the annual plan shows the trial and then starts the challenge after the API verifies it.
+- [ ] In the simulator with the StoreKit file, a new guest finishes onboarding on the locked screen. Buying the annual plan shows the trial, and Home opens after the API verifies it.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `paywall.test.ts` covers purchased, cancelled, pending, failed, restored, verification refused and verification unavailable. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/app-support/billing/paywall.test.ts`.
+- [ ] `paywall.test.ts` covers purchased, cancelled, pending, failed, restored, restore with nothing found, verification refused and verification unavailable. `LockedScreen.test.tsx`, `AccessScreen.test.tsx` and `NavigationRoutes.test.tsx` cover the locked screen and the guards. Run `pnpm --filter @justgo/mobile run test --runTestsByPath src/app-support/billing/paywall.test.ts src/app-support/access/LockedScreen.test.tsx src/app-support/access/AccessScreen.test.tsx src/app-support/NavigationRoutes.test.tsx`.
 - [ ] Affected journeys. Run `pnpm run test:journey`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe, in the iOS Simulator with the StoreKit file.
 
-- [ ] Lane 1. Regression lane against trunk. Trunk has no paywall, so record that and gate the flow at the head. A guest taps start, sees the paywall, buys the annual plan and starts the challenge. Save `guest-buy.png`. Pass when the challenge starts after verification.
+- [ ] Lane 1. Regression lane against trunk. Trunk has no paywall, so record that and gate the flow at the head. A new guest finishes onboarding on the locked screen, taps Subscribe, buys the annual plan and starts a challenge. Save `guest-buy.png`. Pass when Home opens only after verification and the challenge starts.
 - [ ] Lane 2. A signed-in account buys monthly. Save `account-buy.png`. Pass when the row has the owner ID.
-- [ ] Lane 3. Cancel the purchase sheet. Save `cancel.png`. Pass when nothing unlocks.
+- [ ] Lane 3. Cancel the purchase sheet. Save `cancel.png`. Pass when the locked screen stays and no tab opens, including by a deep link to `/progress` or `/settings`.
 - [ ] Lane 4. Make the API refuse verification. Save `refused.png`. Pass when the app explains it and stays locked.
 - [ ] Lane 5. Block the API during verification. Save `pending.png`. Pass when the app shows pending and unlocks once the API returns.
-- [ ] Lane 6. Restore on a fresh install. Save `restore.png`. Pass when access returns after verification.
+- [ ] Lane 6. Tap Restore purchase on a fresh install. Save `restore.png`. Pass when Home opens after verification, with no paywall shown.
 - [ ] Lane 7. Check the paywall for price, period, trial terms, auto-renew text, Terms of Use, Privacy Policy and Restore. Save `disclosures.png`. Pass when every item is visible.
 - [ ] Lane 8. Use VoiceOver on the paywall. Save `voiceover.png`. Pass when every button has a label.
 - [ ] Lane 9. Turn the paid flag off. Save `flag-off.png`. Pass when no paywall shows.
@@ -552,15 +556,15 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Time from tapping start to the paywall on screen, and from purchase success to the challenge starting.
+- [ ] Metric. Time from tapping Subscribe to the paywall on screen, and from purchase success to Home opening.
 - [ ] Probe. Trunk has no paywall, so time ten head runs of each and, interleaved, ten trunk and head runs of tapping start with the flag off.
 - [ ] Baseline. Record the trunk flag-off start time first.
-- [ ] Rule. Fail when the paywall takes more than 1.5 seconds, the unlock after purchase more than 3 seconds against the loopback API, or the flag-off start regresses more than 10%.
+- [ ] Rule. Fail when the paywall takes more than 1.5 seconds, Home takes more than 3 seconds to open after purchase against the loopback API, or the flag-off start regresses more than 10%.
 
 **Review gate.** Anthony reviews before merge.
 
 - [ ] Copy lane 1, 4, 5 and 7 screenshots into `.local/phase-16/media/P16-9-review-<slug>.png`.
-- [ ] Record a 30 to 60 second simulator video of a guest buying and starting a challenge. Save it as `.local/phase-16/media/P16-9-review.mp4`.
+- [ ] Record a 30 to 60 second simulator video of a new guest reaching the locked screen, buying and starting a challenge. Save it as `.local/phase-16/media/P16-9-review.mp4`.
 - [ ] Post the screenshots and the video in chat. Stop at merge-ready. Wait for the operator, Anthony, to approve.
 
 **Merge.**
