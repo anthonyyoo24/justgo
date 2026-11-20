@@ -261,6 +261,34 @@ it.each([1, 2] as const)(
 );
 
 it.each([1, 2] as const)(
+  'accepts unknown fields in a legacy v%s export and carries none of them',
+  (formatVersion) => {
+    const bytes = legacyArchive(formatVersion, (data) => {
+      data.session = 'old-root-field';
+      data.account = { id: owner, label: 'old-account-field' };
+      data.localChanges = [
+        {
+          status: 'pending_upload',
+          attempt: attempt(2),
+          queuedAt: 'old-change-field',
+        },
+      ];
+    });
+    const restored = readDataBackup(bytes, {
+      id: otherOwner,
+      kind: 'guest',
+    });
+    expect(restored.attempts.map(({ id }) => id)).toEqual([
+      attempt().id,
+      attempt(2).id,
+    ]);
+    expect(JSON.stringify(restored)).not.toMatch(
+      /old-(root|account|change)-field/,
+    );
+  },
+);
+
+it.each([1, 2] as const)(
   'reports malformed legacy v%s data as invalid',
   (formatVersion) => {
     const bytes = legacyArchive(formatVersion, (data) => {
