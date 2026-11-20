@@ -14,6 +14,9 @@ import type {
   ManagedIdentityStorage,
 } from '../identity/auth/managed-state';
 import type { ManagedAuth, ProviderSession } from '../identity/auth/types';
+import { AccountClient } from '../../lib/network/account-client';
+import { createHttpClient } from '../../lib/network/http';
+import { PaidAccess } from './paid-access';
 import {
   AppProvider,
   createAppRuntime,
@@ -79,6 +82,18 @@ const response = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
     status,
   });
+const failureCodes: Record<number, string> = {
+  404: 'NOT_FOUND',
+  409: 'CONFLICT',
+  503: 'UNAVAILABLE',
+};
+const reply = (body: unknown) =>
+  typeof body === 'number'
+    ? response(
+        { code: failureCodes[body] ?? 'UNAVAILABLE', requestId: 'fixture' },
+        body,
+      )
+    : response(body);
 
 let session: SessionResponse;
 let providerSession: ProviderSession;
@@ -92,6 +107,10 @@ let offline: boolean;
 // Each bearer's next /v1/access answer, or a status the server fails with.
 let answers: Record<string, () => unknown>;
 let guestAnswer: () => unknown;
+// Each bearer's next /v1/billing/verifications answer ('' for a guest), or a status the server fails with.
+let verifications: Record<string, (transactionId: string) => unknown>;
+// Holds the next request to this path until the test releases it.
+let held: { path: string; release: Promise<void> } | null;
 
 function Probe() {
   const current = useRuntime();
@@ -202,11 +221,28 @@ beforeEach(async () => {
     [otherToken]: unpaid,
   };
   guestAnswer = unpaid;
+  verifications = {};
+  held = null;
   fetcher = jest
     .spyOn(globalThis, 'fetch')
     .mockImplementation(async (input, init) => {
       if (offline) throw new TypeError('Network request failed');
       const path = new URL(String(input)).pathname;
+      if (held?.path === path) {
+        const { release } = held;
+        held = null;
+        await release;
+      }
+      if (path === '/v1/billing/verifications') {
+        const bearer =
+          new Headers(init?.headers)
+            .get('authorization')
+            ?.replace('Bearer ', '') ?? '';
+        const { transactionId } = JSON.parse(String(init?.body)) as {
+          transactionId: string;
+        };
+        return reply((verifications[bearer] ?? unpaid)(transactionId));
+      }
       if (path === '/v1/access') {
         const bearer = new Headers(init?.headers)
           .get('authorization')
@@ -452,4 +488,220 @@ it('starts challenges with no access request or saved snapshot when the flag is 
       key.includes(':access:'),
     ),
   ).toEqual([]);
+});
+
+describe('purchase verification', () => {
+  const guestId = id(60);
+  const purchase = '2000000001';
+  const verifications$ = () =>
+    fetcher.mock.calls.filter(
+      ([url]) => new URL(String(url)).pathname === '/v1/billing/verifications',
+    );
+  const bearerOf = (init: RequestInit | undefined) =>
+    new Headers(init?.headers).get('authorization');
+  const guestVerified = () => ({
+    ...verified(Date.now(), 30 * 24 * hour),
+    source: 'guest_subscription',
+  });
+  function paidAccess(
+    kind: 'account' | 'guest',
+    latestTransactionId?: () => Promise<string | null>,
+  ) {
+    const client = new AccountClient(createHttpClient(api), {
+      current: () => ({ userId, token: firstToken }),
+      renew: async () => ({ userId, token: firstToken }),
+      reject: () => {},
+    });
+    if (kind === 'account') client.changeAccount(userId);
+    else client.changeCollection(guestId);
+    const access = new PaidAccess({
+      url: api,
+      storage: asyncStorageJournalStorage,
+      client,
+      ...(latestTransactionId ? { latestTransactionId } : {}),
+    });
+    access.changeOwner({ id: kind === 'account' ? userId : guestId, kind });
+    return access;
+  }
+  const release = () => {
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { gate, open };
+  };
+
+  it('verifies a purchase at once with the account bearer, past a fresh unpaid answer, and tells listeners', async () => {
+    answers[firstToken] = unpaid;
+    verifications[firstToken] = () => verified(Date.now(), 30 * 24 * hour);
+    const access = paidAccess('account');
+    await access.refresh();
+    expect(access.canStart()).toBe(false);
+    const listener = jest.fn();
+    access.subscribe(listener);
+
+    await expect(access.verifyPurchase(purchase)).resolves.toMatchObject({
+      status: 'verified',
+    });
+    expect(access.canStart()).toBe(true);
+    expect(listener).toHaveBeenCalled();
+    expect(verifications$().map(([, init]) => bearerOf(init))).toEqual([
+      `Bearer ${firstToken}`,
+    ]);
+    expect(JSON.parse(String(verifications$()[0]![1]?.body))).toEqual({
+      transactionId: purchase,
+    });
+    await access.settled();
+    expect((await saved(keyOf(userId, 'account')))?.access.status).toBe(
+      'verified',
+    );
+  });
+
+  it("verifies a guest purchase with no bearer under the guest's own key", async () => {
+    verifications[''] = guestVerified;
+    const access = paidAccess('guest');
+    await access.refresh();
+    expect(access.canStart()).toBe(false);
+    await expect(access.verifyPurchase(purchase)).resolves.toMatchObject({
+      status: 'verified',
+      source: 'guest_subscription',
+    });
+    expect(access.canStart()).toBe(true);
+    expect(verifications$().map(([, init]) => bearerOf(init))).toEqual([null]);
+    await access.settled();
+    expect((await saved(keyOf(guestId, 'guest')))?.access.status).toBe(
+      'verified',
+    );
+  });
+
+  it('keeps the saved answer when verification fails or the server is unavailable, and saves a refusal', async () => {
+    const access = paidAccess('account');
+    await access.refresh();
+    expect(access.canStart()).toBe(true);
+
+    verifications[firstToken] = () => 503;
+    await expect(access.verifyPurchase(purchase)).rejects.toMatchObject({
+      code: 'UNAVAILABLE',
+    });
+    verifications[firstToken] = () => 409;
+    await expect(access.verifyPurchase(purchase)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    verifications[firstToken] = () => ({
+      status: 'unavailable',
+      checkedAt: iso(Date.now()),
+    });
+    await expect(access.verifyPurchase(purchase)).resolves.toMatchObject({
+      status: 'unavailable',
+    });
+    expect(access.canStart()).toBe(true);
+    await access.settled();
+    expect((await saved(keyOf(userId, 'account')))?.access.status).toBe(
+      'verified',
+    );
+
+    verifications[firstToken] = unpaid;
+    await expect(access.verifyPurchase(purchase)).resolves.toMatchObject({
+      status: 'unpaid',
+    });
+    expect(access.canStart()).toBe(false);
+  });
+
+  it('refuses to save a verification that lands after the owner changed', async () => {
+    answers[firstToken] = unpaid;
+    verifications[firstToken] = () => verified(Date.now(), 30 * 24 * hour);
+    const access = paidAccess('account');
+    await access.refresh();
+    const { gate, open } = release();
+    held = { path: '/v1/billing/verifications', release: gate };
+    const result = access.verifyPurchase(purchase).catch((error) => error);
+    await act(async () => jest.advanceTimersByTimeAsync(0));
+    access.changeOwner({ id: guestId, kind: 'guest' });
+    open();
+    expect(await result).toMatchObject({ code: 'ACCOUNT_CHANGED' });
+    await access.refresh();
+    expect(access.canStart()).toBe(false);
+    access.changeOwner({ id: userId, kind: 'account' });
+    await access.refresh();
+    await access.settled();
+    expect(access.canStart()).toBe(false);
+    expect((await saved(keyOf(userId, 'account')))?.access.status).toBe(
+      'unpaid',
+    );
+  });
+
+  it('drops an older check that lands after a purchase verification', async () => {
+    answers[firstToken] = unpaid;
+    verifications[firstToken] = () => verified(Date.now(), 30 * 24 * hour);
+    const { gate, open } = release();
+    held = { path: '/v1/access', release: gate };
+    const access = paidAccess('account');
+    const check = access.refresh();
+    await act(async () => jest.advanceTimersByTimeAsync(0));
+    await access.verifyPurchase(purchase);
+    expect(access.canStart()).toBe(true);
+    open();
+    await check;
+    expect(access.canStart()).toBe(true);
+    await access.settled();
+    expect((await saved(keyOf(userId, 'account')))?.access.status).toBe(
+      'verified',
+    );
+  });
+
+  it('posts the latest transaction instead of asking the guest route, so a paid guest keeps access', async () => {
+    verifications[''] = guestVerified;
+    const access = paidAccess('guest', async () => purchase);
+    await access.refresh();
+    expect(access.canStart()).toBe(true);
+    expect(
+      fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
+    ).toEqual(['/v1/billing/verifications']);
+  });
+
+  it.each([
+    ['has no transaction', async () => null],
+    [
+      'fails',
+      async () => {
+        throw new Error('store unavailable');
+      },
+    ],
+  ])(
+    'asks the guest route when the store %s',
+    async (_name, latestTransactionId) => {
+      const access = paidAccess('guest', latestTransactionId);
+      await access.refresh();
+      expect(access.canStart()).toBe(false);
+      expect(
+        fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
+      ).toEqual(['/v1/guest/access']);
+    },
+  );
+
+  it('posts the latest transaction only when the account answer is unpaid', async () => {
+    const latestTransactionId = jest.fn(async () => purchase);
+    verifications[firstToken] = () => verified(Date.now(), 30 * 24 * hour);
+    const paid = paidAccess('account', latestTransactionId);
+    await paid.refresh();
+    expect(paid.canStart()).toBe(true);
+    expect(verifications$()).toHaveLength(0);
+
+    answers[firstToken] = unpaid;
+    jest.setSystemTime(Date.now() + 6 * minute);
+    await paid.refresh();
+    expect(paid.canStart()).toBe(true);
+    expect(
+      fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
+    ).toEqual(['/v1/access', '/v1/access', '/v1/billing/verifications']);
+
+    verifications[firstToken] = () => 503;
+    jest.setSystemTime(Date.now() + 6 * minute);
+    await paid.refresh();
+    expect(paid.canStart()).toBe(false);
+    await paid.settled();
+    expect((await saved(keyOf(userId, 'account')))?.access.status).toBe(
+      'unpaid',
+    );
+  });
 });
