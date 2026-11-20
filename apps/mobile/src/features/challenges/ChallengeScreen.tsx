@@ -17,6 +17,7 @@ import {
   useJournal,
   useRuntime,
 } from '../../app-support/providers/AppProvider';
+import { PaywallNotice } from '../../app-support/billing/PaywallNotice';
 import { useWelcomePreparation } from '../../app-support/identity/welcome/welcome-preparation';
 import { ChallengeLayout } from './ChallengeLayout';
 import { VenueTabs } from './deck/VenueTabs';
@@ -46,7 +47,7 @@ export function ChallengeScreen() {
 function ChallengeFlow() {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
-  const { challenges } = useRuntime();
+  const { challenges, paywall } = useRuntime();
   const identity = useIdentity();
   const owner =
     identity.account?.userId ??
@@ -111,6 +112,7 @@ function ChallengeFlow() {
           disabled={preparation.active || !!active || moving || state.saving}
           onSelect={(v) => void challenges.select(v)}
         />
+        {!active && paywall && <PaywallNotice paywall={paywall} />}
         {!active && !!state.error && (
           <View style={styles.notice}>
             <Text accessibilityRole="alert" style={styles.body}>

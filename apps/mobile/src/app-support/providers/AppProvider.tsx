@@ -47,7 +47,9 @@ export function createAppRuntime<
         url,
         storage,
         client,
-        ...(store && { latestTransactionId: () => store.latestTransactionId() }),
+        ...(store && {
+          latestTransactionId: () => store.latestTransactionId(),
+        }),
       })
     : null;
   const paywall = access && store ? new Paywall({ access, store }) : null;
