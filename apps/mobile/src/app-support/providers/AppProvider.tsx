@@ -16,6 +16,7 @@ import { useActivityStore } from './activity-hooks';
 import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
 import { canStartChallenge } from '../access/admission';
+import { PaidAccess } from '../access/paid-access';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
@@ -29,6 +30,7 @@ export function createAppRuntime<
   identity: T,
   url = process.env.EXPO_PUBLIC_API_URL,
   storage: JournalStorage = asyncStorageJournalStorage,
+  billing = process.env.EXPO_PUBLIC_BILLING_ENABLED === 'true',
 ) {
   const client = new AccountClient(createHttpClient(url), {
     current: identity.currentSession,
@@ -37,10 +39,22 @@ export function createAppRuntime<
   });
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage, { url });
-  identity.setAccountDataRemover((owner) => activity.deleteAccount(owner));
+  const access = billing ? new PaidAccess({ url, storage, client }) : null;
+  // Saved access shares the erased namespace, so its writes finish first.
+  const beforeErase = async (owner: string) => {
+    if (access?.ownerId() === owner) access.changeOwner(null);
+    await access?.settled();
+  };
+  identity.setAccountDataRemover(async (owner) => {
+    await beforeErase(owner);
+    await activity.deleteAccount(owner);
+  });
   if (identity instanceof ManagedIdentityController) {
     identity.setGuestDataMerger(activity.mergeGuestData);
-    identity.setGuestDataRetirer(activity.retireGuestData);
+    identity.setGuestDataRetirer(async (guest) => {
+      await beforeErase(guest);
+      await activity.retireGuestData(guest);
+    });
   }
   const challenges = new ChallengeController(client, {
     repository: activity.getRepository,
@@ -59,12 +73,30 @@ export function createAppRuntime<
           ? null
           : snapshot.collectionId
         : next;
-    if (accountId !== next) {
+    const accountChanged = accountId !== next;
+    if (accountChanged) {
       telemetry.setConsent('unknown');
       accountId = next;
     }
     client.changeAccount(next);
     client.changeCollection(collection);
+    if (access) {
+      const accessAccount =
+        next ??
+        (identity instanceof ManagedIdentityController
+          ? identity.offlineAccountOwner()
+          : null);
+      access.changeOwner(
+        snapshot.deletionStatus || !collection
+          ? null
+          : {
+              id: accessAccount ?? collection,
+              kind: accessAccount ? 'account' : 'guest',
+            },
+      );
+      // An offline account owner can check only once its session returns.
+      if (accountChanged) void access.refresh();
+    }
     activity.setPendingGuestAdoption(
       'pendingGuestId' in snapshot &&
         typeof snapshot.pendingGuestId === 'string'
@@ -87,7 +119,8 @@ export function createAppRuntime<
     telemetry,
     challenges,
     activity,
-    canStartChallenge,
+    access,
+    canStartChallenge: () => canStartChallenge(access),
     subscribe: () => {
       sync();
       return identity.subscribe(sync);
@@ -122,9 +155,11 @@ export function AppProvider({ children }: PropsWithChildren) {
           background: !!runtime.identity.getSnapshot().account,
         });
         void runtime.challenges.refresh();
+        void runtime.access?.refresh();
       }
     });
     void runtime.identity.initialize();
+    void runtime.access?.refresh();
     const subscription = AppState.addEventListener('change', (next) => {
       active = next === 'active';
       updateEnvironment();
@@ -138,6 +173,7 @@ export function AppProvider({ children }: PropsWithChildren) {
         });
         void runtime.client.queries.invalidateQueries();
         void runtime.challenges.refresh();
+        void runtime.access?.refresh();
         runtime.telemetry.track('app_foregrounded');
       }
     });

@@ -7,6 +7,7 @@ const names = [
   'EXPO_PUBLIC_SENTRY_ENABLED',
   'EXPO_PUBLIC_SENTRY_DSN',
   'EXPO_PUBLIC_SENTRY_ENVIRONMENT',
+  'EXPO_PUBLIC_BILLING_ENABLED',
 ];
 export const env = Object.fromEntries(
   names.map((name) => [name, process.env[name]]),

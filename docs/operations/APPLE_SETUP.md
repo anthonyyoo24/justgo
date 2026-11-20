@@ -116,6 +116,29 @@ from the saved rows only, whatever readers the runtime passes in.
   answers `unpaid` and `/v1/guest/challenges` answers 403. A guest learns of its
   subscription only from `POST /v1/billing/verifications`.
 
+## Access on the phone
+
+The app build flag `EXPO_PUBLIC_BILLING_ENABLED` is `false` by default, and
+then every guest and account may start a challenge, as today. Set it to `true`
+only in a build whose API runs with `BILLING_ENABLED`. The flag only makes the
+app require an API answer. Nothing on the phone can grant access.
+
+With the flag on, `apps/mobile/src/app-support/access/paid-access.ts` keeps the
+last `verified` or `unpaid` answer per owner under
+`justgo:v1:<owner>:access:<kind>:<api url>`. Account erasure removes that key,
+and adoption, backups and sync never copy it.
+
+- A challenge starts only while a saved `verified` answer has not expired,
+  offline too. A failed or `unavailable` check keeps the saved answer.
+- The app checks on open, foreground and reconnect when the answer is missing
+  or more than five minutes old. Triggers share one request, and nothing polls.
+- At expiry the app refuses the start and checks online, with no grace period.
+- The phone never compares the server's `checkedAt` with its own clock. Access
+  lasts for `expiresAt - checkedAt` from the moment the answer arrived, so a
+  phone clock behind the server still accepts a fresh answer. A clock set back
+  before that moment refuses until the next check.
+- A signed-out phone checks its kept collection on the guest route.
+
 ## Superwall events and repair
 
 Superwall sends its webhooks through Svix to
