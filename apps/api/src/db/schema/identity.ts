@@ -1,9 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
-  pgSchema,
   uuid,
   text,
-  timestamp,
   integer,
   index,
   uniqueIndex,
@@ -11,36 +9,9 @@ import {
   foreignKey,
   check,
   pgPolicy,
-  boolean,
-  jsonb,
 } from 'drizzle-orm/pg-core';
-import type { Reflection, CompletionAttempt } from '@justgo/contracts';
+import { appSchema, maintenance, ownerPolicies, time } from './shared.ts';
 
-// Private schema. Tables, indexes and their RLS policies arrive with each feature.
-export const appSchema = pgSchema('justgo');
-const time = (name: string) => timestamp(name, { withTimezone: true });
-const maintenance = () =>
-  pgPolicy('migration_maintenance', {
-    to: 'justgo_migrator',
-    using: sql`true`,
-    withCheck: sql`true`,
-  });
-const ownerPolicies = (column = 'user_id') => [
-  maintenance(),
-  pgPolicy('owner_access', {
-    to: 'justgo_runtime',
-    using: sql.raw(`${column} = (select justgo.current_user_id())`),
-    withCheck: sql.raw(`${column} = (select justgo.current_user_id())`),
-  }),
-];
-const catalogPolicies = () => [
-  maintenance(),
-  pgPolicy('catalog_read', {
-    for: 'select',
-    to: 'justgo_runtime',
-    using: sql`(select justgo.current_user_id()) is not null or current_setting('app.guest_catalog',true) = 'on'`,
-  }),
-];
 const identityPolicies = (setting: string) => [
   maintenance(),
   pgPolicy('identity_read', {
@@ -232,153 +203,6 @@ export const rateBuckets = appSchema
   )
   .enableRLS();
 
-// Catalog wording is canonical; historical attempts retain their recorded references.
-export const levels = appSchema
-  .table(
-    'levels',
-    {
-      id: text().primaryKey(),
-      name: text().notNull(),
-    },
-    catalogPolicies,
-  )
-  .enableRLS();
-export const venues = appSchema
-  .table(
-    'venues',
-    {
-      id: text().primaryKey(),
-      name: text().notNull(),
-    },
-    catalogPolicies,
-  )
-  .enableRLS();
-export const challenges = appSchema
-  .table(
-    'challenges',
-    {
-      id: text().primaryKey(),
-      levelId: text('level_id')
-        .notNull()
-        .references(() => levels.id),
-      text: text().notNull(),
-      subtext: text(),
-      durationSeconds: integer('duration_seconds').notNull(),
-      active: boolean().notNull().default(true),
-    },
-    (t) => [
-      ...catalogPolicies(),
-      check('challenge_positive_duration', sql`${t.durationSeconds} > 0`),
-      index('challenges_level_idx').on(t.levelId),
-    ],
-  )
-  .enableRLS();
-export const venueCards = appSchema
-  .table(
-    'venue_cards',
-    {
-      id: text().primaryKey(),
-      venueId: text('venue_id')
-        .notNull()
-        .references(() => venues.id),
-      position: integer().notNull(),
-      challengeId: text('challenge_id')
-        .notNull()
-        .references(() => challenges.id),
-      active: boolean().notNull().default(true),
-    },
-    (t) => [
-      uniqueIndex('venue_card_position').on(t.venueId, t.position),
-      index('venue_cards_challenge_idx').on(t.challengeId),
-      ...catalogPolicies(),
-    ],
-  )
-  .enableRLS();
-export const attempts = appSchema
-  .table(
-    'attempts',
-    {
-      userId: uuid('user_id')
-        .notNull()
-        .references(() => users.id),
-      id: uuid().notNull(),
-      venueId: text('venue_id')
-        .notNull()
-        .references(() => venues.id),
-      challengeId: text('challenge_id')
-        .notNull()
-        .references(() => challenges.id),
-      levelId: text('level_id')
-        .notNull()
-        .references(() => levels.id),
-      startedAt: time('started_at').notNull(),
-      activityDate: text('activity_date').notNull(),
-      startTimeZone: text('start_time_zone'),
-      legacyDisplayTimeZone: text('legacy_display_time_zone'),
-      instructionSnapshot: text('instruction_snapshot'),
-      reflectionFeeling: text('reflection_feeling'),
-      reflectionText: text('reflection_text'),
-      reflectionRevision: integer('reflection_revision').notNull().default(0),
-    },
-    (t) => [
-      primaryKey({ columns: [t.userId, t.id] }),
-      index('attempt_history_day_idx').on(
-        t.userId,
-        t.activityDate,
-        t.startedAt,
-        t.id,
-      ),
-      index('attempt_challenge_idx').on(t.challengeId),
-      check(
-        'attempt_activity_date',
-        sql`${t.activityDate} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'`,
-      ),
-      check(
-        'attempt_time_zone_attribution',
-        sql`(${t.startTimeZone} is not null and ${t.legacyDisplayTimeZone} is null) or (${t.startTimeZone} is null and ${t.legacyDisplayTimeZone} is not null)`,
-      ),
-      check(
-        'attempt_reflection_content',
-        sql`(${t.reflectionRevision} = 0 and ${t.reflectionFeeling} is null and ${t.reflectionText} is null) or (${t.reflectionRevision} > 0 and (${t.reflectionFeeling} is not null or ${t.reflectionText} is not null))`,
-      ),
-      check(
-        'attempt_reflection_feeling',
-        sql`${t.reflectionFeeling} is null or ${t.reflectionFeeling} in ('a_lot_worse','a_little_worse','about_the_same','a_little_better','a_lot_better')`,
-      ),
-      check(
-        'attempt_reflection_text_length',
-        sql`${t.reflectionText} is null or char_length(${t.reflectionText}) <= 10000`,
-      ),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
-export const attemptPatchReceipts = appSchema
-  .table(
-    'attempt_patch_receipts',
-    {
-      userId: uuid('user_id').notNull(),
-      id: uuid().notNull(),
-      attemptId: uuid('attempt_id').notNull(),
-      inputDigest: text('input_digest').notNull(),
-      appliedRevision: integer('applied_revision').notNull(),
-    },
-    (t) => [
-      primaryKey({ columns: [t.userId, t.id] }),
-      foreignKey({
-        name: 'attempt_patch_receipts_attempt_fk',
-        columns: [t.userId, t.attemptId],
-        foreignColumns: [attempts.userId, attempts.id],
-      }),
-      index('attempt_patch_receipts_attempt_idx').on(t.userId, t.attemptId),
-      check('attempt_patch_digest', sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`),
-      check('attempt_patch_revision', sql`${t.appliedRevision} > 0`),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
 // Only a verified Auth subject can discover its canonical owner before owner context is set.
 export const managedAuthAccounts = appSchema
   .table(
@@ -418,44 +242,6 @@ export const managedAuthSessions = appSchema
     },
     (t) => [
       index('managed_sessions_owner_idx').on(t.userId),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
-export const journalVersions = appSchema
-  .table(
-    'journal_versions',
-    {
-      userId: uuid('user_id').notNull(),
-      versionId: uuid('version_id').notNull(),
-      attemptId: uuid('attempt_id').notNull(),
-      parents: uuid('parents').array().notNull(),
-      feelingScaleVersion: integer('feeling_scale_version').notNull(),
-      reflection: jsonb('reflection').$type<Reflection>().notNull(),
-      context: jsonb('context').$type<CompletionAttempt>(),
-    },
-    (t) => [
-      primaryKey({ columns: [t.userId, t.versionId] }),
-      foreignKey({ columns: [t.userId], foreignColumns: [users.id] }),
-      index('journal_versions_attempt_idx').on(t.userId, t.attemptId),
-      check('journal_version_scale', sql`${t.feelingScaleVersion}=1`),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
-export const deletedCompletionIds = appSchema
-  .table(
-    'deleted_completion_ids',
-    {
-      userId: uuid('user_id')
-        .notNull()
-        .references(() => users.id),
-      attemptId: uuid('attempt_id').notNull(),
-    },
-    (t) => [
-      primaryKey({ columns: [t.userId, t.attemptId] }),
       ...ownerPolicies(),
     ],
   )
