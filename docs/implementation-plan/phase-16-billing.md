@@ -809,6 +809,7 @@ Decisions.
 - Refunds of an earlier period. Apple refunding an earlier billing period does not end access for the period the subscriber is in now. Only a refund or revocation of the current period ends access (Anthony, 2026-11-20).
 - Restores while unpaid (#561). `POST /v1/completion-restores` stays open to an account without access, so sync, guest adoption and import keep working. The paywall gates starting a challenge, not saving history (Anthony, 2026-11-20).
 - Offline clock tampering (#567). Accepted. Saved access can outlive its expiry only while the phone is offline and someone has set its clock back on purpose. The next online access check ends it. RevenueCat's offline cache has the same limit (Anthony, 2026-11-20).
+- No EU storefronts at launch. As an individual seller, the EU Digital Services Act trader declaration would show Anthony's home address on the App Store. Leave the EU countries out in Pricing and Availability, and never declare "not a trader". Revisit once JustGO sells through a company (Anthony, 2026-11-20).
 - Keep out. No Stripe checkout, Redis or always-on worker. No client premium flag. No private-history recovery from a receipt. No provider call inside a database transaction. General analytics stays in Phase 17.
 
 The nine subscription rules.
