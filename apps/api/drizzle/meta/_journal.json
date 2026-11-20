@@ -197,6 +197,13 @@
       "when": 1795149503227,
       "tag": "0027_billing_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795154057841,
+      "tag": "0028_billing_confirmation",
+      "breakpoints": true
     }
   ]
 }

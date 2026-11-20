@@ -1,0 +1,16 @@
+ALTER TABLE "justgo"."app_store_subscriptions" ADD COLUMN "checked_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "justgo"."billing_events" ADD COLUMN "original_transaction_id" text;--> statement-breakpoint
+ALTER TABLE "justgo"."billing_events" ADD COLUMN "confirmed_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "billing_events_pending_idx" ON "justgo"."billing_events" USING btree ("original_transaction_id") WHERE "justgo"."billing_events"."confirmed_at" is null;--> statement-breakpoint
+ALTER TABLE "justgo"."billing_events" ADD CONSTRAINT "billing_events_original_transaction_id" CHECK ("justgo"."billing_events"."original_transaction_id" ~ '^[0-9]{1,32}$');--> statement-breakpoint
+CREATE POLICY "apple_confirmed_read" ON "justgo"."app_store_subscriptions" AS PERMISSIVE FOR SELECT TO "justgo_runtime" USING (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true)));--> statement-breakpoint
+CREATE POLICY "apple_confirmed_update" ON "justgo"."app_store_subscriptions" AS PERMISSIVE FOR UPDATE TO "justgo_runtime" USING (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true))) WITH CHECK (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true)));--> statement-breakpoint
+CREATE POLICY "billing_repair_scan" ON "justgo"."app_store_subscriptions" AS PERMISSIVE FOR SELECT TO "justgo_runtime" USING ((select current_setting('app.billing_repair',true)) = 'on' AND expires_at <= now() AND (checked_at is null OR checked_at < expires_at));--> statement-breakpoint
+CREATE POLICY "apple_confirmed_read" ON "justgo"."billing_events" AS PERMISSIVE FOR SELECT TO "justgo_runtime" USING (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true)));--> statement-breakpoint
+CREATE POLICY "apple_confirmed_update" ON "justgo"."billing_events" AS PERMISSIVE FOR UPDATE TO "justgo_runtime" USING (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true))) WITH CHECK (original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true)));--> statement-breakpoint
+CREATE POLICY "billing_repair_scan" ON "justgo"."billing_events" AS PERMISSIVE FOR SELECT TO "justgo_runtime" USING ((select current_setting('app.billing_repair',true)) = 'on' AND confirmed_at is null AND original_transaction_id is not null);
+--> statement-breakpoint
+-- The runtime may mark an event confirmed and change nothing else about it. Still no DELETE.
+GRANT UPDATE (confirmed_at) ON justgo.billing_events TO justgo_runtime;
+-- A transaction Apple confirmed for the webhook or the repair job never binds or moves an owner.
+CREATE TRIGGER app_store_subscriptions_confirmed_owner_fixed AFTER UPDATE OF user_id ON justgo.app_store_subscriptions FOR EACH ROW WHEN (NEW.user_id IS DISTINCT FROM OLD.user_id AND coalesce(current_setting('app.apple_confirmed_transaction_id', true), '') <> '') EXECUTE FUNCTION justgo.reject_subscription_owner_change();

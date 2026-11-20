@@ -6,6 +6,13 @@ import { appSchema, maintenance, time } from './shared.ts';
 // An owner reaches its own rows. A guest row (no owner) is reachable only through
 // the one original transaction ID the server verified with Apple and set for this transaction.
 const ownerOrVerifiedGuest = sql`user_id = (select justgo.current_user_id()) OR (user_id is null AND original_transaction_id = (select current_setting('app.original_transaction_id',true)))`;
+// The webhook and the repair job hold no owner. They reach a subscription and its
+// events only through the one original transaction ID Apple just confirmed, and
+// they read and update but never insert.
+const appleConfirmed = sql`original_transaction_id = (select current_setting('app.apple_confirmed_transaction_id',true))`;
+// The repair job lists what is due before it can ask Apple: lapsed subscriptions
+// it has not checked since they lapsed, and events whose confirmation failed.
+const repairing = sql`(select current_setting('app.billing_repair',true)) = 'on'`;
 
 export const appStoreSubscriptions = appSchema
   .table(
@@ -19,6 +26,7 @@ export const appStoreSubscriptions = appSchema
       revokedAt: time('revoked_at'),
       latestTransactionId: text('latest_transaction_id').notNull(),
       appAccountToken: uuid('app_account_token'),
+      checkedAt: time('checked_at'),
     },
     (t) => [
       index('app_store_subscriptions_owner_idx').on(t.userId),
@@ -40,6 +48,22 @@ export const appStoreSubscriptions = appSchema
         using: ownerOrVerifiedGuest,
         withCheck: ownerOrVerifiedGuest,
       }),
+      pgPolicy('apple_confirmed_read', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: appleConfirmed,
+      }),
+      pgPolicy('apple_confirmed_update', {
+        for: 'update',
+        to: 'justgo_runtime',
+        using: appleConfirmed,
+        withCheck: appleConfirmed,
+      }),
+      pgPolicy('billing_repair_scan', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: sql`${repairing} AND expires_at <= now() AND (checked_at is null OR checked_at < expires_at)`,
+      }),
     ],
   )
   .enableRLS();
@@ -50,17 +74,42 @@ export const billingEvents = appSchema
     {
       eventId: text('event_id').primaryKey(),
       receivedAt: time('received_at').notNull().defaultNow(),
+      originalTransactionId: text('original_transaction_id'),
+      confirmedAt: time('confirmed_at'),
     },
     (t) => [
       check(
         'billing_events_event_id',
         sql`char_length(${t.eventId}) between 1 and 255`,
       ),
+      check(
+        'billing_events_original_transaction_id',
+        sql`${t.originalTransactionId} ~ '^[0-9]{1,32}$'`,
+      ),
+      index('billing_events_pending_idx')
+        .on(t.originalTransactionId)
+        .where(sql`${t.confirmedAt} is null`),
       maintenance(),
       pgPolicy('verified_event_access', {
         to: 'justgo_runtime',
         using: sql`event_id = (select current_setting('app.billing_event_id',true))`,
         withCheck: sql`event_id = (select current_setting('app.billing_event_id',true))`,
+      }),
+      pgPolicy('apple_confirmed_read', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: appleConfirmed,
+      }),
+      pgPolicy('apple_confirmed_update', {
+        for: 'update',
+        to: 'justgo_runtime',
+        using: appleConfirmed,
+        withCheck: appleConfirmed,
+      }),
+      pgPolicy('billing_repair_scan', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: sql`${repairing} AND confirmed_at is null AND original_transaction_id is not null`,
       }),
     ],
   )

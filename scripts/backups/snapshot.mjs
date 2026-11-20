@@ -43,6 +43,8 @@ export const dumpOnlyTables = Object.freeze([
 ]);
 export const dumpOnlyLedgerColumns = Object.freeze({
   users: 'analytics_restricted_at',
+  // The repair job's last check only schedules work. A restore that loses it rechecks with Apple.
+  app_store_subscriptions: 'checked_at',
   device_transfers:
     'code_digest,claim_digest,device_id,session_id,session_digest,verification,verification_attempts,created_at,approved_at',
 });

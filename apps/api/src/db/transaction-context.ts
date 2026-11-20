@@ -12,7 +12,9 @@ type TransactionContextKey =
   | 'app.rate_key'
   | 'app.guest_catalog'
   | 'app.original_transaction_id'
-  | 'app.billing_event_id';
+  | 'app.billing_event_id'
+  | 'app.apple_confirmed_transaction_id'
+  | 'app.billing_repair';
 
 export const setTransactionContext = (
   tx: Transaction,

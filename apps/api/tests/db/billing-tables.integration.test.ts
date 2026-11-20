@@ -23,7 +23,13 @@ const admin = new Pool(
   poolOptions(readConfig({ ...process.env, DATABASE_URL: migrationUrl })),
 );
 type Transaction = Parameters<typeof setTransactionContext>[0];
-type Context = { owner?: string; purchase?: string; event?: string };
+type Context = {
+  owner?: string;
+  purchase?: string;
+  event?: string;
+  confirmed?: string;
+  repair?: boolean;
+};
 
 const alice = randomUUID();
 const bob = randomUUID();
@@ -54,6 +60,14 @@ const within = <T>(
       );
     if (context.event)
       await setTransactionContext(tx, 'app.billing_event_id', context.event);
+    if (context.confirmed)
+      await setTransactionContext(
+        tx,
+        'app.apple_confirmed_transaction_id',
+        context.confirmed,
+      );
+    if (context.repair)
+      await setTransactionContext(tx, 'app.billing_repair', 'on');
     return operation(tx);
   });
 const insertSubscription = (purchase: string, owner: string | null) =>
@@ -257,6 +271,146 @@ describe('billing tables under the restricted runtime role', () => {
     ).toBe('42501');
   });
 
+  it('lets an Apple-confirmed ID read and update only its own subscription and events, never insert one or move an owner', async () => {
+    const guest = serial();
+    purchases.push(guest);
+    await within({ purchase: guest }, (tx) =>
+      tx.execute(insertSubscription(guest, null)),
+    );
+    const named = eventId();
+    const other = eventId();
+    await within({ event: named }, (tx) =>
+      tx.execute(
+        sql`insert into justgo.billing_events(event_id,original_transaction_id) values(${named},${guest})`,
+      ),
+    );
+    await within({ event: other }, (tx) =>
+      tx.execute(
+        sql`insert into justgo.billing_events(event_id,original_transaction_id) values(${other},${alicePurchase})`,
+      ),
+    );
+    expect(await visible({ confirmed: guest })).toEqual([
+      { id: guest, owner: null },
+    ]);
+    expect(await visible({ confirmed: alicePurchase })).toEqual([
+      { id: alicePurchase, owner: alice },
+    ]);
+    const updated = await within({ confirmed: guest }, async (tx) => [
+      (
+        await tx.execute(
+          sql`update justgo.app_store_subscriptions set checked_at=now(), expires_at=expires_at+interval '1 day' where original_transaction_id in (${guest},${alicePurchase},${bobPurchase})`,
+        )
+      ).rowCount,
+      (
+        await tx.execute(
+          sql`update justgo.billing_events set confirmed_at=now() where event_id in (${named},${other})`,
+        )
+      ).rowCount,
+    ]);
+    expect(updated).toEqual([1, 1]);
+    // A fresh purchase, an owner bound to a guest row, an owner moved and another column of an event.
+    const fresh = serial();
+    expect(
+      await sqlState(
+        within({ confirmed: fresh }, (tx) =>
+          tx.execute(insertSubscription(fresh, null)),
+        ),
+      ),
+    ).toBe('42501');
+    for (const [confirmed, purchase, owner] of [
+      [guest, guest, alice],
+      [alicePurchase, alicePurchase, bob],
+      [alicePurchase, alicePurchase, null],
+    ] as const)
+      expect(
+        await sqlState(
+          within({ confirmed, owner: alice }, (tx) =>
+            tx.execute(
+              sql`update justgo.app_store_subscriptions set user_id=${owner} where original_transaction_id=${purchase}`,
+            ),
+          ),
+        ),
+      ).toBe('23514');
+    expect(
+      await sqlState(
+        within({ confirmed: guest }, (tx) =>
+          tx.execute(
+            sql`update justgo.billing_events set original_transaction_id=${alicePurchase} where event_id=${named}`,
+          ),
+        ),
+      ),
+    ).toBe('42501');
+    expect(
+      await sqlState(
+        within({ confirmed: guest }, (tx) =>
+          tx.execute(
+            sql`insert into justgo.billing_events(event_id,original_transaction_id) values(${eventId()},${guest})`,
+          ),
+        ),
+      ),
+    ).toBe('42501');
+    const { rows } = await admin.query<{
+      user_id: string | null;
+      checked: boolean;
+    }>(
+      'select user_id, checked_at is not null as checked from justgo.app_store_subscriptions where original_transaction_id=$1',
+      [guest],
+    );
+    expect(rows).toEqual([{ user_id: null, checked: true }]);
+  });
+
+  it('lets the repair scan list only lapsed unchecked subscriptions and unconfirmed events, read-only', async () => {
+    const lapsed = serial();
+    const checked = serial();
+    purchases.push(lapsed, checked);
+    for (const purchase of [lapsed, checked])
+      await within({ purchase }, (tx) =>
+        tx.execute(insertSubscription(purchase, null)),
+      );
+    await admin.query(
+      "update justgo.app_store_subscriptions set expires_at=now()-interval '1 hour', checked_at=case when original_transaction_id=$2 then now() else null end where original_transaction_id in ($1,$2)",
+      [lapsed, checked],
+    );
+    const pending = eventId();
+    const done = eventId();
+    const bare = eventId();
+    await admin.query(
+      'insert into justgo.billing_events(event_id,original_transaction_id,confirmed_at) values($1,$4,null),($2,$4,now()),($3,null,null)',
+      [pending, done, bare, bobPurchase],
+    );
+    const scan = (context: Context) =>
+      within(context, async (tx) => ({
+        subscriptions: (
+          await tx.execute<{ id: string }>(
+            sql`select original_transaction_id as id from justgo.app_store_subscriptions where original_transaction_id in (${sql.join([lapsed, checked, alicePurchase, bobPurchase], sql`,`)})`,
+          )
+        ).rows.map(({ id }) => id),
+        events: (
+          await tx.execute<{ id: string }>(
+            sql`select event_id as id from justgo.billing_events where event_id in (${sql.join([pending, done, bare], sql`,`)})`,
+          )
+        ).rows.map(({ id }) => id),
+      }));
+    expect(await scan({ repair: true })).toEqual({
+      subscriptions: [lapsed],
+      events: [pending],
+    });
+    expect(await scan({})).toEqual({ subscriptions: [], events: [] });
+    const writes = await within({ repair: true }, async (tx) => [
+      (
+        await tx.execute(
+          sql`update justgo.app_store_subscriptions set checked_at=now() where original_transaction_id=${lapsed}`,
+        )
+      ).rowCount,
+      (
+        await tx.execute(
+          sql`update justgo.billing_events set confirmed_at=now() where event_id=${pending}`,
+        )
+      ).rowCount,
+    ]);
+    expect(writes).toEqual([0, 0]);
+  });
+
   it('grants the runtime no delete on subscriptions and no update or delete on events', async () => {
     expect(
       await sqlState(
@@ -280,6 +434,21 @@ describe('billing tables under the restricted runtime role', () => {
       'billing_events:DELETE': false,
       'billing_events:TRUNCATE': false,
       'billing_events:UPDATE': false,
+    });
+    // Only the confirmation time of an event can change.
+    const columns = await admin.query<{ column_name: string; held: boolean }>(
+      `select column_name, has_column_privilege('justgo_runtime', 'justgo.billing_events', column_name, 'UPDATE') as held
+       from information_schema.columns where table_schema='justgo' and table_name='billing_events' order by 1`,
+    );
+    expect(
+      Object.fromEntries(
+        columns.rows.map((row) => [row.column_name, row.held]),
+      ),
+    ).toEqual({
+      confirmed_at: true,
+      event_id: false,
+      original_transaction_id: false,
+      received_at: false,
     });
   });
 });
