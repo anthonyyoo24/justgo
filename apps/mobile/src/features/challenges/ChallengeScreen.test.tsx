@@ -11,6 +11,7 @@ import {
   useChallengeActivity,
 } from './active/ChallengeActivityProvider';
 import { ChallengeFlowScreen } from './active/ChallengeFlowScreen';
+import { outcomeArmDelayMs } from './active/ActiveChallenge';
 
 const mockMounted = jest.fn();
 const mockVenueTabs = jest.fn<null, [unknown]>(() => null);
@@ -367,10 +368,18 @@ async function enterNativeRoute(screen: Awaited<ReturnType<typeof render>>) {
       listener({ data: { closing: false } }),
     );
   });
+  await armOutcomes();
 }
 async function accept(screen: Awaited<ReturnType<typeof render>>) {
   await fireEvent.press(
     screen.getByRole('button', { name: 'Accept challenge' }),
+  );
+  await armOutcomes();
+}
+// The active view ignores outcome presses until its arm delay passes (#562).
+async function armOutcomes() {
+  await act(
+    () => new Promise<void>((done) => setTimeout(done, outcomeArmDelayMs)),
   );
 }
 
@@ -705,6 +714,7 @@ it('keeps the prepared cover until both native entry and destination assets are 
       includeHiddenElements: true,
     }),
   ).toBeNull();
+  await armOutcomes();
   expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
 });
 it('does not uncover an entered native destination before its layout and artwork are ready', async () => {
