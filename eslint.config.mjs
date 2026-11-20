@@ -49,9 +49,9 @@ const everyMobileFileBans = [
   },
 ];
 const mobileImportBans = [...everyMobileFileBans, randomBytesBan];
-const cryptoPropertyBans = ['globalThis', 'global', 'window', 'self'].map(
-  (object) => ({ object, property: 'crypto', message: randomSecretFix }),
-);
+// A crypto read off any object, so an alias of the global object such as
+// `const host = globalThis; host.crypto` cannot reach it either.
+const cryptoPropertyBans = [{ property: 'crypto', message: randomSecretFix }];
 const dayEntryListFix =
   "Keep DayEntryList's batched ScrollView. Expanding an animated row breaks a virtualized list's estimated offsets, and the list then mounts every row.";
 const virtualizedLists = [

@@ -203,6 +203,14 @@ const cases = [
     'no-restricted-properties',
     `export const secret = () => ${object}.crypto.getRandomValues(new Uint8Array(32));`,
   ]),
+  // An alias of the global object reaches the same crypto object.
+  ...[
+    'const host = globalThis; export const secret = () => host.crypto.getRandomValues(new Uint8Array(32));',
+    "const host = global; export const secret = () => host['crypto'].getRandomValues(new Uint8Array(32));",
+    'const host = self; const { crypto: web } = host; export const secret = () => web.getRandomValues(new Uint8Array(32));',
+    'export const secret = () => (window as typeof globalThis).crypto.getRandomValues(new Uint8Array(32));',
+    'export const secret = (host = globalThis) => host?.crypto.getRandomValues(new Uint8Array(32));',
+  ].map((source) => ['no-restricted-properties', source]),
   ...[
     "useQuery({ queryKey: ['progress'] as const });",
     "useQuery({ 'queryKey': ['progress'] });",
