@@ -5,6 +5,7 @@ import { identityErrorSchema, type IdentityErrorCode } from './errors.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
+import { billingVerificationRequestSchema } from './billing.ts';
 import { completionExportPageSchema } from './data-export.ts';
 import * as managed from './managed-auth.ts';
 import * as sync from './data-sync.ts';
@@ -383,3 +384,22 @@ export const managedOpenApiDocument = {
     },
   },
 };
+
+/** The billing route exists only while BILLING_ENABLED is on. */
+export function withBilling<T extends { paths: object }>(document: T) {
+  return {
+    ...document,
+    paths: {
+      ...document.paths,
+      '/v1/billing/verifications': {
+        post: {
+          ...operation(accessResponseSchema, billingVerificationRequestSchema),
+          // A guest sends no bearer; a signed-in phone sends its session.
+          security: [{}, { deviceSession: [] }],
+          description:
+            'Ask Apple for an App Store transaction, verify its signature, bundle, environment and owner, and store it by original transaction ID. A revoked or expired subscription answers unpaid. 404 NOT_FOUND when Apple does not know the transaction, 409 CONFLICT when another account owns it or its app account token names another account.',
+        },
+      },
+    },
+  };
+}

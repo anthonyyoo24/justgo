@@ -1,5 +1,6 @@
 export * from './identity.ts';
 export * from './access.ts';
+export * from './billing.ts';
 export * from './data-export.ts';
 export * from './managed-auth.ts';
 export * from './data-sync.ts';

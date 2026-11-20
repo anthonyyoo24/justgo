@@ -414,6 +414,21 @@ const cases = [
     loadedRestricted: true,
   },
   {
+    name: 'the billing verifier may set RLS context after Apple verifies a purchase',
+    file: 'apps/api/src/billing/verify.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: false,
+    loadedRestricted: true,
+  },
+  {
+    name: 'other billing modules cannot set RLS context',
+    file: 'apps/api/src/billing/apple.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: true,
+  },
+  {
     name: 'a package self-reference cannot bypass the RLS context boundary',
     file: 'apps/api/src/data-sync/BoundaryFixture.ts',
     source:

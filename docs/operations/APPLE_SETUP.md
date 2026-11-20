@@ -43,8 +43,9 @@ signing keys, banking or tax values in this repository.
 ## What the API stores about purchases
 
 Migration `0027_billing_tables` adds two tables in the private `justgo`
-schema. No route reads or writes them yet. They hold no receipt, signed
-transaction, key or secret.
+schema. `POST /v1/billing/verifications` writes `app_store_subscriptions`, and
+no route reads `billing_events` yet. They hold no receipt, signed transaction,
+key or secret.
 
 - `app_store_subscriptions` has one row per Apple original transaction ID. It
   holds the owner's JustGO user ID (empty for a guest purchase), the product ID,
@@ -59,6 +60,32 @@ transaction, key or secret.
 - `billing_events` holds each Superwall event ID and when it arrived, so a
   redelivered event does nothing. A restore may lose recent IDs, and a
   redelivery then confirms the purchase with Apple again.
+
+## Verifying a purchase
+
+`POST /v1/billing/verifications` takes the transaction ID the phone got from
+StoreKit, with or without a JustGO bearer. The API asks Apple's Get Transaction
+Info for it before any database transaction opens, checks the signed answer
+against the pinned Apple Root CA - G3 fingerprint, and refuses a different
+bundle, environment or transaction ID. It stores the row by its original
+transaction ID and answers with the access contract. A revoked or expired
+subscription answers `unpaid`.
+
+- A signed-in owner gets the row when the `appAccountToken` is empty or names
+  them. A token that names another account answers 409, and so does a row
+  another account owns.
+- A guest purchase stays a guest row with no owner. When a signed-in owner sends
+  a guest row whose token does not name them, the row stays a guest row and the
+  answer says `guest_subscription`. Moving it into the account is the job of
+  guest adoption.
+
+The route exists only when `BILLING_ENABLED` is `true`. It is `false` by
+default, and then the app stays free. With the flag on, the API refuses to start
+unless every App Store Server API setting is present: `APPLE_IAP_KEY_ID`,
+`APPLE_IAP_ISSUER_ID`, `APPLE_BUNDLE_ID`, `APPLE_IAP_PRIVATE_KEY` (the PKCS8
+`.p8` text) and `APPLE_IAP_ENVIRONMENT` (`Production` or `Sandbox`). Keep their
+values in the function secrets only. Tests use a self-made certificate chain
+and a stub store from `apps/api/scripts/apple-test-store.ts`, never Apple.
 
 ## Owner tasks still open
 

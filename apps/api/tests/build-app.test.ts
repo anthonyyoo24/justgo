@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/build-app.js';
 import { readConfig } from '../src/config.js';
 import { createLogger, loggerOptions } from '../src/http/diagnostics.js';
-import { poolOptions } from '../src/db/client.js';
+import { createDatabase, poolOptions } from '../src/db/client.js';
 import { buildRuntimeApp } from '../src/runtime-app.js';
 import {
   managedOpenApiDocument,
   openApiDocument,
+  withBilling,
 } from '@justgo/contracts/openapi';
+import { createConnectKey, testBilling } from '../scripts/apple-test-store.js';
 
 describe('health and readiness', () => {
   it('stays live when the database is unavailable and never exposes the error', async () => {
@@ -123,6 +125,53 @@ describe('safe operational configuration', () => {
       ).json();
     expect(await served(readConfig({}))).toEqual(openApiDocument);
     expect(await served(managed)).toEqual(managedOpenApiDocument);
+  });
+  it('keeps billing off by default and refuses it without every App Store Server API setting', async () => {
+    expect(readConfig({}).BILLING_ENABLED).toBe(false);
+    expect(readConfig({}).APPLE_BILLING).toBeUndefined();
+    const { pem } = await createConnectKey();
+    const settings = {
+      APPLE_IAP_KEY_ID: testBilling.keyId,
+      APPLE_IAP_ISSUER_ID: testBilling.issuerId,
+      APPLE_BUNDLE_ID: testBilling.bundleId,
+      APPLE_IAP_PRIVATE_KEY: pem,
+      APPLE_IAP_ENVIRONMENT: testBilling.environment,
+    };
+    // Settings without the flag leave billing off.
+    expect(readConfig(settings).APPLE_BILLING).toBeUndefined();
+    for (const missing of Object.keys(settings))
+      expect(() =>
+        readConfig({
+          ...settings,
+          BILLING_ENABLED: 'true',
+          [missing]: undefined,
+        }),
+      ).toThrow('Billing requires every App Store Server API setting');
+    const billing = readConfig({
+      ...settings,
+      BILLING_ENABLED: 'true',
+      // The pool never connects; the route needs identity to mount.
+      DATABASE_URL: 'postgresql://justgo@127.0.0.1:1/unused',
+      DATABASE_SSL: 'disable',
+    });
+    expect(billing.APPLE_BILLING).toEqual({
+      ...testBilling,
+      privateKey: pem,
+    });
+    const database = createDatabase(billing);
+    try {
+      const served = async (withDatabase: boolean) =>
+        (
+          await apiRequest(
+            buildRuntimeApp(billing, withDatabase ? database : undefined),
+            '/openapi.json',
+          )
+        ).json();
+      expect(await served(true)).toEqual(withBilling(openApiDocument));
+      expect(await served(false)).toEqual(openApiDocument);
+    } finally {
+      await database.pool.end();
+    }
   });
   it('rejects production without a database and remote plaintext connections', () => {
     expect(() => readConfig({ NODE_ENV: 'production' })).toThrow();

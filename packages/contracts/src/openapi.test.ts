@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { secretSchema, transferCodeSchema } from './identity.ts';
-import { managedOpenApiDocument, openApiDocument } from './openapi.ts';
+import {
+  managedOpenApiDocument,
+  openApiDocument,
+  withBilling,
+} from './openapi.ts';
 
 type Json = Record<string, unknown>;
 type Field = [schema: unknown, at: string, name: string];
@@ -268,6 +272,8 @@ function requestOwnerFields(document: Json): string[] {
 describe.each([
   ['legacy', openApiDocument],
   ['managed', managedOpenApiDocument],
+  ['legacy billing', withBilling(openApiDocument)],
+  ['managed billing', withBilling(managedOpenApiDocument)],
 ])('the %s OpenAPI document', (_, document) => {
   it('puts no bearer in a path, query, cookie or hand-declared Authorization header', () => {
     expect(urlSecrets(document)).toEqual([]);
