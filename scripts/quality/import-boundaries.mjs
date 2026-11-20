@@ -28,9 +28,11 @@ const featureDataTypes = [
   'activity/repository',
   'activity/persistence/deck-preferences',
 ];
-// eslint.config.mjs bans names from these packages, which a runtime load hides.
+// eslint.config.mjs bans names or whole entries of these packages, which a
+// runtime load hides. react-native covers its react-native/Libraries/Lists/ paths.
 const namedBanPackages = [
   'expo-crypto',
+  '@react-native/virtualized-lists',
   'react-native',
   'react-native-safe-area-context',
   'zustand/middleware',
