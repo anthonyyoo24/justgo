@@ -115,6 +115,11 @@ test('slow phone writes prevent duplicate activation, expose delayed feedback an
   await page
     .getByRole('button', { name: 'Accept challenge', exact: true })
     .click();
+  // dispatchEvent skips the enabled check, so wait out the outcome arm delay
+  // (#562) before the two rapid clicks.
+  await expect(
+    page.getByRole('button', { name: 'Completed', exact: true }),
+  ).toBeEnabled();
   await page
     .getByRole('button', { name: 'Completed', exact: true })
     .dispatchEvent('click');
