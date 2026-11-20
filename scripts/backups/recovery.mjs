@@ -135,7 +135,7 @@ export async function reconcileLedger(client, ledger) {
     select ${ledgerTables.app_store_subscriptions} from recovery_app_store_subscriptions
     on conflict(original_transaction_id) do update set user_id=excluded.user_id,product_id=excluded.product_id,
       environment=excluded.environment,expires_at=excluded.expires_at,revoked_at=excluded.revoked_at,
-      latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token`);
+      latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token,signed_at=excluded.signed_at`);
   for (const table of [
     'journal_versions',
     'attempt_patch_receipts',

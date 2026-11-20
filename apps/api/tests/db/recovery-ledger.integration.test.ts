@@ -1,4 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { sql } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { Pool, type PoolClient } from 'pg';
 import {
   afterAll,
@@ -10,6 +12,7 @@ import {
   it,
 } from 'vitest';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
+import { newestAnswer } from '../../src/billing/newest-answer.js';
 import {
   captureLedger,
   ledgerTables,
@@ -283,6 +286,56 @@ describe('recovery ledger tombstones', () => {
     expect(await holding()).toEqual(every(false));
     await reconcileLedger(client, ledger);
     expect(await holding()).toEqual(every(true));
+  });
+
+  it('keeps the refund answer newest after a restore, so a stale answer cannot clear it', async () => {
+    const expiresAt = new Date('2026-12-01T00:00:00Z');
+    const dumpSignedAt = new Date('2026-11-01T00:00:00Z');
+    const staleSignedAt = new Date('2026-11-05T00:00:00Z');
+    const refundedAt = new Date('2026-11-10T00:00:00Z');
+    const subscription = async () =>
+      (
+        await client.query<{ signed_at: Date; revoked_at: Date | null }>(
+          'select signed_at,revoked_at from justgo.app_store_subscriptions where original_transaction_id=$1',
+          [guestPurchase],
+        )
+      ).rows[0]!;
+    await run(
+      'update justgo.app_store_subscriptions set expires_at=$2,signed_at=$3 where original_transaction_id=$1',
+      [guestPurchase, expiresAt, dumpSignedAt],
+    );
+    await client.query('savepoint database_dump');
+    await run(
+      'update justgo.app_store_subscriptions set revoked_at=$2,signed_at=$2 where original_transaction_id=$1',
+      [guestPurchase, refundedAt],
+    );
+    const ledger: unknown = JSON.parse(
+      await captureLedger(client, { capturedAt: new Date().toISOString() }),
+    );
+    await client.query('rollback to savepoint database_dump');
+    await reconcileLedger(client, ledger);
+    expect(await subscription()).toEqual({
+      signed_at: refundedAt,
+      revoked_at: refundedAt,
+    });
+
+    const stale = new PgDialect().sqlToQuery(
+      sql`update justgo.app_store_subscriptions set ${newestAnswer({
+        transactionId: guestPurchase,
+        originalTransactionId: guestPurchase,
+        productId: 'justgo.monthly',
+        environment: 'Sandbox',
+        expiresAt,
+        revokedAt: null,
+        appAccountToken: null,
+        signedAt: staleSignedAt,
+      })} where original_transaction_id=${guestPurchase}`,
+    );
+    await run(stale.sql, stale.params);
+    expect(await subscription()).toEqual({
+      signed_at: refundedAt,
+      revoked_at: refundedAt,
+    });
   });
 
   it('refuses a ledger that moves a subscription to another owner', async () => {
