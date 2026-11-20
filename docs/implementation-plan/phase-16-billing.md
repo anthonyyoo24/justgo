@@ -419,7 +419,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 **Build.**
 
 - [ ] Add `expo-superwall` at the version the prototype proved on Expo SDK 58.
-- [ ] Configure it once at startup with the public API key and `eventTrackingBehavior: 'superwallOnly'`, or `'none'` if the prototype shows paywalls and purchases still work with it.
+- [ ] Configure it once at startup with the public API key and `eventTrackingBehavior: 'superwallOnly'` (Appendix E). A test pins the value, so the default `all` never ships.
 - [ ] Call `identify()` with the owner ID on account change, and `reset()` on logout. A guest stays anonymous. Never send onboarding answers, journal text or reflections as user attributes.
 
 **You see.**
@@ -803,6 +803,7 @@ Decisions.
 - TestFlight beta users. Same paywall and trial as new users. Their history and journal stay (Anthony, 2026-11-19).
 - Guests. Can buy without signing in. The subscription moves into the account they later sign in to (Anthony, 2026-11-19).
 - Reference. Onboarding and paywall follow the Gleam app's screens, adapted as the Gleam analysis says (Anthony, 2026-11-19).
+- Event tracking. `superwallOnly`, so Superwall's dashboard shows paywall conversion and can run paywall A/B tests. Events go to Superwall only, never to other analytics. This needs the analytics exception and privacy review before launch: the policy, DATA_INVENTORY, App Privacy answers and Superwall's DPA (Anthony, 2026-11-20).
 - Keep out. No Stripe checkout, Redis or always-on worker. No client premium flag. No private-history recovery from a receipt. No provider call inside a database transaction. General analytics stays in Phase 17.
 
 The nine subscription rules.
