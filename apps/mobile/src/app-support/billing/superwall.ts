@@ -1,8 +1,11 @@
 import {
+  SuperwallExpoModule,
   useSuperwallStore,
   type PartialSuperwallOptions,
+  type PaywallResult,
   type UserAttributes,
 } from 'expo-superwall';
+import type { PaywallOutcome, PaywallStore } from './paywall';
 
 // The public iOS key ships in every build. It names JustGO's Superwall app 60560.
 export const superwallApiKey = 'pk_weeyKXc6nLaH3eMSkyjhB';
@@ -15,6 +18,7 @@ export const superwallOptions = {
 } as const satisfies PartialSuperwallOptions;
 
 type Store = typeof useSuperwallStore;
+type Native = Pick<typeof SuperwallExpoModule, 'addListener'>;
 
 const identifiedUser = (user: UserAttributes | null | undefined) =>
   typeof user?.appUserId === 'string' && user.appUserId !== ''
@@ -85,4 +89,106 @@ export class SuperwallBilling {
 
 export function createSuperwallBilling(enabled: boolean) {
   return enabled ? new SuperwallBilling() : null;
+}
+
+let handlers = 0;
+
+/**
+ * Shows the placement's paywall and reports how it closed. Superwall resolves
+ * `registerPlacement` only when it lets the person through, so the paywall's
+ * own events, matched by handler, report a decline, a skip or an error.
+ */
+export class SuperwallPaywallStore implements PaywallStore {
+  constructor(
+    private readonly store: Store = useSuperwallStore,
+    private readonly native: Native = SuperwallExpoModule,
+  ) {}
+
+  present(placement: 'start_challenge') {
+    const handlerId = `justgo:${placement}:${++handlers}`;
+    return new Promise<PaywallOutcome>((resolve) => {
+      let presented = false;
+      let done = false;
+      // The last purchase on this paywall that did not go through. Superwall
+      // keeps the paywall open after one, so it shows only in a later decline.
+      let unfinished: 'pending' | 'failed' | null = null;
+      const finish = (outcome: PaywallOutcome) => {
+        if (done) return;
+        done = true;
+        for (const subscription of subscriptions) subscription.remove();
+        resolve(outcome);
+      };
+      const ours = (event: { handlerId?: string }) =>
+        event.handlerId === handlerId;
+      const subscriptions = [
+        this.native.addListener('onPaywallPresent', (event) => {
+          if (ours(event)) presented = true;
+        }),
+        this.native.addListener('onPaywallDismiss', (event) => {
+          if (ours(event)) finish(closed(event.result, unfinished));
+        }),
+        // No audience, a holdout or a missing placement shows no paywall.
+        this.native.addListener('onPaywallSkip', (event) => {
+          if (ours(event)) finish({ type: 'failed' });
+        }),
+        this.native.addListener('onPaywallError', (event) => {
+          if (ours(event)) finish({ type: 'failed' });
+        }),
+        // Transaction events name no handler. Only one paywall shows at a time.
+        this.native.addListener('handleSuperwallEvent', ({ eventInfo }) => {
+          if (!presented) return;
+          const { event } = eventInfo;
+          if (event.event === 'transactionStart') unfinished = null;
+          else if (event.event === 'transactionFail')
+            // Superwall reports Ask to Buy as a failure that needs approval.
+            unfinished = /approval/i.test(event.error) ? 'pending' : 'failed';
+        }),
+      ];
+      this.store
+        .getState()
+        .registerPlacement(placement, undefined, handlerId)
+        .then(
+          // With no paywall shown, Superwall already counts the person as subscribed.
+          () => {
+            if (!presented) finish({ type: 'entitled' });
+          },
+          () => finish({ type: 'failed' }),
+        );
+    });
+  }
+
+  /** The newest App Store transaction on this phone, for the API to verify. */
+  async latestTransactionId() {
+    const info = await this.store.getState().getCustomerInfo();
+    const transactions = [
+      ...(info?.subscriptions ?? []),
+      ...(info?.nonSubscriptions ?? []),
+    ];
+    let newest: (typeof transactions)[number] | undefined;
+    for (const transaction of transactions)
+      if (
+        !newest ||
+        Date.parse(transaction.purchaseDate) > Date.parse(newest.purchaseDate)
+      )
+        newest = transaction;
+    return newest?.transactionId ?? null;
+  }
+}
+
+const closed = (
+  result: PaywallResult,
+  unfinished: 'pending' | 'failed' | null,
+): PaywallOutcome => {
+  switch (result.type) {
+    case 'purchased':
+      return { type: 'purchased' };
+    case 'restored':
+      return { type: 'restored' };
+    case 'declined':
+      return { type: unfinished ?? 'declined' };
+  }
+};
+
+export function createSuperwallPaywallStore(enabled: boolean) {
+  return enabled ? new SuperwallPaywallStore() : null;
 }

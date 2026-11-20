@@ -17,7 +17,10 @@ import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
 import { canStartChallenge } from '../access/admission';
 import { PaidAccess } from '../access/paid-access';
-import { createSuperwallBilling } from '../billing/superwall';
+import {
+  createSuperwallBilling,
+  createSuperwallPaywallStore,
+} from '../billing/superwall';
 import { Paywall, type PaywallStore } from '../billing/paywall';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
@@ -33,7 +36,7 @@ export function createAppRuntime<
   url = process.env.EXPO_PUBLIC_API_URL,
   storage: JournalStorage = asyncStorageJournalStorage,
   billing = process.env.EXPO_PUBLIC_BILLING_ENABLED === 'true',
-  store: PaywallStore | null = null,
+  store: PaywallStore | null = createSuperwallPaywallStore(billing),
 ) {
   const client = new AccountClient(createHttpClient(url), {
     current: identity.currentSession,

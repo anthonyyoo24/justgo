@@ -4,13 +4,19 @@ import {
   nativeCalls,
   superwallNative,
 } from '../../../test-support/superwall-native';
+import type { PaywallOutcome } from './paywall';
 import {
   SuperwallBilling,
+  SuperwallPaywallStore,
   createSuperwallBilling,
+  createSuperwallPaywallStore,
   superwallApiKey,
   superwallOptions,
 } from './superwall';
-import { createSuperwallBilling as createWebSuperwallBilling } from './superwall.web';
+import {
+  createSuperwallBilling as createWebSuperwallBilling,
+  createSuperwallPaywallStore as createWebSuperwallPaywallStore,
+} from './superwall.web';
 
 const owner = '3f8f2d1e-6b7a-4c52-9a0e-2d4b8c1f7e90';
 const other = '9c1d7e2a-0b4f-4e8d-8a6c-5f3e2b1a0d97';
@@ -23,6 +29,7 @@ const allowedNative = new Set([
   'getSubscriptionStatus',
   'getUserAttributes',
   'identify',
+  'registerPlacement',
   'reset',
 ]);
 
@@ -201,4 +208,156 @@ it('stays off unless billing is on, and always off on web', () => {
   expect(createSuperwallBilling(false)).toBeNull();
   expect(createSuperwallBilling(true)).toBeInstanceOf(SuperwallBilling);
   expect(createWebSuperwallBilling()).toBeNull();
+  expect(createSuperwallPaywallStore(false)).toBeNull();
+  expect(createSuperwallPaywallStore(true)).toBeInstanceOf(
+    SuperwallPaywallStore,
+  );
+  expect(createWebSuperwallPaywallStore()).toBeNull();
+});
+
+describe('the paywall store', () => {
+  const info = { id: 'paywall' };
+  // Opens the placement and returns its handler, with the outcome still open.
+  const open = async () => {
+    useSuperwallStore.setState({ isConfigured: true });
+    let outcome: PaywallOutcome | undefined;
+    void new SuperwallPaywallStore()
+      .present('start_challenge')
+      .then((result) => (outcome = result));
+    await settle();
+    const placement = superwallNative.placement()!;
+    return { ...placement, outcome: () => outcome };
+  };
+  const transaction = (event: Record<string, unknown>) =>
+    superwallNative.emit('handleSuperwallEvent', {
+      eventInfo: { event, params: {} },
+    });
+
+  it.each([
+    [{ type: 'purchased', productId: 'annual' }, 'purchased'],
+    [{ type: 'restored' }, 'restored'],
+    [{ type: 'declined' }, 'declined'],
+  ] as const)(
+    'reports a paywall closed as %j for its own placement only',
+    async (result, type) => {
+      const { handlerId, grant, outcome } = await open();
+      expect(callsTo('registerPlacement')[0]!.args).toEqual([
+        'start_challenge',
+        undefined,
+        handlerId,
+      ]);
+      superwallNative.emit('onPaywallPresent', {
+        paywallInfoJson: info,
+        handlerId,
+      });
+      superwallNative.emit('onPaywallDismiss', {
+        paywallInfoJson: info,
+        result: { type: 'declined' },
+        handlerId: 'someone-else',
+      });
+      // Superwall may let the person through before the dismiss event arrives.
+      grant();
+      await settle();
+      expect(outcome()).toBeUndefined();
+      superwallNative.emit('onPaywallDismiss', {
+        paywallInfoJson: info,
+        result,
+        handlerId,
+      });
+      await settle();
+      expect(outcome()).toEqual({ type });
+      expect(superwallNative.listenerCount()).toBe(0);
+    },
+  );
+
+  it('reports a decline after Ask to Buy as pending and after a failed purchase as failed', async () => {
+    const asked = await open();
+    superwallNative.emit('onPaywallPresent', {
+      paywallInfoJson: info,
+      handlerId: asked.handlerId,
+    });
+    transaction({ event: 'transactionStart' });
+    transaction({ event: 'transactionFail', error: 'Needs parental approval' });
+    superwallNative.emit('onPaywallDismiss', {
+      paywallInfoJson: info,
+      result: { type: 'declined' },
+      handlerId: asked.handlerId,
+    });
+    await settle();
+    expect(asked.outcome()).toEqual({ type: 'pending' });
+
+    const failed = await open();
+    superwallNative.emit('onPaywallPresent', {
+      paywallInfoJson: info,
+      handlerId: failed.handlerId,
+    });
+    transaction({ event: 'transactionFail', error: 'Payment declined' });
+    superwallNative.emit('onPaywallDismiss', {
+      paywallInfoJson: info,
+      result: { type: 'declined' },
+      handlerId: failed.handlerId,
+    });
+    await settle();
+    expect(failed.outcome()).toEqual({ type: 'failed' });
+
+    // A purchase started after a failure clears it, so a later cancel is a decline.
+    const retried = await open();
+    superwallNative.emit('onPaywallPresent', {
+      paywallInfoJson: info,
+      handlerId: retried.handlerId,
+    });
+    transaction({ event: 'transactionFail', error: 'Payment declined' });
+    transaction({ event: 'transactionStart' });
+    superwallNative.emit('onPaywallDismiss', {
+      paywallInfoJson: info,
+      result: { type: 'declined' },
+      handlerId: retried.handlerId,
+    });
+    await settle();
+    expect(retried.outcome()).toEqual({ type: 'declined' });
+  });
+
+  it('counts a placement Superwall lets through without a paywall as entitled', async () => {
+    const { grant, outcome } = await open();
+    grant();
+    await settle();
+    expect(outcome()).toEqual({ type: 'entitled' });
+    expect(superwallNative.listenerCount()).toBe(0);
+  });
+
+  it.each([
+    ['skips', 'onPaywallSkip', { skippedReason: { type: 'NoAudienceMatch' } }],
+    ['errors', 'onPaywallError', { errorString: 'offline' }],
+  ])('reports a placement that %s as failed', async (_name, event, payload) => {
+    const { handlerId, outcome } = await open();
+    superwallNative.emit(event, { ...payload, handlerId });
+    await settle();
+    expect(outcome()).toEqual({ type: 'failed' });
+    expect(superwallNative.listenerCount()).toBe(0);
+  });
+
+  it('reports a register that fails as failed', async () => {
+    const { fail, outcome } = await open();
+    fail();
+    await settle();
+    expect(outcome()).toEqual({ type: 'failed' });
+  });
+
+  it('names the newest App Store transaction on the phone, or none', async () => {
+    useSuperwallStore.setState({ isConfigured: true });
+    const store = new SuperwallPaywallStore();
+    await expect(store.latestTransactionId()).resolves.toBeNull();
+    superwallNative.setCustomerInfo({
+      userId: owner,
+      subscriptions: [
+        { transactionId: '2000000001', purchaseDate: '2026-10-01T00:00:00Z' },
+        { transactionId: '2000000003', purchaseDate: '2026-11-19T00:00:00Z' },
+      ],
+      nonSubscriptions: [
+        { transactionId: '2000000002', purchaseDate: '2026-11-01T00:00:00Z' },
+      ],
+      entitlements: [],
+    });
+    await expect(store.latestTransactionId()).resolves.toBe('2000000003');
+  });
 });
