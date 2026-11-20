@@ -1,0 +1,5 @@
+/private/tmp/claude-501/-Users-anthonyyoo-Documents-apps-justgo/e3c48832-94e7-43b9-8526-f4c87f7598b5/scratchpad/logs/pod-install.log:Pod installation complete! There are 134 dependencies from the Podf
+/private/tmp/claude-501/-Users-anthonyyoo-Documents-apps-justgo/e3c48832-94e7-43b9-8526-f4c87f7598b5/scratchpad/logs/xcodebuild.log:** BUILD SUCCEEDED **
+         42636478604  cycles elapsed
+           187009856  peak memory footprint
+exit=0

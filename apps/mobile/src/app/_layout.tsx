@@ -22,6 +22,12 @@ import {
 import { AppStartup, StartupSurface } from '../app-support/startup/AppStartup';
 import { holdNativeSplash } from '../app-support/startup/native-splash';
 import { RouteErrorScreen } from '../app-support/fallbacks/RouteErrorScreen';
+import { SuperwallProvider } from 'expo-superwall';
+import { SuperwallProto } from '../dev/SuperwallProto';
+
+// PROTOTYPE: configured once at startup with a placeholder key.
+const superwallKeys = { ios: 'pk_placeholder_prototype' };
+const superwallOptions = { logging: { level: 'debug' as const, scopes: ['all' as const] } };
 
 holdNativeSplash();
 
@@ -63,6 +69,7 @@ export default function RootLayout() {
     );
   if (!loaded) return <AppLoadingScreen />;
   return (
+    <SuperwallProvider apiKeys={superwallKeys} options={superwallOptions}>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <MotionPreferencesProvider>
@@ -80,7 +87,9 @@ export default function RootLayout() {
           </AppProvider>
         </HapticsPreferencesProvider>
       </MotionPreferencesProvider>
+      <SuperwallProto />
     </GestureHandlerRootView>
+    </SuperwallProvider>
   );
 }
 function Navigation() {
