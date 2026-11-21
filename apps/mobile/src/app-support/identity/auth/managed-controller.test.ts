@@ -3215,6 +3215,60 @@ describe('guest accounts with billing on (P16-14)', () => {
     restarted.dispose();
   });
 
+  it('keeps logout pending until the guest session left by IDENTITY_EXISTS is revoked, then signs the provider out', async () => {
+    const guestProofKey = 'justgo.auth.guest-session-proof.v1';
+    const guestToken = anonymousSession(1).accessToken;
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    const order: string[] = [];
+    let guestOnline = false;
+    ctx.setFailureFor((call) => {
+      if (call.path !== '/auth/logout') return null;
+      if (call.token !== guestToken) return null;
+      if (!guestOnline) return new ApiError('NETWORK');
+      order.push('revoke-guest');
+      return null;
+    });
+    ctx.auth.signOut.mockImplementation(async () => {
+      order.push('provider-sign-out');
+      ctx.setProvider(null);
+    });
+    await ctx.controller.signIn('apple');
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'account',
+      account: { userId: account.userId },
+    });
+    expect(ctx.stored.has(guestProofKey)).toBe(true);
+    const guestLogouts = () =>
+      ctx.calls.filter(
+        (call) => call.path === '/auth/logout' && call.token === guestToken,
+      );
+    const attempts = guestLogouts().length;
+
+    expect(await ctx.controller.signOut()).toBe(false);
+    expect(guestLogouts()).toHaveLength(attempts + 1);
+    expect(ctx.saved()?.logoutPending).toBe(true);
+    expect(ctx.stored.has(guestProofKey)).toBe(true);
+    expect(ctx.auth.signOut).not.toHaveBeenCalled();
+    expect(ctx.controller.currentSession()).toBeNull();
+
+    guestOnline = true;
+    await ctx.controller.retry();
+    expect(guestLogouts()).toHaveLength(attempts + 2);
+    expect(ctx.stored.has(guestProofKey)).toBe(false);
+    expect(ctx.saved()?.logoutPending).toBe(false);
+    expect(order).toEqual(['revoke-guest', 'provider-sign-out']);
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'signed-out',
+      account: null,
+    });
+    ctx.controller.dispose();
+  });
+
   it('stays the same guest when the second sign-in after IDENTITY_EXISTS is cancelled', async () => {
     const ctx = guestSetup();
     await ctx.controller.continueAsGuest();

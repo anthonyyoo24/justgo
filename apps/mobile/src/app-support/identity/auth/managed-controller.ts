@@ -1493,6 +1493,10 @@ export class ManagedIdentityController {
       this.options.api,
       this.lifetime.signal,
     );
+    await guestSessionProof(this.options.secureStorage).revoke(
+      this.options.api,
+      this.lifetime.signal,
+    );
     if (this.providerSession) {
       try {
         await this.options.api.request(
