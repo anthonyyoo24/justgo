@@ -20,6 +20,14 @@ export type VerifiedTransaction = {
   appAccountToken: string | null;
   /** When Apple signed this answer, which orders answers about the same period. */
   signedAt: Date;
+  /** The period is a free trial, from any offer Apple signed with it. */
+  trial: boolean;
+  /**
+   * Whether the subscription renews at this expiry, from Apple's signed
+   * renewal info. Null when the answer carries none, as Get Transaction Info's
+   * never does.
+   */
+  autoRenew: boolean | null;
 };
 export type AppleTransactionReader = (
   transactionId: string,
@@ -61,6 +69,13 @@ const payloadSchema = z.object({
   revocationDate: z.number().int().positive().optional(),
   signedDate: z.number().int().positive(),
   appAccountToken: z.union([z.literal(''), z.string().regex(uuid)]).optional(),
+  offerDiscountType: z.string().optional(),
+});
+// Apple's JWSRenewalInfoDecodedPayload: 1 renews at the expiry, 0 does not.
+const renewalSchema = z.object({
+  originalTransactionId: transactionIdSchema,
+  environment: z.string(),
+  autoRenewStatus: z.union([z.literal(0), z.literal(1)]),
 });
 
 type Bytes = Uint8Array<ArrayBuffer>;
@@ -411,6 +426,7 @@ function appleClient(config: AppleBillingConfig, options: AppleClientOptions) {
   async function transaction(
     signed: string,
     expected: { transactionId?: string; originalTransactionId?: string },
+    signedRenewal?: string,
   ): Promise<VerifiedTransaction> {
     const payload = payloadSchema.safeParse(
       await verifySignedPayload(signed, { rootFingerprints, now: now() }),
@@ -428,6 +444,22 @@ function appleClient(config: AppleBillingConfig, options: AppleClientOptions) {
     )
       throw new ApiError('INVALID_REQUEST', 400);
     const purchase = payload.data;
+    let autoRenew: boolean | null = null;
+    if (signedRenewal !== undefined) {
+      const renewal = renewalSchema.safeParse(
+        await verifySignedPayload(signedRenewal, {
+          rootFingerprints,
+          now: now(),
+        }),
+      );
+      if (
+        !renewal.success ||
+        renewal.data.originalTransactionId !== purchase.originalTransactionId ||
+        renewal.data.environment !== config.environment
+      )
+        throw new ApiError('INVALID_REQUEST', 400);
+      autoRenew = renewal.data.autoRenewStatus === 1;
+    }
     return {
       transactionId: purchase.transactionId,
       originalTransactionId: purchase.originalTransactionId,
@@ -442,6 +474,9 @@ function appleClient(config: AppleBillingConfig, options: AppleClientOptions) {
         ? purchase.appAccountToken.toLowerCase()
         : null,
       signedAt: new Date(purchase.signedDate),
+      // A free trial from an introductory offer, an offer code or a promotion.
+      trial: purchase.offerDiscountType === 'FREE_TRIAL',
+      autoRenew,
     };
   }
   return { read, transaction };
@@ -468,8 +503,9 @@ export function createAppleTransactions(
 
 /**
  * Read a subscription's latest transaction from Apple's Get All Subscription
- * Statuses and verify it. This is Apple's current answer, so it carries a
- * renewal, an expiry or a refund whatever order the events arrived in.
+ * Statuses and verify it, with the renewal info Apple lists beside it. This is
+ * Apple's current answer, so it carries a renewal, an expiry, a refund or a
+ * change to auto-renew whatever order the events arrived in.
  */
 export function createAppleSubscriptions(
   config: AppleBillingConfig,
@@ -490,6 +526,7 @@ export function createAppleSubscriptions(
                   z.object({
                     originalTransactionId: z.string(),
                     signedTransactionInfo: signedTransaction,
+                    signedRenewalInfo: signedTransaction.optional(),
                   }),
                 )
                 .max(100),
@@ -502,8 +539,10 @@ export function createAppleSubscriptions(
       .flatMap((group) => group.lastTransactions)
       .find((entry) => entry.originalTransactionId === originalTransactionId);
     if (!latest) throw new ApiError('INVALID_REQUEST', 400);
-    return apple.transaction(latest.signedTransactionInfo, {
-      originalTransactionId,
-    });
+    return apple.transaction(
+      latest.signedTransactionInfo,
+      { originalTransactionId },
+      latest.signedRenewalInfo,
+    );
   };
 }

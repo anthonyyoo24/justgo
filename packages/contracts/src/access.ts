@@ -37,6 +37,11 @@ export const accessResponseSchema = z.union([
       ...verified,
       source: z.literal('subscription'),
       productId: appleProductId,
+      // A free trial, whose expiry is when it converts to the paid plan or ends.
+      trial: z.boolean().optional(),
+      // Whether the subscription renews at its expiry. Absent until Apple's
+      // renewal answer reaches the server, and false once renewal is off.
+      autoRenew: z.boolean().optional(),
     })
     .strict(),
 ]);

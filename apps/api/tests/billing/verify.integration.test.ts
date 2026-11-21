@@ -326,6 +326,27 @@ describe('POST /v1/billing/verifications', () => {
     expect((await access(owner.token)).json().status).toBe('unpaid');
   });
 
+  it('answers a free trial as a trial, and the paid period it converts into as paid', async () => {
+    const owner = await account();
+    const trial = purchase({ offerType: 1, offerDiscountType: 'FREE_TRIAL' });
+    const first = await verify(trial.transactionId, owner.token);
+    expect(accessResponseSchema.parse(first.json())).toMatchObject({
+      status: 'verified',
+      trial: true,
+    });
+    // Get Transaction Info carries no renewal info, so auto-renew stays unknown.
+    expect(first.json()).not.toHaveProperty('autoRenew');
+    expect((await access(owner.token)).json()).toMatchObject({ trial: true });
+    const converted = purchase({
+      originalTransactionId: trial.original,
+      expiresDate: Date.now() + 365 * 86_400_000,
+    });
+    expect(
+      (await verify(converted.transactionId, owner.token)).json(),
+    ).toMatchObject({ status: 'verified', trial: false });
+    expect((await access(owner.token)).json()).toMatchObject({ trial: false });
+  });
+
   it('keeps the latest expiry when an older renewal arrives late', async () => {
     const owner = await account();
     const first = purchase({ expiresDate: Date.now() + 86_400_000 });

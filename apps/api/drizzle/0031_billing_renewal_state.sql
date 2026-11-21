@@ -1,0 +1,2 @@
+ALTER TABLE "justgo"."app_store_subscriptions" ADD COLUMN "trial" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "justgo"."app_store_subscriptions" ADD COLUMN "auto_renew" boolean;

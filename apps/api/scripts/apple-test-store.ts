@@ -224,6 +224,21 @@ export function transactionPayload(
   };
 }
 
+/** Apple's renewal info for a subscription, with renewal on unless overridden. */
+export function renewalPayload(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    originalTransactionId: '2000000000000001',
+    productId: 'app.justgo.monthly',
+    autoRenewProductId: 'app.justgo.monthly',
+    autoRenewStatus: 1,
+    environment: testBilling.environment,
+    signedDate: Date.now(),
+    ...overrides,
+  };
+}
+
 /** A fresh App Store Connect key, as the PKCS8 PEM the config holds. */
 export async function createConnectKey() {
   const keys = await generate('P-256');
@@ -246,7 +261,8 @@ export type StoreRequest = {
  * Get Transaction Info and Get All Subscription Statuses at the sandbox
  * origin. It answers only a bearer the connect key signed, and 404 for an ID
  * it does not hold. `subscriptions` maps an original transaction ID to its
- * latest transaction, which a test changes to move Apple's answer. Like Apple,
+ * latest transaction, which a test changes to move Apple's answer, and
+ * `renewals` maps it to the renewal info Apple lists beside it. Like Apple,
  * it signs each answer when it gives it, so a later answer always carries a
  * later `signedDate`.
  */
@@ -257,6 +273,7 @@ export function createTestStore(
   options: {
     forge?: boolean;
     subscriptions?: Map<string, Record<string, unknown>>;
+    renewals?: Map<string, Record<string, unknown>>;
   } = {},
 ) {
   const requests: StoreRequest[] = [];
@@ -292,6 +309,7 @@ export function createTestStore(
       const latest = options.subscriptions?.get(statuses[1]);
       if (!latest)
         return new Response('{"errorCode":4040010}', { status: 404 });
+      const renewal = options.renewals?.get(statuses[1]);
       return Response.json({
         environment: testBilling.environment,
         bundleId: testBilling.bundleId,
@@ -303,6 +321,9 @@ export function createTestStore(
                 originalTransactionId: statuses[1],
                 status: 1,
                 signedTransactionInfo: await answer(latest),
+                ...(renewal
+                  ? { signedRenewalInfo: await answer(renewal) }
+                  : {}),
               },
             ],
           },
