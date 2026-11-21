@@ -47,6 +47,8 @@ export const managedIdentityStateSchema = z
         expectedOwnerId: z.uuid().nullable().default(null),
         switching: z.boolean().optional(),
         authenticated: z.boolean().optional(),
+        // A guest's sign-in links the provider to its anonymous Auth user.
+        guestLink: z.boolean().optional(),
       })
       .strict()
       .nullable(),
@@ -69,6 +71,11 @@ export const managedIdentityStateSchema = z
       .nullable(),
     deleted: z.boolean(),
     linkedLegacyOwnerIds: z.array(z.uuid()).max(100).default([]),
+    // With billing on, a guest's server account under an anonymous Auth user.
+    // It names only paid access and the catalog, never a sync owner.
+    guestAccount: managedSessionResponseSchema.nullable().default(null),
+    // The guest's Delete all data also deletes that account, once reachable.
+    guestAccountDeletion: z.boolean().default(false),
   })
   .strict()
   .refine(
@@ -87,6 +94,7 @@ export const managedIdentityStateSchema = z
         (state.collectionAdoption.sourceId !==
           state.collectionAdoption.ownerId &&
           state.collectionAdoption.sourceId !== state.guestId)) &&
+      (!state.guestAccount || state.guestAccount.guest) &&
       (!state.deletion ||
         (state.collection.kind === 'account' &&
           state.deletion.userId === state.collection.id)),

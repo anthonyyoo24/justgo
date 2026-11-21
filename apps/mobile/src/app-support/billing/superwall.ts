@@ -23,9 +23,10 @@ const identifiedUser = (user: UserAttributes | null | undefined) =>
 
 /**
  * Keeps Superwall's user equal to the JustGO account that owns the phone.
- * A signed-in account is identified by its owner ID and nothing else, so
- * Apple's appAccountToken names the buyer. A guest stays anonymous, and
- * leaving an account resets Superwall to a new anonymous user.
+ * A signed-in account, or a guest's server account, is identified by its
+ * account ID and nothing else, so Apple's appAccountToken names the buyer. A
+ * guest with no server account yet stays anonymous, and leaving an account
+ * resets Superwall to a new anonymous user.
  *
  * This never mounts `SuperwallProvider`. That provider forwards every link the
  * app opens to Superwall, including the `justgo://auth/callback` sign-in link.

@@ -150,6 +150,8 @@ it.each(['google', 'apple'] as const)(
       logoutPending: false,
       deletion: null,
       deleted: false,
+      guestAccount: null,
+      guestAccountDeletion: false,
     };
     const session: ProviderSession = {
       authUserId,
@@ -159,6 +161,7 @@ it.each(['google', 'apple'] as const)(
     };
     const auth: ManagedAuth = {
       initialize: async () => session,
+      signInAnonymously: async () => session,
       refresh: async () => session,
       signIn: async () => session,
       linkIdentity: async () => session,

@@ -101,6 +101,23 @@ function provider() {
         sessions.set(result.session.accessToken, result);
         return response(result);
       }
+      if (String(url).endsWith('anonymous-sessions')) {
+        const handle = serial.toString(16).padStart(32, '0');
+        const subject = {
+          authUserId: uuid(serial++),
+          providers: new Set<'apple' | 'google'>(),
+        };
+        subjects.set(handle, subject);
+        const session = {
+          authUserId: subject.authUserId,
+          accessToken: `fixture.${String(serial++).padStart(30, '0')}.signature`,
+          expiresAt: '2030-01-01T00:00:00.000Z',
+          linkedProviders: [],
+        };
+        const result = { subjectHandle: handle, session };
+        sessions.set(session.accessToken, result);
+        return response(result);
+      }
       if (String(url).endsWith('provider-sign-outs'))
         return response({ ok: true });
       throw new Error('Unsupported fixture endpoint');
@@ -319,6 +336,61 @@ it('refuses to link an identity that already has its own subject and keeps the s
   await expect(auth.linkIdentity('google')).resolves.toMatchObject({
     linkedProviders: ['apple', 'google'],
   });
+  auth.dispose();
+});
+
+it('starts an anonymous guest session and links a provider to the same Auth user (P16-14)', async () => {
+  const remote = provider();
+  const base = options();
+  const { auth } = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  const anonymous = await auth.signInAnonymously();
+  expect(anonymous.linkedProviders).toEqual([]);
+  const [url, request] = remote.fetcher.mock.calls[0]!;
+  expect(String(url)).toBe(`${apiUrl}/__fixtures/anonymous-sessions`);
+  expect(JSON.parse(String(request?.body))).toEqual({});
+  // The anonymous session survives a reload, like Supabase's stored session.
+  const reloaded = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  await expect(reloaded.auth.initialize()).resolves.toEqual(anonymous);
+  reloaded.auth.dispose();
+  const linked = await auth.linkIdentity('apple');
+  expect(linked).toMatchObject({
+    authUserId: anonymous.authUserId,
+    linkedProviders: ['apple'],
+  });
+  expect(linked).not.toMatchObject({ accessToken: anonymous.accessToken });
+  auth.dispose();
+});
+
+it('signs in to the identity that already has its own subject after a guest link is refused (P16-14)', async () => {
+  const remote = provider();
+  const base = options();
+  const { auth, control } = createJourneyManagedAuth({
+    ...base,
+    fetcher: remote.fetcher,
+  });
+  const existing = (await auth.signIn('apple')) as { authUserId: string };
+  const handle = [...remote.subjects.keys()][0]!;
+  control.selectSubject(null);
+  const anonymous = await auth.signInAnonymously();
+  control.selectLinkIdentity(handle);
+  await expect(auth.linkIdentity('apple')).rejects.toMatchObject({
+    code: 'IDENTITY_EXISTS',
+  });
+  await expect(auth.initialize()).resolves.toEqual(anonymous);
+  // The same identity then signs in to the subject that owns it.
+  await expect(auth.signIn('apple')).resolves.toMatchObject({
+    authUserId: existing.authUserId,
+  });
+  const body = JSON.parse(
+    String(remote.fetcher.mock.calls.at(-1)?.[1]?.body),
+  ) as unknown;
+  expect(body).toEqual({ provider: 'apple', subjectHandle: handle });
   auth.dispose();
 });
 
