@@ -183,6 +183,66 @@ Vault only. Tests sign with self-made secrets from
 `apps/api/tests/billing/svix.ts` and answer from the stub store, never
 Superwall or Apple.
 
+## App Privacy answers for billing
+
+These are the proposed App Store Connect answers that billing adds. They cover
+Superwall at `superwallOnly` and the API's subscription records, as
+[Billing and Superwall](../legal/DATA_INVENTORY.md#billing-and-superwall)
+describes. They are not entered yet ([#94][g94]). Enter them when billing turns
+on, after Anthony approves the [Privacy candidate](../legal/PRIVACY_POLICY_BILLING_CANDIDATE.md) `privacy-billing-candidate`.
+
+| Data type                        | Purposes                        | Linked | Tracking | Why                                                                                                                                       |
+| -------------------------------- | ------------------------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Purchases → Purchase History     | App Functionality and Analytics | Yes    | No       | Apple and Superwall report each purchase, renewal and refund. The API unlocks access from it, and Superwall measures the paywall with it. |
+| Usage Data → Product Interaction | App Functionality and Analytics | Yes    | No       | Superwall records paywall opens, closes, purchases and restores to show the paywall and compare its versions.                             |
+| Identifiers → Device ID          | Add Analytics                   | Yes    | No       | Superwall receives the identifier for vendor and its own device ID with the paywall events.                                               |
+| Identifiers → User ID            | Keep the current answer         | Yes    | No       | Superwall receives the JustGO owner ID after sign-in.                                                                                     |
+
+Keep **Data used to track you** empty and add no App Tracking Transparency
+prompt while Superwall's MMP install attribution, Apple Search Ads attribution
+and Google Ads and Meta conversion integrations stay off. Turning one on changes
+these answers to tracking. SuperwallKit's own privacy manifest declares only
+Purchase History for App Functionality, not linked. The answers above are wider,
+because the app links the data to its owner and uses it to measure the paywall.
+
+## Paywall legal links
+
+Apple requires an app with an auto-renewing subscription to link its Terms of
+Use (EULA) and Privacy Policy in the app and in the App Store listing. JustGO
+uses Apple's standard EULA, which the [Terms](https://justgo-legal.anthonyyoo24.workers.dev/terms/)
+already name.
+
+| Link           | Address                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| Terms of Use   | https://www.apple.com/legal/internet-services/itunes/dev/stdeula/ |
+| Privacy Policy | https://justgo-legal.anthonyyoo24.workers.dev/privacy/            |
+
+Anthony sets both on each paywall in the Superwall editor, and adds the Terms of
+Use link to the App Store description, because the app uses the standard EULA
+rather than a custom one. The Privacy Policy URL is already saved in App Store
+Connect. The paywall must keep showing the price, the period and how to cancel
+next to the links.
+
+## Superwall erasure on account deletion
+
+After account deletion commits, the API asks Superwall to erase that owner
+with `POST https://api.superwall.com/v2/applications/<application id>/user_erasures`,
+whose `app_user_id` is the JustGO owner ID the phone identifies with. It runs
+with no owner transaction open and before the Auth user deletion, through
+`outboundFetch()`. It sends `acknowledge_active_subscriptions: true`, because
+deleting the account never cancels the App Store subscription and the delete
+screens say so. Superwall holds the request 25 days before it erases, and a
+repeat returns the request it already scheduled. The erasure is best effort: a
+refusal, a timeout or an outage still returns the deletion receipt, and only a
+replayed deletion asks again. Nothing from Superwall's answer reaches a
+response or a log.
+
+With `BILLING_ENABLED` on, the API refuses to start without
+`SUPERWALL_API_KEY` (a Superwall API key with the `app_users:erase` scope, 16 to
+512 printable characters) and `SUPERWALL_APPLICATION_ID` (the numeric
+application ID). Keep the key in the function secrets only. Tests answer from a
+fake transport, never Superwall.
+
 ## Owner tasks still open
 
 - Complete banking, tax and the paid-app agreement before sales.
@@ -190,6 +250,12 @@ Superwall or Apple.
   create the subscription group and products, and map them to entitlements and
   the paywall. Keep these credentials out of docs and mobile source. Prepared
   billing code does not authorize this setup.
+- Before billing turns on: approve and publish the [Privacy candidate](../legal/PRIVACY_POLICY_BILLING_CANDIDATE.md)
+  `privacy-billing-candidate` through [the approval steps](../legal/APPROVALS.md#recording-an-approval),
+  accept [Superwall's DPA](https://superwall.com/legal/dpa), keep the Superwall
+  integrations in [Billing and Superwall](../legal/DATA_INVENTORY.md#billing-and-superwall)
+  off, set the [paywall legal links](#paywall-legal-links) and enter the
+  [App Privacy answers for billing](#app-privacy-answers-for-billing).
 - Pick the external beta cohort and dates ([#97][g97]).
 - For the paid launch ([#107][g107], [#110][g110]), complete App Store metadata,
   current screenshots, the icon, age and content declarations, the support URL,

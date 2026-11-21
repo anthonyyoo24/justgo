@@ -122,12 +122,14 @@ process arguments, source, receipts or chat.
 Billing stays off on staging, so the lane does not accept its names yet. Before
 `BILLING_ENABLED` turns on anywhere, the function secrets need the App Store
 Server API settings in [Apple setup](APPLE_SETUP.md#verifying-a-purchase),
-`SUPERWALL_WEBHOOK_SECRET` and `BILLING_REPAIR_SECRET`, and
+`SUPERWALL_WEBHOOK_SECRET`, `BILLING_REPAIR_SECRET`, and the
+[Superwall erasure](APPLE_SETUP.md#superwall-erasure-on-account-deletion)
+settings `SUPERWALL_API_KEY` and `SUPERWALL_APPLICATION_ID`, and
 `functionSecretNames` and `functionSecretRules` need those names. Point
 Superwall's webhook at `/v1/billing/superwall-events` on the function URL, and
 schedule a Supabase Cron job that posts to `/v1/billing/repair` about every 15
 minutes with the repair secret from Vault. [Apple setup](APPLE_SETUP.md#superwall-events-and-repair)
-describes both routes. Never put either secret's value in source, receipts or
+describes both routes. Never put any of these values in source, receipts or
 chat.
 
 ## Credentials and approval protection

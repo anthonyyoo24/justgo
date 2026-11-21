@@ -18,18 +18,31 @@ const promises = [
         'Signing in saves your challenge history, feelings and reflections to JustGO’s cloud service so they can sync across your signed-in devices.',
     },
   },
+  {
+    // Paid billing's candidate notice. Move this promise to the draft when the
+    // candidate replaces it.
+    policy: 'docs/legal/PRIVACY_POLICY_BILLING_CANDIDATE.md',
+    clause:
+      "Cancel your subscription** in your Apple account's subscription settings. The Delete account screen links to them. Deleting the app, your journal or your account does not cancel it.",
+    screens: {
+      'apps/mobile/src/app-support/identity/deletion/DeleteAccountScreen.tsx':
+        'Deleting your account does not cancel an Apple subscription. You can cancel your subscription separately and delete your account immediately.',
+      'apps/mobile/src/app-support/identity/deletion/CancelSubscriptionRow.tsx':
+        'label="Cancel subscription"',
+    },
+  },
 ];
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 );
-const policyFile = 'docs/legal/PRIVACY_POLICY_DRAFT.md';
+const draftPolicy = 'docs/legal/PRIVACY_POLICY_DRAFT.md';
 // JSX and Markdown wrap long copy, so compare text with whitespace collapsed.
 const flat = (text) => text.replace(/\s+/g, ' ');
 const read = (file) => flat(readFileSync(path.join(root, file), 'utf8'));
 
-for (const { clause, screens } of promises) {
+for (const { policy: policyFile = draftPolicy, clause, screens } of promises) {
   test(`the UI keeps the Privacy Policy promise: ${clause}`, () => {
     assert.ok(
       read(policyFile).includes(flat(clause)),

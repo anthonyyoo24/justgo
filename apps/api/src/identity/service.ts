@@ -25,6 +25,7 @@ import {
 } from './managed-service.js';
 import type { ManagedAuthVerifier } from './managed-verifier.js';
 import type { ManagedAuthDeletion } from './managed-deletion.js';
+import type { SuperwallErasure } from './superwall-erasure.js';
 
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 type Row = Record<string, unknown>;
@@ -86,12 +87,14 @@ export type IdentityOptions = {
   managedAuthVerifier?: ManagedAuthVerifier;
   managedLiveSessionReader?: ManagedLiveSessionReader;
   managedAuthDeletion?: ManagedAuthDeletion;
+  superwallErasure?: SuperwallErasure;
 };
 export type AuthenticatedSession = SessionResponse &
   Partial<Pick<ManagedSessionResponse, 'authUserId' | 'dataEpoch'>>;
 export class IdentityService {
   readonly managed?: ManagedIdentityService;
   readonly managedAuthDeletion: ManagedAuthDeletion | undefined;
+  readonly superwallErasure: SuperwallErasure | undefined;
   private readonly sessionHours: number;
   private readonly transferMinutes: number;
   readonly db: NodePgDatabase;
@@ -103,6 +106,7 @@ export class IdentityService {
     this.sessionHours = options.sessionHours ?? 168;
     this.transferMinutes = options.transferMinutes ?? 10;
     this.managedAuthDeletion = options.managedAuthDeletion;
+    this.superwallErasure = options.superwallErasure;
     if (options.managedAuthVerifier)
       this.managed = new ManagedIdentityService(
         this.db,
