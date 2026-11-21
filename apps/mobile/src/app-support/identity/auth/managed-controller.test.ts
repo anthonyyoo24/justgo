@@ -36,6 +36,7 @@ const account = {
   sessionId: uuid(60),
   expiresAt: session.expiresAt,
   dataEpoch: 0,
+  guest: false,
 };
 const legacyInfo = {
   userId: account.userId,

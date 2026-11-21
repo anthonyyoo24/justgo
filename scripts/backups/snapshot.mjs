@@ -21,7 +21,8 @@ export const ledgerTables = Object.freeze({
     'id,user_id,device_id,digest,created_at,expires_at,revoked_at,rotated_to',
   device_transfers:
     'id,user_id,credential_digest,cancelled_at,redeemed_at,expires_at',
-  managed_auth_accounts: 'auth_user_id,user_id',
+  // Replayed so a guest that linked a provider after the dump stays an account.
+  managed_auth_accounts: 'auth_user_id,user_id,guest',
   managed_auth_sessions:
     'id,auth_user_id,user_id,device_id,expires_at,revoked_at',
   managed_auth_deletions: 'user_id,auth_user_id,requested_at,completed_at',

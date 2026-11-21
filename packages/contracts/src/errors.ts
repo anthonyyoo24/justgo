@@ -15,6 +15,8 @@ export const identityErrorCodeSchema = z.enum([
   'PRIVATE_JOURNAL_LOCAL',
   'ATTEMPT_INELIGIBLE',
   'ACCESS_REQUIRED',
+  // A guest account may not save history until it signs in with Apple or Google.
+  'SIGN_IN_REQUIRED',
   'NOT_FOUND',
   'TRANSFER_EXPIRED',
   'TRANSFER_PENDING',

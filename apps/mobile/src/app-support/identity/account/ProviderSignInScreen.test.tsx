@@ -145,6 +145,7 @@ beforeEach(async () => {
       ...session,
       authUserId: providerSession.authUserId,
       dataEpoch: 0,
+      guest: false,
     },
     pendingSignIn: null,
     pendingLink: null,

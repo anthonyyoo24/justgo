@@ -59,6 +59,7 @@ export async function checkOutboundAdapters() {
     authUserId: claims.sub,
     sessionId: claims.session_id,
     expiresAt: new Date(claims.exp * 1000).toISOString(),
+    guest: false,
   });
 
   const tick = () => new Promise((resolve) => setTimeout(resolve, 1));

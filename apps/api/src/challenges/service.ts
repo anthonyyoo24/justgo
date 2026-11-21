@@ -15,18 +15,23 @@ export class ChallengeService {
    * Reads require verified access; personal deck order remains client-owned.
    */
   catalog(token: string) {
-    return this.identity.withSession(token, async (tx) => {
-      requireVerifiedAccess(await this.entitlement?.(tx));
-      return {
-        cards: [
-          ...(
-            await tx.execute<ChallengeCard & Record<string, unknown>>(sql`
+    return this.identity.withSession(
+      token,
+      async (tx) => {
+        requireVerifiedAccess(await this.entitlement?.(tx));
+        return {
+          cards: [
+            ...(
+              await tx.execute<ChallengeCard & Record<string, unknown>>(sql`
             select v.id,c.id as "challengeId",v.venue_id as venue,v.position,c.level_id as "levelId",c.text,c.subtext,c.duration_seconds as "durationSeconds"
             from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id
             where v.active and c.active and c.level_id='level-1' order by v.venue_id,v.position,v.id`)
-          ).rows,
-        ],
-      };
-    });
+            ).rows,
+          ],
+        };
+      },
+      // A guest that bought access reads the catalog like an account.
+      { guests: true },
+    );
   }
 }

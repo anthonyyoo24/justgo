@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   uuid,
   text,
   integer,
@@ -204,6 +205,10 @@ export const rateBuckets = appSchema
   .enableRLS();
 
 // Only a verified Auth subject can discover its canonical owner before owner context is set.
+// A guest mapping is also visible, and lockable but never writable, while billing
+// verification has set one Apple-verified original transaction ID, so a purchase a
+// guest holds can move to the verifying caller.
+const verifyingGuest = sql`guest AND coalesce((select current_setting('app.original_transaction_id',true)),'') <> ''`;
 export const managedAuthAccounts = appSchema
   .table(
     'managed_auth_accounts',
@@ -212,6 +217,9 @@ export const managedAuthAccounts = appSchema
       userId: uuid('user_id')
         .notNull()
         .references(() => users.id),
+      // An anonymous Auth user with no identity. Linking Apple or Google clears
+      // it, and a trigger refuses setting it again.
+      guest: boolean().notNull().default(false),
     },
     (t) => [
       uniqueIndex('managed_auth_owner_uq').on(t.userId),
@@ -220,6 +228,17 @@ export const managedAuthAccounts = appSchema
         to: 'justgo_runtime',
         using: sql`auth_user_id = nullif(current_setting('app.auth_user_id',true),'')::uuid`,
         withCheck: sql`auth_user_id = nullif(current_setting('app.auth_user_id',true),'')::uuid and user_id = (select justgo.current_user_id())`,
+      }),
+      pgPolicy('verifying_guest_read', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: verifyingGuest,
+      }),
+      pgPolicy('verifying_guest_lock', {
+        for: 'update',
+        to: 'justgo_runtime',
+        using: verifyingGuest,
+        withCheck: sql`false`,
       }),
     ],
   )

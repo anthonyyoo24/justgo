@@ -73,6 +73,9 @@ export function buildRuntimeApp(
                   managedAuthVerifier: createManagedAuthVerifier(
                     config.SUPABASE_URL,
                     config.SUPABASE_PUBLISHABLE_KEY,
+                    undefined,
+                    // A guest account exists only to own a purchase.
+                    { guests: config.BILLING_ENABLED },
                   ),
                 }
               : {}),

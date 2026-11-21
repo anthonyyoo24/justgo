@@ -373,6 +373,7 @@ it.each([
         sessionId: '10000000-0000-4000-8000-000000000060',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       switchCancelled,
     });
@@ -411,6 +412,7 @@ it.each(['cancel', 'failure', 'success'] as const)(
         sessionId: '10000000-0000-4000-8000-000000000060',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       collectionKind: 'account' as const,
     };
@@ -485,6 +487,7 @@ it.each(['restored', 'hydrating'] as const)(
         sessionId: '10000000-0000-4000-8000-000000000061',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       collectionKind: 'account' as const,
       hasPending: false,

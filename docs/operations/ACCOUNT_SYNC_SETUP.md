@@ -108,6 +108,33 @@ before the iPhone acceptance gate, and change it only with Anthony's go.
 Real web Auth uses PKCE and `/auth/callback`. In Supabase, allowlist only approved
 browser origins and callback URLs, and set the API's `CORS_ORIGINS` to match.
 
+## Anonymous sign-ins for guests
+
+With `BILLING_ENABLED` on, a guest gets a Supabase anonymous user and a JustGO
+guest account, so its purchase, access check and catalog download have an
+owner (P16-13 in the [Phase 16 plan](../implementation-plan/phase-16-billing.md)).
+The account holds no name, no email and no private history.
+
+- The API accepts an anonymous user only while `BILLING_ENABLED` is on, and
+  only when no identity has joined it. With the flag off it refuses anonymous
+  users with 401, as before. An anonymous user with an identity, and any other
+  user without an Apple or Google identity, stays refused.
+- `managed_auth_accounts.guest` marks the account. `POST /v1/auth/session`
+  answers `guest: true` for it. Linking Apple or Google to the same Auth user
+  keeps the account and clears `guest` on the next exchange or request, and a
+  database trigger refuses any change back to `true`.
+- A guest bearer reaches `GET /v1/access`, `GET /v1/challenges`,
+  `POST /v1/billing/verifications`, the `/v1/auth/session` and
+  `/v1/auth/logout` routes and `DELETE /v1/account`. Every other bearer route
+  answers 403 `SIGN_IN_REQUIRED` and writes nothing.
+
+This needs **Allow anonymous sign-ins** on under Authentication, Sign In /
+Providers. It stays off in every hosted project until Anthony says yes, and the
+code changes no provider setting. Supabase limits anonymous sign-ins per IP
+address, 30 an hour by default, under Authentication, Rate Limits. Keep that
+default. The API's `managed-auth` limit and the guest account cleanup in P16-15
+also bound how many accounts a script can make.
+
 ## Keep private tables off the Data API
 
 Private application tables stay in the `justgo` schema with forced RLS and narrow

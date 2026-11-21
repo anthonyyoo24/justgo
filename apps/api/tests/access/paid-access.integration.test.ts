@@ -57,7 +57,7 @@ async function account() {
 let serial = 0n;
 const base = 5_000_000_000_000_000n + BigInt(Math.floor(Math.random() * 1e12));
 async function subscribe(
-  userId: string | null,
+  userId: string,
   expiresAt: number,
   revokedAt: number | null = null,
 ) {
@@ -138,7 +138,6 @@ describe('access from saved Apple subscriptions', () => {
     await subscribe(expired.userId, Date.now() - hour);
     await subscribe(revoked.userId, expiry, Date.now() - hour);
     await subscribe(other.userId, expiry);
-    await subscribe(null, expiry);
     const before = Date.now();
     const answer = (
       await get(paid, '/v1/access', valid.token)
@@ -164,7 +163,8 @@ describe('access from saved Apple subscriptions', () => {
       expect(catalog.statusCode).toBe(403);
       expect(catalog.json().code).toBe('ACCESS_REQUIRED');
     }
-    // Another owner's row and a guest row stay out of reach of this owner.
+    // Another owner's row stays out of reach of this owner, and the guest
+    // routes read no row at all.
     await withOwner(database.db, none.userId, async (tx) => {
       expect((await createPaidAccess().entitlementReader(tx)).status).toBe(
         'unpaid',

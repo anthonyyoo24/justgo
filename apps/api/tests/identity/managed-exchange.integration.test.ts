@@ -63,7 +63,7 @@ function pooledDatabase(
                 if (
                   afterMissingMapping &&
                   query.sql.startsWith(
-                    'select user_id from justgo.managed_auth_accounts',
+                    'select user_id,guest from justgo.managed_auth_accounts',
                   ) &&
                   result.rows.length === 0
                 )
@@ -104,12 +104,13 @@ function simultaneousReads() {
   };
 }
 
-function provider(authUserId = randomUUID()) {
+function provider(authUserId = randomUUID(), guest = false) {
   const token = `synthetic.${randomUUID()}.proof`;
   const identity = {
     authUserId,
     sessionId: randomUUID(),
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    guest,
   };
   subjects.set(token, identity);
   live.add(identity.sessionId);

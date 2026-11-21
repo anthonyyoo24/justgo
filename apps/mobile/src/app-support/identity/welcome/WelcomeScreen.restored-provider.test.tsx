@@ -77,6 +77,7 @@ const account = {
   authUserId,
   expiresAt: '2099-01-01T00:00:00.000Z',
   dataEpoch: 0,
+  guest: false,
 };
 const response = (body: unknown) =>
   new Response(JSON.stringify(body), {

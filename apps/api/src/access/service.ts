@@ -38,8 +38,11 @@ export class AccessService {
   ) {}
 
   get(token: string): Promise<AccessResponse> {
-    return this.identity.withSession(token, async (tx) =>
-      currentAccess(accessResponseSchema.parse(await this.read(tx))),
+    return this.identity.withSession(
+      token,
+      async (tx) =>
+        currentAccess(accessResponseSchema.parse(await this.read(tx))),
+      { guests: true },
     );
   }
 }

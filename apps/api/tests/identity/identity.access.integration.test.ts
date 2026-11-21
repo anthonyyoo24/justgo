@@ -83,9 +83,9 @@ it('keeps paid access open until its Apple expiry and drops the paid source once
   const owner = await account();
   const headers = { authorization: `Bearer ${owner.input.sessionToken}` };
   let expiresIn = 86_400_000;
-  const paid = (source: 'subscription' | 'guest_subscription') => ({
+  const paid = () => ({
     status: 'verified' as const,
-    source,
+    source: 'subscription' as const,
     productId: 'com.anthonyyoo.justgo.pro.annual',
     checkedAt: new Date(Date.now() - 3_600_000).toISOString(),
     expiresAt: new Date(Date.now() + expiresIn).toISOString(),
@@ -94,8 +94,8 @@ it('keeps paid access open until its Apple expiry and drops the paid source once
     logger: false,
     checkDatabase: async () => {},
     identity: service,
-    entitlementReader: async () => paid('subscription'),
-    guestAccessReader: async () => paid('guest_subscription'),
+    entitlementReader: async () => paid(),
+    guestAccessReader: async () => paid(),
   });
   const gated = [
     '/v1/challenges',

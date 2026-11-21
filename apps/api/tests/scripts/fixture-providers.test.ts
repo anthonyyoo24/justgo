@@ -91,6 +91,38 @@ describe('guarded provider-session fixture boundary', () => {
       }),
     ).toThrow('UNAUTHORIZED');
   });
+  it('makes an anonymous guest that the API accepts only with guests on, and links it to keep the same Auth user', async () => {
+    const providers = new FixtureProviders({ guests: true });
+    const guest = providers.anonymous({});
+    expect(guest.session.linkedProviders).toEqual([]);
+    expect(await providers.verify(guest.session.accessToken)).toMatchObject({
+      authUserId: guest.session.authUserId,
+      guest: true,
+    });
+    const off = new FixtureProviders();
+    await expect(
+      off.verify(off.anonymous({}).session.accessToken),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    expect(() => providers.anonymous({ provider: 'apple' })).toThrow(
+      'INVALID_REQUEST',
+    );
+    const linked = providers.link({
+      accessToken: guest.session.accessToken,
+      provider: 'apple',
+    });
+    expect(linked.session).toMatchObject({
+      authUserId: guest.session.authUserId,
+      linkedProviders: ['apple'],
+    });
+    expect(await providers.verify(linked.session.accessToken)).toMatchObject({
+      authUserId: guest.session.authUserId,
+      guest: false,
+    });
+    // An earlier guest session names the same, now permanent, user.
+    expect((await providers.verify(guest.session.accessToken)).guest).toBe(
+      false,
+    );
+  });
   it('checks live session revocation and hard deletion without resurrecting an old Auth subject', async () => {
     const providers = new FixtureProviders(),
       first = providers.create({ provider: 'apple' }),

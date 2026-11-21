@@ -36,7 +36,12 @@ const deleted = randomUUID(),
   deletedSubject = randomUUID(),
   liveSubject = randomUUID(),
   managedSession = randomUUID(),
-  completion = randomUUID();
+  completion = randomUUID(),
+  // Two guest accounts: one holds a purchase, the other signs in.
+  guestHolder = randomUUID(),
+  guestHolderSubject = randomUUID(),
+  linkingGuest = randomUUID(),
+  linkingGuestSubject = randomUUID();
 const guestPurchase = '2000000000000001',
   deletedPurchase = '2000000000000002';
 const receipt = hex();
@@ -115,15 +120,24 @@ const tombstones: Record<
       ),
   },
   managed_auth_accounts: {
-    write: () =>
-      run(
+    write: async () => {
+      await run(
         'insert into justgo.managed_auth_accounts(auth_user_id,user_id) values($1,$2)',
         [deletedSubject, deleted],
-      ),
-    holds: () =>
-      exists(
-        'select 1 from justgo.managed_auth_accounts where auth_user_id=$1 and user_id=$2',
+      );
+      await run(
+        'update justgo.managed_auth_accounts set guest=false where auth_user_id=$1',
+        [linkingGuestSubject],
+      );
+    },
+    holds: async () =>
+      (await exists(
+        'select 1 from justgo.managed_auth_accounts where auth_user_id=$1 and user_id=$2 and not guest',
         [deletedSubject, deleted],
+      )) &&
+      exists(
+        'select 1 from justgo.managed_auth_accounts where auth_user_id=$1 and not guest',
+        [linkingGuestSubject],
       ),
   },
   managed_auth_sessions: {
@@ -210,7 +224,16 @@ beforeAll(async () => {
     create table auth.users(id uuid primary key);
     create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id) on delete cascade,not_after timestamptz);
     create table auth.refresh_tokens(id bigint primary key,user_id uuid references auth.users(id) on delete cascade,session_id uuid references auth.sessions(id) on delete cascade,revoked boolean)`);
-  await run('insert into justgo.users(id) values($1),($2)', [deleted, live]);
+  await run('insert into justgo.users(id) values($1),($2),($3),($4)', [
+    deleted,
+    live,
+    guestHolder,
+    linkingGuest,
+  ]);
+  await run(
+    'insert into justgo.managed_auth_accounts(auth_user_id,user_id,guest) values($1,$2,true),($3,$4,true)',
+    [guestHolderSubject, guestHolder, linkingGuestSubject, linkingGuest],
+  );
   await run('insert into justgo.devices(id,user_id) values($1,$2)', [
     device,
     live,
@@ -237,8 +260,8 @@ beforeAll(async () => {
     [managedSession, liveSubject, live, device],
   );
   await run(
-    "insert into justgo.app_store_subscriptions(original_transaction_id,product_id,environment,expires_at,latest_transaction_id) values($1,'justgo.monthly','Sandbox',now(),$1)",
-    [guestPurchase],
+    "insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,latest_transaction_id) values($1,$2,'justgo.monthly','Sandbox',now(),$1)",
+    [guestPurchase, guestHolder],
   );
 });
 beforeEach(async () => {
@@ -336,6 +359,37 @@ describe('recovery ledger tombstones', () => {
       signed_at: refundedAt,
       revoked_at: refundedAt,
     });
+  });
+
+  it('replays a move from a guest that signed in after the dump, and never makes it a guest again', async () => {
+    await client.query('savepoint database_dump');
+    await run(
+      'update justgo.app_store_subscriptions set user_id=$2 where original_transaction_id=$1',
+      [guestPurchase, live],
+    );
+    await run(
+      'update justgo.managed_auth_accounts set guest=false where auth_user_id=$1',
+      [guestHolderSubject],
+    );
+    const ledger: unknown = JSON.parse(
+      await captureLedger(client, { capturedAt: new Date().toISOString() }),
+    );
+    await client.query('rollback to savepoint database_dump');
+    await reconcileLedger(client, ledger);
+    expect(
+      (
+        await client.query(
+          'select s.user_id,m.guest from justgo.app_store_subscriptions s,justgo.managed_auth_accounts m where s.original_transaction_id=$1 and m.auth_user_id=$2',
+          [guestPurchase, guestHolderSubject],
+        )
+      ).rows,
+    ).toEqual([{ user_id: live, guest: false }]);
+    await expect(
+      run(
+        'update justgo.managed_auth_accounts set guest=true where auth_user_id=$1',
+        [guestHolderSubject],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
   });
 
   it('refuses a ledger that moves a subscription to another owner', async () => {
