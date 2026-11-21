@@ -1,6 +1,5 @@
 import type { z } from 'zod';
 import { QueryClient } from '@tanstack/react-query';
-import type { BillingVerificationRequest } from '@justgo/contracts';
 import {
   requestMethod,
   ApiError,
@@ -87,32 +86,10 @@ export class AccountClient {
   ownsCollection(collectionId: string): boolean {
     return this.collectionId === collectionId;
   }
-  requestGuest<T>(
+  async requestGuest<T>(
     path: '/v1/guest/access' | '/v1/guest/challenges',
     schema: z.ZodType<T>,
     signal?: AbortSignal,
-  ): Promise<T> {
-    return this.anonymous(path, schema, { method: 'GET', signal });
-  }
-  /** Sent once with no bearer. A purchase verification is not replayed after an uncertain failure. */
-  postGuest<T>(
-    path: '/v1/billing/verifications',
-    schema: z.ZodType<T>,
-    body: BillingVerificationRequest,
-  ): Promise<T> {
-    return this.anonymous(path, schema, { method: 'POST', body });
-  }
-  private async anonymous<T>(
-    path: string,
-    schema: z.ZodType<T>,
-    {
-      signal,
-      ...options
-    }: {
-      method: 'GET' | 'POST';
-      body?: unknown;
-      signal?: AbortSignal | undefined;
-    },
   ): Promise<T> {
     if (!this.collectionId) throw new ApiError('UNAUTHORIZED');
     const epoch = this.epoch;
@@ -123,7 +100,7 @@ export class AccountClient {
     this.inflight.add(controller);
     try {
       const result = await this.http.request(path, schema, {
-        ...options,
+        method: 'GET',
         signal: controller.signal,
       });
       if (epoch !== this.epoch) throw new ApiError('ACCOUNT_CHANGED');
