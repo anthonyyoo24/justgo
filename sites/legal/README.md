@@ -20,6 +20,10 @@ keeps the detail the shorter text leaves out. The Terms no longer describe a fre
 beta.
 Public notice hosting does not close the app's external-beta provider, regional
 or signed-device gates.
+The paid-billing Terms candidate,
+[`TERMS_BILLING_CANDIDATE.md`](../../docs/legal/TERMS_BILLING_CANDIDATE.md),
+waits for Anthony's approval beside the draft. The build does not read it until
+it replaces the draft, as its review note says.
 
 Run `pnpm run build:legal` from the repository root. The ignored output lives in
 `sites/legal/dist/`, with `/privacy/` and `/terms/` document pages. The base address
