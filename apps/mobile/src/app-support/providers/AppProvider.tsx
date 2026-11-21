@@ -25,7 +25,10 @@ import { Paywall, type PaywallStore } from '../billing/paywall';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
-import { AccountClient } from '../../lib/network/account-client';
+import {
+  AccountClient,
+  type GuestAccountClient,
+} from '../../lib/network/account-client';
 import { createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
 
@@ -43,6 +46,25 @@ export function createAppRuntime<
     renew: identity.refreshSession,
     reject: identity.rejectSession,
   });
+  // With billing on, a managed guest has a server account under an anonymous
+  // Auth user. Its bearer reaches only access, the catalog and purchase
+  // verification. The collection stays local and never syncs.
+  const guestAccounts =
+    billing && identity instanceof ManagedIdentityController
+      ? new AccountClient(createHttpClient(url), {
+          current: identity.currentGuestSession,
+          renew: identity.refreshGuestSession,
+          reject: identity.rejectGuestSession,
+        })
+      : null;
+  const guestSession =
+    guestAccounts && identity instanceof ManagedIdentityController
+      ? identity.currentGuestSession
+      : null;
+  const guestClient: GuestAccountClient | null = guestAccounts && {
+    request: (path, schema, options) =>
+      guestAccounts.request(path, schema, options),
+  };
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage, { url });
   const access = billing
@@ -50,6 +72,7 @@ export function createAppRuntime<
         url,
         storage,
         client,
+        guestClient,
         ...(store && {
           latestTransactionId: () => store.latestTransactionId(),
         }),
@@ -78,12 +101,26 @@ export function createAppRuntime<
     readCatalog: (signal) =>
       identity.getSnapshot().account
         ? client.request('/v1/challenges', catalogSchema, { signal })
-        : client.requestGuest('/v1/guest/challenges', catalogSchema, signal),
+        : // A refused guest bearer reads the guest route until a new one exists.
+          guestClient && guestSession?.()
+          ? guestClient.request('/v1/challenges', catalogSchema, { signal })
+          : client.requestGuest('/v1/guest/challenges', catalogSchema, signal),
   });
   let accountId: string | null = null;
+  let guestAccountId: string | null = null;
   const sync = () => {
     const snapshot = identity.getSnapshot();
     const next = snapshot.account?.userId ?? null;
+    const nextGuestAccount =
+      guestAccounts &&
+      !next &&
+      'guestAccountId' in snapshot &&
+      typeof snapshot.guestAccountId === 'string'
+        ? snapshot.guestAccountId
+        : null;
+    const guestAccountChanged = guestAccountId !== nextGuestAccount;
+    guestAccountId = nextGuestAccount;
+    guestAccounts?.changeAccount(nextGuestAccount);
     const collection =
       'collectionId' in snapshot && typeof snapshot.collectionId === 'string'
         ? snapshot.needsWelcome
@@ -102,17 +139,24 @@ export function createAppRuntime<
       (identity instanceof ManagedIdentityController
         ? identity.offlineAccountOwner()
         : null);
-    // Superwall knows only the account that owns the phone. A guest, or an
-    // account being deleted, stays anonymous.
-    superwall?.changeOwner(snapshot.deletionStatus ? null : accessAccount);
+    // A guest with a server account owns access by that account. Without
+    // one, it has no access owner until the account is made.
+    const guestOwner = guestAccounts ? guestAccountId : collection;
+    // Superwall knows only the account that owns the phone, or the guest's
+    // server account. A guest without one, or an account being deleted,
+    // stays anonymous.
+    superwall?.changeOwner(
+      snapshot.deletionStatus ? null : (accessAccount ?? guestAccountId),
+    );
     if (access) {
       access.changeOwner(
         snapshot.deletionStatus || !collection
           ? null
-          : {
-              id: accessAccount ?? collection,
-              kind: accessAccount ? 'account' : 'guest',
-            },
+          : accessAccount
+            ? { id: accessAccount, kind: 'account' }
+            : guestOwner
+              ? { id: guestOwner, kind: 'guest' }
+              : null,
       );
       // An offline account owner can check only once its session returns.
       if (accountChanged) void access.refresh();
@@ -131,11 +175,14 @@ export function createAppRuntime<
         : 'account',
     );
     challenges.changeAccount(collection);
+    // The guest catalog moves to the guest account's route once it exists.
+    if (guestAccountChanged && guestAccountId) void challenges.refresh();
   };
   sync();
   return {
     identity,
     client,
+    guestClient,
     telemetry,
     challenges,
     activity,

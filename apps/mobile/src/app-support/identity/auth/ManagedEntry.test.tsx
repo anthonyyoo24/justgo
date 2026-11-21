@@ -112,6 +112,9 @@ async function setup(parkedOwner?: string, connectionDiagnostics = false) {
   };
   const auth: ManagedAuth = {
     initialize: async () => null,
+    signInAnonymously: async () => {
+      throw new Error('Guest accounts are off');
+    },
     signIn: async () => null,
     linkIdentity: async () => null,
     unlinkIdentity: async () => {
@@ -373,6 +376,7 @@ it.each([
         sessionId: '10000000-0000-4000-8000-000000000060',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       switchCancelled,
     });
@@ -411,6 +415,7 @@ it.each(['cancel', 'failure', 'success'] as const)(
         sessionId: '10000000-0000-4000-8000-000000000060',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       collectionKind: 'account' as const,
     };
@@ -485,6 +490,7 @@ it.each(['restored', 'hydrating'] as const)(
         sessionId: '10000000-0000-4000-8000-000000000061',
         expiresAt: '2030-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
       collectionKind: 'account' as const,
       hasPending: false,

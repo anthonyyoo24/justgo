@@ -39,7 +39,7 @@ export function SettingsDataScreen() {
   return <DataSession key={repository?.accountId ?? 'disconnected'} />;
 }
 function DataSession() {
-  const { activity, client } = useRuntime();
+  const { activity, client, identity: runtimeIdentity } = useRuntime();
   const repository = useJournal();
   const identity = useIdentity();
   const deletionPending =
@@ -203,6 +203,9 @@ function DataSession() {
     try {
       check(controller);
       await activity.deleteAllData();
+      // With billing on, a guest's server account goes with its data, and a
+      // new one replaces it in the background. Offline, it waits for a retry.
+      if (owner.kind === 'guest') void runtimeIdentity.resetGuestAccount();
       check(controller);
       deleteConfirmation.current = null;
       setConfirmDelete(null);

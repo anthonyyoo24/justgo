@@ -43,6 +43,31 @@ const bodyFailures = (bodyLimit = '32 KiB') => ({
     'unsupported request content type; do not retry unchanged input',
   ),
 });
+const signInRequired =
+  'a guest account cannot save, read or delete history; sign in with Apple or Google first';
+/**
+ * An owner route that refuses a guest account answers 403 SIGN_IN_REQUIRED
+ * before it reads or writes anything. A route that also checks paid access can
+ * answer 403 ACCESS_REQUIRED instead.
+ */
+function refusesGuests<T extends { responses: object }>(base: T, paid = false) {
+  return {
+    ...base,
+    responses: {
+      ...base.responses,
+      '403': paid
+        ? {
+            description: `SIGN_IN_REQUIRED: ${signInRequired}. ACCESS_REQUIRED: no verified paid access`,
+            content: json(
+              identityErrorSchema.extend({
+                code: z.enum(['SIGN_IN_REQUIRED', 'ACCESS_REQUIRED']),
+              }),
+            ),
+          }
+        : failure('SIGN_IN_REQUIRED', signInRequired),
+    },
+  };
+}
 const uuidPathId = {
   name: 'id',
   in: 'path',
@@ -115,7 +140,7 @@ export const openApiDocument = {
           managed.managedSessionRequestSchema,
         ),
         description:
-          'Verify a Supabase Apple/Google bearer session and map its subject to a canonical owner. Optional legacySessionToken proves ownership for the initial legacy link; email and metadata never confer ownership.',
+          "Verify a Supabase Apple/Google bearer session, or with billing on an anonymous one, and map its subject to a canonical owner. guest is true for an anonymous user's account, which may read access and the catalog, verify a purchase, log out and delete itself, and nothing else until Apple or Google links to the same Auth user. Optional legacySessionToken proves ownership for the initial legacy link; email and metadata never confer ownership.",
       },
       get: {
         ...operation(managed.managedSessionResponseSchema),
@@ -142,42 +167,49 @@ export const openApiDocument = {
     },
     '/v1/completion-restores': {
       post: {
-        ...operation(
-          sync.completionRestoreResponseSchema,
-          sync.completionRestoreRequestSchema,
-          true,
-          '4 MiB',
+        ...refusesGuests(
+          operation(
+            sync.completionRestoreResponseSchema,
+            sync.completionRestoreRequestSchema,
+            true,
+            '4 MiB',
+          ),
         ),
         description: `Atomic owner-only import of up to 50 bounded completion contexts, without entitlement or private journal fields. expectedEpoch must match. Identical IDs replay; changed contexts conflict; deleted IDs remain blocked unless a user-confirmed import explicitly supplies restoreDeleted:true. Routine sync never sets that flag. ${accountWriteBudget}`,
       },
       get: {
-        ...withParameters(
-          operation(sync.completionRestorePageSchema),
-          syncPage,
+        ...refusesGuests(
+          withParameters(operation(sync.completionRestorePageSchema), syncPage),
         ),
         description: `Owner-only UUID-ordered history page, up to 50 records, with dataEpoch and nextCursor. Enumerate from the beginning on a later sync to reconcile concurrent inserts. ${accountExportBudget}`,
       },
     },
     '/v1/journal-sync': {
       post: {
-        ...operation(
-          sync.journalSyncResponseSchema,
-          sync.journalSyncRequestSchema,
-          true,
-          '4 MiB',
+        ...refusesGuests(
+          operation(
+            sync.journalSyncResponseSchema,
+            sync.journalSyncRequestSchema,
+            true,
+            '4 MiB',
+          ),
         ),
         description: `Managed signed-in journal sync only. Immutable owner-scoped versions and parents preserve concurrent writing. A journal-only entry requires its strict historical context and creates no completion or rep. Existing completion context may be derived for older clients. Atomic batches up to 50 require expectedEpoch; restoreDeleted is reserved for a user-confirmed import. ${accountWriteBudget}`,
       },
       get: {
-        ...withParameters(operation(sync.journalSyncPageSchema), syncPage),
+        ...refusesGuests(
+          withParameters(operation(sync.journalSyncPageSchema), syncPage),
+        ),
         description: `Managed signed-in journal versions, UUID-ordered pages up to 50. A full enumeration on later sync reconciles concurrent inserts. ${accountExportBudget}`,
       },
     },
     '/v1/data': {
       delete: {
-        ...operation(
-          sync.dataDeletionResponseSchema,
-          sync.dataDeletionRequestSchema,
+        ...refusesGuests(
+          operation(
+            sync.dataDeletionResponseSchema,
+            sync.dataDeletionRequestSchema,
+          ),
         ),
         description:
           'Delete owner completion and journal data while retaining the account and entitlement. Advances the data epoch and tombstones deleted completion IDs. Retry the same expectedEpoch for its durable receipt without deleting newly saved data.',
@@ -195,41 +227,45 @@ export const openApiDocument = {
     },
     '/v1/account/export': {
       get: {
-        ...withParameters(operation(completionExportPageSchema), [
-          {
-            name: 'cursor',
-            in: 'query',
-            required: false,
-            schema: { type: 'string', format: 'uuid' },
-          },
-        ]),
+        ...refusesGuests(
+          withParameters(operation(completionExportPageSchema), [
+            {
+              name: 'cursor',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ]),
+        ),
         description: `Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned. ${accountExportBudget}`,
       },
     },
     '/v1/challenges': { get: operation(challenges.catalogSchema) },
     '/v1/attempts': {
-      get: withParameters(
-        operation(progress.completionProgressDayResponseSchema),
-        [
-          {
-            name: 'date',
-            in: 'query',
-            required: true,
-            schema: z.toJSONSchema(progress.calendarDateSchema),
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            required: false,
-            schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
-          },
-          {
-            name: 'cursor',
-            in: 'query',
-            required: false,
-            schema: { type: 'string' },
-          },
-        ],
+      get: refusesGuests(
+        withParameters(
+          operation(progress.completionProgressDayResponseSchema),
+          [
+            {
+              name: 'date',
+              in: 'query',
+              required: true,
+              schema: z.toJSONSchema(progress.calendarDateSchema),
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
+            },
+            {
+              name: 'cursor',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+          ],
+        ),
       ),
       post: {
         ...operation(
@@ -238,9 +274,11 @@ export const openApiDocument = {
         ),
         description: accountWriteBudget,
         responses: {
-          ...operation(
-            attempts.completionAttemptResultSchema,
-            attempts.createAttemptSchema,
+          ...refusesGuests(
+            operation(
+              attempts.completionAttemptResultSchema,
+              attempts.createAttemptSchema,
+            ),
           ).responses,
           '201': {
             description: 'Created completed attempt',
@@ -264,24 +302,30 @@ export const openApiDocument = {
       },
     },
     '/v1/progress/summary': {
-      get: withParameters(operation(progress.progressSummarySchema), [
-        {
-          name: 'timeZone',
-          in: 'query',
-          required: true,
-          schema: z.toJSONSchema(challenges.timeZoneSchema),
-        },
-      ]),
+      get: refusesGuests(
+        withParameters(operation(progress.progressSummarySchema), [
+          {
+            name: 'timeZone',
+            in: 'query',
+            required: true,
+            schema: z.toJSONSchema(challenges.timeZoneSchema),
+          },
+        ]),
+        true,
+      ),
     },
     '/v1/progress/calendar': {
-      get: withParameters(operation(progress.progressCalendarSchema), [
-        {
-          name: 'month',
-          in: 'query',
-          required: true,
-          schema: z.toJSONSchema(progress.calendarMonthSchema),
-        },
-      ]),
+      get: refusesGuests(
+        withParameters(operation(progress.progressCalendarSchema), [
+          {
+            name: 'month',
+            in: 'query',
+            required: true,
+            schema: z.toJSONSchema(progress.calendarMonthSchema),
+          },
+        ]),
+        true,
+      ),
     },
     '/v1/access': { get: operation(accessResponseSchema) },
     '/v1/sessions': {
@@ -296,7 +340,9 @@ export const openApiDocument = {
         security: [{}, { deviceSession: [] }],
       },
     },
-    '/v1/sessions/current': { get: operation(identity.sessionResponseSchema) },
+    '/v1/sessions/current': {
+      get: refusesGuests(operation(identity.sessionResponseSchema)),
+    },
     '/v1/devices': { get: operation(identity.devicesResponseSchema) },
     '/v1/credentials': {
       get: operation(identity.credentialsResponseSchema),
@@ -462,10 +508,9 @@ export function withBilling<T extends { paths: object; components: object }>(
       '/v1/billing/verifications': {
         post: {
           ...operation(accessResponseSchema, billingVerificationRequestSchema),
-          // A guest sends no bearer; a signed-in phone sends its session.
-          security: [{}, { deviceSession: [] }],
+          // A guest verifies with its guest account's session, so every caller has an owner.
           description:
-            'Ask Apple for an App Store transaction, verify its signature, bundle, environment and owner, and store it by original transaction ID. A revoked or expired subscription answers unpaid. 404 NOT_FOUND when Apple does not know the transaction, 409 CONFLICT when another account owns it or its app account token names another account.',
+            'Ask Apple for an App Store transaction, verify its signature, bundle, environment and owner, and store it by original transaction ID under the caller, guest or signed in. A transaction a guest account holds moves to the caller. A revoked or expired subscription answers unpaid. 404 NOT_FOUND when Apple does not know the transaction, 409 CONFLICT when a signed-in account holds it or its app account token names another signed-in account.',
         },
       },
     },

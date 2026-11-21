@@ -426,3 +426,92 @@ describe.each(modes)(
     });
   },
 );
+
+describe.each([false, true])(
+  'guest account refusals with billing=%s',
+  (billing) => {
+    const paths: Record<string, PathItem> = documentFor(false, billing).paths;
+    const refusing = (operation: Operation) =>
+      JSON.stringify(operation.responses['403'] ?? {}).includes(
+        'SIGN_IN_REQUIRED',
+      );
+    it('refuses a guest account with 403 SIGN_IN_REQUIRED on exactly the operations that document it, before any query', async () => {
+      const returned: string[] = [];
+      const documented: string[] = [];
+      for (const [path, item] of Object.entries(paths))
+        for (const method of documentedMethods) {
+          const operation = item[method];
+          if (!operation) continue;
+          const key = `${method} ${path}`;
+          if (refusing(operation)) documented.push(key);
+          const database = drizzle.mock();
+          vi.spyOn(database, 'transaction').mockRejectedValue(
+            new Error('database offline'),
+          );
+          const identity = new IdentityService(database, {
+            rateKey: 'guest-contract',
+            managedAuthVerifier: () =>
+              Promise.reject(new Error('provider offline')),
+          });
+          vi.spyOn(identity, 'rateLimit').mockResolvedValue();
+          const queries = vi.fn(() => Promise.reject(new Error('guest query')));
+          // The owner transaction is real only up to the session it hands over.
+          vi.spyOn(identity.managed!, 'withSession').mockImplementation(
+            (_token, work) =>
+              work({ execute: queries } as never, {
+                userId: id,
+                deviceId: id,
+                sessionId: id,
+                authUserId: id,
+                expiresAt: '2026-11-20T00:00:00.000Z',
+                dataEpoch: 0,
+                guest: true,
+              }),
+          );
+          const request = validRequest(key, path);
+          const response = await apiRequest(
+            buildApp({
+              logger: false,
+              identity,
+              checkDatabase: async () => {},
+              legacyIdentityEnabled: false,
+              ...(billing
+                ? { billing: () => Promise.reject(new Error('apple offline')) }
+                : {}),
+            }),
+            {
+              method: method.toUpperCase(),
+              url: request.url,
+              headers: {
+                authorization: 'Bearer guest.session.token',
+                'content-type': request.contentType,
+              },
+              payload: request.payload,
+            },
+          );
+          if (
+            response.statusCode === 403 &&
+            response.json().code === 'SIGN_IN_REQUIRED'
+          ) {
+            returned.push(key);
+            expect(queries, key).not.toHaveBeenCalled();
+          }
+        }
+      expect(returned.sort()).toEqual(documented.sort());
+      expect(documented).toEqual(
+        expect.arrayContaining([
+          'post /v1/completion-restores',
+          'get /v1/completion-restores',
+          'post /v1/journal-sync',
+          'get /v1/journal-sync',
+          'delete /v1/data',
+          'get /v1/account/export',
+          'get /v1/attempts',
+          'post /v1/attempts',
+          'get /v1/progress/summary',
+          'get /v1/progress/calendar',
+        ]),
+      );
+    });
+  },
+);

@@ -18,6 +18,17 @@ import {
   journeyApiUrl,
   journeyAppUrl,
 } from '../../../e2e/support/environment.js';
+import { createAppleTransactions } from '../src/billing/apple.js';
+import { parse } from '../src/http/parse.js';
+import { parseRequestBody, requestBody } from '../src/http/request.js';
+import { z } from 'zod';
+import {
+  createConnectKey,
+  createTestChain,
+  createTestStore,
+  testBilling,
+  transactionPayload,
+} from './apple-test-store.js';
 const config = readConfig();
 const url = localTestDatabaseUrl(config.DATABASE_URL);
 if (
@@ -28,7 +39,32 @@ if (
   throw new Error('Challenge fixtures require local justgo_test');
 const pathPrefix = fixturePathPrefix(process.env.JUSTGO_JOURNEY_API_PREFIX);
 const database = createDatabase(config);
-const providers = new FixtureProviders();
+// JUSTGO_FIXTURE_BILLING=on runs the API as BILLING_ENABLED does, against a
+// stub Apple store this server signs for, and accepts anonymous guests.
+const fixtureBilling = process.env.JUSTGO_FIXTURE_BILLING === 'on';
+const providers = new FixtureProviders({ guests: fixtureBilling });
+const appleTransactions = new Map<string, Record<string, unknown>>();
+const apple = fixtureBilling
+  ? await (async () => {
+      const [chain, connect] = await Promise.all([
+        createTestChain(),
+        createConnectKey(),
+      ]);
+      const store = createTestStore(
+        chain,
+        connect.publicKey,
+        appleTransactions,
+      );
+      return createAppleTransactions(
+        { ...testBilling, privateKey: connect.pem },
+        {
+          transport: store.transport,
+          rootFingerprints: [chain.rootFingerprint],
+        },
+      );
+    })()
+  : undefined;
+let appleSerial = 4_100_000_000_000_000n + BigInt(Date.now());
 // Only this server can allocate cleanup-owned accounts. Requests cannot nominate IDs.
 const allocatedAccounts = new Set<string>();
 const fixtureRateKey = `local-challenge-fixtures:${randomUUID()}`;
@@ -56,6 +92,8 @@ const app = buildApp({
   }),
   origins: [journeyAppUrl, journeyAppUrl.replace('127.0.0.1', 'localhost')],
   checkDatabase: () => checkDatabase(database.pool),
+  // With billing on, buildApp reads only saved subscriptions and ignores these.
+  ...(apple ? { billing: apple } : {}),
   uploadEligibilityReader: async () => 'eligible',
   guestAccessReader: async () => ({
     status: 'verified',
@@ -70,6 +108,37 @@ const app = buildApp({
 });
 const fixtureRouter = new Hono<ApiEnvironment>();
 fixtureProviderRoutes(fixtureRouter, providers);
+if (fixtureBilling)
+  // Sign a sandbox purchase at the stub store, as a StoreKit purchase would.
+  fixtureRouter.post('/apple-transactions', parseRequestBody(), (context) => {
+    const input = parse(
+      z
+        .object({
+          appAccountToken: z.uuid().nullable().default(null),
+          originalTransactionId: z
+            .string()
+            .regex(/^[0-9]{1,32}$/)
+            .optional(),
+          expired: z.boolean().default(false),
+        })
+        .strict(),
+      requestBody(context),
+    );
+    const transactionId = String(++appleSerial);
+    const originalTransactionId = input.originalTransactionId ?? transactionId;
+    appleTransactions.set(
+      transactionId,
+      transactionPayload({
+        transactionId,
+        originalTransactionId,
+        ...(input.appAccountToken
+          ? { appAccountToken: input.appAccountToken }
+          : {}),
+        ...(input.expired ? { expiresDate: Date.now() - 60_000 } : {}),
+      }),
+    );
+    return context.json({ transactionId, originalTransactionId });
+  });
 app.route('/__fixtures', fixtureRouter);
 app.get('/__fixtures/accounts', (context) =>
   context.json({

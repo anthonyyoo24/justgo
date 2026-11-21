@@ -16,7 +16,7 @@ type Snapshot = {
 };
 const snapshot = JSON.parse(
   readFileSync(
-    new URL('../../drizzle/meta/0023_snapshot.json', import.meta.url),
+    new URL('../../drizzle/meta/0030_snapshot.json', import.meta.url),
     'utf8',
   ),
 ) as Snapshot;
@@ -93,6 +93,7 @@ describe('managed rollout database readiness', () => {
   it.each([
     ['users', 'data_epoch'],
     ['users', 'data_deleted_at'],
+    ['managed_auth_accounts', 'guest'],
     ['journal_versions', 'context'],
     ['managed_auth_deletions', 'completed_at'],
   ])('rejects the incomplete %s.%s migration', async (table, column) => {

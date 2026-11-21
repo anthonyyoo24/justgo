@@ -1,7 +1,7 @@
 import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService } from '../../src/identity/service.js';
@@ -27,6 +27,11 @@ const identity = new IdentityService(database.db, {
 });
 const purchases = new Set<string>();
 const events = new Set<string>();
+// Every subscription has an owner. The repair never reads or changes it.
+const owner = randomUUID();
+beforeAll(async () => {
+  await admin.query('insert into justgo.users(id) values($1)', [owner]);
+});
 afterAll(async () => {
   try {
     await admin.query(
@@ -37,6 +42,7 @@ afterAll(async () => {
       'delete from justgo.app_store_subscriptions where original_transaction_id = any($1)',
       [[...purchases]],
     );
+    await admin.query('delete from justgo.users where id=$1', [owner]);
   } finally {
     await Promise.all([database.pool.end(), admin.end()]);
   }
@@ -50,9 +56,9 @@ async function lapsed(count: number) {
   const ids = Array.from({ length: count }, () => String(base + ++serial));
   for (const id of ids) purchases.add(id);
   await admin.query(
-    `insert into justgo.app_store_subscriptions(original_transaction_id,product_id,environment,expires_at,latest_transaction_id)
-     select id,'app.justgo.monthly','Sandbox',now()-interval '1 hour',id from unnest($1::text[]) id`,
-    [ids],
+    `insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,latest_transaction_id)
+     select id,$2,'app.justgo.monthly','Sandbox',now()-interval '1 hour',id from unnest($1::text[]) id`,
+    [ids, owner],
   );
   return ids;
 }
@@ -100,9 +106,9 @@ describe('billing repair', () => {
     const pending = String(base + ++serial);
     purchases.add(pending);
     await admin.query(
-      `insert into justgo.app_store_subscriptions(original_transaction_id,product_id,environment,expires_at,latest_transaction_id)
-       values($1,'app.justgo.monthly','Sandbox',now()+interval '2 days',$1)`,
-      [pending],
+      `insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,latest_transaction_id)
+       values($1,$2,'app.justgo.monthly','Sandbox',now()+interval '2 days',$1)`,
+      [pending, owner],
     );
     const eventId = `msg_${randomUUID().replaceAll('-', '')}`;
     events.add(eventId);

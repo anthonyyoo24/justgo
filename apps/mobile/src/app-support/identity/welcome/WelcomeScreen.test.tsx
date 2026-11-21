@@ -77,6 +77,9 @@ async function setup(deleted = false) {
   };
   const auth: ManagedAuth = {
     initialize: async () => null,
+    signInAnonymously: async () => {
+      throw new Error('Guest accounts are off');
+    },
     signIn: async () => null,
     linkIdentity: async () => null,
     unlinkIdentity: async () => {
@@ -258,6 +261,7 @@ it.each(['apple', 'google'] as const)(
         authUserId: '00000000-0000-4000-8000-000000000104',
         expiresAt: '2027-01-01T00:00:00.000Z',
         dataEpoch: 0,
+        guest: false,
       },
     };
     jest.spyOn(s.controller, 'getSnapshot').mockReturnValue(snapshot);

@@ -15,8 +15,8 @@ export function createPaidAccess(): {
   guestAccessReader: GuestAccessReader;
 } {
   return {
-    // A guest request names no transaction Apple confirmed, so it reaches no
-    // guest row. A guest gets paid access only from POST /v1/billing/verifications.
+    // The account-free guest route reads no subscription, since every row has
+    // an owner. A guest account reads its own rows through GET /v1/access.
     guestAccessReader: unavailableGuestAccess,
     entitlementReader: async (tx): Promise<AccessResponse> => {
       const checkedAt = new Date();

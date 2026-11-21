@@ -50,14 +50,15 @@ and the Superwall webhook writes `billing_events`. They hold no receipt, signed
 transaction, payload, key or secret.
 
 - `app_store_subscriptions` has one row per Apple original transaction ID. It
-  holds the owner's JustGO user ID (empty for a guest purchase), the product ID,
-  the environment (`Production` or `Sandbox`), the verified expiry, the
-  revocation time after a refund, the latest transaction ID and the
-  `appAccountToken`. An owner reads only its own rows. A guest row is reached
-  only through the one original transaction ID the API verified with Apple in
-  that request. The owner, once set, never changes, and the API cannot delete a
-  row. Delete-all and account deletion keep the row bound to its owner, so a
-  deleted account's purchase never passes to someone else. The recovery ledger
+  holds the owner's JustGO user ID, which is never empty, the product ID, the
+  environment (`Production` or `Sandbox`), the verified expiry, the revocation
+  time after a refund, the latest transaction ID and the `appAccountToken`. An
+  owner reads only its own rows. A row a guest account holds is reached by
+  another caller only through the one original transaction ID the API verified
+  with Apple in that request. The owner changes only away from a guest account,
+  deleted or not, and only in verification, never in the webhook or repair. The
+  API cannot delete a row. Delete-all and account deletion keep a signed-in
+  account's row bound to it, so its purchase never passes to someone else. The recovery ledger
   replays the table, so a restore keeps owner bindings and refunds.
   `checked_at` records when the webhook or repair last stored Apple's answer.
 - The row keeps the newest Apple answer, whatever order answers commit in. An
@@ -77,20 +78,21 @@ transaction, payload, key or secret.
 ## Verifying a purchase
 
 `POST /v1/billing/verifications` takes the transaction ID the phone got from
-StoreKit, with or without a JustGO bearer. The API asks Apple's Get Transaction
+StoreKit and needs a JustGO bearer, from a guest account or a signed-in one
+(P16-13). With no bearer it answers 401. The API asks Apple's Get Transaction
 Info for it before any database transaction opens, checks the signed answer
 against the pinned Apple Root CA - G3 fingerprint, and refuses a different
 bundle, environment or transaction ID. It stores the row by its original
-transaction ID and answers with the access contract. A revoked or expired
-subscription answers `unpaid`.
+transaction ID under the bearer's account and answers with the access contract.
+A revoked or expired subscription answers `unpaid`. Every row has an owner, and
+the database refuses one without.
 
-- A signed-in owner gets the row when the `appAccountToken` is empty or names
-  them. A token that names another account answers 409, and so does a row
-  another account owns.
-- A guest purchase stays a guest row with no owner. When a signed-in owner sends
-  a guest row whose token does not name them, the row stays a guest row and the
-  answer says `guest_subscription`. Moving it into the account is the job of
-  guest adoption.
+- The `appAccountToken` must be empty, name the caller, or name a guest
+  account. A token that names any other account, or no account the API knows,
+  answers 409.
+- A row a guest account holds moves to the caller, so a guest who later signs
+  in under another account keeps the purchase. A row a signed-in account holds
+  stays with it, and any other caller gets 409.
 
 The route exists only when `BILLING_ENABLED` is `true`. It is `false` by
 default, and then the app stays free. With the flag on, the API refuses to start
@@ -112,9 +114,11 @@ from the saved rows only, whatever readers the runtime passes in.
   its revocation if earlier, so a completion made while paid still uploads after
   the subscription ends. A completion started later is refused.
 - Rows belong to the owner, not to a data epoch, so delete-all keeps access.
-- A guest request carries no transaction Apple confirmed, so `/v1/guest/access`
-  answers `unpaid` and `/v1/guest/challenges` answers 403. A guest learns of its
-  subscription only from `POST /v1/billing/verifications`.
+- A guest account reads its access from `/v1/access` and the catalog from
+  `/v1/challenges` with its bearer, like a signed-in account. The older guest
+  routes stay: a request with no bearer carries no transaction Apple
+  confirmed, so `/v1/guest/access` answers `unpaid` and `/v1/guest/challenges`
+  answers 403.
 
 ## Access on the phone
 

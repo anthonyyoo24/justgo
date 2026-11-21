@@ -16,57 +16,74 @@ import { newestAnswer } from './newest-answer.js';
 
 type Tx = Parameters<Parameters<IdentityService['withSession']>[1]>[0];
 type Subscription = {
-  user_id: string | null;
+  user_id: string;
   product_id: string;
   expires_at: Date | string;
   revoked_at: Date | string | null;
 };
 
 /**
- * Store a verified purchase under its original transaction ID and answer
- * whether it grants access now. Apple I/O has already finished, so nothing
- * here leaves the database.
+ * Whether an account is a guest, deleted or not. The guest mapping is visible
+ * only while this transaction holds an Apple-verified original transaction ID,
+ * and the share lock makes a concurrent link that ends the guest wait for this
+ * transaction, or this read see the account it became.
+ */
+async function guestAccount(tx: Tx, userId: string) {
+  return (
+    (
+      await tx.execute(
+        sql`select 1 from justgo.managed_auth_accounts where user_id=${userId} and guest for share`,
+      )
+    ).rows.length > 0
+  );
+}
+
+/**
+ * Store a verified purchase under its original transaction ID for the caller
+ * and answer whether it grants access now. Apple I/O has already finished, so
+ * nothing here leaves the database.
  *
- * A guest row (no owner) is reachable only through the verified original
- * transaction ID. An owner takes a guest row only when Apple's
- * appAccountToken names that owner. Otherwise the row stays a guest row and
- * the answer says so, leaving the move to adoption (P16-11). A row another
- * account owns is refused.
+ * Every row has an owner. A row a guest account holds moves to the caller,
+ * guest or signed in, so a guest's purchase follows the phone into the account
+ * that signs in. A row a signed-in account holds stays there, and any other
+ * caller gets 409. Apple's appAccountToken, when present, names the account
+ * that bought it, so a token naming another signed-in account is refused too.
  */
 async function save(
   tx: Tx,
   purchase: VerifiedTransaction,
-  owner: string | null,
+  owner: string,
 ): Promise<AccessResponse> {
-  // Apple's appAccountToken, when present, names the account that bought it.
-  if (
-    owner !== null &&
-    purchase.appAccountToken !== null &&
-    purchase.appAccountToken !== owner
-  )
-    throw new ApiError('CONFLICT', 409);
   await setTransactionContext(
     tx,
     'app.original_transaction_id',
     purchase.originalTransactionId,
   );
+  // An unknown token fails closed: only the caller or a guest account passes.
+  if (
+    purchase.appAccountToken !== null &&
+    purchase.appAccountToken !== owner &&
+    !(await guestAccount(tx, purchase.appAccountToken))
+  )
+    throw new ApiError('CONFLICT', 409);
   await tx.execute(
     sql`insert into justgo.app_store_subscriptions (original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token,signed_at) values (${purchase.originalTransactionId},${owner},${purchase.productId},${purchase.environment},${purchase.expiresAt},${purchase.revokedAt},${purchase.transactionId},${purchase.appAccountToken},${purchase.signedAt}) on conflict (original_transaction_id) do nothing`,
   );
+  // The row is visible here only when the caller or a guest account holds it.
   const [stored] = (
     await tx.execute<Subscription>(
       sql`select user_id,product_id,expires_at,revoked_at from justgo.app_store_subscriptions where original_transaction_id=${purchase.originalTransactionId} for update`,
     )
   ).rows;
-  if (!stored || (stored.user_id !== null && stored.user_id !== owner))
+  if (
+    !stored ||
+    (stored.user_id !== owner && !(await guestAccount(tx, stored.user_id)))
+  )
     throw new ApiError('CONFLICT', 409);
-  const holder =
-    stored.user_id ??
-    (owner !== null && purchase.appAccountToken === owner ? owner : null);
   // The newest Apple answer wins, so one posted late never undoes a newer one.
   const [row] = (
     await tx.execute<Subscription>(
-      sql`update justgo.app_store_subscriptions set user_id=${holder}, ${newestAnswer(purchase)} where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at`,
+      sql`update justgo.app_store_subscriptions set user_id=${owner}, ${newestAnswer(purchase)} where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at`,
     )
   ).rows;
   if (!row) throw new ApiError('CONFLICT', 409);
@@ -78,7 +95,7 @@ async function save(
     status: 'verified',
     checkedAt: checkedAt.toISOString(),
     expiresAt: expiresAt.toISOString(),
-    source: row.user_id === null ? 'guest_subscription' : 'subscription',
+    source: 'subscription',
     productId: row.product_id,
   };
 }
@@ -88,13 +105,13 @@ export class BillingVerification {
     private readonly identity: IdentityService,
     private readonly apple: AppleTransactionReader,
   ) {}
-  /** Apple is asked before any transaction opens; a guest has no bearer. */
-  async verify(token: string | undefined, transactionId: string) {
+  /** Apple is asked before any transaction opens. A guest verifies with its guest account's bearer. */
+  async verify(token: string, transactionId: string) {
     const purchase = await this.apple(transactionId);
-    if (token === undefined)
-      return this.identity.db.transaction((tx) => save(tx, purchase, null));
-    return this.identity.withSession(token, (tx, session) =>
-      save(tx, purchase, session.userId),
+    return this.identity.withSession(
+      token,
+      (tx, session) => save(tx, purchase, session.userId),
+      { guests: true },
     );
   }
 }
@@ -117,10 +134,7 @@ export function billingRoutes(
         billingVerificationRequestSchema,
         requestBody(context),
       );
-      const token =
-        context.req.header('authorization') === undefined
-          ? undefined
-          : bearer(context);
+      const token = bearer(context);
       return context.json(
         accessResponseSchema.parse(
           await verification.verify(token, transactionId),

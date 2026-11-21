@@ -78,19 +78,24 @@ const request = (
     headers: { authorization: `Bearer ${token}` },
     ...(payload ? { payload } : {}),
   });
-function provider(authUserId: string = randomUUID()) {
+function provider(authUserId: string = randomUUID(), guest = false) {
   const subject = {
     authUserId,
     sessionId: randomUUID(),
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    guest,
   };
   const token = `managed.${Buffer.from(randomUUID()).toString('base64url')}.proof`;
   verified.set(token, subject);
   live.add(subject.sessionId);
   return { token, subject };
 }
-async function signIn(authUserId?: string, legacySessionToken?: string) {
-  const p = provider(authUserId),
+async function signIn(
+  authUserId?: string,
+  legacySessionToken?: string,
+  guest = false,
+) {
+  const p = provider(authUserId, guest),
     deviceId = randomUUID();
   const response = await request(p.token, '/auth/session', 'POST', {
     deviceId,
@@ -650,6 +655,177 @@ describe('managed authentication and guest boundary', () => {
     ).toThrow('UNAVAILABLE');
   });
 });
+describe('guest accounts', () => {
+  const guestIn = (authUserId?: string) => signIn(authUserId, undefined, true);
+  const mapping = async (authUserId: string) =>
+    (
+      await admin.query<{ user_id: string; guest: boolean }>(
+        'select user_id,guest from justgo.managed_auth_accounts where auth_user_id=$1',
+        [authUserId],
+      )
+    ).rows;
+
+  it('makes a guest account at exchange and says so in the session', async () => {
+    const g = await guestIn();
+    expect(g.session.guest).toBe(true);
+    expect(await mapping(g.subject.authUserId)).toEqual([
+      { user_id: g.session.userId, guest: true },
+    ]);
+    expect(
+      (
+        await admin.query('select data_epoch from justgo.users where id=$1', [
+          g.session.userId,
+        ])
+      ).rows,
+    ).toEqual([{ data_epoch: 0 }]);
+    expect((await request(g.token, '/auth/session')).json()).toEqual(g.session);
+    const account = await signIn();
+    expect(account.session.guest).toBe(false);
+    expect((await mapping(account.subject.authUserId))[0]?.guest).toBe(false);
+  });
+
+  it('refuses every owner route to a guest with 403 and writes nothing', async () => {
+    const g = await guestIn();
+    const entry = await completion();
+    const routes = [
+      ['/completion-restores', 'POST', { expectedEpoch: 0, attempts: [entry] }],
+      ['/completion-restores', 'GET'],
+      [
+        '/journal-sync',
+        'POST',
+        { expectedEpoch: 0, versions: [version(entry.id, { context: entry })] },
+      ],
+      ['/journal-sync', 'GET'],
+      ['/data', 'DELETE', { expectedEpoch: 0 }],
+      ['/account/export', 'GET'],
+      [`/attempts?date=${entry.activityDate}&limit=1`, 'GET'],
+      [
+        '/attempts',
+        'POST',
+        {
+          id: entry.id,
+          challengeId: entry.challengeId,
+          venue: entry.venue,
+          startedAt: entry.startedAt,
+          startTimeZone: entry.startTimeZone,
+          expectedEpoch: 0,
+        },
+      ],
+      ['/progress/summary?timeZone=UTC', 'GET'],
+      ['/progress/calendar?month=2026-09', 'GET'],
+      ['/sessions/current', 'GET'],
+    ] as const;
+    for (const [path, method, payload] of routes) {
+      const response = await request(
+        g.token,
+        path,
+        method,
+        payload as object | undefined,
+      );
+      expect([path, method, response.statusCode], response.body).toEqual([
+        path,
+        method,
+        403,
+      ]);
+      expect(response.json()).toMatchObject({ code: 'SIGN_IN_REQUIRED' });
+    }
+    const written = await admin.query<{ rows: number }>(
+      `select (select count(*) from justgo.attempts where user_id=$1)
+        + (select count(*) from justgo.journal_versions where user_id=$1)
+        + (select count(*) from justgo.attempt_patch_receipts where user_id=$1)
+        + (select count(*) from justgo.deleted_completion_ids where user_id=$1)
+        + (select count(*) from justgo.identity_rate_buckets where key = any($2))
+        + (select count(*) from justgo.users where id=$1 and (data_epoch<>0 or data_deleted_at is not null)) as rows`,
+      [
+        g.session.userId,
+        ['write', 'export'].map((lane) =>
+          createHmac('sha256', rateKey)
+            .update(`account-${lane}:${g.session.userId}`)
+            .digest('hex'),
+        ),
+      ],
+    );
+    expect(Number(written.rows[0]?.rows)).toBe(0);
+    // The routes a guest keeps still answer.
+    const granted = buildApp({
+      identity,
+      logger: false,
+      checkDatabase: async () => {},
+      ...createFreeAccess(),
+    });
+    for (const path of ['/v1/access', '/v1/challenges'])
+      expect(
+        (
+          await apiRequest(granted, {
+            url: path,
+            headers: { authorization: `Bearer ${g.token}` },
+          })
+        ).statusCode,
+      ).toBe(200);
+    expect(
+      (await request(g.token, '/auth/logout', 'POST', { scope: 'session' }))
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it('keeps the account when the guest links a provider, and never makes it a guest again', async () => {
+    const g = await guestIn();
+    const linked = await signIn(g.subject.authUserId);
+    expect(linked.session).toMatchObject({
+      userId: g.session.userId,
+      guest: false,
+    });
+    expect(await mapping(g.subject.authUserId)).toEqual([
+      { user_id: g.session.userId, guest: false },
+    ]);
+    // The linked account reaches the owner routes.
+    expect(
+      (await request(linked.token, '/completion-restores')).statusCode,
+    ).toBe(200);
+    // A guest bearer for the same Auth user is refused, at exchange and after.
+    const stale = provider(g.subject.authUserId, true);
+    expect(
+      (
+        await request(stale.token, '/auth/session', 'POST', {
+          deviceId: randomUUID(),
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect((await request(g.token, '/access')).statusCode).toBe(401);
+    expect((await mapping(g.subject.authUserId))[0]?.guest).toBe(false);
+  });
+
+  it('refuses a guest that brings a legacy session, and keeps both sides untouched', async () => {
+    const response = await request(
+      provider(undefined, true).token,
+      '/auth/session',
+      'POST',
+      { deviceId: randomUUID(), legacySessionToken: 'a'.repeat(64) },
+    );
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('deletes a guest account and keeps its mapping a guest', async () => {
+    const g = await guestIn();
+    const deleted = await request(g.token, '/account', 'DELETE', {
+      confirmation: 'delete-account',
+    });
+    expect(deleted.statusCode, deleted.body).toBe(200);
+    expect(
+      (
+        await admin.query(
+          'select u.deleted_at is not null as deleted, d.auth_user_id from justgo.users u join justgo.managed_auth_deletions d on d.user_id=u.id where u.id=$1',
+          [g.session.userId],
+        )
+      ).rows,
+    ).toEqual([{ deleted: true, auth_user_id: g.subject.authUserId }]);
+    expect(await mapping(g.subject.authUserId)).toEqual([
+      { user_id: g.session.userId, guest: true },
+    ]);
+  });
+});
+
 describe('stable completion restoration', () => {
   it('preserves full context and legacy completion dates without entitlement or private fields', async () => {
     const a = await signIn(),

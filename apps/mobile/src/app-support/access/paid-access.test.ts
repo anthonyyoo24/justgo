@@ -146,6 +146,8 @@ function newController() {
         secure.delete(key);
       },
     },
+    // The factory turns guest accounts on with billing, as these tests do.
+    guestAccounts: true,
   });
   jest.mocked(createManagedIdentityController).mockReturnValue(controller);
 }
@@ -211,6 +213,7 @@ beforeEach(async () => {
       ...session,
       authUserId: providerSession.authUserId,
       dataEpoch: 0,
+      guest: false,
     },
     pendingSignIn: null,
     pendingLink: null,
@@ -218,9 +221,12 @@ beforeEach(async () => {
     logoutPending: false,
     deletion: null,
     deleted: false,
+    guestAccount: null,
+    guestAccountDeletion: false,
   };
   auth = {
     initialize: jest.fn(async () => providerSession),
+    signInAnonymously: jest.fn(async () => providerSession),
     refresh: jest.fn(async () => providerSession),
     signIn: jest.fn(async () => providerSession),
     linkIdentity: jest.fn(async () => providerSession),
@@ -516,29 +522,66 @@ it('tells Superwall only the owner ID of the account on the phone and resets it 
   );
 });
 
-it("reads a guest's access from the guest route under the guest's own key", async () => {
+it("reads a guest's access with its guest account's bearer under that account's key and tells Superwall its ID (P16-14)", async () => {
   stored = null;
-  jest.mocked(auth.initialize).mockResolvedValue(null);
-  guestAnswer = () => ({
+  const guestAccountId = id(61);
+  const guestToken = 'c'.repeat(64);
+  let anonymous: ProviderSession | null = null;
+  jest.mocked(auth.initialize).mockImplementation(async () => anonymous);
+  jest.mocked(auth.signInAnonymously).mockImplementation(async () => {
+    anonymous = {
+      authUserId: id(60),
+      accessToken: guestToken,
+      expiresAt: session.expiresAt,
+      linkedProviders: [],
+    };
+    return anonymous;
+  });
+  answers[guestToken] = () => ({
     status: 'verified',
     checkedAt: iso(Date.now()),
     expiresAt: iso(Date.now() + 30 * 24 * hour),
     source: 'free_beta',
   });
+  const base = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input, init) =>
+    String(input).endsWith('/auth/session')
+      ? response({
+          userId: guestAccountId,
+          authUserId: id(60),
+          deviceId: session.deviceId,
+          sessionId: id(62),
+          expiresAt: session.expiresAt,
+          dataEpoch: 0,
+          guest: true,
+        })
+      : base(input, init),
+  );
   await mount();
   expect(runtime.canStartChallenge()).toBe(false);
   await act(async () => controller.continueAsGuest());
   await waitFor(() => expect(runtime.canStartChallenge()).toBe(true));
-  // A guest stays anonymous in Superwall.
-  expect(useSuperwallStore.getState().isConfigured).toBe(true);
+  await waitFor(() =>
+    expect(
+      nativeCalls
+        .filter(({ method }) => ['identify', 'reset'].includes(method))
+        .map(({ method, args }) => [method, ...args]),
+    ).toEqual([['identify', guestAccountId, undefined]]),
+  );
+  expect(runtime.identity.getSnapshot().account).toBeNull();
+  expect((await saved(keyOf(guestAccountId, 'guest')))?.access.status).toBe(
+    'verified',
+  );
+  // The phone's guest collection names no access owner.
+  const collection = runtime.activity.getRepository()!.accountId;
+  expect(collection).not.toBe(guestAccountId);
+  expect(await saved(keyOf(collection, 'guest'))).toBeNull();
   expect(
-    nativeCalls.filter(({ method }) => ['identify', 'reset'].includes(method)),
-  ).toEqual([]);
-  const guest = runtime.activity.getRepository()!.accountId;
-  expect((await saved(keyOf(guest, 'guest')))?.access.status).toBe('verified');
-  expect(
-    accessRequests().map(([url]) => new URL(String(url)).pathname),
-  ).toEqual(['/v1/guest/access']);
+    accessRequests().map(([url, init]) => [
+      new URL(String(url)).pathname,
+      new Headers(init?.headers).get('authorization'),
+    ]),
+  ).toEqual([['/v1/access', `Bearer ${guestToken}`]]);
 });
 
 it('starts challenges with no access request or saved snapshot when the flag is off', async () => {
@@ -569,13 +612,11 @@ describe('purchase verification', () => {
     );
   const bearerOf = (init: RequestInit | undefined) =>
     new Headers(init?.headers).get('authorization');
-  const guestVerified = () => ({
-    ...verified(Date.now(), 30 * 24 * hour),
-    source: 'guest_subscription',
-  });
+  const guestToken = 'd'.repeat(64);
   function paidAccess(
     kind: 'account' | 'guest',
     latestTransactionId?: () => Promise<string | null>,
+    { guestAccount = true } = {},
   ) {
     const client = new AccountClient(createHttpClient(api), {
       current: () => ({ userId, token: firstToken }),
@@ -584,10 +625,20 @@ describe('purchase verification', () => {
     });
     if (kind === 'account') client.changeAccount(userId);
     else client.changeCollection(guestId);
+    // A guest's server account (P16-14), named by its own bearer.
+    const guestAccounts = new AccountClient(createHttpClient(api), {
+      current: () => ({ userId: guestId, token: guestToken }),
+      renew: async () => ({ userId: guestId, token: guestToken }),
+      reject: () => {},
+    });
+    guestAccounts.changeAccount(guestId);
     const access = new PaidAccess({
       url: api,
       storage: asyncStorageJournalStorage,
       client,
+      ...(kind === 'guest' && guestAccount
+        ? { guestClient: guestAccounts }
+        : {}),
       ...(latestTransactionId ? { latestTransactionId } : {}),
     });
     access.changeOwner({ id: kind === 'account' ? userId : guestId, kind });
@@ -627,21 +678,33 @@ describe('purchase verification', () => {
     );
   });
 
-  it("verifies a guest purchase with no bearer under the guest's own key", async () => {
-    verifications[''] = guestVerified;
+  it("verifies a guest purchase with its guest account's bearer under that account's key (P16-14)", async () => {
+    answers[guestToken] = unpaid;
+    verifications[guestToken] = () => verified(Date.now(), 30 * 24 * hour);
     const access = paidAccess('guest');
     await access.refresh();
     expect(access.canStart()).toBe(false);
     await expect(access.verifyPurchase(purchase)).resolves.toMatchObject({
       status: 'verified',
-      source: 'guest_subscription',
+      source: 'subscription',
     });
     expect(access.canStart()).toBe(true);
-    expect(verifications$().map(([, init]) => bearerOf(init))).toEqual([null]);
+    expect(verifications$().map(([, init]) => bearerOf(init))).toEqual([
+      `Bearer ${guestToken}`,
+    ]);
     await access.settled();
     expect((await saved(keyOf(guestId, 'guest')))?.access.status).toBe(
       'verified',
     );
+  });
+
+  it('refuses a guest purchase verification before its server account exists and posts nothing', async () => {
+    const access = paidAccess('guest', undefined, { guestAccount: false });
+    await expect(access.verifyPurchase(purchase)).rejects.toMatchObject({
+      code: 'UNAVAILABLE',
+    });
+    expect(access.canStart()).toBe(false);
+    expect(verifications$()).toHaveLength(0);
   });
 
   it('keeps the saved answer when verification fails or the server is unavailable, and saves a refusal', async () => {
@@ -749,17 +812,25 @@ describe('purchase verification', () => {
     expect(listener).toHaveBeenCalled();
   });
 
-  it('posts the latest transaction instead of asking the guest route, so a paid guest keeps access', async () => {
-    verifications[''] = guestVerified;
+  it("posts the latest transaction when the guest account's answer is unpaid, so a paid guest keeps access (P16-14)", async () => {
+    answers[guestToken] = unpaid;
+    verifications[guestToken] = () => verified(Date.now(), 30 * 24 * hour);
     const access = paidAccess('guest', async () => purchase);
     await access.refresh();
     expect(access.canStart()).toBe(true);
     expect(
-      fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
-    ).toEqual(['/v1/billing/verifications']);
+      fetcher.mock.calls.map(([url, init]) => [
+        new URL(String(url)).pathname,
+        bearerOf(init),
+      ]),
+    ).toEqual([
+      ['/v1/access', `Bearer ${guestToken}`],
+      ['/v1/billing/verifications', `Bearer ${guestToken}`],
+    ]);
   });
 
   it.each([
+    ['has a transaction', async () => purchase],
     ['has no transaction', async () => null],
     [
       'fails',
@@ -768,9 +839,11 @@ describe('purchase verification', () => {
       },
     ],
   ])(
-    'asks the guest route when the store %s',
+    'asks the guest route and posts nothing before the guest account exists when the store %s',
     async (_name, latestTransactionId) => {
-      const access = paidAccess('guest', latestTransactionId);
+      const access = paidAccess('guest', latestTransactionId, {
+        guestAccount: false,
+      });
       await access.refresh();
       expect(access.canStart()).toBe(false);
       expect(

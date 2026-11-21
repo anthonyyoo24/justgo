@@ -39,6 +39,7 @@ const mockRouter = {
   back: jest.fn(),
 };
 const mockActivity = { importData: jest.fn(), deleteAllData: jest.fn() };
+const mockIdentity = { resetGuestAccount: jest.fn() };
 const mockMotion = {
   reduceMotion: false,
   loading: false,
@@ -63,6 +64,7 @@ jest.mock('../../../app-support/providers/AppProvider', () => ({
   useJournal: () => ({ accountId: mockOwner }),
   useRuntime: () => ({
     activity: mockActivity,
+    identity: mockIdentity,
     client: {
       ownsCollection: (id: string) => id === mockOwner,
       ownsAccount: (id: string) => mockSignedIn && id === mockOwner,
@@ -146,6 +148,7 @@ beforeEach(() => {
   pick.mockResolvedValue(backup());
   mockActivity.importData.mockResolvedValue(undefined);
   mockActivity.deleteAllData.mockResolvedValue(undefined);
+  mockIdentity.resetGuestAccount.mockResolvedValue(undefined);
   apply.mockResolvedValue(undefined);
 });
 
@@ -405,6 +408,45 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   await act(async () => deletion.resolve());
   expect(screen.queryByLabelText('Delete all saved data?')).toBeNull();
 });
+
+it.each([
+  ['guest', 1],
+  ['account', 0],
+] as const)(
+  'replaces the guest account only after a %s collection’s deletion finishes (P16-14)',
+  async (kind, resets) => {
+    mockKind = kind;
+    mockSignedIn = kind === 'account';
+    const deletion = deferred<void>();
+    mockActivity.deleteAllData.mockRejectedValueOnce(new Error('Offline'));
+    mockActivity.deleteAllData.mockReturnValueOnce(deletion.promise);
+    const screen = await render(<SettingsDataScreen />);
+    const confirm = () =>
+      fireEvent.press(
+        within(
+          screen.getByLabelText(
+            /deleting saved data\?|Delete all saved data\?/,
+          ),
+        ).getByRole('button', { name: 'Delete' }),
+      );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Delete all my data' }),
+    );
+    await confirm();
+    // A failed deletion keeps the guest account.
+    await screen.findByText(/Deletion is unfinished/);
+    expect(mockIdentity.resetGuestAccount).not.toHaveBeenCalled();
+    await confirm();
+    expect(mockIdentity.resetGuestAccount).not.toHaveBeenCalled();
+    await act(async () => deletion.resolve());
+    await screen.findByText(
+      kind === 'guest'
+        ? 'All saved data was deleted. Backup files you saved were kept.'
+        : 'All saved data was deleted. Your account and downloaded files were kept.',
+    );
+    expect(mockIdentity.resetGuestAccount).toHaveBeenCalledTimes(resets);
+  },
+);
 
 it('authenticates before deleting an account journal while signed out', async () => {
   mockKind = 'account';

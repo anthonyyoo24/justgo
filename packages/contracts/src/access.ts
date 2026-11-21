@@ -35,7 +35,7 @@ export const accessResponseSchema = z.union([
   z
     .object({
       ...verified,
-      source: z.enum(['subscription', 'guest_subscription']),
+      source: z.literal('subscription'),
       productId: appleProductId,
     })
     .strict(),

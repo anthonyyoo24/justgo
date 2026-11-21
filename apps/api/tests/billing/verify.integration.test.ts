@@ -6,6 +6,8 @@ import { accessResponseSchema } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService } from '../../src/identity/service.js';
+import type { VerifiedManagedIdentity } from '../../src/identity/managed-verifier.js';
+import { ApiError } from '../../src/http/api-error.js';
 import { buildApp } from '../../src/build-app.js';
 import { createAppleTransactions } from '../../src/billing/apple.js';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
@@ -25,8 +27,17 @@ const database = createDatabase(config);
 const admin = new Pool(
   poolOptions(readConfig({ ...process.env, DATABASE_URL: migrationUrl! })),
 );
+/** Synthetic Auth users: each bearer names one verified identity. */
+const subjects = new Map<string, VerifiedManagedIdentity>();
 const identity = new IdentityService(database.db, {
   rateKey: `isolated-billing-integration-tests-${randomUUID()}`,
+  managedAuthVerifier: async (token) => {
+    const subject = subjects.get(token);
+    if (!subject) throw new ApiError('UNAUTHORIZED');
+    return subject;
+  },
+  managedLiveSessionReader: async () => true,
+  managedAuthDeletion: async () => {},
 });
 const transactions = new Map<string, Record<string, unknown>>();
 const users = new Set<string>(),
@@ -58,9 +69,10 @@ afterAll(async () => {
     );
     for (const id of users) {
       for (const table of [
-        'device_sessions',
+        'managed_auth_sessions',
+        'managed_auth_deletions',
+        'managed_auth_accounts',
         'recovery_credentials',
-        'devices',
       ])
         await admin.query(`delete from justgo.${table} where user_id=$1`, [id]);
       await admin.query('delete from justgo.users where id=$1', [id]);
@@ -71,17 +83,23 @@ afterAll(async () => {
 });
 
 const secret = () => randomBytes(32).toString('hex');
-async function account() {
-  const sessionToken = secret();
-  const session = await identity.bootstrap({
-    deviceId: randomUUID(),
+/** Exchange a fresh bearer for an Auth user, a guest unless `guest` is false. */
+async function exchange(authUserId: string, guest: boolean) {
+  const token = `synthetic.${randomUUID()}.proof`;
+  subjects.set(token, {
+    authUserId,
     sessionId: randomUUID(),
-    sessionToken,
-    credential: secret(),
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    guest,
+  });
+  const session = await identity.exchangeManaged(token, {
+    deviceId: randomUUID(),
   });
   users.add(session.userId);
-  return { userId: session.userId, token: sessionToken };
+  return { userId: session.userId, token, authUserId, guest: session.guest };
 }
+const guest = () => exchange(randomUUID(), true);
+const account = () => exchange(randomUUID(), false);
 let serial = 0n;
 const base = 4_000_000_000_000_000n + BigInt(Math.floor(Math.random() * 1e12));
 /** Sign a transaction at the stub; the original ID defaults to its own ID. */
@@ -97,7 +115,7 @@ function purchase(overrides: Record<string, unknown> = {}) {
   return { transactionId, original: String(payload.originalTransactionId) };
 }
 let address = 0;
-const verify = (transactionId: string, token?: string) =>
+const verify = (transactionId: string, token: string | undefined) =>
   apiRequest(app, {
     method: 'POST',
     url: '/v1/billing/verifications',
@@ -113,7 +131,7 @@ const access = (token: string) =>
 const stored = async (original: string) =>
   (
     await admin.query<{
-      user_id: string | null;
+      user_id: string;
       latest_transaction_id: string;
       expires_at: Date;
       app_account_token: string | null;
@@ -150,70 +168,146 @@ describe('POST /v1/billing/verifications', () => {
     });
   });
 
-  it('stores a guest purchase with no owner', async () => {
-    const { transactionId, original } = purchase();
-    const response = await verify(transactionId);
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      status: 'verified',
-      source: 'guest_subscription',
+  it('stores a guest purchase under the guest account', async () => {
+    const buyer = await guest();
+    expect(buyer.guest).toBe(true);
+    const { transactionId, original } = purchase({
+      appAccountToken: buyer.userId,
     });
-    expect(await verify(transactionId)).toMatchObject({ statusCode: 200 });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await verify(transactionId, buyer.token);
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        status: 'verified',
+        source: 'subscription',
+      });
+    }
     expect(await stored(original)).toEqual([
-      expect.objectContaining({ user_id: null }),
+      expect.objectContaining({ user_id: buyer.userId }),
     ]);
+    expect((await access(buyer.token)).json()).toMatchObject({
+      status: 'verified',
+      source: 'subscription',
+    });
   });
 
-  it('lets the account the app account token names take a guest row', async () => {
-    const owner = await account();
+  it('keeps the account and its purchase when the guest links a provider', async () => {
+    const buyer = await guest();
     const { transactionId, original } = purchase({
-      appAccountToken: owner.userId,
+      appAccountToken: buyer.userId,
     });
-    expect((await verify(transactionId)).json()).toMatchObject({
-      source: 'guest_subscription',
+    expect((await verify(transactionId, buyer.token)).statusCode).toBe(200);
+    const linked = await exchange(buyer.authUserId, false);
+    expect(linked).toMatchObject({ userId: buyer.userId, guest: false });
+    const mapping = await admin.query(
+      'select guest from justgo.managed_auth_accounts where auth_user_id=$1',
+      [buyer.authUserId],
+    );
+    expect(mapping.rows).toEqual([{ guest: false }]);
+    expect((await verify(transactionId, linked.token)).statusCode).toBe(200);
+    expect(await stored(original)).toEqual([
+      expect.objectContaining({ user_id: buyer.userId }),
+    ]);
+    // The account it became now holds the row, so another caller is refused.
+    const other = await guest();
+    expect((await verify(transactionId, other.token)).statusCode).toBe(409);
+    // A guest bearer for the linked Auth user no longer passes.
+    expect(
+      await exchange(buyer.authUserId, true).catch((error: unknown) => error),
+    ).toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('moves a guest row to the account that signs in, and then holds it there', async () => {
+    const buyer = await guest();
+    const { transactionId, original } = purchase({
+      appAccountToken: buyer.userId,
     });
-    const claimed = await verify(transactionId, owner.token);
-    expect(claimed.statusCode).toBe(200);
-    expect(claimed.json()).toMatchObject({ source: 'subscription' });
+    await verify(transactionId, buyer.token);
+    const owner = await account();
+    const moved = await verify(transactionId, owner.token);
+    expect(moved.statusCode).toBe(200);
+    expect(moved.json()).toMatchObject({ source: 'subscription' });
     expect(await stored(original)).toEqual([
       expect.objectContaining({
         user_id: owner.userId,
-        app_account_token: owner.userId,
+        app_account_token: buyer.userId,
       }),
     ]);
-    // The guest no longer reaches the owned row.
-    expect((await verify(transactionId)).statusCode).toBe(409);
-  });
-
-  it('leaves a guest row without an app account token for adoption', async () => {
-    const owner = await account();
-    const { transactionId, original } = purchase();
-    await verify(transactionId);
-    const response = await verify(transactionId, owner.token);
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ source: 'guest_subscription' });
+    for (const caller of [buyer, await account(), await guest()]) {
+      const refused = await verify(transactionId, caller.token);
+      expect(refused.statusCode).toBe(409);
+      expect(refused.json()).toMatchObject({ code: 'CONFLICT' });
+    }
     expect(await stored(original)).toEqual([
-      expect.objectContaining({ user_id: null }),
+      expect.objectContaining({ user_id: owner.userId }),
     ]);
   });
 
-  it('refuses a purchase another account owns or its token names', async () => {
+  it('moves a row from a deleted guest to a new guest', async () => {
+    const buyer = await guest();
+    const { transactionId, original } = purchase({
+      appAccountToken: buyer.userId,
+    });
+    await verify(transactionId, buyer.token);
+    const deleted = await apiRequest(app, {
+      method: 'DELETE',
+      url: '/v1/account',
+      payload: { confirmation: 'delete-account' },
+      headers: { authorization: `Bearer ${buyer.token}` },
+    });
+    expect(deleted.statusCode).toBe(200);
+    expect(
+      (
+        await admin.query(
+          'select user_id from justgo.managed_auth_deletions where user_id=$1',
+          [buyer.userId],
+        )
+      ).rows,
+    ).toHaveLength(1);
+    const next = await guest();
+    expect((await verify(transactionId, next.token)).statusCode).toBe(200);
+    expect(await stored(original)).toEqual([
+      expect.objectContaining({ user_id: next.userId }),
+    ]);
+  });
+
+  it('refuses a purchase a signed-in account owns or its token names', async () => {
     const [first, second] = [await account(), await account()];
     const owned = purchase();
     expect((await verify(owned.transactionId, first.token)).statusCode).toBe(
       200,
     );
-    for (const token of [second.token, undefined])
-      expect((await verify(owned.transactionId, token)).statusCode).toBe(409);
+    for (const caller of [second, await guest()])
+      expect((await verify(owned.transactionId, caller.token)).statusCode).toBe(
+        409,
+      );
     expect(await stored(owned.original)).toEqual([
       expect.objectContaining({ user_id: first.userId }),
     ]);
 
-    const named = purchase({ appAccountToken: first.userId });
-    const refused = await verify(named.transactionId, second.token);
-    expect(refused.statusCode).toBe(409);
-    expect(refused.json()).toMatchObject({ code: 'CONFLICT' });
-    expect(await stored(named.original)).toEqual([]);
+    // A token naming another signed-in account, or nothing this database
+    // knows, is refused for every caller and stores nothing.
+    for (const token of [first.userId, randomUUID()]) {
+      const named = purchase({ appAccountToken: token });
+      for (const caller of [second, await guest()]) {
+        const refused = await verify(named.transactionId, caller.token);
+        expect(refused.statusCode).toBe(409);
+        expect(refused.json()).toMatchObject({ code: 'CONFLICT' });
+      }
+      expect(await stored(named.original)).toEqual([]);
+    }
+  });
+
+  it('lets any caller take a purchase whose token names a guest account', async () => {
+    const buyer = await guest();
+    const owner = await account();
+    const { transactionId, original } = purchase({
+      appAccountToken: buyer.userId,
+    });
+    expect((await verify(transactionId, owner.token)).statusCode).toBe(200);
+    expect(await stored(original)).toEqual([
+      expect.objectContaining({ user_id: owner.userId }),
+    ]);
   });
 
   it.each([
@@ -251,11 +345,13 @@ describe('POST /v1/billing/verifications', () => {
     });
   });
 
-  it('answers 404 for a transaction Apple does not know and 401 for a bad session', async () => {
+  it('answers 404 for a transaction Apple does not know and 401 without a valid bearer', async () => {
+    const caller = await guest();
     const unknown = String(base + 999_999n);
-    expect((await verify(unknown)).statusCode).toBe(404);
+    expect((await verify(unknown, caller.token)).statusCode).toBe(404);
     const { transactionId, original } = purchase();
-    expect((await verify(transactionId, secret())).statusCode).toBe(401);
+    for (const token of [undefined, secret(), 'synthetic.unknown.proof'])
+      expect((await verify(transactionId, token)).statusCode).toBe(401);
     expect(await stored(original)).toEqual([]);
   });
 });

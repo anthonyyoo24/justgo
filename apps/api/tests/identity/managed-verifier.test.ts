@@ -32,6 +32,7 @@ describe('Supabase bearer verification', () => {
         authUserId: subject,
         sessionId: session,
         expiresAt: new Date(claims.exp * 1000).toISOString(),
+        guest: false,
       });
       expect(request).toHaveBeenCalledWith(
         new URL(`${origin}/auth/v1/user`),
@@ -56,6 +57,80 @@ describe('Supabase bearer verification', () => {
         vi
           .fn<typeof fetch>()
           .mockResolvedValue(new Response(JSON.stringify(user))),
+      );
+      await expect(verify(token())).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+      });
+    },
+  );
+  it.each([true, false])(
+    'treats a provider-linked user as an account whether guests are on (%s)',
+    async (guests) => {
+      const verify = createManagedAuthVerifier(
+        origin,
+        'public-key',
+        vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              id: subject,
+              is_anonymous: false,
+              identities: [{ provider: 'apple' }, { provider: 'google' }],
+            }),
+          ),
+        ),
+        { guests },
+      );
+      await expect(verify(token())).resolves.toMatchObject({
+        authUserId: subject,
+        guest: false,
+      });
+    },
+  );
+  it('accepts an anonymous user with no identity as a guest only when guests are on', async () => {
+    const anonymous = () =>
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ id: subject, is_anonymous: true, identities: [] }),
+          ),
+        );
+    await expect(
+      createManagedAuthVerifier(origin, 'public-key', anonymous(), {
+        guests: true,
+      })(token()),
+    ).resolves.toEqual({
+      authUserId: subject,
+      sessionId: session,
+      expiresAt: new Date(claims.exp * 1000).toISOString(),
+      guest: true,
+    });
+    for (const verify of [
+      createManagedAuthVerifier(origin, 'public-key', anonymous()),
+      createManagedAuthVerifier(origin, 'public-key', anonymous(), {
+        guests: false,
+      }),
+    ])
+      await expect(verify(token())).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+      });
+  });
+  it.each([
+    { id: subject, is_anonymous: true, identities: [{ provider: 'apple' }] },
+    { id: subject, is_anonymous: true, identities: [{ provider: 'email' }] },
+    { id: randomUUID(), is_anonymous: true, identities: [] },
+    { id: subject, is_anonymous: false, identities: [] },
+    { id: subject, identities: [] },
+  ])(
+    'still refuses an anonymous user with an identity and any user without Apple or Google when guests are on',
+    async (user) => {
+      const verify = createManagedAuthVerifier(
+        origin,
+        'public-key',
+        vi
+          .fn<typeof fetch>()
+          .mockResolvedValue(new Response(JSON.stringify(user))),
+        { guests: true },
       );
       await expect(verify(token())).rejects.toMatchObject({
         code: 'UNAUTHORIZED',

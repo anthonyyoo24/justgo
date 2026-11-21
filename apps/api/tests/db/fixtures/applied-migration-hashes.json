@@ -112,6 +112,7 @@
   "unapplied": [
     "0027_billing_tables.sql",
     "0028_billing_confirmation.sql",
-    "0029_billing_answer_order.sql"
+    "0029_billing_answer_order.sql",
+    "0030_guest_accounts.sql"
   ]
 }

@@ -108,6 +108,64 @@ before the iPhone acceptance gate, and change it only with Anthony's go.
 Real web Auth uses PKCE and `/auth/callback`. In Supabase, allowlist only approved
 browser origins and callback URLs, and set the API's `CORS_ORIGINS` to match.
 
+## Anonymous sign-ins for guests
+
+With `BILLING_ENABLED` on, a guest gets a Supabase anonymous user and a JustGO
+guest account, so its purchase, access check and catalog download have an
+owner (P16-13 in the [Phase 16 plan](../implementation-plan/phase-16-billing.md)).
+The account holds no name, no email and no private history.
+
+- The API accepts an anonymous user only while `BILLING_ENABLED` is on, and
+  only when no identity has joined it. With the flag off it refuses anonymous
+  users with 401, as before. An anonymous user with an identity, and any other
+  user without an Apple or Google identity, stays refused.
+- `managed_auth_accounts.guest` marks the account. `POST /v1/auth/session`
+  answers `guest: true` for it. Linking Apple or Google to the same Auth user
+  keeps the account and clears `guest` on the next exchange or request, and a
+  database trigger refuses any change back to `true`.
+- A guest bearer reaches `GET /v1/access`, `GET /v1/challenges`,
+  `POST /v1/billing/verifications`, the `/v1/auth/session` and
+  `/v1/auth/logout` routes and `DELETE /v1/account`. Every other bearer route
+  answers 403 `SIGN_IN_REQUIRED` and writes nothing.
+
+On the phone (P16-14), with `EXPO_PUBLIC_BILLING_ENABLED` on:
+
+- Continue enters guest mode at once. The controller in
+  `apps/mobile/src/app-support/identity/auth/managed-controller.ts` makes the
+  anonymous user and the guest account in the background, and retries on open,
+  foreground and reconnect. Offline, the guest stays in the app, and a guest
+  saved by an older build gets its account at the next launch.
+- The guest bearer goes only to `/v1/access`, `/v1/challenges` and
+  `/v1/billing/verifications`, through the `GuestAccountClient` that
+  `AppProvider` builds. The guest's journal, history and completions stay on the
+  phone. The identity snapshot keeps `account` null for a guest and names the
+  guest account in `guestAccountId`, which owns paid access and Superwall's
+  `identify`.
+- Sign-in from a guest links the provider to the anonymous user, so the account
+  ID stays the same and the guest collection is adopted (#492). When Auth
+  answers `identity_already_exists`, the phone signs in to the existing account,
+  adopts the guest collection, re-verifies the purchase and revokes the guest
+  session. P16-15 cleans up the guest account left behind.
+- A guest bearer that the API refuses and renewal cannot fix, such as one whose
+  account P16-15 cleaned up, is never reused or refreshed. The phone signs out
+  of Supabase locally and makes a new anonymous user and guest account. It never
+  sends a guest to sign-in.
+- A guest's Delete all data clears the phone, deletes the guest account with
+  `DELETE /v1/account` under the guest bearer and then makes a new one.
+- With the flag off, a guest gets no anonymous user or guest account, as before.
+
+Whether Supabase keeps the user ID through a native ID-token link, and whether
+the same provider token can sign in after `identity_already_exists`, is not yet
+proven on a hosted project (Appendix A items 8 to 10 in the
+[Phase 16 plan](../implementation-plan/phase-16-billing.md)).
+
+This needs **Allow anonymous sign-ins** on under Authentication, Sign In /
+Providers. It stays off in every hosted project until Anthony says yes, and the
+code changes no provider setting. Supabase limits anonymous sign-ins per IP
+address, 30 an hour by default, under Authentication, Rate Limits. Keep that
+default. The API's `managed-auth` limit and the guest account cleanup in P16-15
+also bound how many accounts a script can make.
+
 ## Keep private tables off the Data API
 
 Private application tables stay in the `justgo` schema with forced RLS and narrow

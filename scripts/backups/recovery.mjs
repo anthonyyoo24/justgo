@@ -118,17 +118,20 @@ export async function reconcileLedger(client, ledger) {
     where m.auth_user_id<>r.auth_user_id or m.user_id<>r.user_id) as found`);
   if (conflicts.found) throw new Error('Recovery subject ownership conflict');
   await client.query(
-    `insert into justgo.managed_auth_accounts select * from recovery_managed_auth_accounts on conflict do nothing`,
+    `insert into justgo.managed_auth_accounts(${ledgerTables.managed_auth_accounts})
+    select ${ledgerTables.managed_auth_accounts} from recovery_managed_auth_accounts on conflict do nothing`,
   );
   await client.query(
     `insert into justgo.deleted_completion_ids select * from recovery_deleted_completion_ids on conflict do nothing`,
   );
-  // A subscription owner never changes once set, so the newer ledger may only bind a guest row.
+  // A subscription owner changes only away from a guest account, so the newer
+  // ledger may move a row only from a guest.
   const {
     rows: [subscriptionConflict],
   } =
     await client.query(`select exists(select 1 from recovery_app_store_subscriptions r join justgo.app_store_subscriptions s
-    using(original_transaction_id) where s.user_id is not null and s.user_id is distinct from r.user_id) as found`);
+    using(original_transaction_id) where s.user_id is distinct from r.user_id
+    and not exists(select 1 from justgo.managed_auth_accounts m where m.user_id=s.user_id and m.guest)) as found`);
   if (subscriptionConflict.found)
     throw new Error('Recovery subscription ownership conflict');
   await client.query(`insert into justgo.app_store_subscriptions(${ledgerTables.app_store_subscriptions})
@@ -136,6 +139,11 @@ export async function reconcileLedger(client, ledger) {
     on conflict(original_transaction_id) do update set user_id=excluded.user_id,product_id=excluded.product_id,
       environment=excluded.environment,expires_at=excluded.expires_at,revoked_at=excluded.revoked_at,
       latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token,signed_at=excluded.signed_at`);
+  // A guest only ever becomes an account. End it after the subscriptions
+  // replay, so a row that moved away from a guest before it signed in still
+  // moves from the guest the dump holds.
+  await client.query(`update justgo.managed_auth_accounts m set guest=false
+    from recovery_managed_auth_accounts r where r.auth_user_id=m.auth_user_id and m.guest and not r.guest`);
   for (const table of [
     'journal_versions',
     'attempt_patch_receipts',

@@ -1,7 +1,10 @@
 import { accessResponseSchema, type AccessResponse } from '@justgo/contracts';
 import { z } from 'zod';
 import type { JournalStorage } from '../../data/activity/model';
-import type { AccountClient } from '../../lib/network/account-client';
+import type {
+  AccountClient,
+  GuestAccountClient,
+} from '../../lib/network/account-client';
 import { ApiError } from '../../lib/network/http';
 
 export type AccessOwner = { id: string; kind: 'account' | 'guest' };
@@ -53,6 +56,8 @@ export class PaidAccess {
       url: string | undefined;
       storage: JournalStorage;
       client: AccountClient;
+      /** A guest's server account. Without it a guest reads the guest route. */
+      guestClient?: GuestAccountClient | null;
       now?: () => number;
       /** The store's newest active subscription transaction on this phone. */
       latestTransactionId?: () => Promise<string | null>;
@@ -145,23 +150,28 @@ export class PaidAccess {
     return this.check ?? Promise.resolve();
   }
   /**
-   * A guest with a purchase on this phone posts it, because the guest route
-   * never answers paid. An account posts one only when its own answer is
-   * unpaid, which covers a purchase whose verification never finished.
+   * An account, or a guest with its server account, posts the phone's newest
+   * transaction only when its own answer is unpaid, which covers a purchase
+   * whose verification never finished. A guest whose server account is not
+   * made yet reads the guest route, which never answers paid.
    */
   private async ask(owner: AccessOwner) {
-    const { client } = this.options;
-    if (owner.kind === 'guest') {
-      const transactionId = await this.latestTransactionId();
-      return transactionId
-        ? this.post(owner, transactionId)
-        : client.requestGuest('/v1/guest/access', accessResponseSchema);
-    }
-    const access = await client.request('/v1/access', accessResponseSchema);
+    const bearer = this.bearer(owner);
+    if (!bearer)
+      return this.options.client.requestGuest(
+        '/v1/guest/access',
+        accessResponseSchema,
+      );
+    const access = await bearer.request('/v1/access', accessResponseSchema);
     if (access.status !== 'unpaid') return access;
     const transactionId = await this.latestTransactionId();
     if (!transactionId) return access;
     return this.post(owner, transactionId).catch(() => access);
+  }
+  /** The client whose bearer names the owner, or null for a guest with no server account yet. */
+  private bearer(owner: AccessOwner): GuestAccountClient | null {
+    const { client, guestClient } = this.options;
+    return owner.kind === 'account' ? client : (guestClient ?? null);
   }
   private async latestTransactionId() {
     try {
@@ -171,15 +181,13 @@ export class PaidAccess {
     }
   }
   private post(owner: AccessOwner, transactionId: string) {
-    const { client } = this.options;
-    return owner.kind === 'account'
-      ? client.request('/v1/billing/verifications', accessResponseSchema, {
-          method: 'POST',
-          body: { transactionId },
-        })
-      : client.postGuest('/v1/billing/verifications', accessResponseSchema, {
-          transactionId,
-        });
+    const bearer = this.bearer(owner);
+    // A guest's purchase verifies only under its own server account.
+    if (!bearer) return Promise.reject(new ApiError('UNAVAILABLE'));
+    return bearer.request('/v1/billing/verifications', accessResponseSchema, {
+      method: 'POST',
+      body: { transactionId },
+    });
   }
   /**
    * Verifies a purchase now, whatever the age of the saved answer. Resolves

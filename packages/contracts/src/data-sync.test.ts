@@ -3,6 +3,7 @@ import {
   completionRestoreRequestSchema,
   journalSyncRequestSchema,
   managedSessionRequestSchema,
+  managedSessionResponseSchema,
   dataDeletionRequestSchema,
   identityErrorSchema,
   restoredCompletionSchema,
@@ -189,6 +190,30 @@ describe('managed account and data boundaries', () => {
         versions: [version],
       }).success,
     ).toBe(false);
+  });
+  it('says whether a managed session belongs to a guest account, and reads a saved session without the field as an account', () => {
+    const session = {
+      userId: id,
+      deviceId: id,
+      sessionId: id,
+      authUserId: id,
+      expiresAt: '2026-11-20T00:00:00.000Z',
+      dataEpoch: 0,
+    };
+    expect(
+      managedSessionResponseSchema.parse({ ...session, guest: true }).guest,
+    ).toBe(true);
+    expect(managedSessionResponseSchema.parse(session).guest).toBe(false);
+    expect(
+      managedSessionResponseSchema.safeParse({ ...session, guest: 'yes' })
+        .success,
+    ).toBe(false);
+    expect(
+      identityErrorSchema.safeParse({
+        code: 'SIGN_IN_REQUIRED',
+        requestId: 'safe',
+      }).success,
+    ).toBe(true);
   });
   it('requires verified bearer linking rather than request identities or email', () => {
     expect(

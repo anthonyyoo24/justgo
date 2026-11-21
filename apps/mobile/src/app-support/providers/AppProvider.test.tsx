@@ -158,6 +158,7 @@ beforeEach(async () => {
       ...session,
       authUserId: providerSession.authUserId,
       dataEpoch: 0,
+      guest: false,
     },
     pendingSignIn: null,
     pendingLink: null,
@@ -165,6 +166,8 @@ beforeEach(async () => {
     logoutPending: false,
     deletion: null,
     deleted: false,
+    guestAccount: null,
+    guestAccountDeletion: false,
   };
   managedStorage = {
     read: jest.fn(async () => stored),
@@ -174,6 +177,7 @@ beforeEach(async () => {
   };
   auth = {
     initialize: jest.fn(async () => providerSession),
+    signInAnonymously: jest.fn(async () => providerSession),
     refresh: jest.fn(async () => providerSession),
     signIn: jest.fn(async () => providerSession),
     linkIdentity: jest.fn(async () => providerSession),
@@ -303,6 +307,108 @@ it('loads the guest catalog only after explicit Continue, without an access chec
       ([, options]) => !new Headers(options?.headers).has('authorization'),
     ),
   ).toBe(true);
+});
+
+it('sends the guest account bearer only to access and the catalog, never to sync, with billing on (P16-14)', async () => {
+  process.env.EXPO_PUBLIC_BILLING_ENABLED = 'true';
+  try {
+    jest.spyOn(managedStorage, 'read').mockResolvedValue(null);
+    jest.spyOn(vault, 'read').mockResolvedValue(null);
+    const guestToken = 'c'.repeat(64);
+    const guestAccountId = id(61);
+    let anonymous: ProviderSession | null = null;
+    jest.mocked(auth.initialize).mockImplementation(async () => anonymous);
+    auth.signInAnonymously = jest.fn(async () => {
+      anonymous = {
+        authUserId: id(60),
+        accessToken: guestToken,
+        expiresAt: session.expiresAt,
+        linkedProviders: [],
+      };
+      return anonymous;
+    });
+    const secure = new Map<string, string>();
+    controller.dispose();
+    controller = new ManagedIdentityController({
+      auth,
+      storage: managedStorage,
+      legacyVault: vault,
+      api: createIdentityApi('http://localhost:3000', (...args) =>
+        fetch(...args),
+      ),
+      secureStorage: {
+        getItem: async (key) => secure.get(key) ?? null,
+        setItem: async (key, value) => {
+          secure.set(key, value);
+        },
+        removeItem: async (key) => {
+          secure.delete(key);
+        },
+      },
+      guestAccounts: true,
+    });
+    jest.mocked(createManagedIdentityController).mockReturnValue(controller);
+    const catalog = {
+      cards: venues.map(({ id }) => ({ ...card, id, venue: id })),
+    };
+    fetcher.mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/auth/session'))
+        return response({
+          userId: guestAccountId,
+          authUserId: id(60),
+          deviceId: session.deviceId,
+          sessionId: id(62),
+          expiresAt: session.expiresAt,
+          dataEpoch: 0,
+          guest: true,
+        });
+      if (path === '/v1/access')
+        return response({
+          status: 'unpaid',
+          checkedAt: new Date().toISOString(),
+        });
+      if (path === '/v1/challenges' || path === '/v1/guest/challenges')
+        return response(catalog);
+      throw new Error(`Unexpected guest request: ${path}`);
+    });
+    await mount();
+    await act(async () => controller.continueAsGuest());
+    await waitFor(() =>
+      expect(controller.getSnapshot().guestAccountId).toBe(guestAccountId),
+    );
+    await act(async () => runtime.challenges.refresh());
+    const bearer = (init: RequestInit | undefined) =>
+      new Headers(init?.headers).get('authorization');
+    const guestPaths = () =>
+      fetcher.mock.calls
+        .filter(([, init]) => bearer(init) === `Bearer ${guestToken}`)
+        .map(([url]) => new URL(String(url)).pathname);
+    await waitFor(() => expect(guestPaths()).toContain('/v1/access'));
+    // The guest bearer makes the guest account, then reads access and the
+    // catalog, and nothing else.
+    expect(new Set(guestPaths())).toEqual(
+      new Set(['/v1/auth/session', '/v1/access', '/v1/challenges']),
+    );
+    // No other bearer is sent, and the collection never syncs.
+    expect(
+      fetcher.mock.calls.every(([, init]) =>
+        [null, `Bearer ${guestToken}`].includes(bearer(init)),
+      ),
+    ).toBe(true);
+    expect(
+      fetcher.mock.calls.map(([url]) => new URL(String(url)).pathname),
+    ).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/restores|journal-sync/)]),
+    );
+    expect(runtime.identity.getSnapshot().account).toBeNull();
+    expect(runtime.activity.getRepository()?.store.getState().dataMode).toBe(
+      'local',
+    );
+    expect(runtime.access?.ownerId()).toBe(guestAccountId);
+  } finally {
+    delete process.env.EXPO_PUBLIC_BILLING_ENABLED;
+  }
 });
 
 it('clears queries, mutations and challenge state synchronously on account loss and switch', async () => {
