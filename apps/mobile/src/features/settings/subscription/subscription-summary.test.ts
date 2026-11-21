@@ -10,6 +10,7 @@ const renews = new Date(expiresAt).toLocaleDateString(undefined, {
 const paid = (
   productId: string,
   source: 'subscription' | 'guest_subscription' = 'subscription',
+  renewal: { trial?: boolean; autoRenew?: boolean } = {},
 ) =>
   ({
     status: 'verified',
@@ -17,7 +18,9 @@ const paid = (
     expiresAt,
     source,
     productId,
+    ...renewal,
   }) as const;
+const annual = 'com.anthonyyoo.justgo.pro.annual';
 
 it('shows a subscribed account its plan and renewal date', () => {
   expect(
@@ -28,12 +31,43 @@ it('shows a subscribed account its plan and renewal date', () => {
   ).toEqual({ plan: `Monthly, renews ${renews}` });
 });
 
-it('reads a trial as its plan, because the verified answer has no trial state', () => {
-  // Apple's free trial verifies as the plan it starts, with the trial's end as
-  // its expiry, so a trial shows the same line until the contract says more.
+it('says when a free trial ends, since that date need not be a renewal', () => {
   expect(
-    summarizeSubscription(paid('com.anthonyyoo.justgo.pro.annual'), true),
-  ).toEqual({ plan: `Annual, renews ${renews}` });
+    summarizeSubscription(paid(annual, 'subscription', { trial: true }), true),
+  ).toEqual({ plan: `Annual, trial ends ${renews}` });
+  expect(
+    summarizeSubscription(
+      paid(annual, 'subscription', { trial: true, autoRenew: true }),
+      true,
+    ),
+  ).toEqual({ plan: `Annual, trial ends ${renews}` });
+});
+
+it('says a plan ends, not renews, once auto-renew is off', () => {
+  expect(
+    summarizeSubscription(
+      paid(annual, 'subscription', { trial: false, autoRenew: false }),
+      true,
+    ),
+  ).toEqual({ plan: `Annual, ends ${renews}` });
+  // A trial with auto-renew off ends without converting.
+  expect(
+    summarizeSubscription(
+      paid(annual, 'subscription', { trial: true, autoRenew: false }),
+      true,
+    ),
+  ).toEqual({ plan: `Annual, ends ${renews}` });
+});
+
+it('says a paid plan renews when it renews or the server has not heard', () => {
+  for (const renewal of [
+    { trial: false, autoRenew: true },
+    { trial: false },
+    {},
+  ])
+    expect(
+      summarizeSubscription(paid(annual, 'subscription', renewal), true),
+    ).toEqual({ plan: `Annual, renews ${renews}` });
 });
 
 it('names an unknown product without guessing its period', () => {
@@ -46,6 +80,13 @@ it('says an expired subscription ended rather than renews', () => {
   expect(
     summarizeSubscription(paid('com.anthonyyoo.justgo.pro.annual'), false),
   ).toEqual({ plan: `Annual, ended ${renews}` });
+  for (const renewal of [
+    { trial: true, autoRenew: true },
+    { trial: false, autoRenew: false },
+  ])
+    expect(
+      summarizeSubscription(paid(annual, 'subscription', renewal), false),
+    ).toEqual({ plan: `Annual, ended ${renews}` });
 });
 
 it('says a guest subscription belongs to this phone', () => {

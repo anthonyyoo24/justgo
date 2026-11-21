@@ -73,6 +73,38 @@ describe('verified access', () => {
     ])
       expect(accessResponseSchema.safeParse(invalid).success).toBe(false);
   });
+  it("carries Apple's trial and auto-renew state on a paid source only", () => {
+    const paid = {
+      status: 'verified',
+      source: 'subscription',
+      productId: 'com.anthonyyoo.justgo.pro.annual',
+      checkedAt: time(0),
+      expiresAt: time(60_000),
+    } as const;
+    for (const state of [
+      { trial: true, autoRenew: true },
+      { trial: false, autoRenew: false },
+      { trial: true },
+    ])
+      expect(accessResponseSchema.parse({ ...paid, ...state })).toEqual({
+        ...paid,
+        ...state,
+      });
+    for (const invalid of [
+      { ...paid, trial: 'yes' },
+      { ...paid, autoRenew: 1 },
+      { ...paid, autoRenew: null },
+      {
+        status: 'verified',
+        source: 'free_beta',
+        checkedAt: time(0),
+        expiresAt: time(60_000),
+        trial: false,
+      },
+      { status: 'unpaid', checkedAt: time(0), autoRenew: false },
+    ])
+      expect(accessResponseSchema.safeParse(invalid).success).toBe(false);
+  });
   it('rejects client premium flags and incomplete verified responses', () => {
     expect(
       accessResponseSchema.safeParse({ status: 'verified', checkedAt: time(0) })

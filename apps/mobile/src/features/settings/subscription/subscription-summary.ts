@@ -21,9 +21,10 @@ function day(iso: string) {
 }
 
 /**
- * Describes the saved, API-verified answer. The renewal date is the expiry
- * Apple verified. Nothing here grants access or reads the store, and the
- * answer carries no trial or auto-renew state, so a trial reads as its plan.
+ * Describes the saved, API-verified answer. The date is the expiry Apple
+ * verified. A plan with auto-renew off ends then, a free trial's trial ends
+ * then, and any other plan renews, including one whose auto-renew the server
+ * has not heard yet. Nothing here grants access or reads the store.
  */
 export function summarizeSubscription(
   answer: AccessResponse | null,
@@ -40,9 +41,15 @@ export function summarizeSubscription(
   }
   if (!('productId' in answer)) return { plan: 'Free during the beta' };
   const name = plans[answer.productId] ?? 'JustGO Pro';
-  const plan = hasAccess
-    ? `${name}, renews ${day(answer.expiresAt)}`
-    : `${name}, ended ${day(answer.expiresAt)}`;
+  const plan = `${name}, ${
+    !hasAccess
+      ? 'ended'
+      : answer.autoRenew === false
+        ? 'ends'
+        : answer.trial
+          ? 'trial ends'
+          : 'renews'
+  } ${day(answer.expiresAt)}`;
   return answer.source === 'guest_subscription'
     ? { plan, note: 'Saved to this phone, not to an account.' }
     : { plan };
