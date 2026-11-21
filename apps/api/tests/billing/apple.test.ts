@@ -12,6 +12,7 @@ import {
   createConnectKey,
   createTestChain,
   createTestStore,
+  renewalPayload,
   testBilling,
   transactionPayload,
   type ChainOptions,
@@ -81,6 +82,9 @@ describe('Apple transaction verification', () => {
       revokedAt: null,
       appAccountToken: 'a1b2c3d4-0000-4000-8000-000000000001',
       signedAt: expect.any(Date),
+      trial: false,
+      // Get Transaction Info carries no renewal info.
+      autoRenew: null,
     });
     expect(requests).toHaveLength(1);
     const [request] = requests;
@@ -116,6 +120,29 @@ describe('Apple transaction verification', () => {
     expect(String(transport.mock.calls[0]?.[0])).toBe(
       'https://api.storekit.itunes.apple.com/inApps/v1/transactions/2000000000000001',
     );
+  });
+
+  it.each([
+    [
+      'an introductory free trial',
+      { offerType: 1, offerDiscountType: 'FREE_TRIAL' },
+      true,
+    ],
+    [
+      'an offer-code free trial',
+      { offerType: 3, offerDiscountType: 'FREE_TRIAL' },
+      true,
+    ],
+    [
+      'a paid introductory offer',
+      { offerType: 1, offerDiscountType: 'PAY_AS_YOU_GO' },
+      false,
+    ],
+    ['an introductory offer with no discount type', { offerType: 1 }, false],
+    ['no offer', {}, false],
+  ])('reads %s from the signed offer', async (_, offer, trial) => {
+    const { read } = reader(transactionPayload(offer));
+    await expect(read('2000000000000001')).resolves.toMatchObject({ trial });
   });
 
   it('reports a revocation and treats an empty app account token as none', async () => {
@@ -318,10 +345,15 @@ describe('Apple transaction verification', () => {
 
 describe('Apple subscription status', () => {
   const original = '2000000000000001';
-  function statuses(latest?: Record<string, unknown>, forge = false) {
+  function statuses(
+    latest?: Record<string, unknown>,
+    forge = false,
+    renewal?: Record<string, unknown>,
+  ) {
     const store = createTestStore(chain, connect.publicKey, new Map(), {
       forge,
       subscriptions: new Map(latest ? [[original, latest]] : []),
+      renewals: new Map(renewal ? [[original, renewal]] : []),
     });
     return {
       ...store,
@@ -353,6 +385,61 @@ describe('Apple subscription status', () => {
     await expect(refund.read(original)).resolves.toMatchObject({
       revokedAt: new Date(now - 1000),
     });
+  });
+
+  it("reads auto-renew from Apple's signed renewal info, and leaves it unknown without one", async () => {
+    for (const [status, autoRenew] of [
+      [1, true],
+      [0, false],
+    ] as const)
+      await expect(
+        statuses(
+          transactionPayload({ offerType: 1, offerDiscountType: 'FREE_TRIAL' }),
+          false,
+          renewalPayload({ autoRenewStatus: status }),
+        ).read(original),
+      ).resolves.toMatchObject({ trial: true, autoRenew });
+    await expect(
+      statuses(transactionPayload()).read(original),
+    ).resolves.toMatchObject({ trial: false, autoRenew: null });
+  });
+
+  it('refuses renewal info for another subscription or environment, or with an unknown status', async () => {
+    for (const overrides of [
+      { originalTransactionId: '2000000000000009' },
+      { environment: 'Production' },
+      { autoRenewStatus: 2 },
+      { autoRenewStatus: undefined },
+    ])
+      await expect(
+        statuses(transactionPayload(), false, renewalPayload(overrides)).read(
+          original,
+        ),
+      ).rejects.toEqual(failure('INVALID_REQUEST', 400));
+  });
+
+  it('keeps forged renewal info retryable', async () => {
+    const transport = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        data: [
+          {
+            lastTransactions: [
+              {
+                originalTransactionId: original,
+                signedTransactionInfo: await chain.sign(transactionPayload()),
+                signedRenewalInfo: await chain.sign(renewalPayload(), true),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await expect(
+      createAppleSubscriptions(config(), {
+        transport,
+        rootFingerprints: [chain.rootFingerprint],
+      })(original),
+    ).rejects.toThrow('Apple signature rejected: SIGNATURE');
   });
 
   it('answers NOT_FOUND for an ID Apple does not know and refuses one not in Apple digits before sending', async () => {

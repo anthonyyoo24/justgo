@@ -60,12 +60,23 @@ async function subscribe(
   userId: string,
   expiresAt: number,
   revokedAt: number | null = null,
+  renewal: { trial: boolean; autoRenew: boolean | null } = {
+    trial: false,
+    autoRenew: null,
+  },
 ) {
   const id = String(base + ++serial);
   subscriptions.push(id);
   await admin.query(
-    `insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id) values ($1,$2,'justgo.annual','Sandbox',$3,$4,$1)`,
-    [id, userId, iso(expiresAt), revokedAt === null ? null : iso(revokedAt)],
+    `insert into justgo.app_store_subscriptions(original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,trial,auto_renew) values ($1,$2,'justgo.annual','Sandbox',$3,$4,$1,$5,$6)`,
+    [
+      id,
+      userId,
+      iso(expiresAt),
+      revokedAt === null ? null : iso(revokedAt),
+      renewal.trial,
+      renewal.autoRenew,
+    ],
   );
   return id;
 }
@@ -148,6 +159,8 @@ describe('access from saved Apple subscriptions', () => {
       productId: 'justgo.annual',
       checkedAt: expect.any(String),
       expiresAt: iso(expiry),
+      // No renewal info has arrived, so the answer leaves auto-renew out.
+      trial: false,
     });
     expect(Date.parse(answer.checkedAt)).toBeGreaterThanOrEqual(before);
     expect(Date.parse(answer.checkedAt)).toBeLessThanOrEqual(Date.now());
@@ -174,6 +187,37 @@ describe('access from saved Apple subscriptions', () => {
     const guestCatalog = await get(paid, '/v1/guest/challenges');
     expect(guestCatalog.statusCode).toBe(403);
     expect(guestCatalog.json().code).toBe('ACCESS_REQUIRED');
+  });
+
+  it('answers the saved trial and auto-renew state of the subscription it reads', async () => {
+    const trial = await account(),
+      ending = await account();
+    const expiry = Date.now() + 2 * hour;
+    await subscribe(trial.userId, expiry, null, {
+      trial: true,
+      autoRenew: true,
+    });
+    // An older row with other state never mixes into the newest row's answer.
+    await subscribe(ending.userId, Date.now() + hour, null, {
+      trial: true,
+      autoRenew: true,
+    });
+    await subscribe(ending.userId, expiry, null, {
+      trial: false,
+      autoRenew: false,
+    });
+    expect((await get(paid, '/v1/access', trial.token)).json()).toMatchObject({
+      status: 'verified',
+      expiresAt: iso(expiry),
+      trial: true,
+      autoRenew: true,
+    });
+    expect((await get(paid, '/v1/access', ending.token)).json()).toMatchObject({
+      status: 'verified',
+      expiresAt: iso(expiry),
+      trial: false,
+      autoRenew: false,
+    });
   });
 
   it('uploads a completion started inside a covered period after it ends, and refuses one started after', async () => {

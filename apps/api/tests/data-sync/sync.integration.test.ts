@@ -1136,6 +1136,7 @@ describe('signed-in immutable journal versions and deletion', () => {
             productId: 'justgo.annual',
             checkedAt: expect.any(String),
             expiresAt,
+            trial: false,
           }
         : {
             status: 'verified',

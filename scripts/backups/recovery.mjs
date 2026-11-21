@@ -138,7 +138,7 @@ export async function reconcileLedger(client, ledger) {
     select ${ledgerTables.app_store_subscriptions} from recovery_app_store_subscriptions
     on conflict(original_transaction_id) do update set user_id=excluded.user_id,product_id=excluded.product_id,
       environment=excluded.environment,expires_at=excluded.expires_at,revoked_at=excluded.revoked_at,
-      latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token,signed_at=excluded.signed_at`);
+      latest_transaction_id=excluded.latest_transaction_id,app_account_token=excluded.app_account_token,signed_at=excluded.signed_at,trial=excluded.trial,auto_renew=excluded.auto_renew`);
   // A guest only ever becomes an account. End it after the subscriptions
   // replay, so a row that moved away from a guest before it signed in still
   // moves from the guest the dump holds.

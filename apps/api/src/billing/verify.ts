@@ -12,7 +12,7 @@ import { parse } from '../http/parse.js';
 import type { IdentityService } from '../identity/service.js';
 import { setTransactionContext } from '../db/transaction-context.js';
 import type { AppleTransactionReader, VerifiedTransaction } from './apple.js';
-import { newestAnswer } from './newest-answer.js';
+import { newestAnswer, renewalState } from './newest-answer.js';
 
 type Tx = Parameters<Parameters<IdentityService['withSession']>[1]>[0];
 type Subscription = {
@@ -20,6 +20,8 @@ type Subscription = {
   product_id: string;
   expires_at: Date | string;
   revoked_at: Date | string | null;
+  trial: boolean;
+  auto_renew: boolean | null;
 };
 
 /**
@@ -67,12 +69,12 @@ async function save(
   )
     throw new ApiError('CONFLICT', 409);
   await tx.execute(
-    sql`insert into justgo.app_store_subscriptions (original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token,signed_at) values (${purchase.originalTransactionId},${owner},${purchase.productId},${purchase.environment},${purchase.expiresAt},${purchase.revokedAt},${purchase.transactionId},${purchase.appAccountToken},${purchase.signedAt}) on conflict (original_transaction_id) do nothing`,
+    sql`insert into justgo.app_store_subscriptions (original_transaction_id,user_id,product_id,environment,expires_at,revoked_at,latest_transaction_id,app_account_token,signed_at,trial,auto_renew) values (${purchase.originalTransactionId},${owner},${purchase.productId},${purchase.environment},${purchase.expiresAt},${purchase.revokedAt},${purchase.transactionId},${purchase.appAccountToken},${purchase.signedAt},${purchase.trial},${purchase.autoRenew}) on conflict (original_transaction_id) do nothing`,
   );
   // The row is visible here only when the caller or a guest account holds it.
   const [stored] = (
     await tx.execute<Subscription>(
-      sql`select user_id,product_id,expires_at,revoked_at from justgo.app_store_subscriptions where original_transaction_id=${purchase.originalTransactionId} for update`,
+      sql`select user_id,product_id,expires_at,revoked_at,trial,auto_renew from justgo.app_store_subscriptions where original_transaction_id=${purchase.originalTransactionId} for update`,
     )
   ).rows;
   if (
@@ -83,7 +85,7 @@ async function save(
   // The newest Apple answer wins, so one posted late never undoes a newer one.
   const [row] = (
     await tx.execute<Subscription>(
-      sql`update justgo.app_store_subscriptions set user_id=${owner}, ${newestAnswer(purchase)} where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at`,
+      sql`update justgo.app_store_subscriptions set user_id=${owner}, ${newestAnswer(purchase)} where original_transaction_id=${purchase.originalTransactionId} returning user_id,product_id,expires_at,revoked_at,trial,auto_renew`,
     )
   ).rows;
   if (!row) throw new ApiError('CONFLICT', 409);
@@ -97,6 +99,7 @@ async function save(
     expiresAt: expiresAt.toISOString(),
     source: 'subscription',
     productId: row.product_id,
+    ...renewalState(row),
   };
 }
 

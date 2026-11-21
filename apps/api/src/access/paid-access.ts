@@ -3,6 +3,7 @@ import type { AccessResponse } from '@justgo/contracts';
 import type { EntitlementReader } from './service.js';
 import type { UploadEligibilityReader } from '../attempts/service.js';
 import { unavailableGuestAccess, type GuestAccessReader } from './guest.js';
+import { renewalState } from '../billing/newest-answer.js';
 
 /**
  * Access from the subscriptions the API verified with Apple and saved. Each
@@ -21,8 +22,13 @@ export function createPaidAccess(): {
     entitlementReader: async (tx): Promise<AccessResponse> => {
       const checkedAt = new Date();
       const [row] = (
-        await tx.execute<{ product_id: string; expires_at: Date | string }>(
-          sql`select product_id,expires_at from justgo.app_store_subscriptions where user_id=justgo.current_user_id() and revoked_at is null and expires_at>${checkedAt} order by expires_at desc limit 1`,
+        await tx.execute<{
+          product_id: string;
+          expires_at: Date | string;
+          trial: boolean;
+          auto_renew: boolean | null;
+        }>(
+          sql`select product_id,expires_at,trial,auto_renew from justgo.app_store_subscriptions where user_id=justgo.current_user_id() and revoked_at is null and expires_at>${checkedAt} order by expires_at desc limit 1`,
         )
       ).rows;
       if (!row) return { status: 'unpaid', checkedAt: checkedAt.toISOString() };
@@ -32,6 +38,7 @@ export function createPaidAccess(): {
         productId: row.product_id,
         checkedAt: checkedAt.toISOString(),
         expiresAt: new Date(row.expires_at).toISOString(),
+        ...renewalState(row),
       };
     },
     // Rule 9: a completion started inside a covered period uploads after that

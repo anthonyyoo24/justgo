@@ -318,8 +318,13 @@ describe('recovery ledger tombstones', () => {
     const refundedAt = new Date('2026-11-10T00:00:00Z');
     const subscription = async () =>
       (
-        await client.query<{ signed_at: Date; revoked_at: Date | null }>(
-          'select signed_at,revoked_at from justgo.app_store_subscriptions where original_transaction_id=$1',
+        await client.query<{
+          signed_at: Date;
+          revoked_at: Date | null;
+          trial: boolean;
+          auto_renew: boolean | null;
+        }>(
+          'select signed_at,revoked_at,trial,auto_renew from justgo.app_store_subscriptions where original_transaction_id=$1',
           [guestPurchase],
         )
       ).rows[0]!;
@@ -329,7 +334,7 @@ describe('recovery ledger tombstones', () => {
     );
     await client.query('savepoint database_dump');
     await run(
-      'update justgo.app_store_subscriptions set revoked_at=$2,signed_at=$2 where original_transaction_id=$1',
+      'update justgo.app_store_subscriptions set revoked_at=$2,signed_at=$2,trial=true,auto_renew=false where original_transaction_id=$1',
       [guestPurchase, refundedAt],
     );
     const ledger: unknown = JSON.parse(
@@ -340,6 +345,8 @@ describe('recovery ledger tombstones', () => {
     expect(await subscription()).toEqual({
       signed_at: refundedAt,
       revoked_at: refundedAt,
+      trial: true,
+      auto_renew: false,
     });
 
     const stale = new PgDialect().sqlToQuery(
@@ -352,12 +359,16 @@ describe('recovery ledger tombstones', () => {
         revokedAt: null,
         appAccountToken: null,
         signedAt: staleSignedAt,
+        trial: false,
+        autoRenew: true,
       })} where original_transaction_id=${guestPurchase}`,
     );
     await run(stale.sql, stale.params);
     expect(await subscription()).toEqual({
       signed_at: refundedAt,
       revoked_at: refundedAt,
+      trial: true,
+      auto_renew: false,
     });
   });
 

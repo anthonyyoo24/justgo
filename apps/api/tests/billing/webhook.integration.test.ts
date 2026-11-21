@@ -15,6 +15,7 @@ import {
   createConnectKey,
   createTestChain,
   createTestStore,
+  renewalPayload,
   testBilling,
   transactionPayload,
 } from '../../scripts/apple-test-store.js';
@@ -35,6 +36,8 @@ const secret = testWebhookSecret();
 /** Apple's transactions by ID, and each subscription's latest by original ID. */
 const transactions = new Map<string, Record<string, unknown>>();
 const latest = new Map<string, Record<string, unknown>>();
+/** The renewal info Apple lists beside a subscription's latest transaction. */
+const renewals = new Map<string, Record<string, unknown>>();
 const users = new Set<string>(),
   purchases = new Set<string>(),
   events = new Set<string>();
@@ -51,6 +54,7 @@ beforeAll(async () => {
   ]);
   const store = createTestStore(chain, connect.publicKey, transactions, {
     subscriptions: latest,
+    renewals,
   });
   const transport: typeof fetch = (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
@@ -429,6 +433,115 @@ describe('POST /v1/billing/superwall-events', () => {
       latest_transaction_id: restored,
     });
     expect(await access(sessionToken)).toBe('verified');
+  });
+
+  it("shows Apple's trial and auto-renew state in the access answer, newest answer first", async () => {
+    const { sessionToken, userId } = await owned();
+    const trialOffer = { offerType: 1, offerDiscountType: 'FREE_TRIAL' };
+    const original = await subscribed(
+      { appAccountToken: userId, ...trialOffer },
+      sessionToken,
+    );
+    const answer = async () =>
+      (
+        await apiRequest(app, {
+          url: '/v1/access',
+          headers: { authorization: `Bearer ${sessionToken}` },
+        })
+      ).json<Record<string, unknown>>();
+    const state = async () =>
+      (
+        await admin.query<{ trial: boolean; auto_renew: boolean | null }>(
+          'select trial,auto_renew from justgo.app_store_subscriptions where original_transaction_id=$1',
+          [original],
+        )
+      ).rows[0];
+    // The phone's verification reads no renewal info, so renewal is unknown.
+    expect(await state()).toEqual({ trial: true, auto_renew: null });
+    expect(await answer()).toMatchObject({ status: 'verified', trial: true });
+    expect(await answer()).not.toHaveProperty('autoRenew');
+
+    // The subscriber turns renewal off. Apple's answer covers the same period.
+    const trialEnds = (await row(original))!.expires_at.getTime();
+    appleSays(original, {
+      appAccountToken: userId,
+      expiresDate: trialEnds,
+      ...trialOffer,
+    });
+    renewals.set(
+      original,
+      renewalPayload({ originalTransactionId: original, autoRenewStatus: 0 }),
+    );
+    expect((await deliver(superwallEvent('renewal', original))).json()).toEqual(
+      { status: 'confirmed' },
+    );
+    expect(await state()).toEqual({ trial: true, auto_renew: false });
+    expect(await answer()).toMatchObject({ trial: true, autoRenew: false });
+
+    // A later verification of the same period carries no renewal info and keeps it.
+    const again = await apiRequest(app, {
+      method: 'POST',
+      url: '/v1/billing/verifications',
+      payload: { transactionId: original },
+      remoteAddress: remoteAddress(),
+      headers: { authorization: `Bearer ${sessionToken}` },
+    });
+    expect(again.json()).toMatchObject({ trial: true, autoRenew: false });
+    expect(await state()).toEqual({ trial: true, auto_renew: false });
+
+    // The trial converts into a paid period with renewal back on.
+    const paidUntil = trialEnds + 365 * day;
+    appleSays(original, { appAccountToken: userId, expiresDate: paidUntil });
+    renewals.set(
+      original,
+      renewalPayload({ originalTransactionId: original, autoRenewStatus: 1 }),
+    );
+    await deliver(superwallEvent('renewal', original));
+    expect(await state()).toEqual({ trial: false, auto_renew: true });
+    expect(await answer()).toMatchObject({ trial: false, autoRenew: true });
+  });
+
+  it('forgets auto-renew when an answer without renewal info starts a later period', async () => {
+    const { sessionToken, userId } = await owned();
+    const original = await subscribed(
+      { appAccountToken: userId },
+      sessionToken,
+    );
+    const expiry = (await row(original))!.expires_at.getTime();
+    appleSays(original, { appAccountToken: userId, expiresDate: expiry });
+    renewals.set(
+      original,
+      renewalPayload({ originalTransactionId: original, autoRenewStatus: 0 }),
+    );
+    await deliver(superwallEvent('renewal', original));
+    // The phone verifies a resubscription that runs past the old expiry.
+    const resubscribed = String(base + ++serial);
+    transactions.set(
+      resubscribed,
+      transactionPayload({
+        transactionId: resubscribed,
+        originalTransactionId: original,
+        appAccountToken: userId,
+        expiresDate: expiry + 30 * day,
+      }),
+    );
+    const response = await apiRequest(app, {
+      method: 'POST',
+      url: '/v1/billing/verifications',
+      payload: { transactionId: resubscribed },
+      remoteAddress: remoteAddress(),
+      headers: { authorization: `Bearer ${sessionToken}` },
+    });
+    expect(response.json()).toMatchObject({ status: 'verified', trial: false });
+    expect(response.json()).not.toHaveProperty('autoRenew');
+    expect(
+      (
+        await admin.query(
+          'select auto_renew from justgo.app_store_subscriptions where original_transaction_id=$1',
+          [original],
+        )
+      ).rows[0],
+    ).toEqual({ auto_renew: null });
   });
 
   it('answers 503 while Apple is down, leaves the event pending, and confirms it on redelivery', async () => {

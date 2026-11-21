@@ -1,5 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { check, index, pgPolicy, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  index,
+  pgPolicy,
+  text,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { users } from './identity.ts';
 import { appSchema, maintenance, time } from './shared.ts';
 
@@ -33,6 +40,10 @@ export const appStoreSubscriptions = appSchema
       appAccountToken: uuid('app_account_token'),
       checkedAt: time('checked_at'),
       signedAt: time('signed_at'),
+      // Apple's free trial, from the newest answer's offer.
+      trial: boolean().notNull().default(false),
+      // Apple's renewal answer, or null until one arrives for this period.
+      autoRenew: boolean('auto_renew'),
     },
     (t) => [
       index('app_store_subscriptions_owner_idx').on(t.userId),
