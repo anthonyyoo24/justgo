@@ -72,6 +72,7 @@ test('the installed Router resolves each application URL to exactly one file', (
       '/recovery',
       '/reflection',
       '/settings',
+      '/subscription',
       '/success',
       '/welcome',
     ].sort(),

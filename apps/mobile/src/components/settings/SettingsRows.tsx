@@ -157,9 +157,12 @@ export function SettingsActionRow({
   chevron = false,
   href,
   destructive = false,
+  subtitle,
 }: {
   icon: SettingsIconName;
   label: string;
+  /** Read after the label, so a screen reader hears both. */
+  subtitle?: string | undefined;
   disabled?: boolean;
   busy?: boolean;
   chevron?: boolean;
@@ -168,7 +171,7 @@ export function SettingsActionRow({
   const control = (
     <Pressable
       accessibilityRole={href ? 'link' : 'button'}
-      accessibilityLabel={label}
+      accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}
@@ -177,6 +180,7 @@ export function SettingsActionRow({
       <SettingsRowContent
         icon={icon}
         label={label}
+        subtitle={subtitle}
         destructive={destructive}
         chevron={chevron && !busy}
         accessory={

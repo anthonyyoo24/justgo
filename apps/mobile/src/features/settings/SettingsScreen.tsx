@@ -2,12 +2,16 @@ import { SettingsInformationGroups } from './information/SettingsInformationGrou
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { SettingsMotionRow } from './SettingsMotionRow';
 import { SettingsHapticsRow } from './SettingsHapticsRow';
+import { SettingsSubscriptionRow } from './subscription/SettingsSubscriptionRow';
+import { useRuntime } from '../../app-support/providers/AppProvider';
 import {
   SettingsGroup,
   SettingsActionRow,
 } from '../../components/settings/SettingsRows';
 
 export function SettingsScreen() {
+  // Builds without billing have no saved access and show no subscription row.
+  const { access } = useRuntime();
   return (
     <SettingsPage title="Settings">
       <SettingsGroup title="Preferences">
@@ -39,6 +43,7 @@ export function SettingsScreen() {
           chevron
         />
         <SettingsActionRow icon="export" label="Data" href="/data" chevron />
+        {access && <SettingsSubscriptionRow access={access} />}
       </SettingsGroup>
 
       <SettingsInformationGroups />

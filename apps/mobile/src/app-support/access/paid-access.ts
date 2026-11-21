@@ -222,6 +222,10 @@ export class PaidAccess {
       .catch(() => {});
     this.emit();
   }
+  /** The current owner's saved answer, or null before one arrives. It starts no check. */
+  answer(): AccessResponse | null {
+    return this.saved?.access ?? null;
+  }
   /** Whether the saved verification grants access now. It starts no check. */
   hasAccess() {
     return grantsAccess(this.saved, this.now());

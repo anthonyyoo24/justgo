@@ -15,10 +15,14 @@ import {
 } from '../../app-support/contact';
 import { showMessageToast } from '../../platform/toast/Toast';
 
+let mockAccess: unknown = null;
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useIdentity: () => ({ account: null }),
   useJournal: () => null,
-  useRuntime: () => ({ client: { ownsAccount: () => false } }),
+  useRuntime: () => ({
+    client: { ownsAccount: () => false },
+    access: mockAccess,
+  }),
 }));
 jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('./export/SettingsExportRow', () => ({
@@ -317,6 +321,45 @@ it('keeps the existing account recovery action available', async () => {
   const screen = await render(<SettingsScreen />);
   await fireEvent.press(screen.getByRole('link', { name: 'Account' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
+});
+
+it('shows the saved plan beside Data only in a build with billing', async () => {
+  const expiresAt = '2027-03-04T12:00:00.000Z';
+  const renews = new Date(expiresAt).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  expect(
+    (await render(<SettingsScreen />)).queryByRole('link', {
+      name: /^Subscription/,
+    }),
+  ).toBeNull();
+  const answer = {
+    status: 'verified',
+    checkedAt: '2026-11-20T12:00:00.000Z',
+    expiresAt,
+    source: 'subscription',
+    productId: 'com.anthonyyoo.justgo.pro.annual',
+  };
+  mockAccess = {
+    subscribe: () => () => {},
+    hasAccess: () => true,
+    answer: () => answer,
+  };
+  try {
+    const screen = await render(<SettingsScreen />);
+    const account = within(
+      screen.getByRole('header', { name: 'Account & data' }).parent!,
+    );
+    expect(
+      account.getAllByRole('link').map((link) => link.props.accessibilityLabel),
+    ).toEqual(['Account', 'Data', `Subscription, Annual, renews ${renews}`]);
+    await fireEvent.press(account.getByRole('link', { name: /^Subscription/ }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/subscription');
+  } finally {
+    mockAccess = null;
+  }
 });
 
 it('opens the concise Data controls from a single link', async () => {
