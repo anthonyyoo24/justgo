@@ -648,7 +648,7 @@ API lanes run against loopback `justgo_test` and the fixture API. Web lanes driv
 
 **You see.**
 
-- [ ] Settings shows `Annual, renews <date>` for a subscribed account.
+- [ ] Settings shows `Annual, renews <date>` for a subscribed account, `Annual, trial ends <date>` during the free trial and `<plan>, ends <date>` once auto-renew is off, from the `trial` and `autoRenew` fields of the access answer.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 

@@ -31,12 +31,14 @@ const paid = (
   expiresAt: number,
   source: 'subscription' | 'guest_subscription' = 'subscription',
   productId = 'com.anthonyyoo.justgo.pro.annual',
+  renewal: { trial?: boolean; autoRenew?: boolean } = {},
 ) => ({
   status: 'verified',
   checkedAt: iso(Date.now()),
   expiresAt: iso(expiresAt),
   source,
   productId,
+  ...renewal,
 });
 
 let mockAccess: PaidAccess | null;
@@ -127,14 +129,30 @@ it('shows a subscribed account its plan and renewal date', async () => {
   ).toBeTruthy();
 });
 
-it('shows a trial as the plan it starts', async () => {
-  // A free trial verifies as its plan with the trial's end as its expiry.
+it('shows when a free trial ends', async () => {
   const trialEnds = Date.now() + 7 * day;
   await owner(
-    paid(trialEnds, 'subscription', 'com.anthonyyoo.justgo.pro.monthly'),
+    paid(trialEnds, 'subscription', 'com.anthonyyoo.justgo.pro.annual', {
+      trial: true,
+      autoRenew: true,
+    }),
   );
   const screen = await render(<SubscriptionScreen />);
-  expect(screen.getByText(`Monthly, renews ${long(trialEnds)}`)).toBeTruthy();
+  expect(
+    screen.getByText(`Annual, trial ends ${long(trialEnds)}`),
+  ).toBeTruthy();
+});
+
+it('says a plan with auto-renew off ends', async () => {
+  const ends = Date.now() + 30 * day;
+  await owner(
+    paid(ends, 'subscription', 'com.anthonyyoo.justgo.pro.monthly', {
+      trial: false,
+      autoRenew: false,
+    }),
+  );
+  const screen = await render(<SubscriptionScreen />);
+  expect(screen.getByText(`Monthly, ends ${long(ends)}`)).toBeTruthy();
 });
 
 it('says an expired subscription ended', async () => {
