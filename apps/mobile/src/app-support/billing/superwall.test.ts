@@ -165,6 +165,23 @@ it('follows an account switch made while an identify is running', async () => {
   expect(superwallNative.attributes().appUserId).toBe(other);
 });
 
+// #574: a queued owner switch was lost when the running identify failed.
+it('identifies an account switched to while a failing identify runs', async () => {
+  const billing = new SuperwallBilling();
+  start(billing);
+  await settle();
+  superwallNative.failNext('identify');
+  billing.changeOwner(owner);
+  billing.changeOwner(other);
+  await settle();
+
+  expect(callsTo('identify').map((call) => call.args[0])).toEqual([
+    owner,
+    other,
+  ]);
+  expect(superwallNative.attributes().appUserId).toBe(other);
+});
+
 it('swallows a failed identify and retries on the next owner change', async () => {
   const billing = new SuperwallBilling();
   start(billing);
