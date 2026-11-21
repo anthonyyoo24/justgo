@@ -12,6 +12,11 @@ import { MotionContext } from '../../platform/motion/motion';
 jest.mock('../../features/settings/export/SettingsExportRow', () => ({
   SettingsExportRow: () => null,
 }));
+// A build without billing has no saved access, so Settings shows no
+// subscription row.
+jest.mock('../../app-support/providers/AppProvider', () => ({
+  useRuntime: () => ({ access: null }),
+}));
 jest.mock('../../platform/toast/Toast', () => ({
   showMessageToast: jest.fn(),
 }));

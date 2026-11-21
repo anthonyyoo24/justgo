@@ -32,19 +32,32 @@ export function SubscriptionScreen() {
   const summary = useSubscription(access);
   const state = usePaywallState(paywall);
   const restoring = working.has(state.status);
+  if (!summary)
+    // Nothing links here without billing; a typed link says so and offers
+    // no subscription actions.
+    return (
+      <SettingsPage title="Subscription">
+        <SettingsGroup title="Plan">
+          <SettingsRowContent
+            icon="subscription"
+            label="Subscriptions are off in this build"
+          />
+        </SettingsGroup>
+      </SettingsPage>
+    );
   return (
     <SettingsPage title="Subscription">
       <SettingsGroup title="Plan">
         <View
           accessible
-          accessibilityLabel={[summary?.plan, summary?.note]
+          accessibilityLabel={[summary.plan, summary.note]
             .filter(Boolean)
             .join('. ')}
         >
           <SettingsRowContent
             icon="subscription"
-            label={summary?.plan ?? 'Subscriptions are off in this build'}
-            subtitle={summary?.note}
+            label={summary.plan}
+            subtitle={summary.note}
           />
         </View>
       </SettingsGroup>

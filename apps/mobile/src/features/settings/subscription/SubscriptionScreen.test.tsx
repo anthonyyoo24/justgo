@@ -247,6 +247,21 @@ it('says where to restore when this build has no paywall', async () => {
   ).toBeEnabled();
 });
 
+it('offers no subscription actions in a build without billing', async () => {
+  mockAccess = null;
+  mockPaywall = null;
+  const screen = await render(<SubscriptionScreen />);
+  expect(screen.getByText('Subscriptions are off in this build')).toBeTruthy();
+  expect(
+    screen.queryByRole('button', { name: 'Manage Subscription' }),
+  ).toBeNull();
+  expect(
+    screen.queryByText(
+      'Restoring a purchase is available in the JustGO iPhone app.',
+    ),
+  ).toBeNull();
+});
+
 it('names the plan after the Settings row label', async () => {
   const renews = Date.now() + 365 * day;
   await owner(paid(renews));
