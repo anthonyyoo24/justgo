@@ -127,6 +127,8 @@ function newController() {
         secure.delete(key);
       },
     },
+    // The factory turns guest accounts on with billing, as these tests do.
+    guestAccounts: true,
   });
   jest.mocked(createManagedIdentityController).mockReturnValue(controller);
 }
@@ -200,9 +202,12 @@ beforeEach(async () => {
     logoutPending: false,
     deletion: null,
     deleted: false,
+    guestAccount: null,
+    guestAccountDeletion: false,
   };
   auth = {
     initialize: jest.fn(async () => providerSession),
+    signInAnonymously: jest.fn(async () => providerSession),
     refresh: jest.fn(async () => providerSession),
     signIn: jest.fn(async () => providerSession),
     linkIdentity: jest.fn(async () => providerSession),
@@ -481,29 +486,66 @@ it('tells Superwall only the owner ID of the account on the phone and resets it 
   );
 });
 
-it("reads a guest's access from the guest route under the guest's own key", async () => {
+it("reads a guest's access with its guest account's bearer under that account's key and tells Superwall its ID (P16-14)", async () => {
   stored = null;
-  jest.mocked(auth.initialize).mockResolvedValue(null);
-  guestAnswer = () => ({
+  const guestAccountId = id(61);
+  const guestToken = 'c'.repeat(64);
+  let anonymous: ProviderSession | null = null;
+  jest.mocked(auth.initialize).mockImplementation(async () => anonymous);
+  jest.mocked(auth.signInAnonymously).mockImplementation(async () => {
+    anonymous = {
+      authUserId: id(60),
+      accessToken: guestToken,
+      expiresAt: session.expiresAt,
+      linkedProviders: [],
+    };
+    return anonymous;
+  });
+  answers[guestToken] = () => ({
     status: 'verified',
     checkedAt: iso(Date.now()),
     expiresAt: iso(Date.now() + 30 * 24 * hour),
     source: 'free_beta',
   });
+  const base = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input, init) =>
+    String(input).endsWith('/auth/session')
+      ? response({
+          userId: guestAccountId,
+          authUserId: id(60),
+          deviceId: session.deviceId,
+          sessionId: id(62),
+          expiresAt: session.expiresAt,
+          dataEpoch: 0,
+          guest: true,
+        })
+      : base(input, init),
+  );
   await mount();
   expect(runtime.canStartChallenge()).toBe(false);
   await act(async () => controller.continueAsGuest());
   await waitFor(() => expect(runtime.canStartChallenge()).toBe(true));
-  // A guest stays anonymous in Superwall.
-  expect(useSuperwallStore.getState().isConfigured).toBe(true);
+  await waitFor(() =>
+    expect(
+      nativeCalls
+        .filter(({ method }) => ['identify', 'reset'].includes(method))
+        .map(({ method, args }) => [method, ...args]),
+    ).toEqual([['identify', guestAccountId, undefined]]),
+  );
+  expect(runtime.identity.getSnapshot().account).toBeNull();
+  expect((await saved(keyOf(guestAccountId, 'guest')))?.access.status).toBe(
+    'verified',
+  );
+  // The phone's guest collection names no access owner.
+  const collection = runtime.activity.getRepository()!.accountId;
+  expect(collection).not.toBe(guestAccountId);
+  expect(await saved(keyOf(collection, 'guest'))).toBeNull();
   expect(
-    nativeCalls.filter(({ method }) => ['identify', 'reset'].includes(method)),
-  ).toEqual([]);
-  const guest = runtime.activity.getRepository()!.accountId;
-  expect((await saved(keyOf(guest, 'guest')))?.access.status).toBe('verified');
-  expect(
-    accessRequests().map(([url]) => new URL(String(url)).pathname),
-  ).toEqual(['/v1/guest/access']);
+    accessRequests().map(([url, init]) => [
+      new URL(String(url)).pathname,
+      new Headers(init?.headers).get('authorization'),
+    ]),
+  ).toEqual([['/v1/access', `Bearer ${guestToken}`]]);
 });
 
 it('starts challenges with no access request or saved snapshot when the flag is off', async () => {

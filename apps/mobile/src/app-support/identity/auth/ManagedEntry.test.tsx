@@ -112,6 +112,9 @@ async function setup(parkedOwner?: string, connectionDiagnostics = false) {
   };
   const auth: ManagedAuth = {
     initialize: async () => null,
+    signInAnonymously: async () => {
+      throw new Error('Guest accounts are off');
+    },
     signIn: async () => null,
     linkIdentity: async () => null,
     unlinkIdentity: async () => {

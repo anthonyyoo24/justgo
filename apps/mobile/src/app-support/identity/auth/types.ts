@@ -22,6 +22,11 @@ export const providerAuthErrorCodes = [
   'LAST_PROVIDER',
   /** The identity already belongs to another Auth user, so it cannot be linked. */
   'IDENTITY_EXISTS',
+  /**
+   * Auth could not be reached. Only builds with billing on tell this apart from
+   * AUTH, so a guest account is kept offline and replaced only when refused.
+   */
+  'NETWORK',
 ] as const;
 export class ProviderAuthError extends Error {
   constructor(readonly code: (typeof providerAuthErrorCodes)[number]) {
@@ -31,6 +36,11 @@ export class ProviderAuthError extends Error {
 }
 export interface ManagedAuth {
   initialize(): Promise<ProviderSession | null>;
+  /**
+   * Starts an anonymous Auth user for a guest account (billing on only). Its
+   * session lives in the same client and secure storage as a provider sign-in.
+   */
+  signInAnonymously(): Promise<ProviderSession>;
   signIn(
     provider: SignInProvider,
   ): Promise<ProviderSession | 'redirecting' | null>;

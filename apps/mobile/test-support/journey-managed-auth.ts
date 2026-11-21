@@ -22,8 +22,9 @@ const sessionSchema = z
 const envelopeSchema = z
   .object({ subjectHandle: handleSchema, session: sessionSchema })
   .strict();
+// An anonymous guest session has no provider until one links.
 const storedSchema = envelopeSchema
-  .extend({ provider: providerSchema })
+  .extend({ provider: providerSchema.optional() })
   .strict();
 interface FixtureStorage {
   getItem(key: string): string | null;
@@ -122,7 +123,7 @@ export function createJourneyManagedAuth(options: {
   };
   const retain = (
     envelope: z.infer<typeof envelopeSchema>,
-    provider: SignInProvider,
+    provider: SignInProvider | undefined,
     expected: number,
   ) => {
     check(expected);
@@ -138,6 +139,7 @@ export function createJourneyManagedAuth(options: {
   const request = async <T>(
     path:
       | 'provider-sessions'
+      | 'anonymous-sessions'
       | 'provider-links'
       | 'provider-unlinks'
       | 'provider-sign-outs',
@@ -211,11 +213,21 @@ export function createJourneyManagedAuth(options: {
         ? value.session
         : null;
     },
+    signInAnonymously: async () => {
+      const expected = ++generation;
+      const envelope = await request('anonymous-sessions', {}, envelopeSchema);
+      if (envelope.session.linkedProviders.length)
+        throw new ProviderAuthError('AUTH');
+      return retain(envelope, undefined, expected);
+    },
     signIn: async (provider) => {
       if (!providerSchema.safeParse(provider).success)
         throw new ProviderAuthError('CONFIGURATION');
+      // A provider sign-in from an anonymous guest happens only after Auth
+      // refused to link the identity, so it reaches the subject that owns it.
+      const anonymous = load()?.session.linkedProviders.length === 0;
       const expected = ++generation;
-      const handle = selected();
+      const handle = anonymous ? selected(linkIdentityKey) : selected();
       const envelope = await request(
         'provider-sessions',
         { provider, ...(handle ? { subjectHandle: handle } : {}) },

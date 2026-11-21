@@ -153,6 +153,8 @@ beforeEach(async () => {
     logoutPending: false,
     deletion: null,
     deleted: false,
+    guestAccount: null,
+    guestAccountDeletion: false,
   };
   const storage: ManagedIdentityStorage = {
     read: jest.fn(async () => stored),
@@ -162,6 +164,7 @@ beforeEach(async () => {
   };
   auth = {
     initialize: jest.fn(async () => providerSession),
+    signInAnonymously: jest.fn(async () => providerSession),
     refresh: jest.fn(async () => providerSession),
     signIn: jest.fn(async () => providerSession),
     linkIdentity: jest.fn(async () => providerSession),

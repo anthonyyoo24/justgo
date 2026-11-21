@@ -119,6 +119,7 @@ it.each([false, true])(
     const identity = new ManagedIdentityController({
       auth: {
         initialize: async () => providerSession,
+        signInAnonymously: async () => providerSession,
         refresh: async () => providerSession,
         signIn: async () => providerSession,
         linkIdentity: async () => providerSession,

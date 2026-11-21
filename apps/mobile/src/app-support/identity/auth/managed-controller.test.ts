@@ -44,12 +44,37 @@ const legacyInfo = {
   sessionId: account.sessionId,
   expiresAt: account.expiresAt,
 };
-function setup(connectionDiagnostics = false) {
+// An anonymous Auth user and its guest account, numbered by creation order.
+const anonymousSession = (n: number): ProviderSession => ({
+  authUserId: uuid(70 + n),
+  accessToken: `synthetic-anonymous-token-${n}`,
+  expiresAt: session.expiresAt,
+  linkedProviders: [],
+});
+const guestAccount = (n: number, guest = true) => ({
+  userId: uuid(80 + n),
+  authUserId: uuid(70 + n),
+  deviceId: uuid(2),
+  sessionId: uuid(90 + n),
+  expiresAt: session.expiresAt,
+  dataEpoch: 0,
+  // The API sends guest only when true, so a signed-in account omits it.
+  ...(guest ? { guest: true } : {}),
+});
+function setup(
+  connectionDiagnostics = false,
+  options: { guestAccounts?: boolean } = {},
+) {
   let state: ManagedIdentityState | null = null;
   const stored = new Map<string, string>();
   let provider: ProviderSession | null = null;
+  let anonymousUsers = 0;
   const auth: jest.Mocked<ManagedAuth> = {
     initialize: jest.fn(async () => provider),
+    signInAnonymously: jest.fn(async () => {
+      provider = anonymousSession(++anonymousUsers);
+      return provider;
+    }),
     signIn: jest.fn(async (providerName: SignInProvider) => {
       void providerName;
       provider = session;
@@ -94,6 +119,7 @@ function setup(connectionDiagnostics = false) {
     token: string | undefined;
   }[] = [];
   let failure: Error | null = null;
+  let failureFor: (call: (typeof calls)[number]) => Error | null = () => null;
   let returnedAccount = { ...account };
   const verifiedAccounts = new Map<
     string,
@@ -103,6 +129,17 @@ function setup(connectionDiagnostics = false) {
     request: async (method, path, schema, body, token) => {
       calls.push({ method, path, body, token });
       if (failure) throw failure;
+      const refused = failureFor({ method, path, body, token });
+      if (refused) throw refused;
+      // An anonymous token maps to its guest account, and a token linked
+      // from it to the same account, no longer a guest.
+      const guestToken = /^synthetic-(anonymous|linked)-token-(\d+)$/.exec(
+        token ?? '',
+      );
+      if (guestToken && path === '/auth/session')
+        return schema.parse(
+          guestAccount(Number(guestToken[2]), guestToken[1] === 'anonymous'),
+        );
       if (
         method === 'GET' &&
         path === '/auth/session' &&
@@ -148,6 +185,7 @@ function setup(connectionDiagnostics = false) {
       legacyVault: vault,
       randomId: () => uuid(id++),
       connectionDiagnostics,
+      ...options,
     });
     controller.setGuestDataMerger(jest.fn(async () => {}));
     controller.setGuestDataRetirer(jest.fn(async () => {}));
@@ -168,6 +206,9 @@ function setup(connectionDiagnostics = false) {
     setFailure: (error: Error | null) => {
       failure = error;
     },
+    setFailureFor: (refuse: (call: (typeof calls)[number]) => Error | null) => {
+      failureFor = refuse;
+    },
     setVerifiedAccount: (
       token: string,
       value: typeof account | Error | (() => Promise<typeof account>),
@@ -178,6 +219,7 @@ function setup(connectionDiagnostics = false) {
     setProvider: (value: ProviderSession | null) => {
       provider = value;
     },
+    provider: () => provider,
   };
 }
 
@@ -2740,4 +2782,502 @@ it('keeps the source published when a web switch redirect is abandoned with Back
   expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
   expect(ctx.saved()?.pendingSignIn).toBeNull();
   ctx.controller.dispose();
+});
+
+describe('guest accounts with billing on (P16-14)', () => {
+  // The guest account is made in the background, so wait for its outcome.
+  const until = async (check: () => boolean) => {
+    for (let turn = 0; turn < 200 && !check(); turn++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(check()).toBe(true);
+  };
+  const guestSetup = () => setup(false, { guestAccounts: true });
+  const sessionPosts = (ctx: ReturnType<typeof setup>) =>
+    ctx.calls.filter(
+      (call) => call.method === 'POST' && call.path === '/auth/session',
+    );
+  const ready = async (ctx: ReturnType<typeof setup>, n = 1) => {
+    await until(
+      () => ctx.controller.getSnapshot().guestAccountId === uuid(80 + n),
+    );
+    await until(() => ctx.controller.currentGuestSession() !== null);
+  };
+
+  it('makes no guest account with the billing flag off', async () => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.continueAsGuest();
+    await ctx.controller.retry({ background: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ctx.auth.signInAnonymously).not.toHaveBeenCalled();
+    expect(ctx.calls).toEqual([]);
+    expect(ctx.controller.getSnapshot().guestAccountId).toBeNull();
+    expect(ctx.controller.currentGuestSession()).toBeNull();
+    expect(ctx.saved()?.guestAccount).toBeNull();
+    ctx.controller.dispose();
+  });
+
+  it('enters guest mode at once and makes the guest account in the background', async () => {
+    const ctx = guestSetup();
+    const anonymous = deferred<ProviderSession>();
+    ctx.auth.signInAnonymously.mockImplementationOnce(async () => {
+      const value = await anonymous.promise;
+      ctx.setProvider(value);
+      return value;
+    });
+    await ctx.controller.initialize();
+    await ctx.controller.continueAsGuest();
+    // Continue never waits on the network.
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      needsWelcome: false,
+      busy: false,
+      account: null,
+      guestAccountId: null,
+    });
+    anonymous.resolve(anonymousSession(1));
+    await ready(ctx);
+    expect(sessionPosts(ctx)).toEqual([
+      {
+        method: 'POST',
+        path: '/auth/session',
+        body: { deviceId: uuid(2) },
+        token: anonymousSession(1).accessToken,
+      },
+    ]);
+    // The guest account never becomes the phone's account or its sync owner.
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      account: null,
+      collectionKind: 'guest',
+      guestAccountId: uuid(81),
+      message: '',
+    });
+    expect(ctx.controller.currentSession()).toBeNull();
+    expect(ctx.controller.offlineAccountOwner()).toBeNull();
+    expect(ctx.controller.currentGuestSession()).toEqual({
+      userId: uuid(81),
+      token: anonymousSession(1).accessToken,
+    });
+    expect(ctx.saved()?.guestAccount).toEqual(guestAccount(1));
+    expect(JSON.stringify(ctx.saved())).not.toContain(
+      anonymousSession(1).accessToken,
+    );
+    expect(ctx.auth.setActive).toHaveBeenLastCalledWith(true);
+    // A restart reuses the saved guest account without another request.
+    ctx.controller.dispose();
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot().guestAccountId).toBe(uuid(81));
+    await until(() => restarted.currentGuestSession() !== null);
+    expect(ctx.auth.signInAnonymously).toHaveBeenCalledTimes(1);
+    expect(sessionPosts(ctx)).toHaveLength(1);
+    restarted.dispose();
+  });
+
+  it('enters the app offline and makes the guest account on reconnect or foreground', async () => {
+    const ctx = guestSetup();
+    ctx.auth.signInAnonymously.mockRejectedValueOnce(
+      new ProviderAuthError('NETWORK'),
+    );
+    await ctx.controller.initialize();
+    await ctx.controller.continueAsGuest();
+    await until(() => ctx.auth.signInAnonymously.mock.calls.length === 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      needsWelcome: false,
+      guestAccountId: null,
+      message: '',
+    });
+    // The Auth user exists, but the API cannot be reached yet.
+    ctx.setFailure(new ApiError('NETWORK'));
+    await ctx.controller.retry({ background: true });
+    await until(() => sessionPosts(ctx).length === 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      guestAccountId: null,
+      message: '',
+    });
+    ctx.setFailure(null);
+    await ctx.controller.retry({ background: true });
+    await ready(ctx);
+    expect(ctx.auth.signInAnonymously).toHaveBeenCalledTimes(2);
+    expect(ctx.controller.getSnapshot().message).toBe('');
+    ctx.controller.dispose();
+  });
+
+  it('gives a guest saved before this build a guest account at its next launch', async () => {
+    const earlier = setup();
+    await earlier.controller.continueAsGuest();
+    earlier.controller.dispose();
+    const ctx = guestSetup();
+    ctx.controller.dispose();
+    await ctx.storage.write(earlier.saved()!);
+    const controller = ctx.create();
+    await controller.initialize();
+    expect(controller.getSnapshot().mode).toBe('guest');
+    await until(() => controller.getSnapshot().guestAccountId === uuid(81));
+    controller.dispose();
+  });
+
+  it('keeps one guest account across a restart during each step', async () => {
+    const ctx = guestSetup();
+    // Killed after the anonymous sign-in, before the API answers.
+    ctx.setFailure(new ApiError('CANCELLED'));
+    await ctx.controller.continueAsGuest();
+    await until(() => sessionPosts(ctx).length === 1);
+    ctx.controller.dispose();
+    ctx.setFailure(null);
+    // Killed after the API answered, before the guest account was saved.
+    const write = ctx.storage.write.getMockImplementation()!;
+    ctx.storage.write.mockImplementation(async (next) => {
+      if (next.guestAccount) throw new ProviderAuthError('STORAGE');
+      await write(next);
+    });
+    const second = ctx.create();
+    await second.initialize();
+    await until(() => sessionPosts(ctx).length === 2);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(second.getSnapshot().guestAccountId).toBeNull();
+    second.dispose();
+    ctx.storage.write.mockImplementation(write);
+    const third = ctx.create();
+    await third.initialize();
+    await until(() => third.getSnapshot().guestAccountId === uuid(81));
+    // One anonymous user, so every answer named the same guest account.
+    expect(ctx.auth.signInAnonymously).toHaveBeenCalledTimes(1);
+    expect(new Set(sessionPosts(ctx).map((call) => call.token))).toEqual(
+      new Set([anonymousSession(1).accessToken]),
+    );
+    third.dispose();
+  });
+
+  it('renews the guest bearer for the same guest account', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.auth.refresh.mockImplementationOnce(async () => {
+      const renewed = {
+        ...anonymousSession(1),
+        accessToken: 'synthetic-anonymous-token-1-renewed',
+      };
+      ctx.setProvider(renewed);
+      return renewed;
+    });
+    await expect(
+      ctx.controller.refreshGuestSession(anonymousSession(1).accessToken),
+    ).resolves.toEqual({
+      userId: uuid(81),
+      token: 'synthetic-anonymous-token-1-renewed',
+    });
+    expect(ctx.controller.currentGuestSession()?.token).toBe(
+      'synthetic-anonymous-token-1-renewed',
+    );
+    // A refresh that names another Auth user never renews this guest account.
+    ctx.auth.refresh.mockResolvedValueOnce(anonymousSession(5));
+    await expect(
+      ctx.controller.refreshGuestSession('synthetic-anonymous-token-1-renewed'),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    ctx.controller.dispose();
+  });
+
+  it('replaces a cleaned-up guest whose renewal Auth refuses with a new anonymous user (P16-15)', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    // Cleanup deleted the guest account and queued its Auth user for deletion,
+    // so the expired bearer cannot be renewed.
+    ctx.auth.refresh.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+    await expect(
+      ctx.controller.refreshGuestSession(anonymousSession(1).accessToken),
+    ).rejects.toMatchObject({ code: 'AUTH' });
+    expect(ctx.controller.currentGuestSession()).toBeNull();
+    await ready(ctx, 2);
+    // Signed out locally first, so the old anonymous session is never reused.
+    expect(ctx.auth.signOut).toHaveBeenCalledTimes(1);
+    expect(ctx.auth.signInAnonymously).toHaveBeenCalledTimes(2);
+    expect(sessionPosts(ctx).map((call) => call.token)).toEqual([
+      anonymousSession(1).accessToken,
+      anonymousSession(2).accessToken,
+    ]);
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      needsWelcome: false,
+      message: '',
+    });
+    ctx.controller.dispose();
+  });
+
+  it('makes a new guest account when the server deleted the old one, never asking to sign in', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    // A stale token from an earlier session changes nothing.
+    ctx.controller.rejectGuestSession('synthetic-old-token');
+    expect(ctx.controller.currentGuestSession()?.userId).toBe(uuid(81));
+    ctx.controller.rejectGuestSession(anonymousSession(1).accessToken);
+    expect(ctx.controller.currentGuestSession()).toBeNull();
+    await ready(ctx, 2);
+    expect(ctx.auth.signOut).toHaveBeenCalledTimes(1);
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      needsWelcome: false,
+      message: '',
+      guestAccountId: uuid(82),
+    });
+    // A launch whose anonymous Auth user is gone starts again the same way.
+    ctx.controller.dispose();
+    ctx.auth.initialize.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+    const restarted = ctx.create();
+    await restarted.initialize();
+    await until(() => restarted.getSnapshot().guestAccountId === uuid(83));
+    expect(restarted.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      message: '',
+    });
+    restarted.dispose();
+  });
+
+  it('keeps the guest account when Auth cannot be reached at launch', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.controller.dispose();
+    ctx.auth.initialize.mockRejectedValueOnce(new ProviderAuthError('NETWORK'));
+    const restarted = ctx.create();
+    await restarted.initialize();
+    await until(() => ctx.auth.initialize.mock.calls.length >= 2);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Saved access stays usable offline under the same guest account.
+    expect(restarted.getSnapshot()).toMatchObject({
+      guestAccountId: uuid(81),
+      message: '',
+    });
+    expect(restarted.currentGuestSession()).toBeNull();
+    expect(ctx.auth.signOut).not.toHaveBeenCalled();
+    await restarted.retry({ background: true });
+    await until(() => restarted.currentGuestSession() !== null);
+    expect(ctx.auth.signInAnonymously).toHaveBeenCalledTimes(1);
+    restarted.dispose();
+  });
+
+  it('deletes the guest account with Delete all data, then makes a new one', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.setFailure(new ApiError('NETWORK'));
+    await ctx.controller.resetGuestAccount();
+    await until(() =>
+      ctx.calls.some(
+        (call) => call.method === 'DELETE' && call.path === '/account',
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Offline, the deletion waits and the old guest account is no longer used.
+    expect(ctx.saved()?.guestAccountDeletion).toBe(true);
+    expect(ctx.controller.getSnapshot().guestAccountId).toBeNull();
+    expect(ctx.controller.currentGuestSession()).toBeNull();
+    ctx.setFailure(null);
+    ctx.controller.dispose();
+    const restarted = ctx.create();
+    await restarted.initialize();
+    await until(() => restarted.getSnapshot().guestAccountId === uuid(82));
+    const deletions = ctx.calls.filter(
+      (call) => call.method === 'DELETE' && call.path === '/account',
+    );
+    expect(deletions.at(-1)).toEqual({
+      method: 'DELETE',
+      path: '/account',
+      body: { confirmation: 'delete-account' },
+      token: anonymousSession(1).accessToken,
+    });
+    expect(ctx.saved()).toMatchObject({
+      mode: 'guest',
+      guestAccountDeletion: false,
+      guestAccount: guestAccount(2),
+    });
+    restarted.dispose();
+  });
+
+  it('links the provider to the guest account on sign-in, keeping its user ID', async () => {
+    const ctx = guestSetup();
+    const merge = jest.fn().mockResolvedValue(undefined);
+    ctx.controller.setGuestDataMerger(merge);
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    const guest = ctx.saved()!.guestId;
+    ctx.auth.linkIdentity.mockImplementationOnce(async () => {
+      const linked = {
+        ...anonymousSession(1),
+        accessToken: 'synthetic-linked-token-1',
+        linkedProviders: ['apple' as const],
+      };
+      ctx.setProvider(linked);
+      return linked;
+    });
+    await ctx.controller.signIn('apple');
+    expect(ctx.auth.linkIdentity).toHaveBeenCalledWith('apple');
+    expect(ctx.auth.signIn).not.toHaveBeenCalled();
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'account',
+      account: { userId: uuid(81), authUserId: uuid(71), guest: false },
+      guestAccountId: null,
+      message: '',
+    });
+    expect(merge).toHaveBeenCalledWith(guest, uuid(81), {
+      userId: uuid(81),
+      token: 'synthetic-linked-token-1',
+    });
+    expect(ctx.controller.currentGuestSession()).toBeNull();
+    expect(ctx.saved()).toMatchObject({
+      guestAccount: null,
+      pendingSignIn: null,
+    });
+    expect(ctx.calls.map((call) => call.path)).not.toContain('/auth/logout');
+    ctx.controller.dispose();
+  });
+
+  it('signs in to the existing account on IDENTITY_EXISTS, re-verifies the purchase and revokes the guest session', async () => {
+    const ctx = guestSetup();
+    const merge = jest.fn().mockResolvedValue(undefined);
+    ctx.controller.setGuestDataMerger(merge);
+    const order: string[] = [];
+    const mover = jest.fn(async () => {
+      order.push('verify-purchase');
+    });
+    ctx.controller.setGuestPurchaseMover(mover);
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    const guest = ctx.saved()!.guestId;
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    ctx.setFailureFor((call) => {
+      if (call.path === '/auth/logout') order.push('revoke-guest');
+      return null;
+    });
+    await ctx.controller.signIn('apple');
+    expect(ctx.auth.signIn).toHaveBeenCalledWith('apple');
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'account',
+      account: { userId: account.userId },
+      guestAccountId: null,
+      message: '',
+    });
+    expect(merge).toHaveBeenCalledWith(guest, account.userId, {
+      userId: account.userId,
+      token: session.accessToken,
+    });
+    expect(mover).toHaveBeenCalledWith({
+      userId: account.userId,
+      token: session.accessToken,
+    });
+    expect(ctx.calls.filter((call) => call.path === '/auth/logout')).toEqual([
+      {
+        method: 'POST',
+        path: '/auth/logout',
+        body: { scope: 'session' },
+        token: anonymousSession(1).accessToken,
+      },
+    ]);
+    expect(order).toEqual(['verify-purchase', 'revoke-guest']);
+    expect(ctx.stored.size).toBe(0);
+    expect(ctx.saved()?.guestAccount).toBeNull();
+    ctx.controller.dispose();
+  });
+
+  it('revokes the guest session on the next launch when it could not at sign-in', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    ctx.setFailureFor((call) =>
+      call.path === '/auth/logout' ? new ApiError('NETWORK') : null,
+    );
+    await ctx.controller.signIn('apple');
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'account',
+      message: '',
+    });
+    expect(ctx.stored.size).toBe(1);
+    ctx.controller.dispose();
+    ctx.setFailureFor(() => null);
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.getSnapshot().account?.userId).toBe(account.userId);
+    await until(() => ctx.stored.size === 0);
+    expect(
+      ctx.calls.filter((call) => call.path === '/auth/logout').at(-1)?.token,
+    ).toBe(anonymousSession(1).accessToken);
+    restarted.dispose();
+  });
+
+  it('stays the same guest when the second sign-in after IDENTITY_EXISTS is cancelled', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    ctx.auth.linkIdentity.mockRejectedValueOnce(
+      new ProviderAuthError('IDENTITY_EXISTS'),
+    );
+    ctx.auth.signIn.mockResolvedValueOnce(null);
+    await ctx.controller.signIn('apple');
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      account: null,
+      guestAccountId: uuid(81),
+      message: '',
+    });
+    expect(ctx.controller.currentGuestSession()?.userId).toBe(uuid(81));
+    expect(ctx.stored.size).toBe(0);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.calls.map((call) => call.path)).not.toContain('/auth/logout');
+    ctx.controller.dispose();
+  });
+
+  it('never registers an unfinished guest link as an account after a restart', async () => {
+    const ctx = guestSetup();
+    await ctx.controller.continueAsGuest();
+    await ready(ctx);
+    // Killed while the provider sheet was open, so Auth still holds the guest.
+    ctx.auth.linkIdentity.mockResolvedValueOnce('redirecting');
+    await ctx.controller.signIn('apple');
+    expect(ctx.saved()?.pendingSignIn?.guestLink).toBe(true);
+    ctx.controller.dispose();
+    const restarted = ctx.create();
+    await restarted.initialize();
+    await until(() => restarted.currentGuestSession() !== null);
+    expect(restarted.getSnapshot()).toMatchObject({
+      mode: 'guest',
+      account: null,
+      guestAccountId: uuid(81),
+    });
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(sessionPosts(ctx)).toHaveLength(1);
+    restarted.dispose();
+  });
+
+  it('runs a sign-in tapped while the guest account is still being made', async () => {
+    const ctx = guestSetup();
+    const anonymous = deferred<ProviderSession>();
+    ctx.auth.signInAnonymously.mockImplementationOnce(async () => {
+      const value = await anonymous.promise;
+      ctx.setProvider(value);
+      return value;
+    });
+    await ctx.controller.continueAsGuest();
+    await until(() => ctx.auth.signInAnonymously.mock.calls.length === 1);
+    const signIn = ctx.controller.signIn('google');
+    anonymous.resolve(anonymousSession(1));
+    await signIn;
+    expect(ctx.controller.getSnapshot()).toMatchObject({
+      mode: 'account',
+      account: { userId: account.userId },
+      guestAccountId: null,
+    });
+    expect(ctx.saved()?.guestAccount).toBeNull();
+    ctx.controller.dispose();
+  });
 });
