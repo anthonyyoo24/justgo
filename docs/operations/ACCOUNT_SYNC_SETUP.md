@@ -120,9 +120,11 @@ The account holds no name, no email and no private history.
   users with 401, as before. An anonymous user with an identity, and any other
   user without an Apple or Google identity, stays refused.
 - `managed_auth_accounts.guest` marks the account. `POST /v1/auth/session`
-  answers `guest: true` for it. Linking Apple or Google to the same Auth user
-  keeps the account and clears `guest` on the next exchange or request, and a
-  database trigger refuses any change back to `true`.
+  and `GET /v1/auth/session` answer `guest: true` for it and leave the field
+  out for every other account, because TestFlight builds 8 to 10 parse the
+  session with a strict schema that has no `guest`. Linking Apple or Google to
+  the same Auth user keeps the account and clears `guest` on the next exchange
+  or request, and a database trigger refuses any change back to `true`.
 - A guest bearer reaches `GET /v1/access`, `GET /v1/challenges`,
   `POST /v1/billing/verifications`, the `/v1/auth/session` and
   `/v1/auth/logout` routes and `DELETE /v1/account`. Every other bearer route

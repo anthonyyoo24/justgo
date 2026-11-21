@@ -2,14 +2,17 @@ import type { ApiApp, ApiContext } from '../http/request.js';
 import { parseRequestBody, requestBody } from '../http/request.js';
 import {
   managedSessionRequestSchema,
-  managedSessionResponseSchema,
+  managedSessionWireSchema,
   managedLogoutRequestSchema,
   okSchema,
+  type ManagedSessionResponse,
 } from '@justgo/contracts';
 import { bearer } from '../http/bearer.js';
 import { parse } from '../http/parse.js';
 import { ApiError } from '../http/api-error.js';
 import type { IdentityService } from './service.js';
+const wire = ({ guest, ...session }: ManagedSessionResponse) =>
+  managedSessionWireSchema.parse(guest ? { ...session, guest } : session);
 export function managedIdentityRoutes(app: ApiApp, identity: IdentityService) {
   const general = async (request: ApiContext, next: () => Promise<void>) => {
     await identity.rateLimit(request.get('clientAddress'), 'managed-auth', 120);
@@ -17,7 +20,7 @@ export function managedIdentityRoutes(app: ApiApp, identity: IdentityService) {
   };
   app.post('/session', general, parseRequestBody(), async (request) =>
     request.json(
-      managedSessionResponseSchema.parse(
+      wire(
         await identity.exchangeManaged(
           bearer(request),
           parse(managedSessionRequestSchema, requestBody(request)),
@@ -30,7 +33,7 @@ export function managedIdentityRoutes(app: ApiApp, identity: IdentityService) {
     return request.json(
       await identity.managed.withSession(
         bearer(request),
-        async (_tx, session) => managedSessionResponseSchema.parse(session),
+        async (_tx, session) => wire(session),
       ),
     );
   });
