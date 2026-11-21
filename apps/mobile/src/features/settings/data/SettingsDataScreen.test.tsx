@@ -440,7 +440,9 @@ it.each([
     expect(mockIdentity.resetGuestAccount).not.toHaveBeenCalled();
     await act(async () => deletion.resolve());
     await screen.findByText(
-      'All saved data was deleted. Your account and downloaded files were kept.',
+      kind === 'guest'
+        ? 'All saved data was deleted. Backup files you saved were kept.'
+        : 'All saved data was deleted. Your account and downloaded files were kept.',
     );
     expect(mockIdentity.resetGuestAccount).toHaveBeenCalledTimes(resets);
   },
