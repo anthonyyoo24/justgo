@@ -13,6 +13,7 @@ import { IdentityService } from './identity/service.js';
 import { createFreeAccess } from './access/free-access.js';
 import { createManagedAuthVerifier } from './identity/managed-verifier.js';
 import { createManagedAuthDeletion } from './identity/managed-deletion.js';
+import { createSuperwallErasure } from './identity/superwall-erasure.js';
 import {
   createAppleSubscriptions,
   createAppleTransactions,
@@ -82,6 +83,13 @@ export function buildRuntimeApp(
                   managedAuthDeletion: createManagedAuthDeletion(
                     config.SUPABASE_URL,
                     config.SUPABASE_AUTH_SECRET_KEY,
+                  ),
+                }
+              : {}),
+            ...(config.SUPERWALL_ERASURE
+              ? {
+                  superwallErasure: createSuperwallErasure(
+                    config.SUPERWALL_ERASURE,
                   ),
                 }
               : {}),

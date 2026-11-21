@@ -141,6 +141,10 @@ describe('safe operational configuration', () => {
       SUPERWALL_WEBHOOK_SECRET: `whsec_${Buffer.alloc(24, 7).toString('base64')}`,
       BILLING_REPAIR_SECRET: 'r'.repeat(32),
     };
+    const erasure = {
+      SUPERWALL_API_KEY: 'superwall-erasure-synthetic-key',
+      SUPERWALL_APPLICATION_ID: '60560',
+    };
     // Settings without the flag leave billing off.
     expect(
       readConfig({ ...settings, ...secrets }).APPLE_BILLING,
@@ -166,16 +170,32 @@ describe('safe operational configuration', () => {
           [missing]: undefined,
         }),
       ).toThrow('Billing requires the webhook and repair secrets');
+    for (const missing of Object.keys(erasure))
+      expect(() =>
+        readConfig({
+          ...settings,
+          ...secrets,
+          ...erasure,
+          BILLING_ENABLED: 'true',
+          [missing]: undefined,
+        }),
+      ).toThrow('Billing requires the Superwall erasure settings');
     for (const invalid of [
       { SUPERWALL_WEBHOOK_SECRET: 'not-a-svix-secret' },
       { BILLING_REPAIR_SECRET: 'short' },
+      { SUPERWALL_API_KEY: 'short' },
+      { SUPERWALL_APPLICATION_ID: 'app-60560' },
     ])
       expect(() => readConfig({ ...settings, ...secrets, ...invalid })).toThrow(
         'Invalid API environment configuration',
       );
+    expect(
+      readConfig({ ...settings, ...secrets, ...erasure }).SUPERWALL_ERASURE,
+    ).toBeUndefined();
     const billing = readConfig({
       ...settings,
       ...secrets,
+      ...erasure,
       BILLING_ENABLED: 'true',
       // The pool never connects; the route needs identity to mount.
       DATABASE_URL: 'postgresql://justgo@127.0.0.1:1/unused',
@@ -188,6 +208,10 @@ describe('safe operational configuration', () => {
     expect(billing.BILLING_EVENTS).toEqual({
       webhookSecret: secrets.SUPERWALL_WEBHOOK_SECRET,
       repairSecret: secrets.BILLING_REPAIR_SECRET,
+    });
+    expect(billing.SUPERWALL_ERASURE).toEqual({
+      apiKey: erasure.SUPERWALL_API_KEY,
+      applicationId: erasure.SUPERWALL_APPLICATION_ID,
     });
     const database = createDatabase(billing);
     try {

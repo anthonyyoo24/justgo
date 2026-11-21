@@ -8,6 +8,7 @@ import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
 import { IdentityService } from '../../src/identity/service.js';
 import { createManagedAuthVerifier } from '../../src/identity/managed-verifier.js';
 import { createManagedAuthDeletion } from '../../src/identity/managed-deletion.js';
+import { createSuperwallErasure } from '../../src/identity/superwall-erasure.js';
 import { outboundFetch } from '../../src/http/outbound-fetch.js';
 import { createServerErrorReporter } from '../../src/http/server-error-reporter.js';
 import { serverDiagnosticConfiguration } from '../../src/http/sentry-configuration.js';
@@ -38,9 +39,15 @@ const claims = (token: string) =>
     Buffer.from(token.split('.')[1]!, 'base64url').toString('utf8'),
   ) as { sub: string };
 
+let superwallStatus = 201;
 const provider: typeof fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   providerCalls.push(`${init?.method ?? 'GET'} ${url.pathname}`);
+  if (url.host === 'api.superwall.com') {
+    const body = JSON.parse(String(init?.body)) as { app_user_id: string };
+    providerCalls.push(`superwall ${body.app_user_id}`);
+    return Response.json({ status: 'scheduled' }, { status: superwallStatus });
+  }
   if (url.pathname === '/auth/v1/user') {
     const token = new Headers(init?.headers).get('authorization')!.slice(7);
     return Response.json({
@@ -86,6 +93,10 @@ function app(
       managedAuthDeletion: createManagedAuthDeletion(
         authOrigin,
         'secret-key',
+        provider,
+      ),
+      superwallErasure: createSuperwallErasure(
+        { apiKey: 'superwall-erasure-synthetic-key', applicationId: '60560' },
         provider,
       ),
       newUserId: () => {
@@ -176,6 +187,54 @@ describe('provider I/O and owner transactions', () => {
     expect(providerCalls).toContain(
       `DELETE /auth/v1/admin/users/${authUserId}`,
     );
+    // The erasure reached Superwall, so it ran with no owner transaction open.
+    expect(providerCalls).toContain(
+      `superwall ${(deleted.json() as { userId: string }).userId}`,
+    );
+  });
+
+  it('deletes the account and finishes the Auth deletion when Superwall refuses the erasure', async () => {
+    const api = app();
+    const { token, authUserId } = await signIn(api);
+    superwallStatus = 503;
+    try {
+      const deleted = await apiRequest(api, {
+        method: 'DELETE',
+        url: '/v1/account',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { confirmation: 'delete-account' },
+      });
+      expect(deleted.statusCode, deleted.body).toBe(200);
+      const { userId } = deleted.json() as { userId: string };
+      expect(providerCalls).toContain(`superwall ${userId}`);
+      expect(providerCalls).toContain(
+        `DELETE /auth/v1/admin/users/${authUserId}`,
+      );
+      const row = await admin.query<{
+        deleted_at: Date | null;
+        completed_at: Date | null;
+      }>(
+        `select u.deleted_at, d.completed_at from justgo.users u
+         join justgo.managed_auth_deletions d on d.user_id = u.id where u.id=$1`,
+        [userId],
+      );
+      expect(row.rows[0]?.deleted_at).toBeInstanceOf(Date);
+      expect(row.rows[0]?.completed_at).toBeInstanceOf(Date);
+      // A replay with the same proof returns the same receipt and asks again.
+      const replay = await apiRequest(api, {
+        method: 'DELETE',
+        url: '/v1/account',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { confirmation: 'delete-account' },
+      });
+      expect(replay.statusCode, replay.body).toBe(200);
+      expect(replay.json()).toEqual(deleted.json());
+      expect(
+        providerCalls.filter((call) => call === `superwall ${userId}`),
+      ).toHaveLength(2);
+    } finally {
+      superwallStatus = 201;
+    }
   });
 
   it('refuses provider I/O started inside an owner transaction and reports the failure after it closes', async () => {
