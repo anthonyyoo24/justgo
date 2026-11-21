@@ -3,6 +3,7 @@ import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { sql } from 'drizzle-orm';
 import { afterAll, describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import type {
   CompletionAttempt,
   CompletionRestorePage,
@@ -365,6 +366,34 @@ describe('durable account activity budgets', () => {
   });
 });
 describe('managed authentication and guest boundary', () => {
+  it('answers an account session in the strict shape TestFlight builds 8 to 10 parse', async () => {
+    // Compatibility pin: builds 8 to 10 parse managed sessions with this
+    // strict schema, copied from main before guest accounts. Delete it once
+    // no such build remains.
+    const buildTenSessionSchema = z
+      .object({
+        userId: z.uuid(),
+        deviceId: z.uuid(),
+        sessionId: z.uuid(),
+        expiresAt: z.iso.datetime(),
+        authUserId: z.uuid(),
+        dataEpoch: z.number().int().nonnegative(),
+      })
+      .strict();
+    const { token, subject } = provider();
+    const exchange = await request(token, '/auth/session', 'POST', {
+      deviceId: randomUUID(),
+    });
+    const current = await request(token, '/auth/session');
+    for (const response of [exchange, current]) {
+      expect(response.statusCode, response.body).toBe(200);
+      const parsed = buildTenSessionSchema.safeParse(response.json());
+      expect(parsed.error).toBeUndefined();
+      owners.add(parsed.data!.userId);
+      expect(parsed.data?.authUserId).toBe(subject.authUserId);
+    }
+  });
+
   it('maps only verified Auth subjects and replays the exact owner/session/device', async () => {
     const a = await signIn();
     const replay = await request(a.token, '/auth/session', 'POST', {
@@ -680,7 +709,7 @@ describe('guest accounts', () => {
     ).toEqual([{ data_epoch: 0 }]);
     expect((await request(g.token, '/auth/session')).json()).toEqual(g.session);
     const account = await signIn();
-    expect(account.session.guest).toBe(false);
+    expect(account.session).not.toHaveProperty('guest');
     expect((await mapping(account.subject.authUserId))[0]?.guest).toBe(false);
   });
 
@@ -771,10 +800,8 @@ describe('guest accounts', () => {
   it('keeps the account when the guest links a provider, and never makes it a guest again', async () => {
     const g = await guestIn();
     const linked = await signIn(g.subject.authUserId);
-    expect(linked.session).toMatchObject({
-      userId: g.session.userId,
-      guest: false,
-    });
+    expect(linked.session.userId).toBe(g.session.userId);
+    expect(linked.session).not.toHaveProperty('guest');
     expect(await mapping(g.subject.authUserId)).toEqual([
       { user_id: g.session.userId, guest: false },
     ]);

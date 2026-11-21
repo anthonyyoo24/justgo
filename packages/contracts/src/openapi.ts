@@ -136,14 +136,14 @@ export const openApiDocument = {
     '/v1/auth/session': {
       post: {
         ...operation(
-          managed.managedSessionResponseSchema,
+          managed.managedSessionWireSchema,
           managed.managedSessionRequestSchema,
         ),
         description:
-          "Verify a Supabase Apple/Google bearer session, or with billing on an anonymous one, and map its subject to a canonical owner. guest is true for an anonymous user's account, which may read access and the catalog, verify a purchase, log out and delete itself, and nothing else until Apple or Google links to the same Auth user. Optional legacySessionToken proves ownership for the initial legacy link; email and metadata never confer ownership.",
+          "Verify a Supabase Apple/Google bearer session, or with billing on an anonymous one, and map its subject to a canonical owner. guest is present, and true, only for an anonymous user's account, which may read access and the catalog, verify a purchase, log out and delete itself, and nothing else until Apple or Google links to the same Auth user. Optional legacySessionToken proves ownership for the initial legacy link; email and metadata never confer ownership.",
       },
       get: {
-        ...operation(managed.managedSessionResponseSchema),
+        ...operation(managed.managedSessionWireSchema),
         description:
           'Recheck the provider user, live Auth session, local revocation and canonical owner deletion state. Returns the current data epoch.',
       },

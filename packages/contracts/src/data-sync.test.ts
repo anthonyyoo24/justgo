@@ -4,6 +4,7 @@ import {
   journalSyncRequestSchema,
   managedSessionRequestSchema,
   managedSessionResponseSchema,
+  managedSessionWireSchema,
   dataDeletionRequestSchema,
   identityErrorSchema,
   restoredCompletionSchema,
@@ -207,6 +208,15 @@ describe('managed account and data boundaries', () => {
     expect(
       managedSessionResponseSchema.safeParse({ ...session, guest: 'yes' })
         .success,
+    ).toBe(false);
+    // The API names only a guest, so an account's session keeps the shape
+    // TestFlight builds 8 to 10 parse.
+    expect(managedSessionWireSchema.safeParse(session).success).toBe(true);
+    expect(
+      managedSessionWireSchema.safeParse({ ...session, guest: true }).success,
+    ).toBe(true);
+    expect(
+      managedSessionWireSchema.safeParse({ ...session, guest: false }).success,
     ).toBe(false);
     expect(
       identityErrorSchema.safeParse({
