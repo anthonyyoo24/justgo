@@ -62,7 +62,14 @@ function projection(session: Session | null): ProviderSession | null {
   };
 }
 
-export function createManagedAuth(): ManagedAuth {
+/**
+ * `networkErrors` (billing on) reports an unreachable Auth service as NETWORK
+ * instead of AUTH, so a guest account survives offline and is replaced only
+ * when Auth refuses it. Billing off keeps every Auth failure as AUTH.
+ */
+export function createManagedAuth(
+  options: { networkErrors?: boolean } = {},
+): ManagedAuth {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   let client: SupabaseClient | null = null;
@@ -110,6 +117,13 @@ export function createManagedAuth(): ManagedAuth {
     unsubscribe = () => subscription.data.subscription.unsubscribe();
     return client;
   };
+  // The SDK names its network and 5xx failures AuthRetryableFetchError.
+  const refused = (error: { name?: string } | null | undefined) =>
+    new ProviderAuthError(
+      options.networkErrors && error?.name === 'AuthRetryableFetchError'
+        ? 'NETWORK'
+        : 'AUTH',
+    );
   const safe = async <T>(work: () => Promise<T>): Promise<T> => {
     try {
       return await work();
@@ -122,7 +136,7 @@ export function createManagedAuth(): ManagedAuth {
   };
   const session = async () => {
     const result = await getClient().auth.getSession();
-    if (result.error) throw new ProviderAuthError('AUTH');
+    if (result.error) throw refused(result.error);
     return projection(result.data.session);
   };
   const verifiedSession = async (expected: number, subject?: string) => {
@@ -136,11 +150,8 @@ export function createManagedAuth(): ManagedAuth {
     // identity removed on this or another device; it cannot decide switch state.
     const result = await getClient().auth.getUser(current.accessToken);
     check(expected);
-    if (
-      result.error ||
-      !result.data.user ||
-      result.data.user.id !== current.authUserId
-    )
+    if (result.error) throw refused(result.error);
+    if (!result.data.user || result.data.user.id !== current.authUserId)
       throw new ProviderAuthError('AUTH');
     const latest = await session();
     check(expected);
@@ -207,6 +218,18 @@ export function createManagedAuth(): ManagedAuth {
           : restored && identityExists
             ? { ...restored, identityExists: true }
             : restored;
+      }),
+    signInAnonymously: () =>
+      safe(async () => {
+        const expected = ++generation;
+        const auth = getClient().auth;
+        const result = await auth.signInAnonymously();
+        check(expected);
+        if (result.error) throw refused(result.error);
+        const session = projection(result.data.session);
+        if (!session) throw new ProviderAuthError('AUTH');
+        if (active) await auth.startAutoRefresh();
+        return session;
       }),
     signIn: (provider: SignInProvider) =>
       safe(async () => {
@@ -310,7 +333,7 @@ export function createManagedAuth(): ManagedAuth {
         const expected = generation;
         const result = await getClient().auth.refreshSession();
         check(expected);
-        if (result.error) throw new ProviderAuthError('AUTH');
+        if (result.error) throw refused(result.error);
         if (!result.data.session) return null;
         return (
           (await verifiedSession(expected, result.data.session.user.id))

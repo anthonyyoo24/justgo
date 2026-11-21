@@ -40,6 +40,7 @@ const mockAuth = {
   linkIdentity: jest.fn(),
   unlinkIdentity: jest.fn(),
   signInWithIdToken: jest.fn(),
+  signInAnonymously: jest.fn(),
   signInWithOAuth: jest.fn(),
   exchangeCodeForSession: jest.fn(),
   refreshSession: jest.fn(),
@@ -720,4 +721,90 @@ it('uses the latest supported verified identity only as a legacy provider displa
   verifiedUser.identities[1]!.last_sign_in_at = 'invalid';
   expect(await auth.refresh()).toMatchObject({ provider: 'apple' });
   auth.dispose();
+});
+
+describe('anonymous guests with billing on (P16-14)', () => {
+  const anonymousServerSession = {
+    user: { id: '10000000-0000-4000-8000-000000000071', identities: [] },
+    access_token: 'synthetic-anonymous-access-token',
+    expires_at: 1893456000,
+  };
+  // The SDK reports a network failure or a 5xx as this retryable error.
+  const unreachable = () =>
+    Object.assign(new Error('Failed to fetch'), {
+      name: 'AuthRetryableFetchError',
+      status: 0,
+    });
+
+  it('signs in anonymously on the same client and secure storage, with no provider linked', async () => {
+    mockAuth.signInAnonymously.mockImplementation(async () => ({
+      data: { session: anonymousServerSession },
+      error: null,
+    }));
+    const auth = createManagedAuth({ networkErrors: true });
+    await expect(auth.signInAnonymously()).resolves.toEqual({
+      authUserId: anonymousServerSession.user.id,
+      accessToken: anonymousServerSession.access_token,
+      expiresAt: new Date(1893456000 * 1000).toISOString(),
+      linkedProviders: [],
+    });
+    expect(createClient).toHaveBeenCalledTimes(1);
+    expect(createClient).toHaveBeenCalledWith(
+      'https://synthetic.supabase.co',
+      'sb_publishable_fixture',
+      expect.objectContaining({
+        auth: expect.objectContaining({ storageKey: 'justgo.auth.v1' }),
+      }),
+    );
+    expect(mockAuth.startAutoRefresh).toHaveBeenCalled();
+  });
+
+  it('tells an unreachable Auth service from a refused session', async () => {
+    mockAuth.signInAnonymously.mockImplementation(async () => ({
+      data: { session: null },
+      error: unreachable(),
+    }));
+    const auth = createManagedAuth({ networkErrors: true });
+    await expect(auth.signInAnonymously()).rejects.toMatchObject({
+      code: 'NETWORK',
+    });
+    mockAuth.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: unreachable(),
+    });
+    await expect(auth.initialize()).rejects.toMatchObject({ code: 'NETWORK' });
+    mockAuth.getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: unreachable(),
+    });
+    await expect(auth.initialize()).rejects.toMatchObject({ code: 'NETWORK' });
+    mockAuth.refreshSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: unreachable(),
+    });
+    await expect(auth.refresh()).rejects.toMatchObject({ code: 'NETWORK' });
+    // A deleted anonymous user is refused, not unreachable.
+    mockAuth.getUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: Object.assign(new Error('User not found'), {
+        name: 'AuthApiError',
+        status: 403,
+      }),
+    });
+    await expect(auth.initialize()).rejects.toMatchObject({ code: 'AUTH' });
+  });
+
+  it('keeps every Auth failure as AUTH with the billing flag off', async () => {
+    const auth = createManagedAuth();
+    mockAuth.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: unreachable(),
+    });
+    await expect(auth.initialize()).rejects.toMatchObject({ code: 'AUTH' });
+    mockAuth.refreshSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: unreachable(),
+    });
+    await expect(auth.refresh()).rejects.toMatchObject({ code: 'AUTH' });
+  });
 });

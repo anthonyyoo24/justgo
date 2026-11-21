@@ -14,6 +14,20 @@ export interface SessionSource {
   renew: (failedToken: string) => Promise<AccountSession>;
   reject: (token: string, code: 'SESSION_REVOKED' | 'UNAUTHORIZED') => void;
 }
+/** The only routes a guest account's bearer reaches. */
+export type GuestAccountPath =
+  '/v1/access' | '/v1/challenges' | '/v1/billing/verifications';
+/**
+ * A guest's server account (billing on). It names paid access and the
+ * catalog, never the phone's collection, which stays local.
+ */
+export interface GuestAccountClient {
+  request<T>(
+    path: GuestAccountPath,
+    schema: z.ZodType<T>,
+    options?: Omit<RequestOptions, 'token' | 'retryRead'>,
+  ): Promise<T>;
+}
 export const accountKey = (userId: string, ...parts: readonly unknown[]) =>
   ['account', userId, ...parts] as const;
 export function createQueryClient() {

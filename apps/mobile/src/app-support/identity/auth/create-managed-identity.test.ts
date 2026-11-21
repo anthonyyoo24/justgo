@@ -57,3 +57,26 @@ it.each([
     ).toBe(expected);
   },
 );
+
+it.each([
+  ['true', true],
+  ['false', false],
+  [undefined, false],
+])(
+  'makes guest accounts only with EXPO_PUBLIC_BILLING_ENABLED=%s',
+  (flag, expected) => {
+    const original = process.env.EXPO_PUBLIC_BILLING_ENABLED;
+    try {
+      if (flag === undefined) delete process.env.EXPO_PUBLIC_BILLING_ENABLED;
+      else process.env.EXPO_PUBLIC_BILLING_ENABLED = flag;
+      createManagedIdentityController('https://api.example');
+      expect(
+        jest.mocked(ManagedIdentityController).mock.calls[0]?.[0].guestAccounts,
+      ).toBe(expected);
+    } finally {
+      if (original === undefined)
+        delete process.env.EXPO_PUBLIC_BILLING_ENABLED;
+      else process.env.EXPO_PUBLIC_BILLING_ENABLED = original;
+    }
+  },
+);

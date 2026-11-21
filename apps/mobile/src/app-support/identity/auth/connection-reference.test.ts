@@ -187,7 +187,8 @@ it('keeps API and provider error vocabularies distinct at runtime', () => {
   const api = new ApiError('NETWORK', requestId);
   Object.defineProperty(api, 'code', { value: 'AUTH' });
   const provider = new ProviderAuthError('AUTH');
-  Object.defineProperty(provider, 'code', { value: 'NETWORK' });
+  // NETWORK is in both vocabularies since billing builds report it (P16-14).
+  Object.defineProperty(provider, 'code', { value: 'TIMEOUT' });
   for (const error of [api, provider])
     expect(reference('provider-auth', error)).toBe(
       'Dev sign-in reference: provider-auth / UNKNOWN',

@@ -1,7 +1,10 @@
 import { accessResponseSchema } from '@justgo/contracts';
 import { z } from 'zod';
 import type { JournalStorage } from '../../data/activity/model';
-import type { AccountClient } from '../../lib/network/account-client';
+import type {
+  AccountClient,
+  GuestAccountClient,
+} from '../../lib/network/account-client';
 
 export type AccessOwner = { id: string; kind: 'account' | 'guest' };
 
@@ -49,6 +52,8 @@ export class PaidAccess {
       url: string | undefined;
       storage: JournalStorage;
       client: AccountClient;
+      /** A guest's server account. Without it a guest reads the guest route. */
+      guestClient?: GuestAccountClient | null;
       now?: () => number;
     },
   ) {}
@@ -100,16 +105,18 @@ export class PaidAccess {
       await this.hydration;
       if (generation !== this.generation || isFresh(this.saved, this.now()))
         return;
-      const { client } = this.options;
+      const { client, guestClient } = this.options;
       let access;
       try {
         access =
           owner.kind === 'account'
             ? await client.request('/v1/access', accessResponseSchema)
-            : await client.requestGuest(
-                '/v1/guest/access',
-                accessResponseSchema,
-              );
+            : guestClient
+              ? await guestClient.request('/v1/access', accessResponseSchema)
+              : await client.requestGuest(
+                  '/v1/guest/access',
+                  accessResponseSchema,
+                );
       } catch {
         // A failed check never replaces a saved verification.
         return;

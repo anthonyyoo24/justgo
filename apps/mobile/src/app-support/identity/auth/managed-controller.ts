@@ -23,7 +23,7 @@ import type {
   ManagedIdentityStorage,
 } from './managed-state';
 import { legacyLinkProof } from './legacy-link-proof';
-import { providerSwitchProof } from './provider-switch';
+import { guestSessionProof, providerSwitchProof } from './provider-switch';
 import {
   connectionReference,
   type ConnectionPhase,
@@ -43,6 +43,11 @@ export type ManagedIdentitySnapshot = Omit<LegacySnapshot, 'account'> & {
   directSignInFailure: boolean;
   /** This attempt restored the source login after a provider switch was abandoned. */
   switchCancelled: boolean;
+  /**
+   * The guest's own server account (billing on only). It owns access and
+   * purchases, never the phone's collection, which stays local.
+   */
+  guestAccountId: string | null;
 };
 type Options = {
   auth: ManagedAuth;
@@ -52,6 +57,8 @@ type Options = {
   api: IdentityApi;
   randomId?: () => string;
   connectionDiagnostics?: boolean;
+  /** Billing on: each guest gets an anonymous Auth user and a guest account. */
+  guestAccounts?: boolean;
 };
 type ConnectionTrace = {
   phase: ConnectionPhase | null;
@@ -130,6 +137,16 @@ export class ManagedIdentityController {
   private removeData: ((owner: string) => Promise<void>) | null = null;
   private retireGuest: ((guest: string) => Promise<void>) | null = null;
   private mergeGuest: PhoneDataMerger | null = null;
+  private movePurchase:
+    ((session: { userId: string; token: string }) => Promise<void>) | null =
+    null;
+  // Guest account work runs quietly beside, never during, a foreground run.
+  private guestRunning: Promise<void> | null = null;
+  private guestAbort: AbortController | null = null;
+  private guestAgain = false;
+  // The server refused the guest bearer, so its Auth user is replaced.
+  private guestReset = false;
+  private guestStale = false;
   private readonly unsubscribeAuth: () => void;
   private snapshot: ManagedIdentitySnapshot = {
     busy: false,
@@ -155,6 +172,7 @@ export class ManagedIdentityController {
     linkedProviders: [],
     pendingGuestId: null,
     ...emptyConnectionFeedback,
+    guestAccountId: null,
   };
   readonly vault: CredentialVault;
   constructor(private readonly options: Options) {
@@ -220,6 +238,269 @@ export class ManagedIdentityController {
   setGuestDataRetirer = (retire: (guest: string) => Promise<void>) => {
     this.retireGuest = retire;
   };
+  /**
+   * Re-verifies the store purchase with the account that signed in, after a
+   * guest's sign-in reached a different account and before the guest session
+   * is revoked.
+   */
+  setGuestPurchaseMover = (
+    move: (session: { userId: string; token: string }) => Promise<void>,
+  ) => {
+    this.movePurchase = move;
+  };
+  /**
+   * The guest account's bearer. It reaches only the guest routes and never
+   * names the phone's collection, which stays local.
+   */
+  currentGuestSession = () => {
+    const state = this.data;
+    const guest = state?.guestAccount;
+    const session = this.providerSession;
+    return this.options.guestAccounts &&
+      !this.guestStale &&
+      state?.mode === 'guest' &&
+      guest &&
+      !state.guestAccountDeletion &&
+      !state.pendingSignIn &&
+      !state.logoutPending &&
+      !state.deletion &&
+      session?.authUserId === guest.authUserId &&
+      !session.linkedProviders?.length
+      ? { userId: guest.userId, token: session.accessToken }
+      : null;
+  };
+  refreshGuestSession = async (failedToken: string) => {
+    const before = this.currentGuestSession();
+    if (!before) throw new ApiError('UNAUTHORIZED');
+    if (before.token === failedToken) {
+      const guest = this.data?.guestAccount;
+      let renewed: ProviderSession | null;
+      try {
+        renewed = await this.options.auth.refresh();
+      } catch (error) {
+        // Auth refused the anonymous user, so it was cleaned up. Only a new
+        // one can make a guest account again.
+        if (error instanceof ProviderAuthError && error.code === 'AUTH')
+          this.rejectGuestSession(failedToken);
+        throw error;
+      }
+      if (renewed && renewed.authUserId === guest?.authUserId)
+        this.providerSession = renewed;
+    }
+    const session = this.currentGuestSession();
+    if (
+      !session ||
+      session.userId !== before.userId ||
+      session.token === failedToken
+    )
+      throw new ApiError('UNAUTHORIZED');
+    return session;
+  };
+  /** The server refused the guest bearer: the guest account is gone, so make a new one. */
+  rejectGuestSession = (token: string) => {
+    if (this.currentGuestSession()?.token !== token) return;
+    this.guestStale = true;
+    this.guestReset = true;
+    this.maybeStartGuestWork();
+  };
+  /**
+   * Delete all data from a guest: deletes the guest account with its own
+   * bearer, then makes a new one. Offline, the deletion waits for a retry.
+   */
+  resetGuestAccount = async () => {
+    if (!this.options.guestAccounts) return;
+    this.guestAbort?.abort();
+    try {
+      while (this.running) await this.running;
+      await this.run(async () => {
+        await this.load();
+        if (this.state().mode !== 'guest') return;
+        await this.save({ ...this.state(), guestAccountDeletion: true });
+        this.reconcile();
+      }, true);
+    } catch {
+      // Unsaved, the old guest account stays until a server 401 replaces it.
+    }
+  };
+  private guestAccountId() {
+    const state = this.data;
+    return this.options.guestAccounts &&
+      state?.mode === 'guest' &&
+      state.guestAccount &&
+      !state.guestAccountDeletion
+      ? state.guestAccount.userId
+      : null;
+  }
+  private maybeStartGuestWork() {
+    const state = this.data;
+    if (
+      !this.options.guestAccounts ||
+      this.disposed ||
+      !state ||
+      state.mode !== 'guest' ||
+      state.pendingSignIn ||
+      state.deletion ||
+      state.logoutPending ||
+      !(
+        state.guestAccountDeletion ||
+        this.guestReset ||
+        !state.guestAccount ||
+        !this.currentGuestSession()
+      )
+    )
+      return;
+    // A foreground run starts this again when it finishes.
+    if (this.running) return;
+    if (this.guestRunning) {
+      this.guestAgain = true;
+      return;
+    }
+    const abort = new AbortController();
+    this.guestAbort = abort;
+    this.guestRunning = this.guestWork(abort.signal)
+      .catch(() => {
+        // Offline or refused: the guest stays in the app, and open,
+        // foreground and reconnect retry.
+      })
+      .finally(() => {
+        this.guestRunning = null;
+        if (this.guestAbort === abort) this.guestAbort = null;
+        if (!abort.signal.aborted && !this.disposed && this.data) {
+          this.publish({ guestAccountId: this.guestAccountId() });
+          this.options.auth.setActive(
+            this.active &&
+              (!!this.snapshot.account || this.currentGuestSession() !== null),
+          );
+        }
+        if (this.guestAgain) {
+          this.guestAgain = false;
+          this.maybeStartGuestWork();
+        }
+      });
+  }
+  private async guestWork(signal: AbortSignal) {
+    const check = () => {
+      if (signal.aborted || this.disposed) throw new ApiError('CANCELLED');
+    };
+    const { auth, api } = this.options;
+    if (this.guestReset) {
+      // A refused guest is never refreshed or reused: its Auth user is gone.
+      await auth.signOut();
+      check();
+      this.providerSession = null;
+      await this.save({ ...this.state(), guestAccount: null });
+      this.guestReset = false;
+      check();
+    }
+    let session: ProviderSession | null;
+    try {
+      session = await auth.initialize();
+    } catch (error) {
+      // Unreachable Auth keeps the guest account for later. Only a refused
+      // anonymous user is replaced.
+      if (!(error instanceof ProviderAuthError) || error.code !== 'AUTH')
+        throw error;
+      check();
+      await auth.signOut();
+      session = null;
+    }
+    check();
+    this.providerSession = session;
+    const anonymous = !!session && !session.linkedProviders?.length;
+    if (this.state().guestAccountDeletion) {
+      const saved = this.state().guestAccount;
+      // Delete only an anonymous guest, never an Auth user a link has claimed.
+      if (
+        session &&
+        anonymous &&
+        (!saved || saved.authUserId === session.authUserId)
+      ) {
+        try {
+          await api.request(
+            'DELETE',
+            '/account',
+            accountDeletionResponseSchema,
+            { confirmation: 'delete-account' },
+            session.accessToken,
+            signal,
+          );
+        } catch (error) {
+          if (
+            !(error instanceof ApiError) ||
+            !['UNAUTHORIZED', 'SESSION_REVOKED'].includes(error.code)
+          )
+            throw error;
+        }
+        check();
+        await auth.signOut();
+        check();
+        this.providerSession = session = null;
+      }
+      await this.save({
+        ...this.state(),
+        guestAccount: null,
+        guestAccountDeletion: false,
+      });
+      check();
+    }
+    // A link in flight or finished belongs to sign-in, not to a guest account.
+    if (session && !anonymous) return;
+    const saved = this.state().guestAccount;
+    if (saved && session?.authUserId === saved.authUserId) {
+      this.guestStale = false;
+      return;
+    }
+    if (saved) {
+      await this.save({ ...this.state(), guestAccount: null });
+      check();
+    }
+    if (!session) {
+      session = await auth.signInAnonymously();
+      check();
+      this.providerSession = session;
+    }
+    const account = await api.request(
+      'POST',
+      '/auth/session',
+      managedSessionResponseSchema,
+      { deviceId: this.state().deviceId },
+      session.accessToken,
+      signal,
+    );
+    check();
+    if (!account.guest || account.authUserId !== session.authUserId)
+      throw new ApiError('ACCOUNT_CHANGED');
+    await this.save({ ...this.state(), guestAccount: account });
+    this.guestStale = false;
+  }
+  /**
+   * Revokes the guest session a sign-in left behind once it reached another
+   * account. The purchase moves first, so the store's buyer is re-verified
+   * under the account that signed in.
+   */
+  private async releaseGuestSession(
+    authUserId: string,
+    next: { userId: string; token: string } | null,
+  ) {
+    if (!this.options.guestAccounts) return;
+    const proof = guestSessionProof(this.options.secureStorage);
+    try {
+      const saved = await proof.read();
+      if (!saved) return;
+      // A link kept the same Auth user and app session: never revoke it.
+      if (saved.authUserId === authUserId) return await proof.clear();
+      if (next && this.movePurchase) {
+        try {
+          await this.movePurchase(next);
+        } catch {
+          // The store answer is checked again on the next purchase check.
+        }
+      }
+      await proof.revoke(this.options.api, this.lifetime.signal);
+    } catch {
+      // Kept for the next launch, which retries the revocation.
+    }
+  }
   currentSession = () => {
     const account = this.snapshot.account;
     return this.verifiedOwner &&
@@ -324,8 +605,11 @@ export class ManagedIdentityController {
           : null,
       message,
       ...feedback,
+      guestAccountId: this.guestAccountId(),
     });
-    this.options.auth.setActive(this.active && !!account);
+    this.options.auth.setActive(
+      this.active && (!!account || this.currentGuestSession() !== null),
+    );
   }
   private run(
     work: () => Promise<void>,
@@ -340,7 +624,11 @@ export class ManagedIdentityController {
       message: '',
       ...emptyConnectionFeedback,
     });
-    const running = Promise.resolve()
+    // A tapped action stops guest account work. Each run waits for it, so
+    // only one of them writes the saved state at a time.
+    const guestWork = this.guestRunning;
+    if (guestWork && !background) this.guestAbort?.abort();
+    const running = (guestWork ?? Promise.resolve())
       .then(work)
       .catch((error: unknown) => {
         // A cancel or an explained refusal is not a failure to diagnose.
@@ -386,6 +674,7 @@ export class ManagedIdentityController {
       .finally(() => {
         if (this.running === running) this.running = null;
         this.publish({ busy: false, busyInBackground: false });
+        this.maybeStartGuestWork();
       });
     this.running = running;
     return running;
@@ -453,6 +742,8 @@ export class ManagedIdentityController {
       logoutPending: false,
       deletion: null,
       deleted: legacy?.accountDeleted === true,
+      guestAccount: null,
+      guestAccountDeletion: false,
     });
   }
   initialize = () => {
@@ -465,6 +756,8 @@ export class ManagedIdentityController {
         if (this.state().deletion) return this.finishDeletion();
         await this.finishGuestRetirement();
         if (this.state().logoutPending) return this.finishLogout();
+        // A guest never waits on Auth. Its account work follows this run.
+        if (this.guestOnly()) return this.reconcile();
         if (this.state().pendingSignIn) connection.phase = 'provider-auth';
         this.providerSession = await this.options.auth.initialize();
         if (this.state().pendingSignIn && this.providerSession)
@@ -476,6 +769,11 @@ export class ManagedIdentityController {
           this.providerSession?.authUserId === this.state().account?.authUserId
         ) {
           await this.verify();
+          if (this.providerSession)
+            await this.releaseGuestSession(
+              this.providerSession.authUserId,
+              null,
+            );
         } else {
           if (this.state().mode === 'account')
             await this.save({ ...this.state(), mode: 'signed-out' });
@@ -486,6 +784,15 @@ export class ManagedIdentityController {
       connection,
     );
   };
+  private guestOnly() {
+    const state = this.state();
+    return (
+      !!this.options.guestAccounts &&
+      state.mode === 'guest' &&
+      !state.pendingSignIn &&
+      !state.pendingLink
+    );
+  }
   continueAsGuest = () =>
     this.run(async () => {
       await this.load();
@@ -536,6 +843,7 @@ export class ManagedIdentityController {
           link &&
           !!source &&
           !this.providerSession?.linkedProviders?.includes(provider);
+        const guestSession = switching ? null : this.currentGuestSession();
         await this.save({
           ...state,
           pendingSignIn: {
@@ -547,6 +855,7 @@ export class ManagedIdentityController {
             mappedOwnerId: null,
             expectedOwnerId: null,
             ...(switching ? { switching: true, authenticated: false } : {}),
+            ...(guestSession ? { guestLink: true } : {}),
           },
         });
         connection.phase = 'provider-auth';
@@ -557,7 +866,9 @@ export class ManagedIdentityController {
         try {
           session = linking
             ? await this.options.auth.linkIdentity(provider)
-            : await this.options.auth.signIn(provider);
+            : guestSession
+              ? await this.linkGuest(provider, guestSession.token)
+              : await this.options.auth.signIn(provider);
           if (
             linking &&
             session &&
@@ -637,6 +948,30 @@ export class ManagedIdentityController {
       false,
       connection,
     );
+  }
+  /**
+   * Links the provider to the guest's anonymous Auth user, so the guest
+   * account becomes the signed-in account with the same user ID. When the
+   * identity already has its own account, signs in to that one instead and
+   * keeps the guest bearer until its session is revoked.
+   */
+  private async linkGuest(provider: SignInProvider, token: string) {
+    const guest = this.state().guestAccount;
+    try {
+      return await this.options.auth.linkIdentity(provider);
+    } catch (error) {
+      if (!isIdentityExists(error) || !guest) throw error;
+    }
+    const proof = guestSessionProof(this.options.secureStorage);
+    await proof.write({ token, authUserId: guest.authUserId });
+    try {
+      const session = await this.options.auth.signIn(provider);
+      if (!session) await proof.clear();
+      return session;
+    } catch (error) {
+      await proof.clear();
+      throw error;
+    }
   }
   /**
    * Restore a cancelled/interrupted switch only to its original live app session.
@@ -757,6 +1092,29 @@ export class ManagedIdentityController {
   ) {
     const intent = this.state().pendingSignIn;
     if (!intent) return;
+    const guest = this.state().guestAccount;
+    if (
+      intent.guestLink &&
+      !intent.switching &&
+      guest &&
+      session.authUserId === guest.authUserId &&
+      !session.linkedProviders?.includes(intent.provider)
+    ) {
+      // Auth still holds the guest, so the link never finished. Only a
+      // refused link continues, to the identity's own account.
+      const next = session.identityExists
+        ? await this.continueRefusedGuestLink(intent.provider, session)
+        : null;
+      if (!next) {
+        if (next === null) {
+          await this.save({ ...this.state(), pendingSignIn: null });
+          this.reconcile();
+        }
+        return;
+      }
+      this.providerSession = next;
+      return this.adopt(next, connection);
+    }
     if (intent.switching) {
       const proof = providerSwitchProof(this.options.secureStorage);
       const source = await proof.read();
@@ -818,6 +1176,20 @@ export class ManagedIdentityController {
     }
     await this.adopt(session, connection);
   }
+  private async continueRefusedGuestLink(
+    provider: SignInProvider,
+    guest: ProviderSession,
+  ) {
+    const proof = guestSessionProof(this.options.secureStorage);
+    await proof.write({
+      token: guest.accessToken,
+      authUserId: guest.authUserId,
+    });
+    const next = await this.options.auth.signIn(provider);
+    if (next === 'redirecting') return undefined;
+    if (!next) await proof.clear();
+    return next;
+  }
   private async adopt(session: ProviderSession, connection: ConnectionTrace) {
     const providerGeneration = this.providerGeneration;
     const intent = this.state().pendingSignIn;
@@ -878,6 +1250,8 @@ export class ManagedIdentityController {
     if (
       this.disposed ||
       account.authUserId !== session.authUserId ||
+      // A provider sign-in never makes or keeps a guest account.
+      account.guest ||
       (intent.mappedOwnerId && intent.mappedOwnerId !== account.userId)
     )
       throw new ApiError('ACCOUNT_CHANGED');
@@ -964,6 +1338,9 @@ export class ManagedIdentityController {
       pendingLink: null,
       provider: intent.provider,
       deleted: false,
+      // The guest account became this account, or stays for P16-15 cleanup.
+      guestAccount: null,
+      guestAccountDeletion: false,
     });
     // Select the verified durable destination before erasing the old source.
     // A restart with unavailable Auth still displays that local journal.
@@ -980,6 +1357,10 @@ export class ManagedIdentityController {
     this.verifiedOwner = true;
     this.publish({ provider: intent.provider });
     this.reconcile();
+    await this.releaseGuestSession(session.authUserId, {
+      userId: account.userId,
+      token: session.accessToken,
+    });
   }
   private async finishGuestRetirement() {
     const adoption = this.state().guestAdoption;
@@ -1048,14 +1429,22 @@ export class ManagedIdentityController {
         if (this.state().deletion) return this.finishDeletion();
         await this.finishGuestRetirement();
         if (this.state().logoutPending) return this.finishLogout();
+        // A guest never waits on Auth. Its account work follows this run.
+        if (this.guestOnly()) return this.reconcile();
         if (this.state().pendingSignIn) connection.phase = 'provider-auth';
         this.providerSession = await this.options.auth.initialize();
         if (this.state().pendingSignIn && this.providerSession)
           return this.resumeSignIn(this.providerSession, connection);
         if (this.state().pendingLink && this.providerSession)
           return this.finishLink();
-        if (this.state().mode === 'account') await this.verify();
-        else this.reconcile();
+        if (this.state().mode === 'account') {
+          await this.verify();
+          if (this.providerSession)
+            await this.releaseGuestSession(
+              this.providerSession.authUserId,
+              null,
+            );
+        } else this.reconcile();
       },
       options.background,
       connection,
@@ -1226,15 +1615,17 @@ export class ManagedIdentityController {
   setActive = (active: boolean) => {
     this.active = active;
     this.options.auth.setActive(
-      active &&
+      (active &&
         this.snapshot.mode === 'account' &&
         !this.data?.deletion &&
-        !this.data?.logoutPending,
+        !this.data?.logoutPending) ||
+        (active && this.currentGuestSession() !== null),
     );
   };
   dispose = () => {
     this.snapshot = { ...this.snapshot, ...emptyConnectionFeedback };
     this.disposed = true;
+    this.guestAbort?.abort();
     this.lifetime.abort();
     this.unsubscribeAuth();
     this.options.auth.dispose();

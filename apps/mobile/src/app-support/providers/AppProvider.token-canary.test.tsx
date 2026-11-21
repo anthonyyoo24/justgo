@@ -126,6 +126,12 @@ const canaries = {
   googleIdToken: jwt(),
   switchedProviderToken: jwt(),
   switchedRefreshToken: randomBytes(24).toString('base64url'),
+  // A guest's anonymous Auth user (billing on), and the session its Apple
+  // link returns for the same user.
+  anonymousProviderToken: jwt(),
+  anonymousRefreshToken: randomBytes(24).toString('base64url'),
+  linkedProviderToken: jwt(),
+  linkedRefreshToken: randomBytes(24).toString('base64url'),
   legacySessionToken: hex(),
   legacyRecoverySecret: hex(),
   legacyRegistrationSecret: hex(),
@@ -423,7 +429,11 @@ afterEach(async () => {
   await act(async () => jest.runOnlyPendingTimersAsync());
   jest.restoreAllMocks();
   jest.useRealTimers();
-  process.env = { ...originalEnv };
+  // Reset in place: Expo's Babel preset reads EXPO_PUBLIC_* through the env
+  // object it first saw, so a replaced object would hide later writes.
+  for (const name of Object.keys(process.env))
+    if (!(name in originalEnv)) delete process.env[name];
+  Object.assign(process.env, originalEnv);
 });
 
 async function mount() {
@@ -666,4 +676,143 @@ it('keeps the provider tokens out of AsyncStorage and the journal through a prov
       'DELETE http://localhost:3000/v1/account',
     ]),
   );
+});
+
+it('keeps the anonymous guest tokens out of AsyncStorage and the journal through a guest account and the sign-in that links it (P16-14)', async () => {
+  process.env.EXPO_PUBLIC_BILLING_ENABLED = 'true';
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+  controller.dispose();
+  controller = jest
+    .requireActual<typeof import('../identity/auth/create-managed-identity')>(
+      '../identity/auth/create-managed-identity',
+    )
+    .createManagedIdentityController('http://localhost:3000');
+  jest.mocked(createManagedIdentityController).mockReturnValue(controller);
+  const guestAuthUserId = id(60);
+  const guestAccountId = id(61);
+  let linked = false;
+  const guestUser = () => ({
+    id: guestAuthUserId,
+    aud: 'authenticated',
+    role: 'authenticated',
+    is_anonymous: !linked,
+    app_metadata: linked ? { provider: 'apple' } : {},
+    user_metadata: {},
+    created_at: new Date().toISOString(),
+    identities: linked
+      ? [
+          {
+            provider: 'apple',
+            identity_id: id(62),
+            id: id(62),
+            user_id: guestAuthUserId,
+            last_sign_in_at: new Date().toISOString(),
+          },
+        ]
+      : [],
+  });
+  const tokens = (access_token: string, refresh_token: string) =>
+    json({
+      access_token,
+      refresh_token,
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: guestUser(),
+    });
+  const base = jest.mocked(fetch).getMockImplementation()!;
+  jest.mocked(fetch).mockImplementation(async (target, init) => {
+    const url = new URL(String(target));
+    const method = init?.method ?? 'GET';
+    const route = `${method} ${url.origin}${url.pathname}`;
+    const authorization = new Headers(init?.headers).get('authorization');
+    const record = () => {
+      requests.push(route);
+      if (authorization) authorizations.push(authorization);
+    };
+    if (route === `POST ${supabaseUrl}/auth/v1/signup`) {
+      record();
+      return tokens(
+        canaries.anonymousProviderToken,
+        canaries.anonymousRefreshToken,
+      );
+    }
+    if (
+      route === `POST ${supabaseUrl}/auth/v1/token` &&
+      url.searchParams.get('grant_type') === 'id_token'
+    ) {
+      record();
+      linked = true;
+      return tokens(canaries.linkedProviderToken, canaries.linkedRefreshToken);
+    }
+    if (route === `GET ${supabaseUrl}/auth/v1/user`) {
+      record();
+      return json(guestUser());
+    }
+    if (route === 'POST http://localhost:3000/v1/auth/session') {
+      record();
+      // The API sends guest only when it is true.
+      return json({
+        ...session,
+        userId: guestAccountId,
+        authUserId: guestAuthUserId,
+        dataEpoch: 0,
+        ...(linked ? {} : { guest: true }),
+      });
+    }
+    if (route === 'GET http://localhost:3000/v1/challenges') {
+      record();
+      return json({ code: 'UNAVAILABLE', requestId: 'fixture' }, 503);
+    }
+    return base(target, init);
+  });
+  await mount();
+  await act(async () => controller.continueAsGuest());
+  // The guest account is made in the background after Continue.
+  await act(async () => jest.advanceTimersByTimeAsync(100));
+  await waitFor(() =>
+    expect(controller.getSnapshot().guestAccountId).toBe(guestAccountId),
+  );
+  await waitFor(() =>
+    expect(authorizations).toContain(
+      `Bearer ${canaries.anonymousProviderToken}`,
+    ),
+  );
+  await act(async () => runtime.access?.refresh());
+  const keychainSession = await createAuthStorage().getItem('justgo.auth.v1');
+  const guest = runtime.activity.getRepository()!;
+  await act(async () => {
+    await guest.complete(input(1), card);
+    await guest.submitReflection(uuid(1), uuid(2), { text: reflection });
+  });
+  await act(async () => controller.signIn('apple'));
+  await waitFor(() =>
+    expect(runtime.activity.getRepository()?.accountId).toBe(guestAccountId),
+  );
+  await waitFor(() =>
+    expect(requests).toContain('POST http://localhost:3000/v1/journal-sync'),
+  );
+
+  const stored = asyncStorageWrites();
+  const journal = journalWrites.join('\n');
+  expect(leaks({ AsyncStorage: stored, journal })).toEqual([]);
+  // The anonymous session rested in the Keychain and was used as a bearer.
+  expect(keychainSession).toContain(canaries.anonymousRefreshToken);
+  expect(stored).toContain('justgo.identity.managed.v1');
+  expect(journal).toContain(reflection);
+  expect(authorizations).toEqual(
+    expect.arrayContaining([
+      `Bearer ${canaries.anonymousProviderToken}`,
+      `Bearer ${canaries.linkedProviderToken}`,
+    ]),
+  );
+  expect(requests).toEqual(
+    expect.arrayContaining([
+      `POST ${supabaseUrl}/auth/v1/signup`,
+      'GET http://localhost:3000/v1/access',
+      'POST http://localhost:3000/v1/completion-restores',
+    ]),
+  );
+  // The link kept the same account, so its ID never changed.
+  expect(controller.getSnapshot().account?.userId).toBe(guestAccountId);
 });

@@ -4,7 +4,8 @@ import type { IdentityApi } from '../api';
 import { ApiError } from '../../../lib/network/http';
 import type { SecureStorageDriver } from '../../../platform/auth/secure-storage';
 
-const key = 'justgo.auth.provider-switch-proof.v1';
+const switchKey = 'justgo.auth.provider-switch-proof.v1';
+const guestKey = 'justgo.auth.guest-session-proof.v1';
 const proofSchema = z
   .object({
     token: z.string().min(1),
@@ -14,6 +15,18 @@ const proofSchema = z
 
 /** The old bearer stays in secure storage until its app session is revoked. */
 export function providerSwitchProof(storage: SecureStorageDriver) {
+  return sessionProof(storage, switchKey);
+}
+
+/**
+ * The guest account's bearer, kept after a sign-in reached a different
+ * account until the guest's app session is revoked (billing on only).
+ */
+export function guestSessionProof(storage: SecureStorageDriver) {
+  return sessionProof(storage, guestKey);
+}
+
+function sessionProof(storage: SecureStorageDriver, key: string) {
   return {
     async read() {
       const raw = await storage.getItem(key);
