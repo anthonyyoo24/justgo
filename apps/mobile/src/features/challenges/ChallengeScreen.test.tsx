@@ -80,6 +80,7 @@ jest.mock('expo-router', () => ({
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({
     challenges: mockController,
+    paywall: null,
     canStartChallenge: () => true,
   }),
   useIdentity: () => ({
@@ -177,6 +178,7 @@ beforeEach(() => {
   mockSnapshot = {
     selected: 'cafe',
     error: '',
+    locked: false,
     loading: false,
     saving: false,
     completionStarted: false,

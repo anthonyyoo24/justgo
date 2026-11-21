@@ -263,3 +263,65 @@ it('finishes an admitted challenge once after expiry with its original start', a
   expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
   await screen.unmount();
 });
+
+it('starts a refused card only after unlock verifies access', async () => {
+  let permitted = false;
+  const gate = deferred<boolean>();
+  const unlock = jest.fn(() => gate.promise);
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => permitted,
+      unlock,
+    }),
+  );
+  const state = controller.getSnapshot();
+  const front = state.queues[state.selected]!.cards[0]!.id;
+  let turn: Promise<number | void> = Promise.resolve();
+  await act(async () => {
+    turn = screen.result.current.onAction(1);
+  });
+  expect(unlock).toHaveBeenCalledTimes(1);
+  expect(screen.result.current.active).toBeNull();
+  expect(mockFeedback).not.toHaveBeenCalled();
+  permitted = true;
+  await act(async () => {
+    gate.resolve(true);
+    await turn;
+  });
+  expect(screen.result.current.active?.card.id).toBe(front);
+  expect(mockFeedback.mock.calls).toEqual([['accept']]);
+  await screen.unmount();
+});
+
+it('keeps the card when unlock is declined or the deck moved on meanwhile', async () => {
+  const gate = deferred<boolean>();
+  const unlock = jest
+    .fn<Promise<boolean>, []>()
+    .mockResolvedValueOnce(false)
+    .mockReturnValueOnce(gate.promise);
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => unlock.mock.calls.length > 1,
+      unlock,
+    }),
+  );
+  await act(async () => {
+    await expect(screen.result.current.onAction(1)).resolves.toBeUndefined();
+  });
+  expect(screen.result.current.active).toBeNull();
+  let turn: Promise<number | void> = Promise.resolve();
+  await act(async () => {
+    turn = screen.result.current.onAction(1);
+  });
+  controller.skip();
+  await act(async () => {
+    gate.resolve(true);
+    await expect(turn).resolves.toBeUndefined();
+  });
+  expect(screen.result.current.active).toBeNull();
+  expect(mockFeedback).not.toHaveBeenCalled();
+  expect(repository.store.getState().journal.operations).toEqual([]);
+  await screen.unmount();
+});

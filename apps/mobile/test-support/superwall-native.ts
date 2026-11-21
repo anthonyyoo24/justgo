@@ -8,6 +8,11 @@ const listeners = new Map<string, Set<Listener>>();
 let alias = 0;
 let attributes: Attributes = {};
 let configureResult: Promise<void> = Promise.resolve();
+let customerInfo: unknown = null;
+let restoration: unknown = { result: 'restored' };
+// Each registered placement, granted when its test calls `grant`.
+const placements: { handlerId: string; grant: () => void; fail: () => void }[] =
+  [];
 
 const anonymous = (): Attributes => ({
   aliasId: `$SuperwallAlias:${++alias}`,
@@ -19,7 +24,20 @@ const methods: Record<string, (...args: never[]) => unknown> = {
   configure: () => configureResult,
   getUserAttributes: () => Promise.resolve({ ...attributes }),
   getSubscriptionStatus: () => Promise.resolve({ status: 'INACTIVE' }),
-  getCustomerInfo: () => Promise.resolve(null),
+  getCustomerInfo: () => Promise.resolve(customerInfo),
+  restorePurchases: () => Promise.resolve(restoration),
+  registerPlacement: (
+    _placement: string,
+    _params: unknown,
+    handlerId: string,
+  ) =>
+    new Promise<void>((grant, reject) => {
+      placements.push({
+        handlerId,
+        grant: () => grant(),
+        fail: () => reject(new Error('registerPlacement failed')),
+      });
+    }),
   identify: (userId: string) => {
     if (attributes.appUserId !== userId) {
       if (attributes.appUserId !== undefined) attributes = anonymous();
@@ -45,6 +63,20 @@ export const superwallNative = {
     listeners.clear();
     attributes = anonymous();
     configureResult = Promise.resolve();
+    customerInfo = null;
+    restoration = { result: 'restored' };
+    placements.length = 0;
+  },
+  setCustomerInfo(info: unknown) {
+    customerInfo = info;
+  },
+  setRestoration(result: unknown) {
+    restoration = result;
+  },
+  /** The newest registered placement. */
+  placement: () => placements.at(-1),
+  emit(event: string, payload: unknown) {
+    for (const listener of listeners.get(event) ?? []) listener(payload);
   },
   identifiedAs(userId: string) {
     attributes = { ...anonymous(), appUserId: userId };

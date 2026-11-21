@@ -12,6 +12,7 @@ let mockIdentity = {
 let mockJournalState = { ready: true, hydrationError: null as string | null };
 let mockDeck = {
   selected: 'streets',
+  locked: false,
   queues: { streets: { cards: ['card'] } } as Record<
     string,
     { cards: string[] }
@@ -45,7 +46,11 @@ beforeEach(() => {
     deletionStatus: null,
   };
   mockJournalState = { ready: true, hydrationError: null };
-  mockDeck = { selected: 'streets', queues: { streets: { cards: ['card'] } } };
+  mockDeck = {
+    selected: 'streets',
+    locked: false,
+    queues: { streets: { cards: ['card'] } },
+  };
   mockRepository.accountId = 'owner-a';
   mockChallenges.refresh.mockReset().mockResolvedValue(undefined);
 });
@@ -72,6 +77,14 @@ it('returns owner-authenticated import to Data without waiting for a catalog', a
   const { result } = await renderHook(() => useSignInHandoff(true, true));
   expect(result.current.destination).toBe('/data');
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
+});
+
+it('enters Challenges when the deck needs a subscription, so Home can offer the paywall', async () => {
+  mockDeck = { selected: 'streets', locked: true, queues: {} };
+  const { result } = await renderHook(() => useSignInHandoff(true, false));
+  await act(async () => {});
+  expect(result.current.destination).toBe('/(tabs)');
+  expect(result.current.error).toBe('');
 });
 
 it.each(['missing cards', 'storage failure', 'rejected refresh'])(

@@ -45,6 +45,7 @@ beforeEach(() => {
     completionStarted: false,
     success: null,
     error: '',
+    locked: false,
   };
 });
 afterEach(async () => {

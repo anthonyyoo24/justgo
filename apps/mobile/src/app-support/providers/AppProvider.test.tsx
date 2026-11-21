@@ -506,6 +506,59 @@ it('connects to identity that hydrated after runtime construction, then follows 
   unsubscribe();
 });
 
+it.each([true, false])(
+  'opens the store paywall from a refused start only with billing %s and admits it once the API verifies',
+  async (billing) => {
+    let paid = false;
+    const checkedAt = () => new Date().toISOString();
+    const verified = () =>
+      response({
+        status: 'verified',
+        checkedAt: checkedAt(),
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        source: 'subscription',
+        productId: 'com.anthonyyoo.justgo.pro.annual',
+      });
+    const base = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/v1/access')
+        return paid
+          ? verified()
+          : response({ status: 'unpaid', checkedAt: checkedAt() });
+      if (path === '/v1/billing/verifications') {
+        paid = true;
+        return verified();
+      }
+      return base(input, init);
+    });
+    const store = {
+      present: jest.fn(async () => ({ type: 'purchased' }) as const),
+      restore: async () => 'failed' as const,
+      // The phone holds a transaction only once the paywall sold one.
+      latestTransactionId: async () =>
+        store.present.mock.calls.length ? '2000000001' : null,
+    };
+    runtime = createAppRuntime(
+      controller,
+      'http://localhost:3000',
+      asyncStorageJournalStorage,
+      billing,
+      store,
+    );
+    await controller.initialize();
+    const unsubscribe = runtime.subscribe();
+    await act(async () => {
+      await runtime.access?.refresh();
+    });
+    expect(runtime.canStartChallenge()).toBe(!billing);
+    await expect(runtime.unlockChallenge()).resolves.toBe(billing);
+    expect(store.present).toHaveBeenCalledTimes(billing ? 1 : 0);
+    expect(runtime.canStartChallenge()).toBe(true);
+    unsubscribe();
+  },
+);
+
 it('pauses provider refresh on background, refreshes on foreground and releases listeners on unmount', async () => {
   const screen = await mount();
   const active = jest.mocked(auth.setActive);

@@ -17,7 +17,11 @@ import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { catalogSchema } from '@justgo/contracts';
 import { canStartChallenge } from '../access/admission';
 import { PaidAccess } from '../access/paid-access';
-import { createSuperwallBilling } from '../billing/superwall';
+import {
+  createSuperwallBilling,
+  createSuperwallPaywallStore,
+} from '../billing/superwall';
+import { Paywall, type PaywallStore } from '../billing/paywall';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
@@ -35,6 +39,7 @@ export function createAppRuntime<
   url = process.env.EXPO_PUBLIC_API_URL,
   storage: JournalStorage = asyncStorageJournalStorage,
   billing = process.env.EXPO_PUBLIC_BILLING_ENABLED === 'true',
+  store: PaywallStore | null = createSuperwallPaywallStore(billing),
 ) {
   const client = new AccountClient(createHttpClient(url), {
     current: identity.currentSession,
@@ -63,8 +68,17 @@ export function createAppRuntime<
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage, { url });
   const access = billing
-    ? new PaidAccess({ url, storage, client, guestClient })
+    ? new PaidAccess({
+        url,
+        storage,
+        client,
+        guestClient,
+        ...(store && {
+          latestTransactionId: () => store.latestTransactionId(),
+        }),
+      })
     : null;
+  const paywall = access && store ? new Paywall({ access, store }) : null;
   const superwall = createSuperwallBilling(billing);
   // Saved access shares the erased namespace, so its writes finish first.
   const beforeErase = async (owner: string) => {
@@ -174,7 +188,9 @@ export function createAppRuntime<
     activity,
     access,
     superwall,
+    paywall,
     canStartChallenge: () => canStartChallenge(access),
+    unlockChallenge: () => paywall?.open() ?? Promise.resolve(false),
     subscribe: () => {
       sync();
       return identity.subscribe(sync);

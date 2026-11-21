@@ -22,6 +22,7 @@ import {
 import { AppStartup, StartupSurface } from '../app-support/startup/AppStartup';
 import { holdNativeSplash } from '../app-support/startup/native-splash';
 import { RouteErrorScreen } from '../app-support/fallbacks/RouteErrorScreen';
+import { useAppLock } from '../app-support/access/useAppLock';
 
 holdNativeSplash();
 
@@ -88,6 +89,12 @@ function Navigation() {
   const deleted = identity.deletionStatus === 'deleted';
   const awaitingAccess = useWelcomeTransition();
   const welcome = deleted || identity.needsWelcome;
+  // With billing on, only verified access opens the app. Without it the owner
+  // sees the locked screen, and sign-in, recovery and deletion stay reachable.
+  const open = useAppLock() === 'open';
+  const owned =
+    !!identity.account ||
+    ('collectionId' in identity && !!identity.collectionId);
   // Resolve the saved collection before protected routes choose their initial
   // destination. Otherwise a cold local-history link is pruned as a new install.
   if (!identity.initialized)
@@ -113,9 +120,11 @@ function Navigation() {
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}
-      <Stack.Protected guard={!deleted && !awaitingAccess}>
+      <Stack.Protected guard={!deleted && !awaitingAccess && open}>
         <Stack.Screen name="settings" />
         <Stack.Screen name="data" />
+      </Stack.Protected>
+      <Stack.Protected guard={!deleted && !awaitingAccess}>
         <Stack.Screen name="delete-account" />
         <Stack.Screen name="recovery" />
         <Stack.Screen name="account/recover" />
@@ -128,9 +137,20 @@ function Navigation() {
         guard={
           !identity.deletionStatus &&
           !welcome &&
-          (!!identity.account ||
-            ('collectionId' in identity && !!identity.collectionId)) &&
-          !awaitingAccess
+          owned &&
+          !awaitingAccess &&
+          !open
+        }
+      >
+        <Stack.Screen name="locked" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+      <Stack.Protected
+        guard={
+          !identity.deletionStatus &&
+          !welcome &&
+          owned &&
+          !awaitingAccess &&
+          open
         }
       >
         <Stack.Screen name="(tabs)" />
@@ -140,8 +160,8 @@ function Navigation() {
           !identity.deletionStatus &&
           !welcome &&
           !awaitingAccess &&
-          (!!identity.account ||
-            ('collectionId' in identity && !!identity.collectionId))
+          owned &&
+          open
         }
       >
         <Stack.Screen

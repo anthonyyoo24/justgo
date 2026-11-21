@@ -35,10 +35,11 @@ export function useSignInHandoff(focused: boolean, returnToData: boolean) {
       () => {
         const journal = repository.store.getState();
         const deck = challenges.getSnapshot();
+        // A locked deck is ready: the app opens on the locked screen.
         finish(
           journal.ready &&
             !journal.hydrationError &&
-            !!deck.queues[deck.selected]?.cards.length,
+            (deck.locked || !!deck.queues[deck.selected]?.cards.length),
         );
       },
       () => finish(false),

@@ -25,6 +25,17 @@ let mockSnapshot = {
   },
 };
 const mockListeners = new Set<() => void>();
+// Billing off unless a test sets the app lock.
+let mockLock: 'open' | 'checking' | 'locked' | null = null;
+const mockAccess = {
+  subscribe: (listener: () => void) => {
+    mockListeners.add(listener);
+    return () => {
+      mockListeners.delete(listener);
+    };
+  },
+  status: () => mockLock,
+};
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
 jest.mock('./startup/AppStartup', () => ({
   AppStartup: ({ children }: { children: ReactNode }) => children,
@@ -49,6 +60,7 @@ jest.mock('./providers/AppProvider', () => {
   return {
     AppProvider: ({ children }: { children: ReactNode }) => children,
     useIdentity: () => useSnapshot().identity,
+    useRuntime: () => ({ access: mockLock ? mockAccess : null }),
   };
 });
 jest.mock('./identity/welcome/WelcomeTransition', () => ({
@@ -98,6 +110,7 @@ const routes = {
   settings: () => <Text>Settings ready</Text>,
   data: () => <Text>Data ready</Text>,
   recovery: () => <Text>Recovery ready</Text>,
+  locked: () => <Text>Locked ready</Text>,
   'delete-account': () => <Text>Deletion ready</Text>,
   welcome: () => <Text>Welcome ready</Text>,
   preview: () => <Text>Preview ready</Text>,
@@ -105,6 +118,7 @@ const routes = {
 };
 
 beforeEach(() => {
+  mockLock = null;
   mockSnapshot = {
     identity: {
       initialized: true,
@@ -364,3 +378,79 @@ it.each(['pending', 'cleanup'] as const)(
     expect(navigation.getPathname()).toBe('/delete-account');
   },
 );
+
+describe('with billing on', () => {
+  const setLock = (lock: 'open' | 'checking' | 'locked') =>
+    act(() => {
+      mockLock = lock;
+      for (const listener of mockListeners) listener();
+    });
+
+  it.each(['/', '/progress', '/settings', '/data', '/challenge'])(
+    'shows only the locked screen at %s to an owner without verified access',
+    async (initialUrl) => {
+      mockLock = 'locked';
+      const navigation = await renderRouter(routes, { initialUrl });
+      expect(await screen.findByText('Locked ready')).toBeTruthy();
+      expect(navigation.getPathname()).toBe('/locked');
+      for (const ready of [
+        'Home ready',
+        'Progress ready',
+        'Settings ready',
+        'Data ready',
+        'Challenge ready',
+      ])
+        expect(screen.queryByText(ready)).toBeNull();
+    },
+  );
+
+  it('keeps sign-in and deletion reachable from the locked screen', async () => {
+    mockLock = 'locked';
+    await renderRouter(routes, { initialUrl: '/' });
+    expect(await screen.findByText('Locked ready')).toBeTruthy();
+    await act(() => router.push('/recovery'));
+    expect(await screen.findByText('Recovery ready')).toBeTruthy();
+    await act(() => router.push('/delete-account'));
+    expect(await screen.findByText('Deletion ready')).toBeTruthy();
+  });
+
+  it('waits on the loading screen during the first check, then opens Home once access verifies', async () => {
+    mockLock = 'checking';
+    const navigation = await renderRouter(routes, { initialUrl: '/' });
+    expect(await screen.findByLabelText('Loading JustGO')).toBeTruthy();
+    expect(screen.queryByText('Home ready')).toBeNull();
+    expect(screen.queryByText('Locked ready')).toBeNull();
+    await setLock('open');
+    expect(await screen.findByText('Home ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/');
+  });
+
+  it('leaves the locked screen for Home once a purchase verifies', async () => {
+    mockLock = 'locked';
+    const navigation = await renderRouter(routes, { initialUrl: '/' });
+    expect(await screen.findByText('Locked ready')).toBeTruthy();
+    await setLock('open');
+    expect(await screen.findByText('Home ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/');
+    await act(() => router.push('/locked'));
+    expect(screen.queryByText('Locked ready')).toBeNull();
+  });
+
+  it('keeps a locked owner on the locked screen while a later check runs', async () => {
+    mockLock = 'locked';
+    await renderRouter(routes, { initialUrl: '/' });
+    expect(await screen.findByText('Locked ready')).toBeTruthy();
+    await setLock('checking');
+    expect(screen.getByText('Locked ready')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+  });
+
+  it('locks Home when verified access ends', async () => {
+    mockLock = 'open';
+    const navigation = await renderRouter(routes, { initialUrl: '/' });
+    expect(await screen.findByText('Home ready')).toBeTruthy();
+    await setLock('locked');
+    expect(await screen.findByText('Locked ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/locked');
+  });
+});
