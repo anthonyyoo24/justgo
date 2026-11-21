@@ -496,3 +496,81 @@ test('the U.S. region notice keeps the essential-errors scope and passes the pro
     /ordinary automatic crash reporting are disabled/,
   );
 });
+
+// Paid billing's Terms candidate waits for Anthony's approval in its own file.
+// When it replaces the draft, move these checks to the draft test.
+test('the billing Terms candidate adds Subscriptions, stays unapproved and publishes only once approved and dated', async () => {
+  const [candidate, draft, privacySource] = await Promise.all(
+    [
+      'TERMS_BILLING_CANDIDATE.md',
+      'TERMS_DRAFT.md',
+      'PRIVACY_POLICY_DRAFT.md',
+    ].map((name) =>
+      readFile(new URL(`../../docs/legal/${name}`, import.meta.url), 'utf8'),
+    ),
+  );
+  const document = parseDocument(candidate);
+  assert.equal(document.status, 'owner-review-required');
+  assert.equal(document.effectiveDate, 'pending');
+  assert.equal(document.version, 'terms-billing-candidate');
+  assert.throws(
+    () =>
+      renderSite({ privacySource, termsSource: candidate, production: true }),
+    /explicit owner approval/,
+  );
+  const approved = candidate
+    .replace(
+      '<!-- publication-status: owner-review-required -->',
+      '<!-- publication-status: owner-approved -->',
+    )
+    .replace(
+      '<!-- effective-date: pending -->',
+      '<!-- effective-date: 2026-12-01 -->',
+    );
+  const terms = renderSite({
+    privacySource,
+    termsSource: approved,
+    production: true,
+  }).get('terms/index.html');
+  assert.deepEqual(
+    [...terms.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)].map((match) => match[1]),
+    [
+      'About JustGO',
+      'Using JustGO',
+      'The app license',
+      'Your account',
+      'Subscriptions',
+      'Your content',
+      'Your data',
+      'Availability',
+      'Changes and contact',
+    ],
+  );
+  // Every section but Subscriptions keeps the published text.
+  const publicText = (source) =>
+    source
+      .slice(source.indexOf('<!-- public:start -->'))
+      .replace(/\n## Subscriptions\n[\s\S]*?(?=\n## )/, '');
+  assert.equal(publicText(candidate), publicText(draft));
+  for (const promise of [
+    /Starting a challenge needs a JustGO subscription\./,
+    /JustGO sells auto-renewing subscriptions through Apple’s App Store\./,
+    /Unless you cancel at least 24 hours before the trial ends, the subscription continues and Apple charges the plan’s price\./,
+    /Your subscription renews automatically for the same length, unless you cancel at least 24 hours before the current period ends\./,
+    /You can cancel at any time in your Apple account’s subscription settings\./,
+    /Deleting the app, your journal or your JustGO account does not cancel a subscription\./,
+    /<a href="https:\/\/reportaproblem\.apple\.com\/">reportaproblem\.apple\.com<\/a>/,
+    /We can’t issue refunds ourselves\./,
+    /A new price never applies to a period you’ve already paid for\./,
+    /Your history, journal and reflections stay, and you can still export or delete them\./,
+    /the subscription moves into that JustGO account along with the journal on this phone\./,
+    /Restoring a subscription doesn’t bring back a journal that wasn’t signed in, synced with iCloud or exported\./,
+  ])
+    assert.match(terms, promise);
+  // Prices, plan names and providers stay out of the public text, so a paywall
+  // test or a price change needs no new Terms.
+  assert.doesNotMatch(
+    terms,
+    /\$|US\$|\d+-day|\bAnnual\b|\bMonthly\b|Superwall|StoreKit|Supabase|Cloudflare|Sentry|\bbeta\b|<!--|P16-/,
+  );
+});
