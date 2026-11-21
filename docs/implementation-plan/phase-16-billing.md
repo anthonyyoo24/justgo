@@ -58,7 +58,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
   - [ ] P16-9 after P16-7, P16-8 and P16-14.
   - [ ] P16-10 after P16-9.
   - [ ] P16-11 after P16-6, P16-9 and P16-14.
-- [ ] Hold the file boundaries. API PRs touch only `apps/api/**`, `packages/contracts/**` and the docs they make necessary. Mobile PRs touch only `apps/mobile/**` and their docs. P16-12 touches only `docs/legal/**`, `docs/operations/**`, the legal reader and `scripts/quality/policy-copy.test.mjs`.
+- [ ] Hold the file boundaries. API PRs touch only `apps/api/**`, `packages/contracts/**` and the docs they make necessary. Mobile PRs touch only `apps/mobile/**` and their docs. P16-12 touches only `docs/legal/**`, `docs/operations/**`, the legal reader and its tests, `scripts/quality/policy-copy.test.mjs` and the analytics rule in `AGENTS.md`.
 - [ ] Hold the review gate. P16-9, P16-10 and P16-11 change an interaction. They wait for Anthony's review in chat with screenshots and a video before merge.
 - [ ] Keep every paid path behind `BILLING_ENABLED` on the API and the matching mobile flag until #110 passes. Free access stays the default.
 
@@ -871,7 +871,8 @@ A guest gets a Supabase anonymous user and a JustGO account when they continue w
 
 **Files.**
 
-- [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, the data inventory and `scripts/quality/policy-copy.test.mjs`.
+- [ ] Add `docs/legal/PRIVACY_POLICY_BILLING_CANDIDATE.md`, the billing Privacy candidate, beside `docs/legal/PRIVACY_POLICY_DRAFT.md`, which `scripts/release/check-beta.mjs` pins as the beta notice. On approval it replaces the draft, as its review note says.
+- [ ] Edit the data inventory, `scripts/quality/policy-copy.test.mjs`, `sites/legal/build.test.mjs` and the analytics rule in `AGENTS.md`.
 - [ ] Edit `docs/operations/APPLE_SETUP.md` for the App Privacy answers.
 
 **Build.**
@@ -883,7 +884,7 @@ A guest gets a Supabase anonymous user and a JustGO account when they continue w
 
 **You see.**
 
-- [ ] `pnpm run build:legal` shows the new Superwall section on the Privacy page.
+- [ ] The candidate, rendered with `renderSite` from `sites/legal/build.mjs`, shows the new Superwall section. `pnpm run build:legal` shows it only after the candidate replaces the draft.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 

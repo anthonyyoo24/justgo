@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 import type { AppleBillingConfig } from './billing/apple.js';
+import type { SuperwallErasureConfig } from './identity/superwall-erasure.js';
 
 /** The default rate key for local runs. Production refuses it at boot. */
 export const localDevelopmentRateKey =
@@ -68,6 +69,15 @@ const configSchema = z.object({
   BILLING_REPAIR_SECRET: z
     .string()
     .regex(/^[\x21-\x7e]{32,512}$/)
+    .optional(),
+  // A Superwall API key with the user erasure scope, and the Superwall app it erases from.
+  SUPERWALL_API_KEY: z
+    .string()
+    .regex(/^[\x21-\x7e]{16,512}$/)
+    .optional(),
+  SUPERWALL_APPLICATION_ID: z
+    .string()
+    .regex(/^[0-9]{1,20}$/)
     .optional(),
   IDENTITY_RATE_LIMIT_KEY: z.string().min(32).default(localDevelopmentRateKey),
   IDENTITY_SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
@@ -143,6 +153,18 @@ function billingEvents(config: z.infer<typeof configSchema>) {
   return { webhookSecret, repairSecret };
 }
 
+function superwallErasure(
+  config: z.infer<typeof configSchema>,
+): SuperwallErasureConfig | undefined {
+  if (!config.BILLING_ENABLED) return undefined;
+  const { SUPERWALL_API_KEY: apiKey, SUPERWALL_APPLICATION_ID: applicationId } =
+    config;
+  // Billing identifies owners to Superwall, so account deletion must erase them there.
+  if (!apiKey || !applicationId)
+    throw new Error('Billing requires the Superwall erasure settings');
+  return { apiKey, applicationId };
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
@@ -169,6 +191,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     ...config,
     APPLE_BILLING: appleBilling(config),
     BILLING_EVENTS: billingEvents(config),
+    SUPERWALL_ERASURE: superwallErasure(config),
     API_SENTRY: serverDiagnosticConfiguration(
       config.API_SENTRY_ENABLED,
       config.API_SENTRY_DSN,
